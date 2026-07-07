@@ -6,7 +6,9 @@
   "tag-separator": "-",
   "separate-pull-requests": false,
   "group-pull-request-title-pattern": "chore: release ${branch}",
-  "bootstrap-sha": "e08b1a7e101d0ded49ea7f05ab68c4149027ab2a",
+  "bump-minor-pre-major": true,
+  "bump-patch-for-minor-pre-major": true,
+  "bootstrap-sha": "db87d84610030003171d0cac889b492f7b6ec967",
   "packages": {
     "workers/bouncer": {
       "component": "bouncer",
