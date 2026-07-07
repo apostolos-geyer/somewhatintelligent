@@ -1,30 +1,34 @@
-# greenroom — per-PR worker previews via `wrangler versions upload` (docs/ops/04 §4).
+# somewhatintelligent — per-PR worker previews via `wrangler versions upload` (docs/ops/04 §4).
 #
 # For each worker the PR actually changes (scripts/changed-workers.sh ownership
 # rules), upload a VERSION of the staging worker (0% traffic) and surface its
-# preview URL: `pr-<n>-<worker>.sproutcannabis.workers.dev` (stable per-PR alias)
-# on the PR as a sticky comment + in this run's links panel. Bindings ride the
-# version, so previews hit STAGING D1/R2/queues automatically. What previews
+# preview URL: `pr-<n>-<worker>.<account-subdomain>.workers.dev` (stable per-PR
+# alias) on the PR as a sticky comment + in this run's links panel. Bindings ride
+# the version, so previews hit STAGING D1/R2/queues automatically. What previews
 # are NOT (footer of the PR comment says so too): bouncer-fronted, cross-
 # subdomain-auth'd, or composed with sibling PR versions — units, not journeys.
+# (inbox/ is standalone and deploys manually outside RWX — it gets no preview
+# versions and no lane at all.)
 #
 # The uploaded versions double as the promote-on-merge artifacts:
 # .rwx/promote-staging.yml resolves them by tag `pr-<n>-<head-sha>` and
 # promotes instead of rebuilding.
 #
 # ── THE PREVIEW VAULT ────────────────────────────────────────────────────────
-# This file references the UNLOCKED vault `greenroom_preview`, which holds:
-#   CLOUDFLARE_API_TOKEN_PREVIEW — minted FROM the Sprout account (a foreign-
-#     account token throws D1 7403-class errors), scoped to Workers Scripts:Edit
-#     + Account Settings:Read ONLY (no D1/R2/routes: a leaked preview token can
-#     upload 0%-traffic versions, nothing else). Unlocked vault = any branch can
-#     upload versions; acceptable for this single-maintainer private repo.
-# Optionally grant the rwx-automation-greenroom GitHub App issues:write and add
-# it to the vault for PR comments (scripts/pr-preview-comment.sh degrades to
-# run-links-only without it).
-# Vault created 2026-07-06 (`rwx vaults create --name greenroom_preview
-# --unlocked`), token minted account-owned from the Sprout account (CF token id
-# 1bc5ccf1830622817073962aa45da404) — rotate/revoke there if it ever leaks.
+# This file references the UNLOCKED vault `si_preview`, which holds:
+#   CLOUDFLARE_API_TOKEN_PREVIEW — the minted `si-preview` token from
+#     scripts/provision/tokens.ts (MUST be minted FROM this fork's CF account —
+#     a foreign-account token throws D1 7403-class errors), scoped to Workers
+#     Scripts:Write + Account Settings:Read ONLY (no D1/R2/routes: a leaked
+#     preview token can upload 0%-traffic versions, nothing else). Unlocked
+#     vault = any branch can upload versions; acceptable for this
+#     single-maintainer private repo.
+# Optionally grant the rwx-automation-somewhatintelligent GitHub App
+# issues:write and add it to the vault for PR comments
+# (scripts/pr-preview-comment.sh degrades to run-links-only without it).
+# Vault does NOT exist yet on this fork — until `rwx vaults create --name
+# si_preview --unlocked` is run and the token set, this lane is
+# scaffolding-only (docs/ops/rwx-setup.md is the activation runbook).
 # Ad-hoc rerun for any open PR: rwx run .rwx/preview.yml --init pr-number=<N>
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -51,7 +55,7 @@ on:
 concurrency-pools:
   # Previews only — never shares the deploy/production pools. cancel-running:
   # a newer push supersedes in-flight preview uploads.
-  - id: greenroom/greenroom:preview-${{ init.branch }}
+  - id: somewhatintelligent/somewhatintelligent:preview-${{ init.branch }}
     capacity: 1
     on-overflow: cancel-running
 
@@ -63,7 +67,7 @@ tasks:
   - key: code
     call: git/clone 2.0.8
     with:
-      repository: https://github.com/apostolos-geyer/greenroom.git
+      repository: https://github.com/apostolos-geyer/somewhatintelligent.git
       ref: ${{ init.commit-sha }}
       github-token: ${{ github.token }}
 
@@ -115,9 +119,9 @@ tasks:
       fi
       BASE="${{ init.base-sha }}"
       if [ -z "${BASE}" ]; then
-        BASE="$(gh api "repos/apostolos-geyer/greenroom/pulls/${PR}" --jq '.base.sha')"
+        BASE="$(gh api "repos/apostolos-geyer/somewhatintelligent/pulls/${PR}" --jq '.base.sha')"
       fi
-      gh api "repos/apostolos-geyer/greenroom/compare/${BASE}...${{ init.commit-sha }}" \
+      gh api "repos/apostolos-geyer/somewhatintelligent/compare/${BASE}...${{ init.commit-sha }}" \
         --paginate --jq '.files[].filename' > /tmp/changed-files
       echo "-- changed files --"; cat /tmp/changed-files
       bash scripts/changed-workers.sh < /tmp/changed-files | tr '\n' ' ' | sed 's/ $//' > "$RWX_VALUES/changed"

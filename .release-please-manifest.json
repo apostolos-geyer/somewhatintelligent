@@ -3,5 +3,6 @@
   "workers/guestlist": "0.2.2",
   "workers/promoter": "0.2.2",
   "workers/roadie": "0.2.2",
-  "workers/identity": "0.2.2"
+  "workers/identity": "0.2.2",
+  "workers/store": "0.1.0"
 }

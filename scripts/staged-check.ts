@@ -15,8 +15,13 @@ const files = process.argv.slice(2);
 if (files.length === 0) process.exit(0);
 
 const QUIRK = /((^|\/)(__tests__|test|scripts)\/|\.test\.tsx?$)/;
-const fmtOnly = files.filter((f) => QUIRK.test(f));
-const full = files.filter((f) => !QUIRK.test(f));
+// Only source files vp's checker actually handles go to `vp check` — a commit
+// of nothing but yml/sh/md/json (e.g. a CI-config change) used to make
+// `vp check` fail with "Expected at least one target file", vetoing the
+// commit outright. Everything else is format-only.
+const CHECKABLE = /\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$/;
+const fmtOnly = files.filter((f) => QUIRK.test(f) || !CHECKABLE.test(f));
+const full = files.filter((f) => !QUIRK.test(f) && CHECKABLE.test(f));
 
 function run(cmd: string[], targets: string[]): number {
   if (targets.length === 0) return 0;

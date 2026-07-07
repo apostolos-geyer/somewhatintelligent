@@ -1,4 +1,4 @@
-# greenroom — CI + continuous deployment to Cloudflare (staging), on RWX.
+# somewhatintelligent — CI + continuous deployment to Cloudflare (staging), on RWX.
 #
 # One dependency graph does the whole verification gate AND the deploy. Deploy
 # tasks `after` the gate, so RWX only ships a commit the gate proved green; deploy
@@ -10,7 +10,7 @@
 #     Splitting per-package is also what FIXES the old OOM hang — `vp run -r
 #     typecheck` fanned ~15 tsgo processes onto ONE box and
 #     deadlocked; one tsgo per agent doesn't.
-#   - test-<pkg>: `captain run greenroom-<pkg>` (suite in .captain/config.yml).
+#   - test-<pkg>: `captain run si-<pkg>` (suite in .captain/config.yml).
 #     One `vp test` process per machine sidesteps the workerd dev-registry
 #     contention; Captain emits rwx-v1-json into `outputs.test-results` for inline
 #     UI results + retries.
@@ -80,11 +80,11 @@ on:
 # Serialize main (deploys never race; drop stale queued deploys); cancel
 # superseded feature-branch runs. Pool ids are org-global, so prefix with the repo.
 concurrency-pools:
-  - id: greenroom/greenroom:main
+  - id: somewhatintelligent/somewhatintelligent:main
     if: ${{ init.branch == 'main' }}
     capacity: 1
     on-overflow: cancel-waiting
-  - id: greenroom/greenroom:${{ init.branch }}
+  - id: somewhatintelligent/somewhatintelligent:${{ init.branch }}
     if: ${{ init.branch != 'main' }}
     capacity: 1
     on-overflow: cancel-running
@@ -164,7 +164,7 @@ tasks:
   - key: code
     call: git/clone 2.0.8
     with:
-      repository: https://github.com/apostolos-geyer/greenroom.git
+      repository: https://github.com/apostolos-geyer/somewhatintelligent.git
       ref: ${{ init.commit-sha }}
       github-token: ${{ github.token }}
 
@@ -323,6 +323,11 @@ tasks:
     filter: [*gate-filter, workers/roadie/**, *gate-neg]
     run: cd workers/roadie && bun run typecheck
     timeout: 8m
+  - key: typecheck-store
+    use: types
+    filter: [*gate-filter, workers/store/**, *gate-neg]
+    run: cd workers/store && bun run typecheck
+    timeout: 8m
   - key: typecheck-auth
     use: types
     filter: [*gate-filter, packages/auth/**, *gate-neg]
@@ -371,7 +376,7 @@ tasks:
     timeout: 8m
     run: |
       mkdir -p .captain-out
-      captain run greenroom-bouncer --print-summary
+      captain run si-bouncer --print-summary
     outputs:
       test-results: [{ path: .captain-out/bouncer.rwx.json }]
   - key: test-guestlist
@@ -381,7 +386,7 @@ tasks:
     timeout: 8m
     run: |
       mkdir -p .captain-out
-      captain run greenroom-guestlist --print-summary
+      captain run si-guestlist --print-summary
     outputs:
       test-results: [{ path: .captain-out/guestlist.rwx.json }]
   - key: test-promoter
@@ -391,7 +396,7 @@ tasks:
     timeout: 8m
     run: |
       mkdir -p .captain-out
-      captain run greenroom-promoter --print-summary
+      captain run si-promoter --print-summary
     outputs:
       test-results: [{ path: .captain-out/promoter.rwx.json }]
   - key: test-roadie
@@ -401,9 +406,19 @@ tasks:
     timeout: 8m
     run: |
       mkdir -p .captain-out
-      captain run greenroom-roadie --print-summary
+      captain run si-roadie --print-summary
     outputs:
       test-results: [{ path: .captain-out/roadie.rwx.json }]
+  - key: test-store
+    use: [bootstrap, captain, node]
+    agent: *gate-agent
+    filter: [*gate-filter, workers/store/**, *gate-neg]
+    timeout: 8m
+    run: |
+      mkdir -p .captain-out
+      captain run si-store --print-summary
+    outputs:
+      test-results: [{ path: .captain-out/store.rwx.json }]
   - key: test-kit
     use: [bootstrap, captain]
     agent: *gate-agent
@@ -411,7 +426,7 @@ tasks:
     timeout: 8m
     run: |
       mkdir -p .captain-out
-      captain run greenroom-kit --print-summary
+      captain run si-kit --print-summary
     outputs:
       test-results: [{ path: .captain-out/kit.rwx.json }]
   - key: test-secrets
@@ -421,7 +436,7 @@ tasks:
     timeout: 8m
     run: |
       mkdir -p .captain-out
-      captain run greenroom-secrets --print-summary
+      captain run si-secrets --print-summary
     outputs:
       test-results: [{ path: .captain-out/secrets.rwx.json }]
 
@@ -434,6 +449,7 @@ tasks:
       - typecheck-guestlist
       - typecheck-promoter
       - typecheck-roadie
+      - typecheck-store
       - typecheck-auth
       - typecheck-config
       - typecheck-design
@@ -445,6 +461,7 @@ tasks:
       - test-guestlist
       - test-promoter
       - test-roadie
+      - test-store
       - test-kit
       - test-secrets
     run: echo "gate green"
@@ -471,17 +488,11 @@ tasks:
       gh-deployment-url: https://staging.somewhatintelligent.ca
       deploy: true
 
-# --- One-time staging provisioning for RWX ----------------------------------
-# 1. Install the RWX GitHub App on apostolos-geyer/greenroom so `github.token`
-#    can clone and report status checks (https://cloud.rwx.com -> getting started).
-# 2. Create a LOCKED vault `greenroom_deploy`, unlocked only by the `main`
-#    branch (Vaults -> Access Control), and set the Cloudflare credentials in it:
-#      rwx vaults secrets set --vault greenroom_deploy \
-#        CLOUDFLARE_API_TOKEN=<token minted FROM this fork's CF account> \
-#        CLOUDFLARE_ACCOUNT_ID=<this fork's account id>
-# 3. Push to main; the gate runs and, when green, deploy-staging (.rwx/deploy.yml,
-#    env=staging) ships every worker. Test the deploy path directly first with:
-#      rwx run .rwx/deploy.yml --init env=staging --init deploy=true \
-#        --init commit-sha=<a real main sha>   (requires deploy-vault access)
-#    — validate THIS before trusting deploy-staging's embedded `call:` blind;
-#    see .rwx/deploy.yml's header for what's unverified about the call itself.
+# --- One-time provisioning for RWX -------------------------------------------
+# Until the RWX GitHub App is installed on apostolos-geyer/somewhatintelligent
+# and the `si_deploy` (locked to main) + `si_preview` (unlocked) vaults exist,
+# every lane in .rwx/ is SCAFFOLDING-ONLY — nothing here has run against the
+# live RWX backend for this fork. The full activation runbook (app install,
+# vault creation with the minted `si-deploy`/`si-preview` tokens from
+# scripts/provision/tokens.ts, GitHub App scopes, and per-lane verification
+# steps) is docs/ops/rwx-setup.md.

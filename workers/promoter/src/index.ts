@@ -1,4 +1,5 @@
 import { instrumented, requireRequestLog } from "@si/kit/log";
+import { handleVersionRequest } from "@si/kit/version";
 import { WorkerEntrypoint } from "cloudflare:workers";
 import {
   GuestlistDeleteConfirmationEmail,
@@ -165,9 +166,14 @@ export class Promoter extends WorkerEntrypoint<PromoterEnv> {
   }
 }
 
-// No public HTTP surface — Promoter is RPC-only via service binding.
+// No public HTTP surface beyond /__version (version/commit are ship-time-
+// injected vars, see @si/kit/version) — Promoter is RPC-only via service
+// binding; everything else stays 404.
 export default {
-  async fetch(): Promise<Response> {
-    return new Response(null, { status: 404 });
+  async fetch(request: Request, env: PromoterEnv): Promise<Response> {
+    return (
+      handleVersionRequest(request, { worker: "promoter", env }) ??
+      new Response(null, { status: 404 })
+    );
   },
-} satisfies ExportedHandler;
+} satisfies ExportedHandler<PromoterEnv>;

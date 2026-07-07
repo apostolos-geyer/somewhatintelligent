@@ -2,7 +2,9 @@
 // docs/ARCHITECTURE.md §3.3 + §4.4.
 import startEntry from "@tanstack/react-start/server-entry";
 import { extractPlatformStartContext } from "@si/kit/react-start";
+import { handleVersionRequest } from "@si/kit/version";
 import { devEnvelopeStamper } from "./lib/platform";
+import { APP_COMMIT, APP_VERSION } from "./lib/version";
 
 declare module "@tanstack/react-start" {
   interface Register {
@@ -11,7 +13,19 @@ declare module "@tanstack/react-start" {
 }
 
 export default {
-  async fetch(request: Request): Promise<Response> {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    // /__version at the worker boundary — cleaner than a TanStack file route
+    // (a `__`-prefixed route filename would collide with the router's
+    // pathless-layout convention). version/commit are the vite-define
+    // build-time constants (see ./lib/version + vite.config.ts); reachable
+    // through bouncer as /account/__version (vmf strips the mount).
+    const version = handleVersionRequest(request, {
+      worker: "identity",
+      env,
+      overrides: { version: APP_VERSION, commit: APP_COMMIT },
+    });
+    if (version) return version;
+
     // Dev-direct stamper mints an attestation envelope from the session cookie
     // so the principal (and the admin gate / admin server fns) resolves without
     // a bouncer in front. Hard no-op outside dev — see ARCHITECTURE.md §4.5.

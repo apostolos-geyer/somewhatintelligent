@@ -1,4 +1,4 @@
-# greenroom — manual per-worker re-ship / rollback (production, on RWX).
+# somewhatintelligent — manual per-worker re-ship / rollback (production, on RWX).
 #
 # Spec 03 (§B.3) moved the AUTOMATIC production deploy INTO the release-please
 # run (.rwx/release-please.yml): a Release-PR merge cuts per-worker component
@@ -22,7 +22,7 @@
 # ---- WHY CLONE AT THE TAG BUT UNLOCK THE VAULT ON main ----------------------
 # The clone ref is the `tag` PARAM (the tag's commit), but the dispatch itself
 # is invoked WITHOUT `--ref`, so RWX uses the default `main` ref to unlock
-# vaults. That makes the main-locked `greenroom_deploy` vault resolve normally —
+# vaults. That makes the main-locked `si_deploy` vault resolve normally —
 # it sidesteps the old tag-ref vault-access caveat entirely (a tag push did NOT
 # unlock a main-locked vault by default). Tradeoff, acceptable for a
 # single-maintainer repo and documented per RWX's dispatch-ref security note
@@ -40,7 +40,7 @@
 # same public apex smoke test as the fleet deploy.
 
 on:
-  # The manual re-ship. `worker` is a dropdown of the five deployable workers;
+  # The manual re-ship. `worker` is a dropdown of the deployable workers;
   # `tag` is the already-cut component tag to deploy (the run clones its commit).
   dispatch:
     key: reship-worker
@@ -54,6 +54,7 @@ on:
           - roadie
           - guestlist
           - identity
+          - store
           - bouncer
       - key: tag
         name: Release tag
@@ -76,7 +77,7 @@ on:
 # so dropping a stale queued re-ship in favor of the newest is right (unlike
 # release-please, where every trigger might be the one that flips state).
 concurrency-pools:
-  - id: greenroom/greenroom:production
+  - id: somewhatintelligent/somewhatintelligent:production
     capacity: 1
     on-overflow: cancel-waiting
 
@@ -87,9 +88,9 @@ base:
 aliases:
   # IDENTICAL to .rwx/deploy.yml's `deploy-env`, pinned to production.
   deploy-env: &deploy-env
-    CLOUDFLARE_API_TOKEN: ${{ vaults.greenroom_deploy.secrets.CLOUDFLARE_API_TOKEN }}
-    CLOUDFLARE_ACCOUNT_ID: ${{ vaults.greenroom_deploy.secrets.CLOUDFLARE_ACCOUNT_ID }}
-    GH_TOKEN: ${{ vaults.greenroom_deploy.github-apps.rwx-automation-greenroom.token }}
+    CLOUDFLARE_API_TOKEN: ${{ vaults.si_deploy.secrets.CLOUDFLARE_API_TOKEN }}
+    CLOUDFLARE_ACCOUNT_ID: ${{ vaults.si_deploy.secrets.CLOUDFLARE_ACCOUNT_ID }}
+    GH_TOKEN: ${{ vaults.si_deploy.github-apps.rwx-automation-somewhatintelligent.token }}
     GH_DEPLOYMENT_ENV: production
     GH_DEPLOYMENT_URL: https://somewhatintelligent.ca
 
@@ -108,7 +109,7 @@ tasks:
     call: git/clone 2.0.8
     if: *reship-gate
     with:
-      repository: https://github.com/apostolos-geyer/greenroom.git
+      repository: https://github.com/apostolos-geyer/somewhatintelligent.git
       # Clone the tag's commit (the thing being re-shipped). See the header for
       # why the ref comes from the param while the vault unlocks on main.
       ref: ${{ init.tag }}
@@ -147,7 +148,7 @@ tasks:
       # Guard: only ever deploy a known worker (the dropdown enforces this in the
       # UI, but a CLI/API dispatch could pass anything).
       case "${WORKER}" in
-        promoter|roadie|guestlist|identity|bouncer) : ;;
+        promoter|roadie|guestlist|identity|store|bouncer) : ;;
         *) echo "unknown worker '${WORKER}'"; exit 1 ;;
       esac
 
@@ -164,6 +165,11 @@ tasks:
       # .rwx/release-please.yml — one source of truth). A migration failure is
       # fatal there (no `|| true`), flipping this task's EXIT trap to `failure`.
       bash scripts/deploy-worker.sh ship "${WORKER}" production
+
+      # Per-worker GitHub Deployment record + compact commit comment for the
+      # re-ship (best-effort; the tag is a valid commit-ish for both APIs).
+      gh_worker_deployment "${WORKER}" "${{ init.tag }}"
+      gh_deploy_summary_comment "${{ init.tag }}"
 
       # Post-deploy apex smoke test (shared scripts/smoke-test.sh). The public
       # bouncer router at the production apex exercises the router path

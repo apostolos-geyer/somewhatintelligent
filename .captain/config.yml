@@ -1,5 +1,5 @@
 # Captain test suites — one per test-bearing package. The RWX gate (.rwx/ci.yml)
-# runs `captain run greenroom-<pkg>` per package; Captain runs the command, parses
+# runs `captain run si-<pkg>` per package; Captain runs the command, parses
 # vitest's JSON, emits rwx-v1-json (surfaced inline in the RWX UI via the task's
 # `outputs.test-results`), and retries only failed tests.
 #
@@ -7,7 +7,7 @@
 # Captain execs the command directly, so a bare `vp` isn't on PATH. `--root <dir>`
 # scopes the run to one package from the repo root.
 test-suites:
-  greenroom-bouncer:
+  si-bouncer:
     command: npx vp test run --root workers/bouncer --reporter=default --reporter=json --outputFile=../../.captain-out/bouncer.vitest.json
     results:
       language: JavaScript
@@ -20,7 +20,7 @@ test-suites:
       attempts: 2
       command: npx vp test run --root workers/bouncer '{{ file }}' -t '{{ testNamePattern }}' --reporter=default --reporter=json --outputFile=../../.captain-out/bouncer.vitest.json
 
-  greenroom-guestlist:
+  si-guestlist:
     command: npx vp test run --root workers/guestlist --reporter=default --reporter=json --outputFile=../../.captain-out/guestlist.vitest.json
     results:
       language: JavaScript
@@ -33,7 +33,7 @@ test-suites:
       attempts: 2
       command: npx vp test run --root workers/guestlist '{{ file }}' -t '{{ testNamePattern }}' --reporter=default --reporter=json --outputFile=../../.captain-out/guestlist.vitest.json
 
-  greenroom-promoter:
+  si-promoter:
     command: bunx vp test run --root workers/promoter --reporter=default --reporter=json --outputFile=../../.captain-out/promoter.vitest.json
     results:
       language: JavaScript
@@ -46,7 +46,7 @@ test-suites:
       attempts: 2
       command: bunx vp test run --root workers/promoter '{{ file }}' -t '{{ testNamePattern }}' --reporter=default --reporter=json --outputFile=../../.captain-out/promoter.vitest.json
 
-  greenroom-roadie:
+  si-roadie:
     command: npx vp test run --root workers/roadie --reporter=default --reporter=json --outputFile=../../.captain-out/roadie.vitest.json
     results:
       language: JavaScript
@@ -59,7 +59,20 @@ test-suites:
       attempts: 2
       command: npx vp test run --root workers/roadie '{{ file }}' -t '{{ testNamePattern }}' --reporter=default --reporter=json --outputFile=../../.captain-out/roadie.vitest.json
 
-  greenroom-kit:
+  si-store:
+    command: bunx vp test run --root workers/store --reporter=default --reporter=json --outputFile=../../.captain-out/store.vitest.json
+    results:
+      language: JavaScript
+      framework: Vitest
+      path: .captain-out/store.vitest.json
+    output:
+      reporters:
+        rwx-v1-json: .captain-out/store.rwx.json
+    retries:
+      attempts: 2
+      command: bunx vp test run --root workers/store '{{ file }}' -t '{{ testNamePattern }}' --reporter=default --reporter=json --outputFile=../../.captain-out/store.vitest.json
+
+  si-kit:
     command: bunx vp test run --root packages/kit --reporter=default --reporter=json --outputFile=../../.captain-out/kit.vitest.json
     results:
       language: JavaScript
@@ -72,7 +85,7 @@ test-suites:
       attempts: 2
       command: bunx vp test run --root packages/kit '{{ file }}' -t '{{ testNamePattern }}' --reporter=default --reporter=json --outputFile=../../.captain-out/kit.vitest.json
 
-  greenroom-secrets:
+  si-secrets:
     command: bunx vp test run --root packages/secrets --reporter=default --reporter=json --outputFile=../../.captain-out/secrets.vitest.json
     results:
       language: JavaScript

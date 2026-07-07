@@ -27,6 +27,10 @@
     "workers/identity": {
       "component": "identity",
       "extra-files": [{ "type": "json", "path": "package.json", "jsonpath": "$.version" }]
+    },
+    "workers/store": {
+      "component": "store",
+      "extra-files": [{ "type": "json", "path": "package.json", "jsonpath": "$.version" }]
     }
   },
   "changelog-sections": [

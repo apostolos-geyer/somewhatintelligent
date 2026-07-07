@@ -29,7 +29,7 @@ worker="${2:?worker name required}"
 env="${3:?env (staging|production) required}"
 
 case "$worker" in
-  promoter | roadie | guestlist | identity | bouncer) : ;;
+  promoter | roadie | guestlist | identity | store | bouncer) : ;;
   *)
     echo "deploy-worker: unknown worker '$worker'" >&2
     exit 1
@@ -43,6 +43,11 @@ case "$env" in
     ;;
 esac
 
+# NOTE: the vendored inbox app (inbox/, worker `agentic-inbox-si` at
+# mail.somewhatintelligent.ca) is deliberately NOT a valid worker here — it
+# deploys manually (`cd inbox && bun run deploy`), outside RWX, by owner
+# decision. No lane calls this script for it.
+
 migrate_worker() {
   # D1 migration BEFORE code, so a freshly-deployed worker never reads a schema
   # the database doesn't have yet. Only D1-backed workers ship this script; run
@@ -54,7 +59,17 @@ migrate_worker() {
 }
 
 deploy_worker() {
-  (cd "workers/${worker}" && bun run "deploy:${env}")
+  # Ship-time version stamping for /__version (@si/kit/version): inject the
+  # worker's package.json version + the git short sha as plain worker vars.
+  # bun appends extra args to the END of the script line, which in every
+  # worker's deploy:<env> script is the `wrangler deploy` invocation (identity
+  # included — its build step is chained BEFORE the deploy with `&&`).
+  # Fallbacks keep manual `bun run deploy:<env>` working: the endpoint then
+  # reports the kit defaults instead of failing.
+  local version commit
+  version="$(jq -r '.version // "0.0.0"' "workers/${worker}/package.json" 2>/dev/null || echo "0.0.0")"
+  commit="$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")"
+  (cd "workers/${worker}" && bun run "deploy:${env}"     --var "WORKER_VERSION:${version}" --var "WORKER_COMMIT:${commit}")
 }
 
 case "$cmd" in

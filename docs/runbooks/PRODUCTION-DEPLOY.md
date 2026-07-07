@@ -93,7 +93,7 @@ It runs that worker's D1 migration first (if it has one), deploys, then the same
 apex smoke test as the fleet deploy. Dispatching is the approval — naming the
 worker and tag is the production-ship decision; there's no second gate.
 
-The dispatch clones the tag's commit but unlocks the `greenroom_deploy` vault on
+The dispatch clones the tag's commit but unlocks the `si_deploy` vault on
 the default `main` ref, so the main-locked vault resolves normally. (Single
 maintainer, so param-supplied refs are fine; if this repo ever gains
 collaborators, switch to `--ref <tag>` + cloning `event.git.sha`.)
@@ -149,7 +149,7 @@ second account. The wrangler `production` env blocks are already templated for
 every service/app; the items below are hard blockers — `wrangler deploy --env
 production` fails fast without them.
 
-**The deploy token (in the `greenroom_deploy` vault) must be minted _from_
+**The deploy token (in the `si_deploy` vault) must be minted _from_
 this account.** A token minted from any other account authenticates for
 Workers but **D1 returns `7403`** (mismatched account) — migrations fail even
 though the deploy looks authorized. It needs **Workers Scripts → Edit** + **D1 →

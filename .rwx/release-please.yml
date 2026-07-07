@@ -1,4 +1,4 @@
-# greenroom — release-please on RWX (version + changelog + tags), then the
+# somewhatintelligent — release-please on RWX (version + changelog + tags), then the
 # ordered production deploy of the released worker subset.
 #
 # Moved off GitHub Actions so it never consumes Actions minutes — the rest of
@@ -34,7 +34,7 @@
 # tags no longer match `v*`, and one deploy-per-tag is exactly what we don't
 # want). .rwx/release.yml is now a MANUAL per-worker re-ship/rollback dispatch.
 # Because this deploy runs in the branch-`main` push context, the main-locked
-# `greenroom_deploy` vault unlocks normally (simpler than a tag-ref vault story).
+# `si_deploy` vault unlocks normally (simpler than a tag-ref vault story).
 #
 # ---- NOT YET VALIDATED AGAINST A LIVE RELEASE (Spec 03 §B.5) ----------------
 # This whole folded-in deploy path (phases 3+4) is `rwx lint`-clean but has never
@@ -118,7 +118,7 @@ on:
 # cancel-waiting: a queued run may be the one that cuts the tag — dropping it
 # is the postmortem's silent-no-op bug.
 concurrency-pools:
-  - id: greenroom/greenroom:production
+  - id: somewhatintelligent/somewhatintelligent:production
     capacity: 1
     on-overflow: queue
 
@@ -127,28 +127,28 @@ base:
   config: rwx/base 1.1.1
 
 aliases:
-  # GitHub token for release-please. The `rwx-automation-greenroom` GitHub App
+  # GitHub token for release-please. The `rwx-automation-somewhatintelligent` GitHub App
   # must be granted **contents: write** + **pull-requests: write** (its staging
   # deploy use only needs deployments: write — add the two write scopes for
-  # release-please). Stored/locked in the same main-locked `greenroom_deploy`
+  # release-please). Stored/locked in the same main-locked `si_deploy`
   # vault as the deploy creds. Also used by `released-components` to READ tags
   # back (contents: write includes read).
   rp-env: &rp-env
-    GITHUB_TOKEN: ${{ vaults.greenroom_deploy.github-apps.rwx-automation-greenroom.token }}
+    GITHUB_TOKEN: ${{ vaults.si_deploy.github-apps.rwx-automation-somewhatintelligent.token }}
 
   # Shared deploy env for `deploy-production` — IDENTICAL to .rwx/deploy.yml's
   # `deploy-env` alias, pinned to production (this file only ever ships prod):
   #   - Cloudflare creds for wrangler against the LIVE account, from the
-  #     main-locked `greenroom_deploy` vault (the deploy runs in the main push
+  #     main-locked `si_deploy` vault (the deploy runs in the main push
   #     context, so the vault unlocks normally). The token must cover production
   #     (Workers Scripts Edit + D1 Edit).
-  #   - GH_TOKEN: the `rwx-automation-greenroom` App (`deployments: write`),
+  #   - GH_TOKEN: the `rwx-automation-somewhatintelligent` App (`deployments: write`),
   #     consumed by scripts/rwx-github-deployment.sh to record the deploy under
   #     the repo's GitHub Deployments/Environments timeline.
   deploy-env: &deploy-env
-    CLOUDFLARE_API_TOKEN: ${{ vaults.greenroom_deploy.secrets.CLOUDFLARE_API_TOKEN }}
-    CLOUDFLARE_ACCOUNT_ID: ${{ vaults.greenroom_deploy.secrets.CLOUDFLARE_ACCOUNT_ID }}
-    GH_TOKEN: ${{ vaults.greenroom_deploy.github-apps.rwx-automation-greenroom.token }}
+    CLOUDFLARE_API_TOKEN: ${{ vaults.si_deploy.secrets.CLOUDFLARE_API_TOKEN }}
+    CLOUDFLARE_ACCOUNT_ID: ${{ vaults.si_deploy.secrets.CLOUDFLARE_ACCOUNT_ID }}
+    GH_TOKEN: ${{ vaults.si_deploy.github-apps.rwx-automation-somewhatintelligent.token }}
     GH_DEPLOYMENT_ENV: production
     GH_DEPLOYMENT_URL: https://somewhatintelligent.ca
 
@@ -191,7 +191,7 @@ tasks:
       npx --yes release-please@17 release-pr \
         --debug \
         --token="$GITHUB_TOKEN" \
-        --repo-url=apostolos-geyer/greenroom \
+        --repo-url=apostolos-geyer/somewhatintelligent \
         --target-branch=main \
         --config-file=release-please-config.json \
         --manifest-file=.release-please-manifest.json
@@ -213,7 +213,7 @@ tasks:
       npx --yes release-please@17 github-release \
         --debug \
         --token="$GITHUB_TOKEN" \
-        --repo-url=apostolos-geyer/greenroom \
+        --repo-url=apostolos-geyer/somewhatintelligent \
         --target-branch=main \
         --config-file=release-please-config.json \
         --manifest-file=.release-please-manifest.json
@@ -268,7 +268,7 @@ tasks:
       # `init.sha` at trigger time (see the SHA assignment below for why we must
       # NOT re-read live main HEAD here).
       # -----------------------------------------------------------------------
-      REPO="apostolos-geyer/greenroom"
+      REPO="apostolos-geyer/somewhatintelligent"
       gh_api() {
         curl -fsS \
           -H "Authorization: Bearer ${GITHUB_TOKEN}" \
@@ -350,7 +350,7 @@ tasks:
     call: git/clone 2.0.8
     if: *deploy-gate
     with:
-      repository: https://github.com/apostolos-geyer/greenroom.git
+      repository: https://github.com/apostolos-geyer/somewhatintelligent.git
       # Deploy EXACTLY the commit whose tags we read in phase 3.
       ref: ${{ tasks.released-components.values.sha }}
       github-token: ${{ github.token }}
@@ -401,16 +401,18 @@ tasks:
 
       # Ship ONLY the released subset, but always in canonical dependency order —
       # promoter/roadie (true leaves, no bindings) -> guestlist (binds
-      # promoter+roadie) -> identity (binds guestlist) -> bouncer (router; binds
-      # guestlist+identity) LAST, so the public router only ever points at
-      # already-deployed upstreams. See .rwx/deploy.yml's `deploy` task for the
+      # promoter+roadie) -> identity/store (bind guestlist) -> bouncer (router;
+      # binds guestlist+identity+store) LAST, so the public router only ever
+      # points at already-deployed upstreams. (The vendored inbox app has no
+      # release-please component and no lane — it deploys manually, outside
+      # RWX, by owner decision.) See .rwx/deploy.yml's `deploy` task for the
       # full error-10143 history. The per-worker migrate-before-code + deploy
       # mechanics live in scripts/deploy-worker.sh (the `ship` subcommand:
       # migrate-if-present then deploy), shared with .rwx/deploy.yml +
       # .rwx/release.yml so a fix can't land in one lane and miss the others. A
       # migration failure is fatal there (no `|| true`), flipping this task's EXIT
       # trap to `failure`.
-      ORDER="promoter roadie guestlist identity bouncer"
+      ORDER="promoter roadie guestlist identity store bouncer"
       for w in $ORDER; do
         case " ${RELEASED} " in
           *" ${w} "*) : ;;                                   # released — ship it
@@ -418,7 +420,15 @@ tasks:
         esac
         echo "==> ${w}: migrate (if any) + deploy:production"
         bash scripts/deploy-worker.sh ship "$w" production
+        # Per-worker GitHub Deployment record (env `production/<worker>`) with
+        # the CF-dashboard deep link + live URL — best-effort.
+        gh_worker_deployment "$w" "${{ tasks.released-components.values.sha }}"
       done
+
+      # Compact per-worker summary comment (upserted on the release-PR merge
+      # commit's PR) — before the smoke test; the ships above are real
+      # regardless of the smoke outcome.
+      gh_deploy_summary_comment "${{ tasks.released-components.values.sha }}"
 
       # Post-deploy apex smoke test (shared scripts/smoke-test.sh). Always hits
       # the public bouncer router at the production apex end-to-end, regardless of

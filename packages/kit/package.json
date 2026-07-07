@@ -9,6 +9,7 @@
     "./roles": "./src/roles.ts",
     "./log": "./src/log/index.ts",
     "./request-context": "./src/request-context/index.ts",
+    "./version": "./src/version/index.ts",
     "./react": "./src/react/index.ts",
     "./react-start": "./src/react-start/index.ts",
     "./react-start/client": "./src/react-start/client.ts"

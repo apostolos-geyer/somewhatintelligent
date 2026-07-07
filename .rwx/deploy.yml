@@ -1,10 +1,12 @@
-# greenroom — shared deploy logic (Cloudflare, via RWX).
+# somewhatintelligent — shared deploy logic (Cloudflare, via RWX).
 #
-# One definition of "how greenroom ships a worker fleet" — D1
+# One definition of "how somewhatintelligent ships a worker fleet" — D1
 # migrate (guestlist, roadie) -> dependency-ordered worker deploy
-# (promoter, roadie -> guestlist -> identity
+# (promoter, roadie -> guestlist -> identity -> store
 # -> bouncer router LAST — see the `deploy` task below for exactly why this
 # order, not just "leaf services then apps") -> GitHub Deployment record —
+# (the vendored inbox app is NOT part of any lane: it deploys manually via
+# `cd inbox && bun run deploy`, outside RWX, by owner decision) —
 # parameterized by `init.env` ("staging" | "production") instead of duplicated
 # per environment.
 #
@@ -28,7 +30,7 @@
 # either way):
 #   1. Does a LOCKED vault's branch/ref access-control still resolve correctly
 #      from inside an embedded run (as opposed to a directly GitHub-triggered
-#      one)? If not, `vaults.greenroom_deploy.secrets.*` below resolve empty
+#      one)? If not, `vaults.si_deploy.secrets.*` below resolve empty
 #      and `migrate`/`deploy` fail loudly on a Cloudflare auth error — that
 #      failure IS the signal, not silent data loss.
 #   2. Does `github.token` resolve inside an embedded run's `code` task? If
@@ -64,7 +66,7 @@ on:
 # now-stale deploy in favor of the most recent one" is correct (unlike
 # release-please, where every trigger might be the one that flips state).
 concurrency-pools:
-  - id: greenroom/greenroom:deploy-${{ init.env }}
+  - id: somewhatintelligent/somewhatintelligent:deploy-${{ init.env }}
     capacity: 1
     on-overflow: cancel-waiting
 
@@ -75,20 +77,20 @@ base:
 aliases:
   # Shared env for the migrate + deploy tasks.
   #   - Cloudflare creds: for wrangler against the LIVE account, from the
-  #     main/tag-locked `greenroom_deploy` vault. The account id is also a
+  #     main/tag-locked `si_deploy` vault. The account id is also a
   #     literal in each checked-in wrangler.jsonc; wrangler reads either.
   #     The token must cover BOTH envs (Workers Scripts Edit + D1 Edit) — envs
   #     are `--env staging|production` suffixes on the SAME Cloudflare account,
   #     not separate accounts.
-  #   - GH_TOKEN: token for the private `rwx-automation-greenroom` GitHub App
+  #   - GH_TOKEN: token for the private `rwx-automation-somewhatintelligent` GitHub App
   #     (`deployments: write`), consumed by scripts/rwx-github-deployment.sh to
   #     record this deploy under the repo's GitHub Deployments/Environments
   #     timeline, targeted at `init.gh-deployment-env`/`init.gh-deployment-url`
   #     so one script serves both environments without a code change.
   deploy-env: &deploy-env
-    CLOUDFLARE_API_TOKEN: ${{ vaults.greenroom_deploy.secrets.CLOUDFLARE_API_TOKEN }}
-    CLOUDFLARE_ACCOUNT_ID: ${{ vaults.greenroom_deploy.secrets.CLOUDFLARE_ACCOUNT_ID }}
-    GH_TOKEN: ${{ vaults.greenroom_deploy.github-apps.rwx-automation-greenroom.token }}
+    CLOUDFLARE_API_TOKEN: ${{ vaults.si_deploy.secrets.CLOUDFLARE_API_TOKEN }}
+    CLOUDFLARE_ACCOUNT_ID: ${{ vaults.si_deploy.secrets.CLOUDFLARE_ACCOUNT_ID }}
+    GH_TOKEN: ${{ vaults.si_deploy.github-apps.rwx-automation-somewhatintelligent.token }}
     GH_DEPLOYMENT_ENV: ${{ init.gh-deployment-env }}
     GH_DEPLOYMENT_URL: ${{ init.gh-deployment-url }}
 
@@ -96,7 +98,7 @@ tasks:
   - key: code
     call: git/clone 2.0.8
     with:
-      repository: https://github.com/apostolos-geyer/greenroom.git
+      repository: https://github.com/apostolos-geyer/somewhatintelligent.git
       ref: ${{ init.commit-sha }}
       github-token: ${{ github.token }}
 
@@ -160,6 +162,10 @@ tasks:
       # trap reports the terminal deployment state (success/failure) to GitHub
       # with the environment URL + a link back to this RWX run.
       source scripts/rwx-github-deployment.sh
+      # Fresh summary scratch for THIS task (gh_deployment_create ran in the
+      # `migrate` task, i.e. a different agent — its truncation didn't happen
+      # here, and an agent reused across runs could hold stale lines).
+      : > "${GH_DEPLOY_SUMMARY_FILE}"
       trap 'rc=$?; if [ "$rc" -eq 0 ]; then gh_deployment_status success "deployed to ${{ init.env }}"; else gh_deployment_status failure "${{ init.env }} deploy failed"; fi; exit $rc' EXIT
       # True dependency order, not just "leaf services then apps": guestlist has
       # service bindings to promoter + roadie, so wrangler's binding-existence
@@ -167,15 +173,24 @@ tasks:
       # first production deploy: promoter/roadie didn't exist yet, and wrangler
       # refused to deploy guestlist with a binding to a nonexistent Worker —
       # error 10143). promoter + roadie are true leaves (no bindings) and go
-      # first; guestlist next (needs both); then identity (binds to guestlist);
-      # bouncer (binds to guestlist, identity) goes LAST, so the public router
-      # only ever points at already-deployed upstreams.
+      # first; guestlist next (needs both); then identity + store (bind
+      # guestlist); bouncer (binds guestlist, identity, store) goes LAST, so
+      # the public router only ever points at already-deployed upstreams.
       # Per-worker deploy mechanics live in scripts/deploy-worker.sh, shared
       # with .rwx/release-please.yml and .rwx/release.yml so a fix can't land
       # in one lane and miss the others.
-      for w in promoter roadie guestlist identity bouncer; do
+      for w in promoter roadie guestlist identity store bouncer; do
         bash scripts/deploy-worker.sh deploy "$w" ${{ init.env }}
+        # Per-worker GitHub Deployment record (env `<env>/<worker>`) with the
+        # CF-dashboard deep link + live URL — best-effort, never turns the
+        # deploy red (scripts/rwx-github-deployment.sh).
+        gh_worker_deployment "$w" "${{ init.commit-sha }}"
       done
+
+      # Compact per-worker summary comment on the merged PR (or commit) —
+      # idempotent upsert by marker; placed BEFORE the smoke test because the
+      # workers above really shipped regardless of the smoke outcome.
+      gh_deploy_summary_comment "${{ init.commit-sha }}"
 
       # Post-deploy smoke test — the automated safety net that lets a tag push
       # auto-deploy prod with no human babysitting (see .rwx/release.yml header).

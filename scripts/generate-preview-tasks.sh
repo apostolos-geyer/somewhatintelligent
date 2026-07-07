@@ -23,7 +23,7 @@ if [ -z "${CHANGED}" ]; then
 fi
 for w in ${CHANGED}; do
   case "$w" in
-    promoter | roadie | guestlist | identity | bouncer) : ;;
+    promoter | roadie | guestlist | identity | store | bouncer) : ;;
     *) echo "generate-preview-tasks: refusing unknown worker '$w'" >&2; exit 1 ;;
   esac
 done
@@ -39,6 +39,9 @@ for w in ${CHANGED}; do
   # found"; the first live preview run proved it). SI_BUILD=1 keeps
   # CI-seeded .dev.vars out of the bundle (docs/ops/02).
   case "$w" in
+    # Build-step apps mirror the build half of their deploy:staging script.
+    # store: if the storefront track ships a build-step deploy script, add its
+    # build here to mirror it (same rule as identity).
     identity) build="(cd workers/${w} && SI_BUILD=1 bunx vp run build)" ;;
     *) build=":" ;;
   esac
@@ -49,14 +52,19 @@ for w in ${CHANGED}; do
   timeout: 15m
   env:
     CLOUDFLARE_API_TOKEN:
-      value: \${{ vaults.greenroom_preview.secrets.CLOUDFLARE_API_TOKEN_PREVIEW }}
+      value: \${{ vaults.si_preview.secrets.CLOUDFLARE_API_TOKEN_PREVIEW }}
       cache-key: excluded
   run: |
     set -euo pipefail
     ${build}
     cd workers/${w}
     export WRANGLER_OUTPUT_FILE_PATH=/tmp/wr-${w}.ndjson
-    bunx wrangler versions upload --tag "pr-${PR}-${SHA}" --preview-alias "pr-${PR}" --message "PR #${PR}" | tee /tmp/upload-${w}.log
+    # --var: ship-time version stamping for /__version (mirrors
+    # scripts/deploy-worker.sh) so a version PROMOTED on merge reports the
+    # version/commit it was built from, not fallbacks. WORKER_COMMIT is the
+    # PR head sha this upload is tagged with.
+    WVER="\$(jq -r '.version // "0.0.0"' package.json)"
+    bunx wrangler versions upload --tag "pr-${PR}-${SHA}" --preview-alias "pr-${PR}" --message "PR #${PR}" --var "WORKER_VERSION:\${WVER}" --var "WORKER_COMMIT:${SHA}" | tee /tmp/upload-${w}.log
     VID="\$(jq -r 'select(.type == "version-upload") | .version_id // empty' /tmp/wr-${w}.ndjson | tail -1)"
     # Stable per-PR alias first, per-version URL as fallback (fields verified
     # against a real upload's ndjson: version_id / preview_url / preview_alias_url).
