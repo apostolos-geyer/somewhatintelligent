@@ -64,8 +64,13 @@ export function SignInForm({
         if (!available || cancelled) return;
         const result = await authClient.signIn.passkey({ autoFill: true });
         if (cancelled || !result || result.error) return;
+        // Invalidate re-runs beforeLoad for every matched route, including
+        // /_auth/sign-in's own `if (context.session) throw redirect(...)`
+        // (root's beforeLoad refreshes context.session in the same pass).
+        // That redirect is the actual navigation — don't also call
+        // navigate() here, or the two collide and cancel each other,
+        // leaving the UI stuck re-invalidating in a loop.
         await router.invalidate();
-        await navigate({ href: redirectTarget });
       } catch {
         // Conditional UI failures are silent by design.
       }
@@ -73,7 +78,7 @@ export function SignInForm({
     return () => {
       cancelled = true;
     };
-  }, [navigate, redirectTarget, router]);
+  }, [router]);
 
   const form = useAppForm({
     defaultValues: { email: "", password: "" },
@@ -120,11 +125,14 @@ export function SignInForm({
         return;
       }
 
-      // Invalidate before nav so any same-origin route loaders re-run with the
-      // fresh session cookie. For cross-origin targets TSR hands off to a full
-      // page load, which is what we want anyway.
+      // Invalidate re-runs beforeLoad for every matched route. That's the
+      // actual navigation: /_auth/sign-in's beforeLoad sees the refreshed
+      // context.session and throws redirect({ href: redirectTarget }) on
+      // its own. Don't also call navigate() here — the router's internal
+      // redirect-navigate and an explicit one to the same target collide
+      // and cancel each other, which re-triggers loadSession() in a loop
+      // instead of ever committing.
       await router.invalidate();
-      await navigate({ href: redirectTarget });
     },
   });
 
@@ -153,8 +161,9 @@ export function SignInForm({
       return;
     }
 
+    // See the onSubmit handler above: invalidate()'s beforeLoad-driven
+    // redirect is the navigation; an explicit navigate() here would race it.
     await router.invalidate();
-    await navigate({ href: redirectTarget });
   }
 
   async function handleMagicLink() {
