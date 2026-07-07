@@ -29,7 +29,7 @@ worker="${2:?worker name required}"
 env="${3:?env (staging|production) required}"
 
 case "$worker" in
-  promoter | roadie | guestlist | identity | bouncer) : ;;
+  promoter | roadie | guestlist | identity | store | bouncer) : ;;
   *)
     echo "deploy-worker: unknown worker '$worker'" >&2
     exit 1

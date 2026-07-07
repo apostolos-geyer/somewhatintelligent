@@ -21,7 +21,7 @@ import { connect } from "node:net";
 import { resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dir, "..");
-const DEFAULT_WORKERS = ["guestlist", "identity", "roadie"];
+const DEFAULT_WORKERS = ["guestlist", "identity", "roadie", "store"];
 const COLORS = ["\x1b[36m", "\x1b[35m", "\x1b[33m", "\x1b[32m", "\x1b[34m", "\x1b[31m"];
 const RESET = "\x1b[0m";
 

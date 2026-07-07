@@ -22,7 +22,7 @@
 # Self-test: scripts/changed-workers.sh --self-test
 set -euo pipefail
 
-ORDER=(promoter roadie guestlist identity bouncer)
+ORDER=(promoter roadie guestlist identity store bouncer)
 
 classify() {
   local all=0

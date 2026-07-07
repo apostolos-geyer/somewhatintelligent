@@ -59,6 +59,32 @@ test-suites:
       attempts: 2
       command: npx vp test run --root workers/roadie '{{ file }}' -t '{{ testNamePattern }}' --reporter=default --reporter=json --outputFile=../../.captain-out/roadie.vitest.json
 
+  greenroom-store:
+    command: npx vp test run --root workers/store --reporter=default --reporter=json --outputFile=../../.captain-out/store.vitest.json
+    results:
+      language: JavaScript
+      framework: Vitest
+      path: .captain-out/store.vitest.json
+    output:
+      reporters:
+        rwx-v1-json: .captain-out/store.rwx.json
+    retries:
+      attempts: 2
+      command: npx vp test run --root workers/store '{{ file }}' -t '{{ testNamePattern }}' --reporter=default --reporter=json --outputFile=../../.captain-out/store.vitest.json
+
+  greenroom-store-pool:
+    command: npx vp test run --root workers/store -c ./vitest.pool.config.ts --reporter=default --reporter=json --outputFile=../../.captain-out/store-pool.vitest.json
+    results:
+      language: JavaScript
+      framework: Vitest
+      path: .captain-out/store-pool.vitest.json
+    output:
+      reporters:
+        rwx-v1-json: .captain-out/store-pool.rwx.json
+    retries:
+      attempts: 2
+      command: npx vp test run --root workers/store -c ./vitest.pool.config.ts '{{ file }}' -t '{{ testNamePattern }}' --reporter=default --reporter=json --outputFile=../../.captain-out/store-pool.vitest.json
+
   greenroom-kit:
     command: bunx vp test run --root packages/kit --reporter=default --reporter=json --outputFile=../../.captain-out/kit.vitest.json
     results:
