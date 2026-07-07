@@ -53,7 +53,7 @@ tasks:
     with:
       repository: https://github.com/apostolos-geyer/somewhatintelligent.git
       ref: ${{ init.commit-sha }}
-      github-token: ${{ github['apostolos-geyer'].token }}
+      # public repo: anonymous clone, no github-token (avoids any dependency on the GitHub App installation)
 
   - key: system-packages
     run: |
