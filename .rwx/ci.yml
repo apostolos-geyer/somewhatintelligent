@@ -252,6 +252,11 @@ tasks:
       - workers/*/package.json
       - workers/*/vite.config.ts
       - packages/*/package.json
+      # vp resolves the whole task graph up front: package vite configs
+      # define tasks that worker tasks dependsOn (@si/stripe#codegen from
+      # guestlist's build) — without them in the layer, `vp run -r env:init`
+      # dies with "Task 'codegen' not found in package @si/stripe".
+      - packages/*/vite.config.ts
       # @si/stripe's env:init regenerates the gitignored src/generated.ts
       # stub (fetch.ts + the product/price config it reads) — without these
       # in the layer, bootstrap dies with "Module not found scripts/fetch.ts"
