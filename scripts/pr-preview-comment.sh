@@ -13,7 +13,7 @@ set -euo pipefail
 
 pr="${1:?pr number required}"
 body_file="${2:?body file required}"
-repo="apostolos-geyer/greenroom"
+repo="apostolos-geyer/somewhatintelligent"
 marker="<!-- si-previews -->"
 
 api() { gh api "$@" 2>&1; }
@@ -33,7 +33,7 @@ set -e
 if [ $rc -ne 0 ]; then
   if grep -q "403\|Resource not accessible" <<<"${out}"; then
     echo "pr-preview-comment: token cannot comment (403) — preview URLs remain visible in the RWX run's links panel." >&2
-    echo "Grant the rwx-automation-greenroom app issues:write + expose its token in the greenroom_preview vault to enable PR comments." >&2
+    echo "Grant the rwx-automation-somewhatintelligent app issues:write + expose its token in the si_preview vault to enable PR comments." >&2
     cat "${body_file}"
     exit 0
   fi

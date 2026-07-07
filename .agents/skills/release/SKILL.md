@@ -51,7 +51,7 @@ One worker per dispatch (`.rwx/release.yml`). Tags are the deployable ledger —
 `.rwx/preview.yml` uploads 0%-traffic versions per changed worker with URLs
 `pr-<n>-<worker>.<account>.workers.dev`; the staging lane promotes those
 same versions on merge. The PR trigger is enabled once the unlocked
-`greenroom_preview` vault exists (header of preview.yml documents the exact
+`si_preview` vault exists (header of preview.yml documents the exact
 token scope). CLI test: `rwx run .rwx/preview.yml --init pr-number=<open PR#>`.
 
 ## Non-negotiables

@@ -21,7 +21,7 @@
 # statuses/checks scopes are NOT enough). GH_TOKEN is empty on local `rwx run`
 # (cli trigger), in which case every function below cleanly no-ops.
 
-GH_DEPLOYMENT_REPO="${GH_DEPLOYMENT_REPO:-apostolos-geyer/greenroom}"
+GH_DEPLOYMENT_REPO="${GH_DEPLOYMENT_REPO:-apostolos-geyer/somewhatintelligent}"
 GH_DEPLOYMENT_ENV="${GH_DEPLOYMENT_ENV:-staging}"
 # Public entry point for the staging environment (the single-host apex). The
 # domain's source of truth is packages/config/src/deploy.ts (baseDomain); the

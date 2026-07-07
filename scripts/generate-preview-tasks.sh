@@ -23,7 +23,7 @@ if [ -z "${CHANGED}" ]; then
 fi
 for w in ${CHANGED}; do
   case "$w" in
-    promoter | roadie | guestlist | identity | bouncer) : ;;
+    promoter | roadie | guestlist | identity | store | bouncer) : ;;
     *) echo "generate-preview-tasks: refusing unknown worker '$w'" >&2; exit 1 ;;
   esac
 done
@@ -39,6 +39,9 @@ for w in ${CHANGED}; do
   # found"; the first live preview run proved it). SI_BUILD=1 keeps
   # CI-seeded .dev.vars out of the bundle (docs/ops/02).
   case "$w" in
+    # Build-step apps mirror the build half of their deploy:staging script.
+    # store: if the storefront track ships a build-step deploy script, add its
+    # build here to mirror it (same rule as identity).
     identity) build="(cd workers/${w} && SI_BUILD=1 bunx vp run build)" ;;
     *) build=":" ;;
   esac
@@ -49,7 +52,7 @@ for w in ${CHANGED}; do
   timeout: 15m
   env:
     CLOUDFLARE_API_TOKEN:
-      value: \${{ vaults.greenroom_preview.secrets.CLOUDFLARE_API_TOKEN_PREVIEW }}
+      value: \${{ vaults.si_preview.secrets.CLOUDFLARE_API_TOKEN_PREVIEW }}
       cache-key: excluded
   run: |
     set -euo pipefail

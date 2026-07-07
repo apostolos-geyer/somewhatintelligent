@@ -29,7 +29,7 @@ worker="${2:?worker name required}"
 env="${3:?env (staging|production) required}"
 
 case "$worker" in
-  promoter | roadie | guestlist | identity | bouncer) : ;;
+  promoter | roadie | guestlist | identity | store | bouncer) : ;;
   *)
     echo "deploy-worker: unknown worker '$worker'" >&2
     exit 1
@@ -42,6 +42,11 @@ case "$env" in
     exit 1
     ;;
 esac
+
+# NOTE: the vendored inbox app (inbox/, worker `agentic-inbox-si` at
+# mail.somewhatintelligent.ca) is deliberately NOT a valid worker here — it
+# deploys manually (`cd inbox && bun run deploy`), outside RWX, by owner
+# decision. No lane calls this script for it.
 
 migrate_worker() {
   # D1 migration BEFORE code, so a freshly-deployed worker never reads a schema

@@ -1,21 +1,23 @@
-# greenroom — staging deploy lane: changed-subset, promote-over-rebuild
+# somewhatintelligent — staging deploy lane: changed-subset, promote-over-rebuild
 # (docs/ops/04 §5). Called as an embedded run from .rwx/ci.yml after the gate
 # (replaces the old full-fleet .rwx/deploy.yml call for STAGING; deploy.yml
 # remains the env-parameterized full-fleet reference used by force-full
 # recovery guidance and manual runs).
 #
 # Per push to main: affected workers only (scripts/changed-workers.sh — a
-# packages/* or rpc-worker change still fans out to all 5), each promoted from
+# packages/* or rpc-worker change still fans out to the whole platform fleet;
+# inbox/** triggers nothing: the vendored inbox app deploys manually, outside
+# RWX), each promoted from
 # its PR-uploaded version when eligible, full-built otherwise
 # (scripts/promote-staging.sh owns the decision; wrangler.jsonc changes and
 # missing versions always fall back). Until .rwx/preview.yml's PR trigger is
-# enabled (owner action — greenroom_preview vault), every affected worker
+# enabled (owner action — si_preview vault), every affected worker
 # simply falls back to full deploy: this lane is safe to run WITHOUT previews
 # and the win is subset deploys; promotion activates by itself once versions
 # exist.
 #
 # Disaster lever: rwx run .rwx/promote-staging.yml --init deploy=true \
-#   --init force-full=true --init commit-sha=<sha>   (ships ALL 5, no promotion)
+#   --init force-full=true --init commit-sha=<sha>   (ships EVERYTHING, no promotion)
 
 on:
   cli:
@@ -29,7 +31,7 @@ on:
 
 # Same pool as the old staging lane: deploys to staging never race.
 concurrency-pools:
-  - id: greenroom/greenroom:deploy-staging
+  - id: somewhatintelligent/somewhatintelligent:deploy-staging
     capacity: 1
     on-overflow: cancel-waiting
 
@@ -39,9 +41,9 @@ base:
 
 aliases:
   deploy-env: &deploy-env
-    CLOUDFLARE_API_TOKEN: ${{ vaults.greenroom_deploy.secrets.CLOUDFLARE_API_TOKEN }}
-    CLOUDFLARE_ACCOUNT_ID: ${{ vaults.greenroom_deploy.secrets.CLOUDFLARE_ACCOUNT_ID }}
-    GH_TOKEN: ${{ vaults.greenroom_deploy.github-apps.rwx-automation-greenroom.token }}
+    CLOUDFLARE_API_TOKEN: ${{ vaults.si_deploy.secrets.CLOUDFLARE_API_TOKEN }}
+    CLOUDFLARE_ACCOUNT_ID: ${{ vaults.si_deploy.secrets.CLOUDFLARE_ACCOUNT_ID }}
+    GH_TOKEN: ${{ vaults.si_deploy.github-apps.rwx-automation-somewhatintelligent.token }}
     GH_DEPLOYMENT_ENV: ${{ init.gh-deployment-env }}
     GH_DEPLOYMENT_URL: ${{ init.gh-deployment-url }}
 
@@ -49,7 +51,7 @@ tasks:
   - key: code
     call: git/clone 2.0.8
     with:
-      repository: https://github.com/apostolos-geyer/greenroom.git
+      repository: https://github.com/apostolos-geyer/somewhatintelligent.git
       ref: ${{ init.commit-sha }}
       github-token: ${{ github.token }}
 
@@ -99,10 +101,10 @@ tasks:
       : > /tmp/changed-files
       if [ "${{ init.force-full }}" = "true" ] || [ -z "${BASE}" ] || [ "${BASE}" = "0000000000000000000000000000000000000000" ]; then
         echo "force-full / no usable base — treating ALL workers as affected"
-        printf 'promoter roadie guestlist identity bouncer' > "$RWX_VALUES/changed"
+        printf 'promoter roadie guestlist identity store bouncer' > "$RWX_VALUES/changed"
         exit 0
       fi
-      gh api "repos/apostolos-geyer/greenroom/compare/${BASE}...${{ init.commit-sha }}" \
+      gh api "repos/apostolos-geyer/somewhatintelligent/compare/${BASE}...${{ init.commit-sha }}" \
         --paginate --jq '.files[].filename' > /tmp/changed-files
       echo "-- changed files --"; cat /tmp/changed-files
       bash scripts/changed-workers.sh < /tmp/changed-files | tr '\n' ' ' | sed 's/ $//' > "$RWX_VALUES/changed"
@@ -131,7 +133,7 @@ tasks:
       if [ "${FORCE_FULL}" = "true" ] || [ -z "${BASE}" ] || [ "${BASE}" = "0000000000000000000000000000000000000000" ]; then
         : > /tmp/changed-files
       else
-        gh api "repos/apostolos-geyer/greenroom/compare/${BASE}...${{ init.commit-sha }}" \
+        gh api "repos/apostolos-geyer/somewhatintelligent/compare/${BASE}...${{ init.commit-sha }}" \
           --paginate --jq '.files[].filename' > /tmp/changed-files
       fi
       FILES=/tmp/changed-files bash scripts/promote-staging.sh

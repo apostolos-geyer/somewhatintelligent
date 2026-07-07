@@ -30,8 +30,8 @@ CHANGED="${CHANGED:-}"
 FILES="${FILES:?changed-file list path required}"
 SHA="${SHA:?commit sha required}"
 FORCE_FULL="${FORCE_FULL:-false}"
-REPO="apostolos-geyer/greenroom"
-ORDER=(promoter roadie guestlist identity bouncer)
+REPO="apostolos-geyer/somewhatintelligent"
+ORDER=(promoter roadie guestlist identity store bouncer)
 
 if [ -z "${CHANGED}" ]; then
   echo "promote-staging: no affected workers — nothing to deploy"
