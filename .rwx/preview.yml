@@ -107,7 +107,7 @@ tasks:
     cache: false
     env:
       GH_TOKEN:
-        value: ${{ github['apostolos-geyer'].token }}
+        value: ${{ github.token }}
         cache-key: excluded
     run: |
       set -euo pipefail
