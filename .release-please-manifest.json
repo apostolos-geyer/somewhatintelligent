@@ -1,6 +1,6 @@
 {
   "workers/bouncer": "0.3.0",
-  "workers/guestlist": "0.4.0",
+  "workers/guestlist": "0.4.1",
   "workers/promoter": "0.3.0",
   "workers/roadie": "0.4.0",
   "workers/identity": "0.3.0",

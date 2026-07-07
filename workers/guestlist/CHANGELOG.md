@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/apostolos-geyer/somewhatintelligent/compare/guestlist-v0.4.0...guestlist-v0.4.1) (2026-07-07)
+
+
+### Bug Fixes
+
+* **guestlist:** deploy scripts run the vp build task so stripe codegen precedes bundling ([7c97a73](https://github.com/apostolos-geyer/somewhatintelligent/commit/7c97a7321e43e9856fac534aab48148d00fff8b4))
+
 ## [0.4.0](https://github.com/apostolos-geyer/somewhatintelligent/compare/guestlist-v0.3.0...guestlist-v0.4.0) (2026-07-07)
 
 
