@@ -76,7 +76,7 @@ follows verification without delay.
 4. Merging that Release PR cuts `store-v0.2.0` and deploys ONLY the released
    workers to production, canonical order, migrate-before-code
    (`.rwx/release-please.yml`).
-5. Rollback / re-ship: `rwx dispatch reship-worker --param worker=store
+5. Rollback / re-ship: `rwx dispatch si-reship-worker --param worker=store
 --param tag=store-v0.1.0` (`.rwx/release.yml`).
 
 See [`docs/ops/rwx-setup.md`](rwx-setup.md) for activation status (the lanes

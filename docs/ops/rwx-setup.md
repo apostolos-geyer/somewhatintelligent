@@ -135,7 +135,7 @@ Do these IN ORDER — each later lane assumes the earlier ones proved out.
    <https://somewhatintelligent.ca>. §B.5(a)–(e) in that file's header is the
    full first-release checklist.
 6. **Reship (`.rwx/release.yml`)** —
-   `rwx dispatch reship-worker --param worker=<name> --param tag=<worker>-v<x.y.z>`
+   `rwx dispatch si-reship-worker --param worker=<name> --param tag=<worker>-v<x.y.z>`
    re-ships one worker at an already-cut tag.
 
 ## Known scaffolding caveats (inherited, still unverified on this fork)

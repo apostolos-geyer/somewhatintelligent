@@ -11,7 +11,7 @@
 # What's left here is the human escape hatch: re-ship (or roll back) ONE worker
 # at ONE already-cut tag, on demand. Dispatch it:
 #
-#   rwx dispatch reship-worker --param worker=guestlist --param tag=guestlist-v1.2.0
+#   rwx dispatch si-reship-worker --param worker=guestlist --param tag=guestlist-v1.2.0
 #
 # ---- DELIBERATELY DISPATCHING IS THE APPROVAL -------------------------------
 # Single-maintainer repo: as with merging a release-please Release PR, the
@@ -43,7 +43,7 @@ on:
   # The manual re-ship. `worker` is a dropdown of the deployable workers;
   # `tag` is the already-cut component tag to deploy (the run clones its commit).
   dispatch:
-    key: reship-worker
+    key: si-reship-worker
     params:
       - key: worker
         name: Worker

@@ -9,7 +9,7 @@ it just tagged.
 - **Release + production deploy (one lane):** `.rwx/release-please.yml` — runs
   release-please on every push to `main`, and on a Release-PR merge cuts the
   per-worker tags and deploys the released subset.
-- **Manual re-ship / rollback:** `.rwx/release.yml` — the `reship-worker`
+- **Manual re-ship / rollback:** `.rwx/release.yml` — the `si-reship-worker`
   dispatch: one worker, one already-cut tag, on demand.
 - **Per-worker mechanics:** `scripts/deploy-worker.sh` (`ship` = migrate then
   deploy) + `scripts/smoke-test.sh` — shared by every deploy lane.
@@ -80,7 +80,7 @@ If a bad deploy ships, roll back by re-shipping a known-good tag (section 2) or
 already-cut component tag. Dispatch it from the RWX UI or CLI:
 
 ```sh
-rwx dispatch reship-worker --param worker=guestlist --param tag=guestlist-v0.2.1
+rwx dispatch si-reship-worker --param worker=guestlist --param tag=guestlist-v0.2.1
 ```
 
 - `worker` is a dropdown of the seven deployable workers (`promoter`, `roadie`,

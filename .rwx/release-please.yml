@@ -110,7 +110,7 @@ on:
 
 # RWX permits exactly ONE pool per run (first live run failed with "Only one
 # concurrency pool can apply to a run"), so this lane sits in the shared
-# `production` pool — the same pool as .rwx/release.yml's reship-worker. One
+# `production` pool — the same pool as .rwx/release.yml's si-reship-worker. One
 # pool buys both properties: release-please runs serialize against each other
 # (release-PR upkeep never races itself), and the folded-in deploy-production
 # task is mutually excluded from manual reships (both write production
