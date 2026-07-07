@@ -19,6 +19,6 @@ export const requireAdminMiddleware = createPrincipalGate({
   envelope: envelopeMiddleware,
   predicate: (p): p is UserPrincipal => p.kind === "user" && isAdminRole(p.actor.role),
   onReject: () => {
-    throw redirect({ href: "/account" });
+    throw redirect({ href: "/" });
   },
 });

@@ -13,10 +13,14 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as DeviceRouteImport } from './routes/_device'
 import { Route as DashboardRouteImport } from './routes/_dashboard'
 import { Route as AuthRouteImport } from './routes/_auth'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as DashboardIndexRouteImport } from './routes/_dashboard/index'
 import { Route as ApiSplatRouteImport } from './routes/api/$'
 import { Route as DeviceDeviceRouteImport } from './routes/_device/device'
+import { Route as DashboardSessionsRouteImport } from './routes/_dashboard/sessions'
+import { Route as DashboardProvidersRouteImport } from './routes/_dashboard/providers'
+import { Route as DashboardPasskeysRouteImport } from './routes/_dashboard/passkeys'
 import { Route as DashboardConnectionsRouteImport } from './routes/_dashboard/connections'
+import { Route as DashboardApiKeysRouteImport } from './routes/_dashboard/api-keys'
 import { Route as DashboardAdminRouteImport } from './routes/_dashboard/admin'
 import { Route as AuthVerifyEmailRouteImport } from './routes/_auth/verify-email'
 import { Route as AuthTwoFactorRouteImport } from './routes/_auth/two-factor'
@@ -27,16 +31,11 @@ import { Route as AuthResetPasswordRouteImport } from './routes/_auth/reset-pass
 import { Route as AuthPrivacyRouteImport } from './routes/_auth/privacy'
 import { Route as AuthConsentRouteImport } from './routes/_auth/consent'
 import { Route as DashboardAdminIndexRouteImport } from './routes/_dashboard/admin/index'
-import { Route as DashboardAccountIndexRouteImport } from './routes/_dashboard/account/index'
 import { Route as OrgsAcceptInvitationIdRouteImport } from './routes/orgs/accept/$invitationId'
 import { Route as DeviceDeviceApproveRouteImport } from './routes/_device/device/approve'
 import { Route as DashboardAdminUsersRouteImport } from './routes/_dashboard/admin/users'
 import { Route as DashboardAdminSessionsRouteImport } from './routes/_dashboard/admin/sessions'
 import { Route as DashboardAdminApiKeysRouteImport } from './routes/_dashboard/admin/api-keys'
-import { Route as DashboardAccountSessionsRouteImport } from './routes/_dashboard/account/sessions'
-import { Route as DashboardAccountProvidersRouteImport } from './routes/_dashboard/account/providers'
-import { Route as DashboardAccountPasskeysRouteImport } from './routes/_dashboard/account/passkeys'
-import { Route as DashboardAccountApiKeysRouteImport } from './routes/_dashboard/account/api-keys'
 import { Route as DashboardAdminOrgsIndexRouteImport } from './routes/_dashboard/admin/orgs/index'
 import { Route as DashboardAdminClientsIndexRouteImport } from './routes/_dashboard/admin/clients/index'
 import { Route as DashboardAdminOrgsNewRouteImport } from './routes/_dashboard/admin/orgs/new'
@@ -61,10 +60,10 @@ const AuthRoute = AuthRouteImport.update({
   id: '/_auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
+const DashboardIndexRoute = DashboardIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => DashboardRoute,
 } as any)
 const ApiSplatRoute = ApiSplatRouteImport.update({
   id: '/api/$',
@@ -76,9 +75,29 @@ const DeviceDeviceRoute = DeviceDeviceRouteImport.update({
   path: '/device',
   getParentRoute: () => DeviceRoute,
 } as any)
+const DashboardSessionsRoute = DashboardSessionsRouteImport.update({
+  id: '/sessions',
+  path: '/sessions',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardProvidersRoute = DashboardProvidersRouteImport.update({
+  id: '/providers',
+  path: '/providers',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardPasskeysRoute = DashboardPasskeysRouteImport.update({
+  id: '/passkeys',
+  path: '/passkeys',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardConnectionsRoute = DashboardConnectionsRouteImport.update({
   id: '/connections',
   path: '/connections',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardApiKeysRoute = DashboardApiKeysRouteImport.update({
+  id: '/api-keys',
+  path: '/api-keys',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardAdminRoute = DashboardAdminRouteImport.update({
@@ -131,11 +150,6 @@ const DashboardAdminIndexRoute = DashboardAdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => DashboardAdminRoute,
 } as any)
-const DashboardAccountIndexRoute = DashboardAccountIndexRouteImport.update({
-  id: '/account/',
-  path: '/account/',
-  getParentRoute: () => DashboardRoute,
-} as any)
 const OrgsAcceptInvitationIdRoute = OrgsAcceptInvitationIdRouteImport.update({
   id: '/orgs/accept/$invitationId',
   path: '/orgs/accept/$invitationId',
@@ -160,29 +174,6 @@ const DashboardAdminApiKeysRoute = DashboardAdminApiKeysRouteImport.update({
   id: '/api-keys',
   path: '/api-keys',
   getParentRoute: () => DashboardAdminRoute,
-} as any)
-const DashboardAccountSessionsRoute =
-  DashboardAccountSessionsRouteImport.update({
-    id: '/account/sessions',
-    path: '/account/sessions',
-    getParentRoute: () => DashboardRoute,
-  } as any)
-const DashboardAccountProvidersRoute =
-  DashboardAccountProvidersRouteImport.update({
-    id: '/account/providers',
-    path: '/account/providers',
-    getParentRoute: () => DashboardRoute,
-  } as any)
-const DashboardAccountPasskeysRoute =
-  DashboardAccountPasskeysRouteImport.update({
-    id: '/account/passkeys',
-    path: '/account/passkeys',
-    getParentRoute: () => DashboardRoute,
-  } as any)
-const DashboardAccountApiKeysRoute = DashboardAccountApiKeysRouteImport.update({
-  id: '/account/api-keys',
-  path: '/account/api-keys',
-  getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardAdminOrgsIndexRoute = DashboardAdminOrgsIndexRouteImport.update({
   id: '/orgs/',
@@ -218,7 +209,7 @@ const DashboardAdminClientsIdRoute = DashboardAdminClientsIdRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof DashboardIndexRoute
   '/about': typeof AboutRoute
   '/consent': typeof AuthConsentRoute
   '/privacy': typeof AuthPrivacyRoute
@@ -229,19 +220,18 @@ export interface FileRoutesByFullPath {
   '/two-factor': typeof AuthTwoFactorRoute
   '/verify-email': typeof AuthVerifyEmailRoute
   '/admin': typeof DashboardAdminRouteWithChildren
+  '/api-keys': typeof DashboardApiKeysRoute
   '/connections': typeof DashboardConnectionsRoute
+  '/passkeys': typeof DashboardPasskeysRoute
+  '/providers': typeof DashboardProvidersRoute
+  '/sessions': typeof DashboardSessionsRoute
   '/device': typeof DeviceDeviceRouteWithChildren
   '/api/$': typeof ApiSplatRoute
-  '/account/api-keys': typeof DashboardAccountApiKeysRoute
-  '/account/passkeys': typeof DashboardAccountPasskeysRoute
-  '/account/providers': typeof DashboardAccountProvidersRoute
-  '/account/sessions': typeof DashboardAccountSessionsRoute
   '/admin/api-keys': typeof DashboardAdminApiKeysRoute
   '/admin/sessions': typeof DashboardAdminSessionsRoute
   '/admin/users': typeof DashboardAdminUsersRoute
   '/device/approve': typeof DeviceDeviceApproveRoute
   '/orgs/accept/$invitationId': typeof OrgsAcceptInvitationIdRoute
-  '/account/': typeof DashboardAccountIndexRoute
   '/admin/': typeof DashboardAdminIndexRoute
   '/admin/clients/$id': typeof DashboardAdminClientsIdRoute
   '/admin/clients/new': typeof DashboardAdminClientsNewRoute
@@ -251,7 +241,7 @@ export interface FileRoutesByFullPath {
   '/admin/orgs/': typeof DashboardAdminOrgsIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/': typeof DashboardIndexRoute
   '/about': typeof AboutRoute
   '/consent': typeof AuthConsentRoute
   '/privacy': typeof AuthPrivacyRoute
@@ -261,19 +251,18 @@ export interface FileRoutesByTo {
   '/terms': typeof AuthTermsRoute
   '/two-factor': typeof AuthTwoFactorRoute
   '/verify-email': typeof AuthVerifyEmailRoute
+  '/api-keys': typeof DashboardApiKeysRoute
   '/connections': typeof DashboardConnectionsRoute
+  '/passkeys': typeof DashboardPasskeysRoute
+  '/providers': typeof DashboardProvidersRoute
+  '/sessions': typeof DashboardSessionsRoute
   '/device': typeof DeviceDeviceRouteWithChildren
   '/api/$': typeof ApiSplatRoute
-  '/account/api-keys': typeof DashboardAccountApiKeysRoute
-  '/account/passkeys': typeof DashboardAccountPasskeysRoute
-  '/account/providers': typeof DashboardAccountProvidersRoute
-  '/account/sessions': typeof DashboardAccountSessionsRoute
   '/admin/api-keys': typeof DashboardAdminApiKeysRoute
   '/admin/sessions': typeof DashboardAdminSessionsRoute
   '/admin/users': typeof DashboardAdminUsersRoute
   '/device/approve': typeof DeviceDeviceApproveRoute
   '/orgs/accept/$invitationId': typeof OrgsAcceptInvitationIdRoute
-  '/account': typeof DashboardAccountIndexRoute
   '/admin': typeof DashboardAdminIndexRoute
   '/admin/clients/$id': typeof DashboardAdminClientsIdRoute
   '/admin/clients/new': typeof DashboardAdminClientsNewRoute
@@ -284,7 +273,6 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
   '/_auth': typeof AuthRouteWithChildren
   '/_dashboard': typeof DashboardRouteWithChildren
   '/_device': typeof DeviceRouteWithChildren
@@ -298,19 +286,19 @@ export interface FileRoutesById {
   '/_auth/two-factor': typeof AuthTwoFactorRoute
   '/_auth/verify-email': typeof AuthVerifyEmailRoute
   '/_dashboard/admin': typeof DashboardAdminRouteWithChildren
+  '/_dashboard/api-keys': typeof DashboardApiKeysRoute
   '/_dashboard/connections': typeof DashboardConnectionsRoute
+  '/_dashboard/passkeys': typeof DashboardPasskeysRoute
+  '/_dashboard/providers': typeof DashboardProvidersRoute
+  '/_dashboard/sessions': typeof DashboardSessionsRoute
   '/_device/device': typeof DeviceDeviceRouteWithChildren
   '/api/$': typeof ApiSplatRoute
-  '/_dashboard/account/api-keys': typeof DashboardAccountApiKeysRoute
-  '/_dashboard/account/passkeys': typeof DashboardAccountPasskeysRoute
-  '/_dashboard/account/providers': typeof DashboardAccountProvidersRoute
-  '/_dashboard/account/sessions': typeof DashboardAccountSessionsRoute
+  '/_dashboard/': typeof DashboardIndexRoute
   '/_dashboard/admin/api-keys': typeof DashboardAdminApiKeysRoute
   '/_dashboard/admin/sessions': typeof DashboardAdminSessionsRoute
   '/_dashboard/admin/users': typeof DashboardAdminUsersRoute
   '/_device/device/approve': typeof DeviceDeviceApproveRoute
   '/orgs/accept/$invitationId': typeof OrgsAcceptInvitationIdRoute
-  '/_dashboard/account/': typeof DashboardAccountIndexRoute
   '/_dashboard/admin/': typeof DashboardAdminIndexRoute
   '/_dashboard/admin/clients/$id': typeof DashboardAdminClientsIdRoute
   '/_dashboard/admin/clients/new': typeof DashboardAdminClientsNewRoute
@@ -333,19 +321,18 @@ export interface FileRouteTypes {
     | '/two-factor'
     | '/verify-email'
     | '/admin'
+    | '/api-keys'
     | '/connections'
+    | '/passkeys'
+    | '/providers'
+    | '/sessions'
     | '/device'
     | '/api/$'
-    | '/account/api-keys'
-    | '/account/passkeys'
-    | '/account/providers'
-    | '/account/sessions'
     | '/admin/api-keys'
     | '/admin/sessions'
     | '/admin/users'
     | '/device/approve'
     | '/orgs/accept/$invitationId'
-    | '/account/'
     | '/admin/'
     | '/admin/clients/$id'
     | '/admin/clients/new'
@@ -365,19 +352,18 @@ export interface FileRouteTypes {
     | '/terms'
     | '/two-factor'
     | '/verify-email'
+    | '/api-keys'
     | '/connections'
+    | '/passkeys'
+    | '/providers'
+    | '/sessions'
     | '/device'
     | '/api/$'
-    | '/account/api-keys'
-    | '/account/passkeys'
-    | '/account/providers'
-    | '/account/sessions'
     | '/admin/api-keys'
     | '/admin/sessions'
     | '/admin/users'
     | '/device/approve'
     | '/orgs/accept/$invitationId'
-    | '/account'
     | '/admin'
     | '/admin/clients/$id'
     | '/admin/clients/new'
@@ -387,7 +373,6 @@ export interface FileRouteTypes {
     | '/admin/orgs'
   id:
     | '__root__'
-    | '/'
     | '/_auth'
     | '/_dashboard'
     | '/_device'
@@ -401,19 +386,19 @@ export interface FileRouteTypes {
     | '/_auth/two-factor'
     | '/_auth/verify-email'
     | '/_dashboard/admin'
+    | '/_dashboard/api-keys'
     | '/_dashboard/connections'
+    | '/_dashboard/passkeys'
+    | '/_dashboard/providers'
+    | '/_dashboard/sessions'
     | '/_device/device'
     | '/api/$'
-    | '/_dashboard/account/api-keys'
-    | '/_dashboard/account/passkeys'
-    | '/_dashboard/account/providers'
-    | '/_dashboard/account/sessions'
+    | '/_dashboard/'
     | '/_dashboard/admin/api-keys'
     | '/_dashboard/admin/sessions'
     | '/_dashboard/admin/users'
     | '/_device/device/approve'
     | '/orgs/accept/$invitationId'
-    | '/_dashboard/account/'
     | '/_dashboard/admin/'
     | '/_dashboard/admin/clients/$id'
     | '/_dashboard/admin/clients/new'
@@ -424,7 +409,6 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRouteWithChildren
   DashboardRoute: typeof DashboardRouteWithChildren
   DeviceRoute: typeof DeviceRouteWithChildren
@@ -463,12 +447,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
+    '/_dashboard/': {
+      id: '/_dashboard/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof DashboardIndexRouteImport
+      parentRoute: typeof DashboardRoute
     }
     '/api/$': {
       id: '/api/$'
@@ -484,11 +468,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DeviceDeviceRouteImport
       parentRoute: typeof DeviceRoute
     }
+    '/_dashboard/sessions': {
+      id: '/_dashboard/sessions'
+      path: '/sessions'
+      fullPath: '/sessions'
+      preLoaderRoute: typeof DashboardSessionsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/providers': {
+      id: '/_dashboard/providers'
+      path: '/providers'
+      fullPath: '/providers'
+      preLoaderRoute: typeof DashboardProvidersRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/passkeys': {
+      id: '/_dashboard/passkeys'
+      path: '/passkeys'
+      fullPath: '/passkeys'
+      preLoaderRoute: typeof DashboardPasskeysRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/_dashboard/connections': {
       id: '/_dashboard/connections'
       path: '/connections'
       fullPath: '/connections'
       preLoaderRoute: typeof DashboardConnectionsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/api-keys': {
+      id: '/_dashboard/api-keys'
+      path: '/api-keys'
+      fullPath: '/api-keys'
+      preLoaderRoute: typeof DashboardApiKeysRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/_dashboard/admin': {
@@ -561,13 +573,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAdminIndexRouteImport
       parentRoute: typeof DashboardAdminRoute
     }
-    '/_dashboard/account/': {
-      id: '/_dashboard/account/'
-      path: '/account'
-      fullPath: '/account/'
-      preLoaderRoute: typeof DashboardAccountIndexRouteImport
-      parentRoute: typeof DashboardRoute
-    }
     '/orgs/accept/$invitationId': {
       id: '/orgs/accept/$invitationId'
       path: '/orgs/accept/$invitationId'
@@ -602,34 +607,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/api-keys'
       preLoaderRoute: typeof DashboardAdminApiKeysRouteImport
       parentRoute: typeof DashboardAdminRoute
-    }
-    '/_dashboard/account/sessions': {
-      id: '/_dashboard/account/sessions'
-      path: '/account/sessions'
-      fullPath: '/account/sessions'
-      preLoaderRoute: typeof DashboardAccountSessionsRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/_dashboard/account/providers': {
-      id: '/_dashboard/account/providers'
-      path: '/account/providers'
-      fullPath: '/account/providers'
-      preLoaderRoute: typeof DashboardAccountProvidersRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/_dashboard/account/passkeys': {
-      id: '/_dashboard/account/passkeys'
-      path: '/account/passkeys'
-      fullPath: '/account/passkeys'
-      preLoaderRoute: typeof DashboardAccountPasskeysRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/_dashboard/account/api-keys': {
-      id: '/_dashboard/account/api-keys'
-      path: '/account/api-keys'
-      fullPath: '/account/api-keys'
-      preLoaderRoute: typeof DashboardAccountApiKeysRouteImport
-      parentRoute: typeof DashboardRoute
     }
     '/_dashboard/admin/orgs/': {
       id: '/_dashboard/admin/orgs/'
@@ -732,22 +709,22 @@ const DashboardAdminRouteWithChildren = DashboardAdminRoute._addFileChildren(
 
 interface DashboardRouteChildren {
   DashboardAdminRoute: typeof DashboardAdminRouteWithChildren
+  DashboardApiKeysRoute: typeof DashboardApiKeysRoute
   DashboardConnectionsRoute: typeof DashboardConnectionsRoute
-  DashboardAccountApiKeysRoute: typeof DashboardAccountApiKeysRoute
-  DashboardAccountPasskeysRoute: typeof DashboardAccountPasskeysRoute
-  DashboardAccountProvidersRoute: typeof DashboardAccountProvidersRoute
-  DashboardAccountSessionsRoute: typeof DashboardAccountSessionsRoute
-  DashboardAccountIndexRoute: typeof DashboardAccountIndexRoute
+  DashboardPasskeysRoute: typeof DashboardPasskeysRoute
+  DashboardProvidersRoute: typeof DashboardProvidersRoute
+  DashboardSessionsRoute: typeof DashboardSessionsRoute
+  DashboardIndexRoute: typeof DashboardIndexRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAdminRoute: DashboardAdminRouteWithChildren,
+  DashboardApiKeysRoute: DashboardApiKeysRoute,
   DashboardConnectionsRoute: DashboardConnectionsRoute,
-  DashboardAccountApiKeysRoute: DashboardAccountApiKeysRoute,
-  DashboardAccountPasskeysRoute: DashboardAccountPasskeysRoute,
-  DashboardAccountProvidersRoute: DashboardAccountProvidersRoute,
-  DashboardAccountSessionsRoute: DashboardAccountSessionsRoute,
-  DashboardAccountIndexRoute: DashboardAccountIndexRoute,
+  DashboardPasskeysRoute: DashboardPasskeysRoute,
+  DashboardProvidersRoute: DashboardProvidersRoute,
+  DashboardSessionsRoute: DashboardSessionsRoute,
+  DashboardIndexRoute: DashboardIndexRoute,
 }
 
 const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
@@ -778,7 +755,6 @@ const DeviceRouteWithChildren =
   DeviceRoute._addFileChildren(DeviceRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
   AuthRoute: AuthRouteWithChildren,
   DashboardRoute: DashboardRouteWithChildren,
   DeviceRoute: DeviceRouteWithChildren,

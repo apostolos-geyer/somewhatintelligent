@@ -22,7 +22,7 @@ interface SessionInfo {
   isCurrent?: boolean;
 }
 
-export const Route = createFileRoute("/_dashboard/account/sessions")({
+export const Route = createFileRoute("/_dashboard/sessions")({
   head: () => ({ meta: [{ title: "Sessions — Identity" }] }),
   component: SessionsPage,
 });

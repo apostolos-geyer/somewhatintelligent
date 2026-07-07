@@ -74,7 +74,7 @@ export function SignUpForm({
         <CardContent className="space-y-0 p-0">
           <SocialSignInButtons
             providers={providers}
-            callbackURL={returnTo ?? "/account"}
+            callbackURL={returnTo}
             disabled={loading}
             onStart={() => {
               setLoading(true);

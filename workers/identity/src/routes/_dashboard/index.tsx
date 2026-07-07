@@ -16,13 +16,13 @@ import { IdentityCard, type IdentityUser } from "@/components/account/identity-c
 import { TwoFactorDialog } from "@/components/account/two-factor-dialog";
 
 const manageItems = [
-  { to: "/account/sessions", label: "Sessions", description: "Devices currently signed in" },
-  { to: "/account/passkeys", label: "Passkeys", description: "Biometrics or security keys" },
-  { to: "/account/api-keys", label: "API Keys", description: "For programmatic access" },
-  { to: "/account/providers", label: "Providers", description: "Linked sign-in methods" },
+  { to: "/sessions", label: "Sessions", description: "Devices currently signed in" },
+  { to: "/passkeys", label: "Passkeys", description: "Biometrics or security keys" },
+  { to: "/api-keys", label: "API Keys", description: "For programmatic access" },
+  { to: "/providers", label: "Providers", description: "Linked sign-in methods" },
 ] as const;
 
-export const Route = createFileRoute("/_dashboard/account/")({
+export const Route = createFileRoute("/_dashboard/")({
   head: () => ({ meta: [{ title: "Account — Identity" }] }),
   component: AccountPage,
 });

@@ -201,7 +201,7 @@ function CardBody({
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3 pt-2">
-            <Link to="/account" className="contents">
+            <Link to="/" className="contents">
               <Button variant="ghost" size="lg" className="w-full justify-center">
                 Go to account settings
               </Button>

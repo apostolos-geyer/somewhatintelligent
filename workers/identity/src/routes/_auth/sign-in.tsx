@@ -28,7 +28,7 @@ function resolveTarget(search: Record<string, string | undefined>): string {
   const authorizeUrl = buildAuthorizeUrl(search);
   if (authorizeUrl) return authorizeUrl;
   const validated = decodeReturnTo(search.returnTo);
-  return validated ?? "/account";
+  return validated ?? "/";
 }
 
 export const Route = createFileRoute("/_auth/sign-in")({

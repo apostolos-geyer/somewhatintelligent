@@ -9,6 +9,7 @@ import { Alert } from "@si/ui/components/alert";
 import { Separator } from "@si/ui/components/separator";
 import { GuestlistBrand } from "@/components/guestlist-brand";
 import { authClient } from "@/lib/auth-client";
+import { publicAppPath } from "@/lib/basepath";
 import type { SocialProviders } from "@/lib/providers.functions";
 import { SocialSignInButtons } from "./social-sign-in-buttons";
 
@@ -180,8 +181,9 @@ export function SignInForm({
     // Anchor relative targets to identity's origin so BA's verify-endpoint
     // Location header lands the user back here after redirect. Cross-origin
     // returnTos were already validated by decodeReturnTo at route load.
-    const callbackURL = redirectTarget.startsWith("/")
-      ? new URL(redirectTarget, window.location.origin).toString()
+    const callbackTarget = redirectTarget === "/" ? publicAppPath("/") : redirectTarget;
+    const callbackURL = callbackTarget.startsWith("/")
+      ? new URL(callbackTarget, window.location.origin).toString()
       : redirectTarget;
 
     let result: Awaited<ReturnType<typeof authClient.signIn.magicLink>>;

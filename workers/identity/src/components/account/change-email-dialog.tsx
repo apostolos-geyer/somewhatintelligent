@@ -16,6 +16,7 @@ import {
 } from "@si/ui/components/dialog";
 import { Alert } from "@si/ui/components/alert";
 import { authClient } from "@/lib/auth-client";
+import { publicAppPath } from "@/lib/basepath";
 
 const emailSchema = type({ email: "string.email" });
 
@@ -39,7 +40,7 @@ export function ChangeEmailDialog({ defaultEmail }: { defaultEmail: string }) {
 
       const result = await authClient.changeEmail({
         newEmail: value.email,
-        callbackURL: new URL("/account", window.location.origin).toString(),
+        callbackURL: new URL(publicAppPath("/"), window.location.origin).toString(),
       });
 
       if (result.error) {

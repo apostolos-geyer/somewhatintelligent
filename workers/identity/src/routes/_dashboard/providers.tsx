@@ -7,6 +7,7 @@ import { Item, ItemContent, ItemTitle, ItemActions, ItemGroup } from "@si/ui/com
 import { authClient } from "@/lib/auth-client";
 import { loadProviders, type SocialProviders } from "@/lib/providers.functions";
 import { toast } from "@si/ui/components/sonner";
+import { publicAppPath } from "@/lib/basepath";
 
 interface AccountInfo {
   id: string;
@@ -24,7 +25,7 @@ const providerLabels: Record<string, string> = {
 
 const ALL_LINKABLE: Array<keyof SocialProviders> = ["google", "microsoft", "facebook", "linkedin"];
 
-export const Route = createFileRoute("/_dashboard/account/providers")({
+export const Route = createFileRoute("/_dashboard/providers")({
   loader: async () => ({ providers: await loadProviders() }),
   head: () => ({ meta: [{ title: "Providers — Identity" }] }),
   component: ProvidersPage,
@@ -66,7 +67,7 @@ function ProvidersPage() {
     startTransition(async () => {
       // Anchor to identity's origin — BA emits the post-callback redirect
       // verbatim and the browser resolves it against guestlist's domain.
-      const callbackURL = new URL("/account/providers", window.location.origin).toString();
+      const callbackURL = new URL(publicAppPath("/providers"), window.location.origin).toString();
       const result = await authClient.linkSocial({
         provider: provider as "google" | "microsoft" | "facebook" | "linkedin",
         callbackURL,

@@ -9,7 +9,7 @@ import { Field, FieldLabel } from "@si/ui/components/field";
 import { Alert } from "@si/ui/components/alert";
 import { authClient } from "@/lib/auth-client";
 
-export const Route = createFileRoute("/_dashboard/account/api-keys")({
+export const Route = createFileRoute("/_dashboard/api-keys")({
   head: () => ({ meta: [{ title: "API Keys — Identity" }] }),
   component: ApiKeysPage,
 });

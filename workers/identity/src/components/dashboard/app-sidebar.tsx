@@ -38,7 +38,7 @@ const APPS: PlatformApp[] = [
 ];
 
 const accountNav = [
-  { href: "/account", label: "Account", icon: UserIcon },
+  { href: "/", label: "Account", icon: UserIcon },
   { href: "/connections", label: "Connections", icon: LinkIcon },
 ] as const;
 
@@ -85,7 +85,7 @@ export function AppSidebar({ session }: { session: PlatformSession }) {
               {accountNav.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
-                    isActive={isActive(pathname, item.href, item.href === "/account")}
+                    isActive={isActive(pathname, item.href, item.href === "/")}
                     render={<Link to={item.href} />}
                   >
                     <item.icon />
