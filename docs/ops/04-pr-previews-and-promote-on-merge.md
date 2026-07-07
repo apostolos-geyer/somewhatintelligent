@@ -68,8 +68,8 @@ CI brain.
 ## 3. Preconditions
 
 **3.0** In every worker's `wrangler.jsonc` top level (staging): keep
-`"workers_dev": true` (staging already has it for bouncer/identity/sprout —
-extend to all 7 or at least all you want previewable) and set
+`"workers_dev": true` (staging already has it for bouncer/identity —
+extend to all 5 or at least all you want previewable) and set
 `"preview_urls": true` explicitly. `env.production`: `"workers_dev": false`,
 `"preview_urls": false`. **This amends Spec 02's target layout** — implement
 there if 02 hasn't landed yet.
@@ -77,7 +77,7 @@ there if 02 hasn't landed yet.
 **3.1 A preview vault.** The main-locked `greenroom_deploy` vault cannot be
 read from PR branches by design. Create `greenroom_preview` (unlocked):
 
-- `CLOUDFLARE_API_TOKEN_PREVIEW`: minted **from the Sprout account** (else D1
+- `CLOUDFLARE_API_TOKEN_PREVIEW`: minted **from this fork's Cloudflare account** (else D1
   7403 — known incident), scoped to **Workers Scripts: Edit + Account
   Settings: Read only** — no D1 edit, no routes, no R2. Uploading a version
   puts 0 % traffic live; acceptable exposure for a private single-maintainer
@@ -107,7 +107,7 @@ changed worker to `$RWX_DYNAMIC_TASKS` (RWX docs `/dynamic-tasks`), each:
   factor them with YAML anchors or accept duplication; embedded-run extraction
   is optional polish);
 - `cache: false` (every PR push = new code = new version — intentional);
-- for build-step apps (sprout/identity/marketing): run the worker's build
+- for build-step apps (identity): run the worker's build
   first (`vp run build` / astro build, matching its `deploy:staging` script's
   build half);
 - upload:
@@ -127,7 +127,7 @@ changed worker to `$RWX_DYNAMIC_TASKS` (RWX docs `/dynamic-tasks`), each:
   Env: `CLOUDFLARE_API_TOKEN` from `greenroom_preview` with
   `cache-key: excluded` (RWX docs `/environment-variables`) — irrelevant while
   `cache:false`, but correct hygiene if caching is ever enabled.
-  Alias length check: `pr-123` + longest name `sprout-guestlist-staging` = fine
+  Alias length check: `pr-123` + longest name `si-guestlist-staging` = fine
   (≤ 63).
 
 - **DO-migration guard**: if the PR adds a DO migration, `versions upload`
@@ -140,7 +140,7 @@ changed worker to `$RWX_DYNAMIC_TASKS` (RWX docs `/dynamic-tasks`), each:
 place. Workers not in the changed set are listed as "unchanged (staging)".
 
 **4.4 Scope honesty (include in the PR comment footer).** Preview URLs are bare
-workers.dev hosts: no bouncer fronting, no `*.sproutportal.ca` cookies, no
+workers.dev hosts: no bouncer fronting, no `*.somewhatintelligent.ca` cookies, no
 cross-subdomain auth — they validate _units_, not the _journey_. Cross-worker
 PRs: each preview calls the _deployed_ staging siblings, not sibling PR
 versions. The journey check remains post-merge staging.
@@ -153,7 +153,7 @@ Rewire ci.yml's `deploy-staging` lane (keep the gate exactly as is):
    previous deployed state — simplest correct proxy: the commit's own diff via
    `github/compare` against the parent; a `packages/**` change ⇒ all workers).
 2. For each changed worker, in the canonical order (promoter, roadie →
-   guestlist → identity → marketing → sprout → bouncer LAST — the 10143
+   guestlist → identity → bouncer LAST — the 10143
    invariant):
    - **migrations first**: if `workers/<w>/migrations/**` changed, run its
      `db:migrate:staging` (D1 token needed ⇒ this task uses the LOCKED deploy
@@ -171,7 +171,7 @@ repos/:owner/:repo/commits/$SHA/pulls`), then
        migration, first deploy of a new worker) → full
        `bun run deploy:staging` (build + `wrangler deploy`), exactly today's
        path.
-   - unchanged workers: **skip entirely** (today's lane redeploys all 7 every
+   - unchanged workers: **skip entirely** (today's lane redeploys all 5 every
      merge — this is the second big win).
 3. Keep the GitHub Deployment record + apex smoke test from `.rwx/deploy.yml`.
 4. Squash-merge nuance: the PR head sha (what previews were built from) is not
@@ -216,8 +216,8 @@ Rules of the road (document in the PR-comment footer + CLAUDE.md):
 3. Merge the scratch PR: staging lane promotes (check `wrangler deployments
 list` shows the promoted version id, and NO build ran for the worker), other
    workers untouched; smoke test green.
-4. PR adding a DO migration to sprout: preview task reports the guard message;
-   merge falls back to full deploy.
+4. PR adding a Durable Object migration to a worker: preview task reports the
+   guard message; merge falls back to full deploy.
 5. Rollback drill: `wrangler versions deploy <previous-id>@100% -y` restores
    the prior staging version in seconds (document as the staging rollback).
 

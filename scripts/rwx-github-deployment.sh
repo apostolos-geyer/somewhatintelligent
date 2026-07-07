@@ -23,10 +23,10 @@
 
 GH_DEPLOYMENT_REPO="${GH_DEPLOYMENT_REPO:-apostolos-geyer/greenroom}"
 GH_DEPLOYMENT_ENV="${GH_DEPLOYMENT_ENV:-staging}"
-# Public entry point for the staging environment (the Sprout Hub). The domain's
-# source of truth is packages/config/src/deploy.ts (baseDomain); the bouncer
-# router serves the app at sprout-staging.<baseDomain>.
-GH_DEPLOYMENT_URL="${GH_DEPLOYMENT_URL:-https://sprout-staging.sproutportal.ca}"
+# Public entry point for the staging environment (the single-host apex). The
+# domain's source of truth is packages/config/src/deploy.ts (baseDomain); the
+# bouncer router serves the whole platform at staging.<baseDomain>.
+GH_DEPLOYMENT_URL="${GH_DEPLOYMENT_URL:-https://staging.somewhatintelligent.ca}"
 
 _gh_deployment_api() {
   curl -fsS \

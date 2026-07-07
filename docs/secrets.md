@@ -49,7 +49,7 @@ workers/identity/.dev.vars         # only non-secret env vars
 Local placeholders are declared in `scripts/dev-config.ts`:
 
 - `LOCAL_BETTER_AUTH_SECRET` — guestlist's local cookie-signing key. Only
-  signs cookies on `.sproutportal.localhost`; safe to hand-distribute.
+  signs cookies on `.somewhatintelligent.localhost`; safe to hand-distribute.
 - `LOCAL_BNC_ATT_PRIV` — bouncer's local Ed25519 private key. Paired with
   the public key under `kid: "dev"` in `packages/config/src/bouncer-attestation.ts`.
   Local-only; safe to hand-distribute.
@@ -58,16 +58,16 @@ Local placeholders are declared in `scripts/dev-config.ts`:
 
 Secrets bootstrap leaves blank (you must fill in):
 
-| Secret                                                 | Where                          | Used for                                                                                                                                                                            |
-| ------------------------------------------------------ | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Secret                                                 | Where                         | Used for                                                                                                                                                                            |
+| ------------------------------------------------------ | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `RESEND_API_KEY`                                       | `workers/promoter/.dev.vars`  | Outbound transactional email (sign-up verification, magic links, password reset). Without it, sign-in is blocked by email verification; see README for the D1 bypass.               |
-| `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY`            | `workers/roadie/.dev.vars`    | Required only if you flip the R2 binding to `remote: true` in `workers/roadie/wrangler.jsonc`. Local miniflare R2 emulation needs no keys.                                         |
+| `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY`            | `workers/roadie/.dev.vars`    | Required only if you flip the R2 binding to `remote: true` in `workers/roadie/wrangler.jsonc`. Local miniflare R2 emulation needs no keys.                                          |
 | OAuth client id/secret pairs (Google, Microsoft, etc.) | `workers/guestlist/.dev.vars` | Required only if you keep the social-provider plugins wired. The wiring in `auth-config.ts` is gated on the env-var pairs being non-empty, so empty values = social login disabled. |
 
 ## Staging / production
 
 Provision with the codified CLI — it resolves each secret's value (generated,
-provided, or dev-default) and pushes it to the deployed `sprout-<service>-<env>`
+provided, or dev-default) and pushes it to the deployed `si-<service>-<env>`
 worker for you:
 
 ```sh

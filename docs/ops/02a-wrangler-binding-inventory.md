@@ -61,7 +61,7 @@ repeated per env; prod observability.
 
 **guestlist**: ⚠vars (S/P only — top level had none): `ENVIRONMENT,
 BETTER_AUTH_URL, IDENTITY_URL, AUTH_DOMAIN, EMAIL_FROM` (P uses rendered
-`Sprout <hello@sproutportal.ca>`); ⚠services `PROMOTER` (**entrypoint
+`Sprout <hello@somewhatintelligent.ca>`); ⚠services `PROMOTER` (**entrypoint
 "Promoter"**) + `ROADIE` (**entrypoint "Roadie", props.callerApp:"guestlist"**)
 per env with `-staging`/`-production` names; ⚠d1 per env; prod observability
 `{enabled, head_sampling_rate:1, logs}`.
@@ -96,7 +96,7 @@ routing table (S: guestlist/identity + sprout-staging host; P: + MARKETING
 apex/www, SPROUT `/hub`) and `BNC_ATT_KID` (present in BOTH envs here — no
 warning); ⚠services: S has 3 (`GUESTLIST, IDENTITY, SPROUT`), **P has 4
 (+`MARKETING`)**; ⚠routes custom_domains: S `identity-staging`,
-`sprout-staging`; P `identity`, `www`, apex; the `*.sproutportal.ca/*` org
+`sprout-staging`; P `identity`, `www`, apex; the `*.somewhatintelligent.ca/*` org
 wildcard zone route is **commented out** (2026-07-01 staging-shadow incident —
 keep commented until the wildcard plan is re-approved, and if ever re-enabled
 it goes in `env.production` ONLY); `workers_dev` true S only; prod

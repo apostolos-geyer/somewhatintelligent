@@ -31,7 +31,7 @@ FILES="${FILES:?changed-file list path required}"
 SHA="${SHA:?commit sha required}"
 FORCE_FULL="${FORCE_FULL:-false}"
 REPO="apostolos-geyer/greenroom"
-ORDER=(promoter roadie guestlist identity marketing sprout bouncer)
+ORDER=(promoter roadie guestlist identity bouncer)
 
 if [ -z "${CHANGED}" ]; then
   echo "promote-staging: no affected workers — nothing to deploy"

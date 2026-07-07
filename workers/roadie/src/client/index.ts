@@ -5,7 +5,7 @@
  * `user | service` contract.
  *
  *   export const roadie = createRoadieClient(env.ROADIE, {
- *     callerApp: "sprout",
+ *     callerApp: "identity",
  *     getRequestId: () => extractRequestId(getRequest()),
  *     getActor: resolveActor,  // reads ambient session, falls back to anon
  *   });
@@ -13,10 +13,10 @@
  *   await roadie.getReadUrl({ referenceId, ... });               // ambient
  *   await roadie.signPart({ ... }, { kind: "anonymous", label }); // override
  */
-import type { Actor } from "@greenroom/kit/request-context";
+import type { Actor } from "@si/kit/request-context";
 import type { Roadie } from "../index";
 
-export type { Actor } from "@greenroom/kit/request-context";
+export type { Actor } from "@si/kit/request-context";
 export { ok, err, type Result } from "../result";
 
 /** Actor at the consumer boundary. Anonymous is folded to a service actor on the way out. */

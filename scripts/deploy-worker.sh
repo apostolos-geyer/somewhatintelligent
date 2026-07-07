@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Single source of truth for greenroom's per-worker migrate + deploy, shared by
+# Single source of truth for the platform's per-worker migrate + deploy, shared by
 # every RWX deploy lane:
 #   - .rwx/deploy.yml            fleet -> staging (ci.yml embedded run)
 #   - .rwx/release-please.yml    released subset -> production (folded-in deploy)
@@ -14,9 +14,7 @@
 #   deploy-worker.sh migrate <worker> <env>   run db:migrate:<env> if the worker
 #                                             ships one (D1-backed workers only);
 #                                             a migration FAILURE is fatal.
-#   deploy-worker.sh deploy  <worker> <env>   deploy the worker's code (marketing
-#                                             via npm/node — its astro build hangs
-#                                             under bun's ws 'upgrade' gap).
+#   deploy-worker.sh deploy  <worker> <env>   deploy the worker's code.
 #   deploy-worker.sh ship    <worker> <env>   migrate (if any) THEN deploy — the
 #                                             atomic per-worker op the two
 #                                             production lanes use.
@@ -31,7 +29,7 @@ worker="${2:?worker name required}"
 env="${3:?env (staging|production) required}"
 
 case "$worker" in
-  promoter | roadie | guestlist | identity | marketing | sprout | bouncer) : ;;
+  promoter | roadie | guestlist | identity | bouncer) : ;;
   *)
     echo "deploy-worker: unknown worker '$worker'" >&2
     exit 1
@@ -56,12 +54,7 @@ migrate_worker() {
 }
 
 deploy_worker() {
-  # marketing's astro build hangs under bun (ws 'upgrade' gap) — npm/node.
-  if [ "$worker" = "marketing" ]; then
-    (cd "workers/${worker}" && npm run "deploy:${env}")
-  else
-    (cd "workers/${worker}" && bun run "deploy:${env}")
-  fi
+  (cd "workers/${worker}" && bun run "deploy:${env}")
 }
 
 case "$cmd" in

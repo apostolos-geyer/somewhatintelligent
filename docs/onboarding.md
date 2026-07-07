@@ -8,13 +8,13 @@ dev environment, signed in to the identity app via agent-browser.
 Every service runs on Cloudflare Workers locally via miniflare — no local
 Postgres, no MinIO. Wrangler + portless cover the rest.
 
-| Tool                   | Purpose                                       | Install                                       |
-| ---------------------- | --------------------------------------------- | --------------------------------------------- |
-| **bun**                | Package manager + JS runtime                  | `curl -fsSL https://bun.sh/install \| bash`   |
-| **vp** (Vite+)         | Unified toolchain                             | `npm i -g vite-plus`                          |
-| **portless**           | Wildcard local HTTPS (`*.sproutportal.localhost`) | `npm i -g portless` + `portless trust`    |
-| **wrangler**           | Cloudflare Workers CLI                        | Installed per-package via the workspace       |
-| **Cloudflare account** | For real D1/R2 + `wrangler login`             | [cloudflare.com](https://www.cloudflare.com/) |
+| Tool                   | Purpose                                                  | Install                                       |
+| ---------------------- | -------------------------------------------------------- | --------------------------------------------- |
+| **bun**                | Package manager + JS runtime                             | `curl -fsSL https://bun.sh/install \| bash`   |
+| **vp** (Vite+)         | Unified toolchain                                        | `npm i -g vite-plus`                          |
+| **portless**           | Wildcard local HTTPS (`*.somewhatintelligent.localhost`) | `npm i -g portless` + `portless trust`        |
+| **wrangler**           | Cloudflare Workers CLI                                   | Installed per-package via the workspace       |
+| **Cloudflare account** | For real D1/R2 + `wrangler login`                        | [cloudflare.com](https://www.cloudflare.com/) |
 
 The portless daemon needs to run as root on port 443 the first time:
 
@@ -85,35 +85,34 @@ bun run dev
 
 This one command (`bun scripts/dev-stack.ts`) runs the cached prep (env:init +
 local D1 migrations), ensures the portless HTTPS proxy is up on `:443`, then
-boots **guestlist + identity + sprout + roadie**, each exactly as its own
+boots **guestlist + identity + roadie**, each exactly as its own
 `cd workers/<name> && bun run dev`. Pass a subset to boot only those workers:
 
 ```sh
-bun run dev sprout identity   # any subset of workers/<name>
+bun run dev guestlist identity   # any subset of workers/<name>
 ```
 
 Or start a single worker directly from its directory:
 
 ```sh
-cd workers/identity && bun run dev   # portless-registered (identity.sproutportal.localhost)
+cd workers/identity && bun run dev   # portless-registered (identity.somewhatintelligent.localhost)
 cd workers/guestlist && bun run dev  # plain wrangler dev (:8787, reached via service binding)
 ```
 
 guestlist and roadie are plain `wrangler dev` (reached over service bindings /
-the dev registry, not a portless URL); bouncer, identity, and sprout are the
-portless-registered trio (each app's own `package.json` carries its `"portless"`
-key — there is no root `portless.json`). Local dev is dev-direct: no bouncer
-runs locally (see `docs/ARCHITECTURE.md` §4.5).
+the dev registry, not a portless URL); identity is portless-registered (its
+own `package.json` carries a `"portless"` key — there is no root
+`portless.json`). Local dev is dev-direct: no bouncer runs locally (see
+`docs/ARCHITECTURE.md` §4.5) — the `/account` vmf mount only exists on
+staging/production; identity serves at its own root here.
 
 Local URLs:
 
-| Component            | URL                                                    |
-| -------------------- | ------------------------------------------------------ |
-| Identity (UI)        | `https://identity.sproutportal.localhost`              |
-| Sprout hub           | `https://sprout.sproutportal.localhost`                |
-| Brand portal         | `https://<slug>.sprout.sproutportal.localhost`         |
-| Guestlist (service)  | `http://localhost:8787` (service binding, no portless) |
-| Roadie (R2)          | `http://localhost:8790` (service binding, no portless) |
+| Component           | URL                                                    |
+| ------------------- | ------------------------------------------------------ |
+| Identity (UI)       | `https://identity.somewhatintelligent.localhost`       |
+| Guestlist (service) | `http://localhost:8787` (service binding, no portless) |
+| Roadie (R2)         | `http://localhost:8790` (service binding, no portless) |
 
 ## Seed demo data
 
@@ -129,7 +128,7 @@ immediately. Re-run any time — the seed is idempotent.
 
 ## Verify it works
 
-1. Open `https://identity.sproutportal.localhost` — should redirect to `/sign-in`.
+1. Open `https://identity.somewhatintelligent.localhost` — should redirect to `/sign-in`.
 2. Sign in as `super@user.com` / `superuserdo`.
 3. Land on `/account` with the user widget showing in the top-right.
 4. Confirm the session cookie wears your brand prefix:

@@ -46,11 +46,11 @@ export interface CanonicalLogBuilder {
 }
 
 export interface CanonicalLogContext {
-  /** Component emitting the line — `"roadie"`, `"guestlist"`, `"sprout"`, etc. */
+  /** Component emitting the line — `"roadie"`, `"guestlist"`, `"identity"`, etc. */
   service: string;
   /** Event kind — `"rpc" | "http" | "server_fn" | "job" | "auth"`. Free-form to allow new categories. */
   event: string;
-  /** Abstract operation name — `"roadie.signPart"`, `"sprout.server_fn.submit_attempt"`. */
+  /** Abstract operation name — `"roadie.signPart"`, `"identity.server_fn.submit_attempt"`. */
   operation: string;
   /**
    * Request ID. Optional — when omitted, read from the active

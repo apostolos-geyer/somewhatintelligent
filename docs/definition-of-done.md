@@ -43,7 +43,7 @@ The platform as a whole is done when:
 
 **Done is not final.** Applications and services will continue to be maintained, bugs will be fixed, and incremental improvements will ship. Done is the point at which the component can be demonstrated and presented without embarrassment, not the point at which further work is forbidden.
 
-**Done is not feature-complete against the category.** The platform's applications are narrower than their commercial counterparts. Being done against this specification does not mean the Sprout brand portals are as feature-rich as commercial white-label CMS platforms, or that the marketing site and identity app are as polished as their commercial equivalents. It means the scoped product works, coherently, under the platform patterns.
+**Done is not feature-complete against the category.** The platform's applications are narrower than their commercial counterparts. Being done against this specification does not mean the identity app is as polished as commercial account/sign-in products. It means the scoped product works, coherently, under the platform patterns.
 
 **Done is not perfect.** Rough edges, suboptimal performance in uncommon cases, and known follow-up work are all compatible with done. The explicit reductions permitted by each specification exist for this reason.
 

@@ -3,9 +3,9 @@
 // See ARCHITECTURE.md §3.3 / §4.2 / §4.5 (dev-envelope stamper).
 import { env } from "cloudflare:workers";
 import { createServerOnlyFn } from "@tanstack/react-start";
-import { parseRequestCookies } from "@greenroom/auth";
-import { createPlatformStartApp } from "@greenroom/kit/react-start";
-import { createGuestlistClient } from "@greenroom/guestlist-service/client";
+import { parseRequestCookies } from "@si/auth";
+import { createPlatformStartApp } from "@si/kit/react-start";
+import { createGuestlistClient } from "@si/guestlist-service/client";
 import { getGuestlist, guestlistFetcher } from "@/lib/guestlist";
 
 export const platform = createPlatformStartApp({
@@ -18,8 +18,7 @@ export const platform = createPlatformStartApp({
   // Dev-direct topology has no bouncer to mint the attestation envelope, so the
   // app stamps its own from the session cookie — without it the envelope-only
   // principal (and thus the admin gate / admin server fns) has no actor in dev.
-  // Hard no-op outside dev and when an envelope is already present. Mirrors
-  // workers/sprout/src/lib/platform.ts.
+  // Hard no-op outside dev and when an envelope is already present.
   devEnvelopeSigner: createServerOnlyFn(() => ({
     privPem: (env as { BNC_ATT_PRIV?: string }).BNC_ATT_PRIV ?? "",
     kid: (env as { BNC_ATT_KID?: string }).BNC_ATT_KID ?? "dev",

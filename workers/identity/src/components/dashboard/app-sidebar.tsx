@@ -12,7 +12,7 @@ import {
   SidebarMenuButton,
   SidebarRail,
   SidebarSeparator,
-} from "@greenroom/ui/components/sidebar";
+} from "@si/ui/components/sidebar";
 import {
   UserIcon,
   LinkIcon,
@@ -23,15 +23,16 @@ import {
   KeyRoundIcon,
   Building2Icon,
 } from "lucide-react";
-import { PlatformNav, type PlatformApp } from "@greenroom/ui/components/platform-nav";
-import type { PlatformSession } from "@greenroom/auth";
+import { PlatformNav, type PlatformApp } from "@si/ui/components/platform-nav";
+import type { PlatformSession } from "@si/auth";
 import { SidebarUserMenu } from "@/components/dashboard/sidebar-user-menu";
-import { isAdminRole } from "@greenroom/kit/roles";
+import { isAdminRole } from "@si/kit/roles";
 
 // Only the apps this fork actually ships. The source template shipped extra
-// demo apps that don't exist here (they had no URL → dead links).
+// demo apps that don't exist here (they had no URL → dead links). "home" is
+// same-host root: bouncer redirects `/` to the (not-yet-built) storefront.
 const APPS: PlatformApp[] = [
-  { id: "home", label: "home", href: import.meta.env.MARKETING_URL },
+  { id: "home", label: "home", href: "/" },
   { id: "identity", label: "identity", href: import.meta.env.IDENTITY_URL, current: true },
 ];
 

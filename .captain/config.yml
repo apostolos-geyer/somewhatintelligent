@@ -7,19 +7,6 @@
 # Captain execs the command directly, so a bare `vp` isn't on PATH. `--root <dir>`
 # scopes the run to one package from the repo root.
 test-suites:
-  greenroom-sprout:
-    command: bunx vp test run --root workers/sprout --reporter=default --reporter=json --outputFile=../../.captain-out/sprout.vitest.json
-    results:
-      language: JavaScript
-      framework: Vitest
-      path: .captain-out/sprout.vitest.json
-    output:
-      reporters:
-        rwx-v1-json: .captain-out/sprout.rwx.json
-    retries:
-      attempts: 2
-      command: bunx vp test run --root workers/sprout '{{ file }}' -t '{{ testNamePattern }}' --reporter=default --reporter=json --outputFile=../../.captain-out/sprout.vitest.json
-
   greenroom-bouncer:
     command: npx vp test run --root workers/bouncer --reporter=default --reporter=json --outputFile=../../.captain-out/bouncer.vitest.json
     results:

@@ -5,7 +5,7 @@
  * type. Apps inject the constructor (`createGuestlistClient`, `createRoadieClient`)
  * so kit doesn't take a dependency on platform service packages. Cookie
  * adapters, request-id and actor wiring are sourced from kit primitives
- * (`@tanstack/react-start/server`, `@greenroom/kit/request-context`).
+ * (`@tanstack/react-start/server`, `@si/kit/request-context`).
  *
  * All three return `createServerOnlyFn`-wrapped callables: importing the
  * surface from a route file (which bundles for both client and server) is
@@ -24,7 +24,7 @@ import {
 
 /**
  * Caller-supplied factory for the guestlist client. Apps pass
- * `createGuestlistClient` from `@greenroom/guestlist-service/client` (kit doesn't
+ * `createGuestlistClient` from `@si/guestlist-service/client` (kit doesn't
  * depend on it directly).
  */
 type GuestlistClientFactory<C> = (opts: {
@@ -49,7 +49,7 @@ type GuestlistClientFactory<C> = (opts: {
 }) => C;
 
 export interface GuestlistFactoryOpts<C> {
-  /** App identifier (`"identity"`, `"sprout"`, etc.). Threaded into guestlist logs as `caller_app`. */
+  /** App identifier (`"identity"`, `"guestlist"`, etc.). Threaded into guestlist logs as `caller_app`. */
   callerApp: string;
   /** App-supplied guestlist client constructor. */
   createClient: GuestlistClientFactory<C>;
@@ -109,7 +109,7 @@ export function createGuestlistFactory<C>(opts: GuestlistFactoryOpts<C>) {
 
 /**
  * Caller-supplied factory for the roadie client. The exact `Binding` and
- * `RoadieActor` types live in `@greenroom/roadie-service/client`; kit takes
+ * `RoadieActor` types live in `@si/roadie-service/client`; kit takes
  * `Binding` as a generic so no import is needed here.
  */
 type RoadieClientFactory<C, B> = (
@@ -122,7 +122,7 @@ type RoadieClientFactory<C, B> = (
 ) => C;
 
 /**
- * Mirror of `RoadieActor` from `@greenroom/roadie-service/client`. Kit doesn't
+ * Mirror of `RoadieActor` from `@si/roadie-service/client`. Kit doesn't
  * import the platform package, so we restate the union here. Apps pass the
  * real type via the generic `C`/`B`.
  */

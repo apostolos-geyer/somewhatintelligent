@@ -10,8 +10,8 @@
 > - **Client-define leak**: the three app configs bake wrangler `vars` into
 >   client bundles at config-eval time; post-flip that meant staging values in
 >   dev bundles. Fixed via a `.dev.vars` overlay gated on
->   `!CLOUDFLARE_ENV && !GREENROOM_BUILD` (deploy:staging now sets
->   `GREENROOM_BUILD=1`), keeping CI-seeded `.dev.vars` out of shipped bundles.
+>   `!CLOUDFLARE_ENV && !SI_BUILD` (deploy:staging now sets
+>   `SI_BUILD=1`), keeping CI-seeded `.dev.vars` out of shipped bundles.
 >   Sprout's seeder gained `BRAND_RESOLUTION=subdomain`.
 > - **Narrowed ENVIRONMENT union**: `wrangler types` without a dev section (and
 >   without `.dev.vars`, which CI's filtered types task never sees) generates
@@ -53,8 +53,8 @@ Spec 05's).
   `platformDeployConfig` (deploy.ts) + `platformConfig` (brand.ts). Globs
   `**/wrangler.template.jsonc`, writes sibling `wrangler.jsonc` with an
   `AUTO-GENERATED` header.
-- Values: `packages/config/src/deploy.ts` — baseDomain `sproutportal.ca`,
-  devDomain `sproutportal.localhost`, workersDevSubdomain `sproutcannabis`,
+- Values: `packages/config/src/deploy.ts` — baseDomain `somewhatintelligent.ca`,
+  devDomain `somewhatintelligent.localhost`, workersDevSubdomain `sproutcannabis`,
   workerPrefix `sprout`, cloudflareAccountId `30ce6004…`, D1 UUIDs for
   guestlist/roadie/marketing/sprout × (local/staging/production), RTK app ids.
   All non-secret. Local D1 ids are `TODO-…` placeholders (wrangler's local D1
@@ -145,13 +145,13 @@ Three traps from the deploy-log audit (full detail in `02a` §3):
 
 Special care — **bouncer**: it carries the zone routes. The staging-wildcard
 shadowing incident (2026-07-01) means: the org wildcard route
-(`*.sproutportal.ca/*`) must exist **only** in `env.production`, never at the
+(`*.somewhatintelligent.ca/*`) must exist **only** in `env.production`, never at the
 (staging) top level, or every `*-staging` custom domain 404s again. Check the
 template's current comments before flattening bouncer, and preserve them.
 
 ### 3.3 What stays in `packages/config`
 
-`@greenroom/config` remains the source for **code** consumers (brand.ts wholly;
+`@si/config` remains the source for **code** consumers (brand.ts wholly;
 deploy.ts values that runtime/build code reads):
 
 - `services/guestlist/src/auth-config.ts`, `services/guestlist/src/index.ts`,

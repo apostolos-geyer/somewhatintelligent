@@ -23,7 +23,7 @@ if [ -z "${CHANGED}" ]; then
 fi
 for w in ${CHANGED}; do
   case "$w" in
-    promoter | roadie | guestlist | identity | marketing | sprout | bouncer) : ;;
+    promoter | roadie | guestlist | identity | bouncer) : ;;
     *) echo "generate-preview-tasks: refusing unknown worker '$w'" >&2; exit 1 ;;
   esac
 done
@@ -34,12 +34,12 @@ keys=()
 for w in ${CHANGED}; do
   keys+=("upload-${w}")
   # Build-step apps mirror the build half of their deploy:staging script:
-  # `GREENROOM_BUILD=1 vp run build` — build is a VP TASK, not a package.json
+  # `SI_BUILD=1 vp run build` — build is a VP TASK, not a package.json
   # script (plain `bun run build`/`npm run build` fail with "Script not
-  # found"; the first live preview run proved it). GREENROOM_BUILD=1 keeps
+  # found"; the first live preview run proved it). SI_BUILD=1 keeps
   # CI-seeded .dev.vars out of the bundle (docs/ops/02).
   case "$w" in
-    identity | sprout | marketing) build="(cd workers/${w} && GREENROOM_BUILD=1 bunx vp run build)" ;;
+    identity) build="(cd workers/${w} && SI_BUILD=1 bunx vp run build)" ;;
     *) build=":" ;;
   esac
   cat >> "${file}" <<TASK
@@ -71,8 +71,10 @@ for w in ${CHANGED}; do
       printf '%s\n' "\${URL}" | tee "\$RWX_LINKS/preview: ${w}"
     else
       # Cloudflare never issues preview URLs for Durable Object workers
-      # (documented limitation — sprout). The version still uploads and is
-      # promotable on merge; the PR comment says so instead of a link.
+      # (documented limitation — no worker in this fork currently uses DOs,
+      # but the branch stays for whenever one does). The version still
+      # uploads and is promotable on merge; the PR comment says so instead
+      # of a link.
       printf 'none — DO worker; version promotable on merge\n' > "\$RWX_VALUES/preview-url"
       echo "${w}: version \${VID} uploaded; no preview URL (Durable Object worker)"
     fi
@@ -94,7 +96,7 @@ done
   printf '    set -euo pipefail\n'
   printf '    body=/tmp/pr-comment.md\n'
   printf '    {\n'
-  printf "      echo '<!-- greenroom-previews -->'\n"
+  printf "      echo '<!-- si-previews -->'\n"
   printf "      echo '### Worker previews (staging bindings)'\n"
   printf "      echo ''\n"
   printf "      echo '| worker | preview | version |'\n"

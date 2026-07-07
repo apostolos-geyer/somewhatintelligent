@@ -7,7 +7,7 @@ import { expect, test } from "@playwright/test";
  */
 test("chromium renders and screenshots (hermetic)", async ({ page }, testInfo) => {
   await page.setContent(`
-    <!doctype html><html><head><title>greenroom e2e smoke</title></head>
+    <!doctype html><html><head><title>somewhatintelligent e2e smoke</title></head>
     <body style="font-family:system-ui;padding:40px">
       <h1 data-testid="headline">Playwright engine is alive</h1>
       <p id="ua"></p>
@@ -15,7 +15,7 @@ test("chromium renders and screenshots (hermetic)", async ({ page }, testInfo) =
     </body></html>`);
 
   await expect(page.getByTestId("headline")).toHaveText("Playwright engine is alive");
-  await expect(page).toHaveTitle("greenroom e2e smoke");
+  await expect(page).toHaveTitle("somewhatintelligent e2e smoke");
 
   const ua = await page.locator("#ua").innerText();
   expect(ua).toContain("Chrome");

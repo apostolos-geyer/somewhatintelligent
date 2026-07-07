@@ -3,8 +3,6 @@
 interface ImportMetaEnv {
   // Injected at build time by vite.config.ts from wrangler.jsonc (per CLOUDFLARE_ENV).
   readonly IDENTITY_URL: string;
-  readonly MARKETING_URL: string;
-  readonly SPROUT_URL: string;
   readonly ENVIRONMENT: "development" | "staging" | "production";
 }
 

@@ -40,7 +40,7 @@
 # same public apex smoke test as the fleet deploy.
 
 on:
-  # The manual re-ship. `worker` is a dropdown of the seven deployable workers;
+  # The manual re-ship. `worker` is a dropdown of the five deployable workers;
   # `tag` is the already-cut component tag to deploy (the run clones its commit).
   dispatch:
     key: reship-worker
@@ -54,8 +54,6 @@ on:
           - roadie
           - guestlist
           - identity
-          - marketing
-          - sprout
           - bouncer
       - key: tag
         name: Release tag
@@ -93,7 +91,7 @@ aliases:
     CLOUDFLARE_ACCOUNT_ID: ${{ vaults.greenroom_deploy.secrets.CLOUDFLARE_ACCOUNT_ID }}
     GH_TOKEN: ${{ vaults.greenroom_deploy.github-apps.rwx-automation-greenroom.token }}
     GH_DEPLOYMENT_ENV: production
-    GH_DEPLOYMENT_URL: https://sproutportal.ca
+    GH_DEPLOYMENT_URL: https://somewhatintelligent.ca
 
   # Skip everything on a bare `rwx run` (empty worker); a real dispatch always
   # supplies `worker` (required: true).
@@ -124,12 +122,6 @@ tasks:
       echo "$HOME/.bun/bin" > "$RWX_ENV/PATH"
       "$HOME/.bun/bin/bun" --version
 
-  # node for the worker tasks that hang under bun (astro build for marketing).
-  - key: node
-    call: nodejs/install 1.1.14
-    with:
-      node-version: 24.16.0
-
   # UNFILTERED install, same shape as deploy.yml's — this lane BUILDS the app
   # workers, and the ci.yml-style outputs filter (node_modules/** only) drops
   # workspace bin links builds need (identity's `platform-og` from packages/og;
@@ -144,7 +136,7 @@ tasks:
   # Re-ship the single worker: D1 migrate (if it has one) BEFORE its code, then
   # deploy, then the apex smoke test. `cache: false` so wrangler always runs.
   - key: deploy-one
-    use: [system-packages, install, node]
+    use: [system-packages, install]
     if: *reship-gate
     cache: false
     timeout: 30m
@@ -155,7 +147,7 @@ tasks:
       # Guard: only ever deploy a known worker (the dropdown enforces this in the
       # UI, but a CLI/API dispatch could pass anything).
       case "${WORKER}" in
-        promoter|roadie|guestlist|identity|marketing|sprout|bouncer) : ;;
+        promoter|roadie|guestlist|identity|bouncer) : ;;
         *) echo "unknown worker '${WORKER}'"; exit 1 ;;
       esac
 
@@ -178,4 +170,4 @@ tasks:
       # end-to-end; a 5xx / no-connection fails and the EXIT trap reports
       # `failure`. (A leaf-only re-ship is smoke-tested via the un-redeployed
       # router — see the script's header for that coverage tradeoff.)
-      bash scripts/smoke-test.sh https://sproutportal.ca
+      bash scripts/smoke-test.sh https://somewhatintelligent.ca

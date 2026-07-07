@@ -1,1 +1,0 @@
-ALTER TABLE `contact_threads` ADD `area_of_store` text;

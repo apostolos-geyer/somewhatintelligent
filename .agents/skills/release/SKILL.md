@@ -49,15 +49,16 @@ One worker per dispatch (`.rwx/release.yml`). Tags are the deployable ledger —
 ## Previews (per-PR versions)
 
 `.rwx/preview.yml` uploads 0%-traffic versions per changed worker with URLs
-`pr-<n>-<worker>.sproutcannabis.workers.dev`; the staging lane promotes those
+`pr-<n>-<worker>.<account>.workers.dev`; the staging lane promotes those
 same versions on merge. The PR trigger is enabled once the unlocked
 `greenroom_preview` vault exists (header of preview.yml documents the exact
 token scope). CLI test: `rwx run .rwx/preview.yml --init pr-number=<open PR#>`.
 
 ## Non-negotiables
 
-- Cloudflare API tokens must be minted FROM the Sprout account
-  (30ce6004…) — a foreign-account token throws D1 7403s.
+- Cloudflare API tokens must be minted FROM this fork's CF account
+  (`packages/config/src/deploy.ts` `cloudflareAccountId`) — a foreign-account
+  token throws D1 7403s.
 - Migrations always run before code, per worker (`scripts/deploy-worker.sh`
   is the shared mechanic all lanes call).
 - Deploy order is canonical with bouncer LAST (error-10143 history —

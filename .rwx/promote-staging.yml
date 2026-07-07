@@ -5,7 +5,7 @@
 # recovery guidance and manual runs).
 #
 # Per push to main: affected workers only (scripts/changed-workers.sh — a
-# packages/* or rpc-worker change still fans out to all 7), each promoted from
+# packages/* or rpc-worker change still fans out to all 5), each promoted from
 # its PR-uploaded version when eligible, full-built otherwise
 # (scripts/promote-staging.sh owns the decision; wrangler.jsonc changes and
 # missing versions always fall back). Until .rwx/preview.yml's PR trigger is
@@ -15,7 +15,7 @@
 # exist.
 #
 # Disaster lever: rwx run .rwx/promote-staging.yml --init deploy=true \
-#   --init force-full=true --init commit-sha=<sha>   (ships ALL 7, no promotion)
+#   --init force-full=true --init commit-sha=<sha>   (ships ALL 5, no promotion)
 
 on:
   cli:
@@ -25,7 +25,7 @@ on:
       deploy: false
       force-full: false
       gh-deployment-env: staging
-      gh-deployment-url: https://sprout-staging.sproutportal.ca
+      gh-deployment-url: https://staging.somewhatintelligent.ca
 
 # Same pool as the old staging lane: deploys to staging never race.
 concurrency-pools:
@@ -99,7 +99,7 @@ tasks:
       : > /tmp/changed-files
       if [ "${{ init.force-full }}" = "true" ] || [ -z "${BASE}" ] || [ "${BASE}" = "0000000000000000000000000000000000000000" ]; then
         echo "force-full / no usable base — treating ALL workers as affected"
-        printf 'promoter roadie guestlist identity marketing sprout bouncer' > "$RWX_VALUES/changed"
+        printf 'promoter roadie guestlist identity bouncer' > "$RWX_VALUES/changed"
         exit 0
       fi
       gh api "repos/apostolos-geyer/greenroom/compare/${BASE}...${{ init.commit-sha }}" \

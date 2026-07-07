@@ -2,8 +2,8 @@ import { treaty } from "@elysiajs/eden";
 import { createAuthClient } from "better-auth/client";
 import type { ClientFetchOption } from "@better-auth/core";
 import { parseSetCookie, splitSetCookieString, type CookieSerializeOptions } from "cookie-es";
-import type { Actor } from "@greenroom/kit/request-context";
-import type { PlatformSession } from "@greenroom/auth";
+import type { Actor } from "@si/kit/request-context";
+import type { PlatformSession } from "@si/auth";
 import type { GuestlistApp } from "../index";
 import { guestlistClientPlugins } from "./plugins";
 
@@ -90,7 +90,7 @@ export interface GuestlistClientOptions {
    * Identifies the calling app/service. Forwarded as `x-caller-app`. Guestlist
    * reads this at its fetch boundary into the request-context ALS so every
    * canonical http line emitted during the request is tagged with which app
-   * initiated the call (`caller_app: "sprout"` etc.).
+   * initiated the call (`caller_app: "identity"` etc.).
    */
   callerApp?: string;
 
@@ -142,7 +142,7 @@ export function createGuestlistClient(options: GuestlistClientOptions) {
   if ("window" in globalThis) {
     throw new Error(
       "createGuestlistClient is server-only. " +
-        "Use createGuestlistAuthClient from @greenroom/guestlist-service/client/react instead.",
+        "Use createGuestlistAuthClient from @si/guestlist-service/client/react instead.",
     );
   }
 

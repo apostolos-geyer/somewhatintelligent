@@ -1,11 +1,10 @@
-# Sprout
+# Platform Template
 
-Sprout is a budtender-engagement platform for Canadian licensed producers and
-retailers — learn green, earn green. Built on an identity-first platform spine —
-ingress bouncer, central auth service, R2-backed storage broker, deferred-work
-runner, sign-in/account UI, and the cross-cutting packages they share. The spine
-is designed to be **forked per client**: rebranding is editing three TypeScript
-files and running one script.
+An identity-first platform spine — ingress bouncer, central auth service,
+R2-backed storage broker, deferred-work runner, sign-in/account UI, and the
+cross-cutting packages they share. The spine is designed to be **forked per
+client**: rebranding is editing three TypeScript files and running one
+script.
 
 ## Layout
 
@@ -65,7 +64,7 @@ platform-template/
   `?returnTo=…`.
 - **Apps trust bouncer's Ed25519-signed attestation envelope** for session
   identity (id, role, name, email, image). The verifier is in
-  `@greenroom/auth`; rejection of missing/invalid envelopes is mandatory in
+  `@si/auth`; rejection of missing/invalid envelopes is mandatory in
   production and falls back to guestlist in development for the dev-direct
   topology (running an app alone without bouncer in front).
 
@@ -76,10 +75,10 @@ The full architecture reference, including diagrams, lives in
 
 Three files own the entire surface:
 
-| File                             | What lives here                                                                                                                                                                    |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/config/src/brand.ts`   | Brand name, short wordmark, support email, cookie prefix, auth `providerId`, passkey RP name, 2FA issuer                                                                           |
-| `packages/config/src/deploy.ts`  | Base domain, dev domain, worker-name prefix, Cloudflare account ID (code-consumed values; per-env D1 IDs, routes, and domains now live directly in each worker's `wrangler.jsonc`) |
+| File                                | What lives here                                                                                                                                                                    |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/config/src/brand.ts`      | Brand name, short wordmark, support email, cookie prefix, auth `providerId`, passkey RP name, 2FA issuer                                                                           |
+| `packages/config/src/deploy.ts`     | Base domain, dev domain, worker-name prefix, Cloudflare account ID (code-consumed values; per-env D1 IDs, routes, and domains now live directly in each worker's `wrangler.jsonc`) |
 | `workers/identity/src/app-brand.ts` | This app's product name (each app declares its own — they're different products)                                                                                                   |
 
 The `wrangler.jsonc` files are checked-in source (top level = staging,
@@ -108,26 +107,24 @@ cd workers/identity && bun run types
 ```sh
 bun install
 bun run dev               # one command: cached prep (env:init + local D1 migrations),
-                          # then guestlist + identity + sprout + roadie
-bun run seed              # demo users/orgs/brands — run once dev is up;
+                          # then guestlist + identity + roadie
+bun run seed              # demo users/orgs — run once dev is up;
                           # logins incl. super@user.com / superuserdo (pre-verified)
 ```
 
 Subsets and single workers work the same way:
 
 ```sh
-bun run dev sprout identity          # any subset of the fleet
+bun run dev guestlist identity       # any subset of the fleet
 cd workers/<name> && bun run dev     # one worker from its own directory
 cd workers/<name> && bun run dev:solo  # one worker, bindings → deployed STAGING fleet
 ```
 
 Local dev URLs (dev-direct — no bouncer locally; `docs/ARCHITECTURE.md` §4.5):
 
-| Surface                    | URL                                            |
-| -------------------------- | ---------------------------------------------- |
-| Brand portal               | `https://<slug>.sprout.sproutportal.localhost` |
-| Hub                        | `https://sprout.sproutportal.localhost`        |
-| Identity (sign-in/account) | `https://identity.sproutportal.localhost`      |
+| Surface                    | URL                                              |
+| -------------------------- | ------------------------------------------------ |
+| Identity (sign-in/account) | `https://identity.somewhatintelligent.localhost` |
 
 ## Email verification in local dev
 
@@ -159,7 +156,7 @@ tree is clean; runtime is verified e2e.
 - SCIM, SAML. Multi-tenancy IS wired (better-auth `organization` plugin,
   org/member/invitation tables, identity admin UI); SCIM would build on its
   hooks as a separate guestlist plugin when an enterprise customer needs it.
-- Anything not consumed by the shipped apps (sprout, marketing, identity).
+- Anything not consumed by the shipped apps (guestlist, identity).
 
 ## Where to read next
 

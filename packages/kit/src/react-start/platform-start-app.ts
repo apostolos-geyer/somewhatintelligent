@@ -32,8 +32,8 @@ import {
   type BouncerEnvelopeVerifier,
   type PlatformEnvironment,
   type PlatformSession,
-} from "@greenroom/auth";
-import { BOUNCER_ATTESTATION_KEYS } from "@greenroom/config";
+} from "@si/auth";
+import { BOUNCER_ATTESTATION_KEYS } from "@si/config";
 import { getRequestContext, updateRequestContext } from "../request-context";
 import { createAuthContext } from "../react/auth";
 import { createReactStartAuthProvider } from "./auth-provider";
@@ -224,7 +224,7 @@ export function createPlatformStartApp<C extends GuestlistClientShape>(
       } catch {
         // A transient RPC failure must NOT be conflated with sign-out: returning
         // null here bounces a valid signed-in user out of SSR-gated loaders
-        // (e.g. sprout's _portal / admin `beforeLoad`, which redirect on
+        // (e.g. identity's admin `beforeLoad`, which redirects on
         // `!context.session`) — a redirect the client's later
         // `authClient.useSession()` reconcile (D4a) can't undo. When the
         // envelope proves the caller is authenticated, retry once before giving

@@ -8,7 +8,7 @@
 # independently (content-based caching keys off the filtered input filesystem):
 #   - typecheck-<pkg>: `cd <pkg> && bun run typecheck` (its own `tsgo --noEmit`).
 #     Splitting per-package is also what FIXES the old OOM hang — `vp run -r
-#     typecheck` fanned ~15 tsgo + marketing's astro/vite onto ONE box and
+#     typecheck` fanned ~15 tsgo processes onto ONE box and
 #     deadlocked; one tsgo per agent doesn't.
 #   - test-<pkg>: `captain run greenroom-<pkg>` (suite in .captain/config.yml).
 #     One `vp test` process per machine sidesteps the workerd dev-registry
@@ -18,7 +18,7 @@
 # `packages/*` lib (or the lockfile) → everything re-runs. Correct, and cached.
 #
 # Deploy logic itself lives in .rwx/deploy.yml (shared with .rwx/release.yml's
-# production lane) — D1 migrations (guestlist, roadie, sprout) ->
+# production lane) — D1 migrations (guestlist, roadie) ->
 # dependency-ordered worker deploy (see deploy.yml's `deploy` task for the
 # exact order and why) -> GitHub Deployment record. This file calls it as an
 # RWX "embedded run" (https://www.rwx.com/docs/rwx/call-embedded-runs) after
@@ -95,7 +95,7 @@ base:
 
 aliases:
   # 4 CPU / 16 GB = GHA ubuntu-latest. Used by the test tasks (workerd pools + big
-  # suites) and the marketing typecheck (astro sync + vite). A plain `tsgo`
+  # suites). A plain `tsgo`
   # typecheck is single-process and runs fine on the default 2 CPU / 8 GB.
   gate-agent: &gate-agent
     cpus: 8
@@ -109,7 +109,7 @@ aliases:
     - node_modules/**
     - packages/**
     # guestlist/promoter/roadie export RPC types consumed across the workspace
-    # (imported as @greenroom/*-service via node_modules symlinks into these
+    # (imported as @si/*-service via node_modules symlinks into these
     # dirs), so they're shared deps like packages/* — a change to one re-verifies
     # its consumers. bouncer is the router, imported by nobody, so it stays
     # isolated and only its own tasks re-run on a bouncer change.
@@ -196,13 +196,13 @@ tasks:
 
   # Node runtime for the tasks that hang under bun: vitest-pool-workers (bouncer/
   # guestlist/roadie) opens a host↔workerd WebSocket whose 'upgrade' event bun
-  # doesn't implement (deadlocks in RWX), and astro sync (marketing) spins vite's
-  # WS optimizer. Those tasks run under node (npx / npm); everything else stays bun.
+  # doesn't implement (deadlocks in RWX). Those tasks run under node (npx / npm);
+  # everything else stays bun.
   - key: node
     call: nodejs/install 1.1.14
     with:
       # 24.x: native TS type-stripping is ON by default, so the workers tests can
-      # import .ts deps (e.g. @greenroom/config → deploy.ts) at startup. node 22.12
+      # import .ts deps (e.g. @si/config → deploy.ts) at startup. node 22.12
       # can't load .ts natively → ERR_UNKNOWN_FILE_EXTENSION (bouncer/guestlist).
       node-version: 24.16.0
 
@@ -284,7 +284,6 @@ tasks:
       - "**/wrangler.jsonc"
       # wrangler types validates the config's `main` entry exists on disk
       # (verified: run 1 failed with `The entry-point file at "src/index.ts"
-      # was not found`). Marketing's main lives in node_modules (covered).
       - workers/*/src/worker.ts
       - workers/*/src/index.ts
     outputs:
@@ -303,17 +302,6 @@ tasks:
     use: types
     filter: [*gate-filter, workers/identity/**, *gate-neg]
     run: cd workers/identity && bun run typecheck
-    timeout: 8m
-  - key: typecheck-marketing
-    use: [types, node] # astro sync spins vite's WS optimizer → run under node, not bun
-    agent: *gate-agent
-    filter: [*gate-filter, workers/marketing/**, *gate-neg]
-    run: cd workers/marketing && npm run typecheck
-    timeout: 8m
-  - key: typecheck-sprout
-    use: types
-    filter: [*gate-filter, workers/sprout/**, *gate-neg]
-    run: cd workers/sprout && bun run typecheck
     timeout: 8m
   - key: typecheck-bouncer
     use: types
@@ -376,16 +364,6 @@ tasks:
   # `mkdir .captain-out` then `captain run <suite>`; the suite (config.yml) writes
   # its vitest json + rwx-v1-json into repo-root .captain-out/, surfaced via
   # `outputs.test-results`.
-  - key: test-sprout
-    use: [bootstrap, captain]
-    agent: *gate-agent
-    filter: [*gate-filter, workers/sprout/**, *gate-neg]
-    timeout: 8m
-    run: |
-      mkdir -p .captain-out
-      captain run greenroom-sprout --print-summary
-    outputs:
-      test-results: [{ path: .captain-out/sprout.rwx.json }]
   - key: test-bouncer
     use: [bootstrap, captain, node]
     agent: *gate-agent
@@ -452,8 +430,6 @@ tasks:
   - key: gate
     after:
       - typecheck-identity
-      - typecheck-marketing
-      - typecheck-sprout
       - typecheck-bouncer
       - typecheck-guestlist
       - typecheck-promoter
@@ -465,7 +441,6 @@ tasks:
       - typecheck-og
       - typecheck-secrets
       - typecheck-ui
-      - test-sprout
       - test-bouncer
       - test-guestlist
       - test-promoter
@@ -493,7 +468,7 @@ tasks:
       base-sha: ${{ init.base-sha }}
       force-full: false
       gh-deployment-env: staging
-      gh-deployment-url: https://sprout-staging.sproutportal.ca
+      gh-deployment-url: https://staging.somewhatintelligent.ca
       deploy: true
 
 # --- One-time staging provisioning for RWX ----------------------------------
@@ -502,8 +477,8 @@ tasks:
 # 2. Create a LOCKED vault `greenroom_deploy`, unlocked only by the `main`
 #    branch (Vaults -> Access Control), and set the Cloudflare credentials in it:
 #      rwx vaults secrets set --vault greenroom_deploy \
-#        CLOUDFLARE_API_TOKEN=<token minted FROM the Sprout CF account> \
-#        CLOUDFLARE_ACCOUNT_ID=<sprout account id>
+#        CLOUDFLARE_API_TOKEN=<token minted FROM this fork's CF account> \
+#        CLOUDFLARE_ACCOUNT_ID=<this fork's account id>
 # 3. Push to main; the gate runs and, when green, deploy-staging (.rwx/deploy.yml,
 #    env=staging) ships every worker. Test the deploy path directly first with:
 #      rwx run .rwx/deploy.yml --init env=staging --init deploy=true \

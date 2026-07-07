@@ -810,7 +810,7 @@ The verifier enforces an additional cross-field invariant:
 
 ## §5.3 App-side accessors
 
-`createPlatformStartApp` (in `@greenroom/kit/react-start`) gains a third
+`createPlatformStartApp` (in `@si/kit/react-start`) gains a third
 accessor:
 
 ```ts
@@ -1278,7 +1278,7 @@ rejected at the theme-editor server fn (validation) and stripped at
 | Sidebar               | `--color-sidebar`, `--color-sidebar-foreground`, `--color-sidebar-primary`, `--color-sidebar-primary-foreground`, `--color-sidebar-accent`, `--color-sidebar-accent-foreground`, `--color-sidebar-border`, `--color-sidebar-ring` |
 | Radius (single value) | `--radius` (shadcn's base radius; the rest derive)                                                                                                                                                                                |
 
-The allowlist is exported from `@greenroom/design` as a constant
+The allowlist is exported from `@si/design` as a constant
 (`SHADCN_TENANT_TOKEN_ALLOWLIST`) so the validator, the editor UI, and
 the `<OrgThemeStyle>` sanitizer share one source of truth.
 
@@ -1296,7 +1296,7 @@ document `<head>`, injected by the app's root layout. The pattern:
 
 ```tsx
 // workers/<app>/src/routes/__root.tsx (target — adds OrgThemeStyle)
-import { OrgThemeStyle } from "@greenroom/ui/components/org-theme-style";
+import { OrgThemeStyle } from "@si/ui/components/org-theme-style";
 
 export const Route = createRootRouteWithContext()({
   beforeLoad: async ({ context }) => {
@@ -1354,7 +1354,7 @@ override from a context provider, fall back to platform default:
 
 ```tsx
 // packages/ui/src/components/ui/logo/logo.tsx (target — context-aware)
-import { useTenantBrand } from "@greenroom/ui/tenant-brand";
+import { useTenantBrand } from "@si/ui/tenant-brand";
 
 export function Logo(props: LogoProps) {
   const tenant = useTenantBrand();
@@ -1524,8 +1524,8 @@ Bouncer's `ROUTES` config has one rule per app, parameterized by the
 // workers/bouncer/wrangler.jsonc (target)
 "vars": {
   "ROUTES": [
-    { "match": "sproutportal.ca/o/:slug/*",          "binding": "IDENTITY", "mode": "passthrough" },
-    { "match": "sproutportal.ca/*",                  "binding": "IDENTITY", "mode": "passthrough", "auth": { "require": "operator" } }
+    { "match": "somewhatintelligent.ca/o/:slug/*",          "binding": "IDENTITY", "mode": "passthrough" },
+    { "match": "somewhatintelligent.ca/*",                  "binding": "IDENTITY", "mode": "passthrough", "auth": { "require": "operator" } }
   ]
 }
 ```
@@ -1592,7 +1592,7 @@ matters once it's live.
 
 Enterprise customers will provision and deprovision their staff from
 Okta/Entra/Azure AD via SCIM 2.0. Our take: a separate plugin in
-`@greenroom/auth`'s plugin list, conditional on a per-org flag.
+`@si/auth`'s plugin list, conditional on a per-org flag.
 
 ## §11.1 Surface
 
@@ -1705,7 +1705,7 @@ self-signup) live in Phase 7 §Deferred.
 
 ## Phase 1 — Plumbing only (no UI)
 
-### O-0 ✅ — Add BA org plugin to `@greenroom/auth`
+### O-0 ✅ — Add BA org plugin to `@si/auth`
 
 Smallest possible PR: add `organization()` to `createPlatformAuth`'s
 plugin array. Just the three default roles, no custom AC yet, no hooks,
@@ -2186,7 +2186,7 @@ test names and code comments can reference them stably.
 | **MT6**  | A user can only set `activeOrganizationId` to an org they are a member of                                                                                           | BA org plugin's built-in check; double-checked by identity's switcher route   |
 | **MT7**  | SCIM bearer tokens are scoped to one org; SCIM operations only see and mutate that org's data                                                                       | guestlist SCIM handler (when shipped)                                         |
 | **MT8**  | Custom domain → org binding (`tenant_domain` table) is operator-only to set, immutable by org admins (prevents takeover)                                            | guestlist `tenant_domain` write path (operator role required)                 |
-| **MT9**  | OG image rendering for org-scoped pages fetches theme via service binding, not via cookies (no per-request auth context available)                                  | `workers/identity/og/_brand.tsx` and analogous OG routes                         |
+| **MT9**  | OG image rendering for org-scoped pages fetches theme via service binding, not via cookies (no per-request auth context available)                                  | `workers/identity/og/_brand.tsx` and analogous OG routes                      |
 | **MT10** | Invite emails are sent through promoter, never directly from guestlist to Resend; `RESEND_API_KEY` stays single-holder                                              | guestlist `sendInvitationEmail` callback                                      |
 | **MT11** | A new org's theme inherits platform defaults until an admin explicitly overrides a token (no automatic theme generation)                                            | `organization.metadata.theme` is sparse; missing keys mean "inherit"          |
 | **MT12** | Org metadata writes pass through BA's `update` API (which fires `beforeUpdateOrganization` hooks), never direct DB writes — so audit hooks fire and validation runs | every server fn that touches `organization.metadata`                          |

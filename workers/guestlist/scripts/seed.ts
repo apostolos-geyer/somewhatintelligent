@@ -6,16 +6,10 @@
 // `bun run seed` fans this out after `bun run dev` is serving.
 import { resolve, dirname } from "node:path";
 import { spawnSync } from "node:child_process";
-import {
-  DEV_SPAWN_ENV,
-  LOCAL_IDENTITY_URL,
-  d1Exec,
-  d1Query,
-} from "../../../scripts/dev-config";
+import { DEV_SPAWN_ENV, LOCAL_IDENTITY_URL, d1Exec, d1Query } from "../../../scripts/dev-config";
 
 const pkgDir = resolve(dirname(import.meta.path), "..");
 const label = "workers/guestlist";
-
 
 // Probe identity's BA-handler proxy (bouncer routing in prod, identity's
 // /api/$.ts proxy in dev) — guestlist has no public surface post-unification,
@@ -36,8 +30,7 @@ if (!probe) {
 
 // ─── Step 1: seed users via BA's sign-up endpoint ───────────────────────
 // super = platform operator (god-mode). alice admins acme, dave admins beta
-// (org members). bob is a budtender — a portal member with no org membership,
-// seeded into sprout's `portal_members` by seed-demo. Idempotent.
+// (org members). bob is a plain user with no org membership. Idempotent.
 console.log(`  [seed] ${label}: users (super + alice + bob + dave)`);
 const seedUsers = [
   { email: "super@user.com", password: "superuserdo", name: "Super", role: "admin" },
@@ -113,8 +106,8 @@ if (!aliceId || !bobId || !daveId) {
 }
 
 // Org memberships are LP STAFF only (alice admins acme, dave admins beta). bob
-// is intentionally absent — he's a budtender (sprout portal_members), not an org
-// member. If an earlier seed made bob an org member, drop it so re-runs converge.
+// is intentionally absent — a plain user with no org membership. If an
+// earlier seed made bob an org member, drop it so re-runs converge.
 d1Exec(pkgDir, `DELETE FROM member WHERE user_id='${bobId}';`);
 
 const memberships = [
@@ -140,5 +133,5 @@ for (const m of memberships) {
 
 console.log(`         super@user.com    / superuserdo   (platform admin)`);
 console.log(`         alice@example.com / alicepwd123   (admin of acme — org)`);
-console.log(`         bob@example.com   / bobpwd1234    (budtender — portal member, not org)`);
+console.log(`         bob@example.com   / bobpwd1234    (plain user, not org)`);
 console.log(`         dave@example.com  / davepwd123    (admin of beta — org)`);

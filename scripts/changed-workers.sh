@@ -22,7 +22,7 @@
 # Self-test: scripts/changed-workers.sh --self-test
 set -euo pipefail
 
-ORDER=(promoter roadie guestlist identity marketing sprout bouncer)
+ORDER=(promoter roadie guestlist identity bouncer)
 
 classify() {
   local all=0
@@ -59,12 +59,12 @@ if [ "${1:-}" = "--self-test" ]; then
       echo "ok   $name"
     fi
   }
-  t worker-only "sprout" workers/sprout/src/router.tsx workers/sprout/src/styles.css
-  t rpc-worker-fans-out "promoter roadie guestlist identity marketing sprout bouncer" workers/guestlist/src/index.ts
-  t shared-package "promoter roadie guestlist identity marketing sprout bouncer" packages/ui/src/button.tsx
+  t worker-only "identity" workers/identity/src/router.tsx workers/identity/src/styles.css
+  t rpc-worker-fans-out "promoter roadie guestlist identity bouncer" workers/guestlist/src/index.ts
+  t shared-package "promoter roadie guestlist identity bouncer" packages/ui/src/button.tsx
   t docs-only "" docs/onboarding.md .rwx/ci.yml README.md
-  t mixed "identity marketing" workers/identity/src/a.ts workers/marketing/src/b.ts docs/x.md
-  t lockfile "promoter roadie guestlist identity marketing sprout bouncer" bun.lock
+  t mixed "identity bouncer" workers/identity/src/a.ts workers/bouncer/src/b.ts docs/x.md
+  t lockfile "promoter roadie guestlist identity bouncer" bun.lock
   exit "$fail"
 fi
 

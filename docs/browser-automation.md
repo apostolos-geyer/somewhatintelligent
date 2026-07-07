@@ -78,8 +78,8 @@ node_modules/.bin/agent-browser --session dev snapshot -i
 One command per call, strictly sequential — the per-session daemon serializes
 commands, and concurrent or backgrounded invocations wedge it ("Resource
 temporarily unavailable (os error 35)"; recover with
-`agent-browser close --all`). The verified authed-portal walk lives in
-`docs/sprout/10-local-stack-and-testing-runbook.md` §3.
+`agent-browser close --all`). The verified authed sign-in walk lives in the
+`/interactive-test` skill (`.agents/skills/interactive-test/SKILL.md`).
 
 **CDP attach (containers / shared browser).** To reuse the **Playwright
 Chromium** provisioned above instead, start it with a debugging port, then

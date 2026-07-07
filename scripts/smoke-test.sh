@@ -9,7 +9,7 @@
 #
 # NOTE (leaf-only releases): this only exercises the public apex router
 # (bouncer). A release that ships ONLY a leaf worker (e.g. promoter or roadie,
-# with bouncer/marketing unchanged) is smoke-tested via the UN-redeployed router,
+# with bouncer unchanged) is smoke-tested via the UN-redeployed router,
 # so this proves the router still answers <500 but gives near-zero signal on the
 # freshly-shipped leaf itself. That is a conscious acceptance per Spec 03 §B.3.2
 # ("simplest: always run the existing apex smoke test; it exercises the router

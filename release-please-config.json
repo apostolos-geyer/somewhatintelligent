@@ -27,14 +27,6 @@
     "workers/identity": {
       "component": "identity",
       "extra-files": [{ "type": "json", "path": "package.json", "jsonpath": "$.version" }]
-    },
-    "workers/marketing": {
-      "component": "marketing",
-      "extra-files": [{ "type": "json", "path": "package.json", "jsonpath": "$.version" }]
-    },
-    "workers/sprout": {
-      "component": "sprout",
-      "extra-files": [{ "type": "json", "path": "package.json", "jsonpath": "$.version" }]
     }
   },
   "changelog-sections": [

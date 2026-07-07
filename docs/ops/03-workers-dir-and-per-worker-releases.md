@@ -22,7 +22,7 @@
 
 Deployable units all become `workers/<name>`: bouncer, guestlist, promoter,
 roadie, identity, marketing, sprout. `packages/*` (shared libs), `e2e/`,
-`scripts/` stay put. Package NAMES (`@greenroom/*`) do not change — only
+`scripts/` stay put. Package NAMES (`@si/*`) do not change — only
 directories; imports via workspace symlinks are unaffected. Use `git mv` per
 directory (one commit for the moves, separate commits for reference sweeps —
 keeps `git log --follow` clean).
@@ -172,7 +172,7 @@ set from tags on the release commit (no Action outputs needed):
    duplicating: parameterize it with a `workers` init list, or extract the
    per-worker deploy into a small shared script both files call. Keep the
    post-deploy smoke test + GitHub Deployment recording — subset deploys should
-   still smoke-test `https://sproutportal.ca` when bouncer/marketing shipped, or
+   still smoke-test `https://somewhatintelligent.ca` when bouncer/marketing shipped, or
    the released workers' own health surface otherwise (simplest: always run the
    existing apex smoke test; it exercises the router path end-to-end).
 

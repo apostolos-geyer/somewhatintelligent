@@ -229,7 +229,7 @@ Two acceptable implementations — pick the first unless it fights you:
    ```
 
    (`node_modules/**` must stay in the filter — the scripts import
-   `@greenroom/config` from it. That's correct: bootstrap should re-run when
+   `@si/config` from it. That's correct: bootstrap should re-run when
    deps change, and node_modules is now stable per F1/F2.)
 
 2. **Cleaner (fine to do instead if Spec 05 hasn't landed but you have 30 extra

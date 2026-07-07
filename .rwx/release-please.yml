@@ -150,7 +150,7 @@ aliases:
     CLOUDFLARE_ACCOUNT_ID: ${{ vaults.greenroom_deploy.secrets.CLOUDFLARE_ACCOUNT_ID }}
     GH_TOKEN: ${{ vaults.greenroom_deploy.github-apps.rwx-automation-greenroom.token }}
     GH_DEPLOYMENT_ENV: production
-    GH_DEPLOYMENT_URL: https://sproutportal.ca
+    GH_DEPLOYMENT_URL: https://somewhatintelligent.ca
 
   # Deploy gate: only clone/install/deploy when this run actually cut releases
   # AND we're on main. Referencing `tasks.released-components.values.any` makes
@@ -401,9 +401,8 @@ tasks:
 
       # Ship ONLY the released subset, but always in canonical dependency order —
       # promoter/roadie (true leaves, no bindings) -> guestlist (binds
-      # promoter+roadie) -> identity (binds guestlist) -> marketing (no bindings)
-      # -> sprout (binds guestlist+roadie+promoter) -> bouncer (router; binds
-      # guestlist+identity+sprout) LAST, so the public router only ever points at
+      # promoter+roadie) -> identity (binds guestlist) -> bouncer (router; binds
+      # guestlist+identity) LAST, so the public router only ever points at
       # already-deployed upstreams. See .rwx/deploy.yml's `deploy` task for the
       # full error-10143 history. The per-worker migrate-before-code + deploy
       # mechanics live in scripts/deploy-worker.sh (the `ship` subcommand:
@@ -411,7 +410,7 @@ tasks:
       # .rwx/release.yml so a fix can't land in one lane and miss the others. A
       # migration failure is fatal there (no `|| true`), flipping this task's EXIT
       # trap to `failure`.
-      ORDER="promoter roadie guestlist identity marketing sprout bouncer"
+      ORDER="promoter roadie guestlist identity bouncer"
       for w in $ORDER; do
         case " ${RELEASED} " in
           *" ${w} "*) : ;;                                   # released — ship it
@@ -424,7 +423,7 @@ tasks:
       # Post-deploy apex smoke test (shared scripts/smoke-test.sh). Always hits
       # the public bouncer router at the production apex end-to-end, regardless of
       # which subset shipped; a 5xx / no-connection fails and the EXIT trap then
-      # reports the deploy as `failure`. NOTE: a leaf-only release (no bouncer /
-      # marketing) is smoke-tested via the un-redeployed router — see the script's
+      # reports the deploy as `failure`. NOTE: a leaf-only release (no bouncer)
+      # is smoke-tested via the un-redeployed router — see the script's
       # header for that conscious coverage tradeoff.
-      bash scripts/smoke-test.sh https://sproutportal.ca
+      bash scripts/smoke-test.sh https://somewhatintelligent.ca

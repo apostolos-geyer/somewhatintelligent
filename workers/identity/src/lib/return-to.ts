@@ -1,10 +1,10 @@
 // The platform apex we control, carried with a leading dot
-// (`.sproutportal.ca`). This is the SAME string guestlist uses as the
+// (`.somewhatintelligent.ca`). This is the SAME string guestlist uses as the
 // cross-subdomain cookie `Domain` (workers/guestlist AUTH_DOMAIN) and that the
 // auth server turns into its `*.{apex}` trustedOrigins
 // (packages/auth/src/server.ts). It is set per environment as the AUTH_DOMAIN
-// var in identity's wrangler.jsonc (`.sproutportal.ca` for staging/production),
-// with `.sproutportal.localhost` supplied by `.dev.vars` in local dev, and
+// var in identity's wrangler.jsonc (`.somewhatintelligent.ca` for staging/production),
+// with `.somewhatintelligent.localhost` supplied by `.dev.vars` in local dev, and
 // exposed to the bundle by the vite `define` allowlist (see vite.config.ts
 // CLIENT_VARS).
 const AUTH_DOMAIN = import.meta.env.AUTH_DOMAIN as string | undefined;
@@ -12,9 +12,9 @@ const AUTH_DOMAIN = import.meta.env.AUTH_DOMAIN as string | undefined;
 /**
  * Is `host` inside the platform's controlled domain — the apex itself or any
  * subdomain of it, at any depth? `authDomain` carries a leading dot
- * (`.sproutportal.ca`), so the apex is `authDomain` without that dot and every
- * subdomain ends with it (`acme.sprout.sproutportal.ca` →
- * `.sproutportal.ca`). We own every host under the apex, so this is the whole
+ * (`.somewhatintelligent.ca`), so the apex is `authDomain` without that dot and every
+ * subdomain ends with it (`acme.somewhatintelligent.ca` →
+ * `.somewhatintelligent.ca`). We own every host under the apex, so this is the whole
  * trust decision — no per-app allowlist to keep in sync.
  */
 export function isPlatformHost(host: string, authDomain: string | undefined): boolean {
@@ -58,15 +58,13 @@ export function resolveReturnTo(
 
 /**
  * Validate a post-auth redirect target. This is the open-redirect guard: peer
- * apps (the Sprout portal, the marketing site) hand identity a raw
- * absolute URL via `?returnTo=`, and we round-trip to that exact URL only when
- * it lives under our own apex.
+ * apps hand identity a raw absolute URL via `?returnTo=`, and we round-trip
+ * to that exact URL only when it lives under our own apex.
  *
  * The trust rule is "any host we control" — the apex plus every subdomain, in
- * every environment (`.sproutportal.localhost` locally, `.sproutportal.ca` in
+ * every environment (`.somewhatintelligent.localhost` locally, `.somewhatintelligent.ca` in
  * staging/prod). Because we own the whole zone, a new app on a new subdomain
- * (the Sprout portal's per-brand `*.sprout.<apex>` hosts included) is trusted by
- * construction, with nothing to add here. It deliberately mirrors better-auth's
+ * is trusted by construction, with nothing to add here. It deliberately mirrors better-auth's
  * `*.{apex}` trustedOrigins so this client-side guard and the server-side
  * callbackURL check (magic-link / social / email-verify) agree.
  */

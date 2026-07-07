@@ -45,7 +45,7 @@ released-components → reads back which workers have a <worker>-v* tag pointing
         ▼
 deploy-production → clones the release commit, ships ONLY the released subset
                     in canonical order (migrate-before-code per worker), then
-                    the apex smoke test against https://sproutportal.ca
+                    the apex smoke test against https://somewhatintelligent.ca
 ```
 
 All four phases run in the **same** RWX run, so a Release-PR merge that touches
@@ -61,7 +61,7 @@ deploy work.
 2. When ready to cut a version, **merge the Release PR**. Watch
    `.rwx/release-please.yml` in the RWX UI: it cuts the per-worker tags, then
    `deploy-production` ships the released subset and posts a GitHub Deployment
-   under the repo's **production** environment (`https://sproutportal.ca`),
+   under the repo's **production** environment (`https://somewhatintelligent.ca`),
    finishing with the smoke test. That's it — no second command.
 
 Merging the Release PR is the approval. This is a single-maintainer repo where
@@ -142,33 +142,30 @@ to sign-in is healthy), retrying 5×; a 5xx or no-connection fails the run.
 
 ## 4. Infra prerequisites checklist
 
-Run every `wrangler` / provisioning command against the **Sprout account**
-(`30ce6004cd9c2907f0b06fe401c4f4ba`, `Sproutcannabis@gmail.com`). Production and
+Run every `wrangler` / provisioning command against **this fork's Cloudflare
+account** (`c735c5a53d864bee37400befb7f4c7f4`). Production and
 staging share one account — environments are `--env production` suffixes, not a
 second account. The wrangler `production` env blocks are already templated for
 every service/app; the items below are hard blockers — `wrangler deploy --env
 production` fails fast without them.
 
-**The deploy token (in the `greenroom_deploy` vault) must be minted _from_ the
-Sprout account.** A token minted from any other account authenticates for
+**The deploy token (in the `greenroom_deploy` vault) must be minted _from_
+this account.** A token minted from any other account authenticates for
 Workers but **D1 returns `7403`** (mismatched account) — migrations fail even
 though the deploy looks authorized. It needs **Workers Scripts → Edit** + **D1 →
-Edit**, account-scoped to Sprout.
+Edit**, account-scoped to this fork's account.
 
 Per-environment resources that must exist on the account:
 
-| Resource | For | Provision |
-| --- | --- | --- |
-| `roadie-production-db`, `sprout-production-db`, `guestlist-*`, `marketing-*` D1 dbs | migrations | `wrangler d1 create <name>` → paste UUID into that worker's `wrangler.jsonc` `env.production` → `bun run types` |
-| `sprout-rag-production` Vectorize index (+ `brand_id` string metadata index) | sprout RAG | `wrangler vectorize create sprout-rag-production --dimensions=768 --metric=cosine` then `create-metadata-index … --property-name=brand_id --type=string` |
-| `sprout-sprout-jobs` queue | sprout jobs | `wrangler queues create sprout-sprout-jobs` |
-| RealtimeKit production app | sprout in-platform calls | app id is the `RTK_APP_ID` var in sprout's `env.production`; re-provision only if deleted: `bun scripts/provision-realtimekit.ts --env production --app-name sprout-production` |
+| Resource                                                 | For        | Provision                                                                                                       |
+| -------------------------------------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------- |
+| `roadie-production-db`, `guestlist-production-db` D1 dbs | migrations | `wrangler d1 create <name>` → paste UUID into that worker's `wrangler.jsonc` `env.production` → `bun run types` |
 
 **Production secrets** land on **deployed** workers, so provision them **after**
 the first `deploy-production`:
 
 ```sh
-CLOUDFLARE_ACCOUNT_ID=30ce6004cd9c2907f0b06fe401c4f4ba bun run secrets production
+CLOUDFLARE_ACCOUNT_ID=c735c5a53d864bee37400befb7f4c7f4 bun run secrets production
 ```
 
 - `BETTER_AUTH_SECRET` (guestlist) and `BNC_ATT_PRIV` (bouncer) are **generated**

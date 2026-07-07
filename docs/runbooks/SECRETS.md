@@ -1,4 +1,4 @@
-# Runbook — Secrets provisioning (`@greenroom/secrets`)
+# Runbook — Secrets provisioning (`@si/secrets`)
 
 Codified, idempotent provisioning of every worker secret across `local`,
 `staging`, and `production`. One manifest declares **what** each worker needs;
@@ -31,7 +31,7 @@ Resolution rules (already encoded):
   generated; email uses the Cloudflare Email binding (no Resend key).
 
 Targets: local → `<service>/.dev.vars`; remote → the deployed worker
-`sprout-<service>-<env>` via `wrangler secret put --name`.
+`si-<service>-<env>` via `wrangler secret put --name`.
 
 ## Day-to-day
 
