@@ -34,6 +34,12 @@ platform-template/
     └── dev-solo.ts          # one worker local, staging fleet via remote bindings
 ```
 
+Not part of the bun workspace above: `marketing-videos/` (Remotion) and
+`inbox/` (a vendored, standalone Agentic Inbox instance — its own
+package.json/lockfile/wrangler.jsonc, deployed separately as Worker
+`agentic-inbox-si`) are self-contained sibling projects with their own
+tooling; root scripts don't reach into them.
+
 ## Architecture
 
 ```
@@ -76,10 +82,10 @@ The full architecture reference, including diagrams, lives in
 
 Three files own the entire surface:
 
-| File                             | What lives here                                                                                                                                                                    |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/config/src/brand.ts`   | Brand name, short wordmark, support email, cookie prefix, auth `providerId`, passkey RP name, 2FA issuer                                                                           |
-| `packages/config/src/deploy.ts`  | Base domain, dev domain, worker-name prefix, Cloudflare account ID (code-consumed values; per-env D1 IDs, routes, and domains now live directly in each worker's `wrangler.jsonc`) |
+| File                                | What lives here                                                                                                                                                                    |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/config/src/brand.ts`      | Brand name, short wordmark, support email, cookie prefix, auth `providerId`, passkey RP name, 2FA issuer                                                                           |
+| `packages/config/src/deploy.ts`     | Base domain, dev domain, worker-name prefix, Cloudflare account ID (code-consumed values; per-env D1 IDs, routes, and domains now live directly in each worker's `wrangler.jsonc`) |
 | `workers/identity/src/app-brand.ts` | This app's product name (each app declares its own — they're different products)                                                                                                   |
 
 The `wrangler.jsonc` files are checked-in source (top level = staging,
