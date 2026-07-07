@@ -4,7 +4,7 @@
 // and the generated worker-configuration.d.ts references `Promoter` by type,
 // which compiles this file. When that happens the ambient `Env` global in the
 // consumer's scope is not promoter's — so this file pins promoter's needs.
-import type { CfEmailBinding } from "@greenroom/email";
+import type { CfEmailBinding } from "@si/email";
 
 export interface PromoterEnv {
   ENVIRONMENT: string;

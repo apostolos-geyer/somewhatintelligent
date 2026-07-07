@@ -1,7 +1,9 @@
-// The real Sprout lockup (seedling + wordmark) — same brand mark as the
-// marketing site banner. Identity's auth surfaces are light, so use the green
-// colourway (Vite resolves the PNG import to a URL string via vite/client).
-import lockup from "@greenroom/design/assets/logos/sprout-lockup-green.png";
+// The platform lockup (mark + wordmark), driven entirely by
+// `platformConfig.brand` — forks get their own wordmark with no change here.
+// Mirrors the satori-safe `<OgBrand>` (workers/identity/og/_brand.tsx) so the
+// in-app and OG-image renders share one mark.
+import { LogoIcon } from "@si/ui/components/logo";
+import { platformConfig } from "@si/config";
 
 // Per-app product name. Each app in the workspace declares its own —
 // see `workers/identity/src/app-brand.ts` (this is the identity app's value).
@@ -12,7 +14,10 @@ export function GuestlistBrand({ className, size = 64 }: { className?: string; s
   return (
     <div className={className}>
       <div className="flex flex-col items-center" style={{ viewTransitionName: "guestlist-brand" }}>
-        <img src={lockup} alt="Sprout" style={{ height: size, width: "auto" }} />
+        <LogoIcon colorScheme="light" size={size} />
+        <span className="mt-1 font-medium" style={{ fontSize: size * 0.28 }}>
+          {platformConfig.brand.name}
+        </span>
         <span
           className="mt-1 font-mono uppercase tracking-[0.25em] text-text-tertiary"
           style={{ fontSize: `${subtitleSize}px` }}

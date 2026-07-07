@@ -1,8 +1,8 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 
-import { cn } from "@greenroom/ui/lib/utils";
-import { surfaceMaterials } from "@greenroom/ui/lib/materials";
+import { cn } from "@si/ui/lib/utils";
+import { surfaceMaterials } from "@si/ui/lib/materials";
 
 const cardVariants = cva(
   "group/card flex flex-col gap-4 overflow-hidden rounded-md py-4 text-sm text-card-foreground has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:gap-3 data-[size=sm]:py-3 data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-md *:[img:last-child]:rounded-b-md",

@@ -1,16 +1,10 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { type } from "arktype";
-import { useAppForm } from "@greenroom/ui/hooks/use-app-form";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@greenroom/ui/components/card";
-import { Button, buttonVariants } from "@greenroom/ui/components/button";
-import { cn } from "@greenroom/ui/lib/utils";
+import { useAppForm } from "@si/ui/hooks/use-app-form";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@si/ui/components/card";
+import { Button, buttonVariants } from "@si/ui/components/button";
+import { cn } from "@si/ui/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,12 +15,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@greenroom/ui/components/alert-dialog";
-import { Input } from "@greenroom/ui/components/input";
-import { Label } from "@greenroom/ui/components/label";
-import { Field, FieldDescription } from "@greenroom/ui/components/field";
-import { Alert } from "@greenroom/ui/components/alert";
-import { Badge } from "@greenroom/ui/components/badge";
+} from "@si/ui/components/alert-dialog";
+import { Input } from "@si/ui/components/input";
+import { Label } from "@si/ui/components/label";
+import { Field, FieldDescription } from "@si/ui/components/field";
+import { Alert } from "@si/ui/components/alert";
+import { Badge } from "@si/ui/components/badge";
 import { isManaged } from "@/lib/clients";
 import { deleteClient, getClient, rotateSecret, updateClient } from "@/lib/admin-clients.functions";
 

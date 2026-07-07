@@ -7,7 +7,7 @@
 // primitive stays router-agnostic.
 import * as React from "react";
 
-import { cn } from "@greenroom/ui/lib/utils";
+import { cn } from "@si/ui/lib/utils";
 import { Badge } from "./badge";
 import { Card } from "./card";
 

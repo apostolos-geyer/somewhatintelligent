@@ -3,7 +3,7 @@
 import { Suspense, lazy, useCallback, useState } from "react";
 import { ArrowDownToLineIcon, ChevronUpIcon, EyeIcon, Loader2Icon, XIcon } from "lucide-react";
 
-import { cn } from "@greenroom/ui/lib/utils";
+import { cn } from "@si/ui/lib/utils";
 import { ItemContent, ItemDescription, ItemTitle } from "./item";
 import type { MediaPreviewFeatures } from "./file-preview/media-preview";
 import { MediaPreview } from "./file-preview/media-preview";

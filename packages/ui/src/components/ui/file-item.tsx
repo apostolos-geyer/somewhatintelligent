@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@greenroom/ui/lib/utils";
+import { cn } from "@si/ui/lib/utils";
 import { Item, ItemActions } from "./item";
 import { inferMimeFromName, isAudio, isDocument, isImage, isVideo } from "./file-icon";
 import type { MediaPreviewFeatures } from "./file-preview/media-preview";

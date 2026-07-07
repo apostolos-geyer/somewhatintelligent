@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useRouter } from "@tanstack/react-router";
 import { Building2Icon, CheckIcon, ChevronsUpDownIcon, MailIcon } from "lucide-react";
-import { Button } from "@greenroom/ui/components/button";
+import { Button } from "@si/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,8 +10,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@greenroom/ui/components/dropdown-menu";
-import { toast } from "@greenroom/ui/components/sonner";
+} from "@si/ui/components/dropdown-menu";
+import { toast } from "@si/ui/components/sonner";
 import { authClient } from "@/lib/auth-client";
 
 type Membership = {
@@ -34,7 +34,7 @@ export function OrgSwitcher({ isAdmin }: { isAdmin: boolean }) {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       const [orgsRes, activeRes, invitesRes] = await Promise.all([
         authClient.organization.list(),
         authClient.organization.getFullOrganization().catch(() => ({ data: null, error: null })),

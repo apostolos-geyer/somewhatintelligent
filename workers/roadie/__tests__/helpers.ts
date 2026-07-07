@@ -2,7 +2,7 @@
 /// <reference types="vite-plus/test/globals" />
 import { createExecutionContext, env, waitOnExecutionContext } from "cloudflare:test";
 import { eq } from "drizzle-orm";
-import { withCanonicalLog } from "@greenroom/kit/log";
+import { withCanonicalLog } from "@si/kit/log";
 import { createDb } from "../src/db";
 import type { RoadieInstance } from "../src/log";
 import type { RoadieEnv } from "../src/roadie-env";

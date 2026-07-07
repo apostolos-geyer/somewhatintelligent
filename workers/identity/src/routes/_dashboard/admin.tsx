@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { authClient } from "@/lib/auth-client";
-import { isAdminRole } from "@greenroom/kit/roles";
+import { isAdminRole } from "@si/kit/roles";
 
 export const Route = createFileRoute("/_dashboard/admin")({
   // Full-load / SSR gate. On the client `context.session` is the root

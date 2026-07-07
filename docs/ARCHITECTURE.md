@@ -14,7 +14,7 @@ The platform is a Cloudflare Workers monorepo. Public traffic enters through a s
 
 The template is opinionated about **TanStack Start** apps but the underlying primitives are framework-agnostic. You can drop in a Hono Worker, a plain `fetch` handler, or an Astro-on-Workers app and consume the same shared primitives (envelope verifier, guestlist client, request context, canonical log). The Start-specific helpers (`createPlatformStartApp`, the kit's `createDevEnvelopeStamper`) layer on top — but the worker `fetch` entry stays hand-written per app to keep the `@cloudflare/vite-plugin` HMR contract intact (see §3.3).
 
-Dev/prod parity is explicit. Apps run alone in development (no bouncer in front, just service bindings to guestlist) and the same code paths route to guestlist. The same apps in production require a valid bouncer attestation envelope or return 403. The behavioral split is two `ENVIRONMENT` checks, both encoded inside `@greenroom/auth`'s verifier — never scattered across app code.
+Dev/prod parity is explicit. Apps run alone in development (no bouncer in front, just service bindings to guestlist) and the same code paths route to guestlist. The same apps in production require a valid bouncer attestation envelope or return 403. The behavioral split is two `ENVIRONMENT` checks, both encoded inside `@si/auth`'s verifier — never scattered across app code.
 
 ---
 
@@ -283,7 +283,7 @@ flowchart LR
     session_fn[loadSession<br/>src/lib/session.functions.ts]:::cmp
   end
 
-  subgraph kit["@greenroom/* primitives"]
+  subgraph kit["@si/* primitives"]
     direction TB
     kit_env[envelope verifier]:::extcmp
     kit_bnc[guestlist client]:::extcmp
@@ -345,7 +345,7 @@ flowchart LR
   Browser -->|"PUT bytes directly to R2"| R2[(R2)]
 ```
 
-**Trust model.** Roadie is reached only over service bindings from app workers inside the platform — no public Custom Domain, no inbound traffic from outside the trust boundary. Identity travels in the RPC `meta` parameter the calling app provides (validated for shape but not for cryptographic origin), so roadie trusts the caller absolutely. The protection that matters is keeping roadie unreachable from outside the platform — the wrangler-config lint forbids `workers_dev: true` and any `routes`/`custom_domain` entries on leaf services. A future hardening would have roadie run the bouncer envelope verifier on the inbound request the same way an app does (the envelope flows through bouncer → app → roadie unchanged); the primitive exists in `@greenroom/auth` already. Same goes for issuing a signed-meta token alongside the R2 URL so the browser PUT can't be forged from a leaked URL without the matching token. Not implemented today.
+**Trust model.** Roadie is reached only over service bindings from app workers inside the platform — no public Custom Domain, no inbound traffic from outside the trust boundary. Identity travels in the RPC `meta` parameter the calling app provides (validated for shape but not for cryptographic origin), so roadie trusts the caller absolutely. The protection that matters is keeping roadie unreachable from outside the platform — the wrangler-config lint forbids `workers_dev: true` and any `routes`/`custom_domain` entries on leaf services. A future hardening would have roadie run the bouncer envelope verifier on the inbound request the same way an app does (the envelope flows through bouncer → app → roadie unchanged); the primitive exists in `@si/auth` already. Same goes for issuing a signed-meta token alongside the R2 URL so the browser PUT can't be forged from a leaked URL without the matching token. Not implemented today.
 
 ## §3.5 promoter
 
@@ -366,7 +366,7 @@ The substance. This section documents the cross-cutting patterns every app and s
 The platform speaks one well-typed internal header family. **Only bouncer translates `cf-*` to `x-platform-*`.** Apps and services never read `cf-*` directly.
 
 ```ts
-// @greenroom/auth/platform-headers (target — moved out of guestlist client)
+// @si/auth/platform-headers (target — moved out of guestlist client)
 export const PLATFORM_HEADERS = {
   rid: "x-platform-rid", // canonical request id
   att: "x-platform-att", // bouncer attestation envelope (JWS)
@@ -501,10 +501,10 @@ function stampUpstreamHeaders(
 
 ### §4.1.4 Verification on the app side
 
-Apps verify envelopes through a single shared primitive in `@greenroom/auth`.
+Apps verify envelopes through a single shared primitive in `@si/auth`.
 
 ```ts
-// @greenroom/auth/createBouncerEnvelopeVerifier (framework-agnostic)
+// @si/auth/createBouncerEnvelopeVerifier (framework-agnostic)
 export function createBouncerEnvelopeVerifier(opts: {
   keys: Record<string, string>; // kid → base64-PEM Ed25519 pubkey
   env: "development" | "staging" | "production";
@@ -575,7 +575,7 @@ All three run the envelope verifier as a precondition, so production's "every re
 
 - `envelopeMiddleware` — TSS middleware that runs the verifier once and exposes `ctx.principal` (`{ kind: "user", actor, session, activeOrgId }` or `{ kind: "anonymous" }`). Used by `createPrincipalGate(...)` to build per-app `requireUserMiddleware` / `requireAdminMiddleware`.
 - `apiProxyHandlers` — handlers object for `/api/$.ts` that proxies `/api/auth/*` and `/api/avatar/*` to guestlist over the service binding, seeding the platform header contract.
-- `makeAuthProvider` — session-driven `AuthProvider` factory for client-side auth state; not used by `identity` today (which uses `envelopeMiddleware` and `createReactStartAuthProvider` directly). `sessionMiddleware`/`createSessionMiddleware`, the legacy session-middleware path this used to pair with, have been removed from `@greenroom/kit` entirely — they had zero real consumers.
+- `makeAuthProvider` — session-driven `AuthProvider` factory for client-side auth state; not used by `identity` today (which uses `envelopeMiddleware` and `createReactStartAuthProvider` directly). `sessionMiddleware`/`createSessionMiddleware`, the legacy session-middleware path this used to pair with, have been removed from `@si/kit` entirely — they had zero real consumers.
 - `devEnvelopeStamper` — per-app opt-in for dev-direct topology; see §4.5.
 
 **Type relationship.** `PlatformSession` is a strict superset of `EnvelopeData`'s relevant fields — same `user.id`, same `user.email`, etc. Anywhere envelope data is enough, the full session also works; anywhere the full session is required, the envelope can't substitute (it doesn't carry the BA-plugin extras). Apps don't have to choose one model — they pick per call site:
@@ -588,7 +588,7 @@ All three run the envelope verifier as a precondition, so production's "every re
 
 **Cookies still flow through.** Bouncer's strip-and-stamp doesn't touch the `Cookie` header. Apps' guestlist client (`getCookies()` from `@tanstack/react-start/server` → service-binding RPC) authenticates against the same session the browser sent. The envelope is the signed bouncer-origin assertion; the cookie remains the actual auth credential.
 
-**`createSessionReader` is no longer the path.** The legacy fast-path that distributed `BETTER_AUTH_SECRET` to every app for local cookie verification is superseded by the envelope. It had zero in-repo callers and has been removed from `@greenroom/auth` entirely. No app needs `BETTER_AUTH_SECRET` — that secret lives in guestlist alone (§3.2 invariant #1).
+**`createSessionReader` is no longer the path.** The legacy fast-path that distributed `BETTER_AUTH_SECRET` to every app for local cookie verification is superseded by the envelope. It had zero in-repo callers and has been removed from `@si/auth` entirely. No app needs `BETTER_AUTH_SECRET` — that secret lives in guestlist alone (§3.2 invariant #1).
 
 ## §4.3 Cross-worker communication
 
@@ -706,7 +706,7 @@ The verifier is the entire dev/prod story. Apps don't have `if (ENVIRONMENT === 
 
 - **Identity** does _not_ opt in — every identity request goes through TSS server fns or middleware, which fall back to cookie auth through guestlist; no consumer reads `ctx.request.headers["x-platform-att"]` directly.
 
-When an app opts in, the kit's `createDevEnvelopeStamper` runs at the worker `fetch` boundary, _before_ TSS captures the H3 event. It reads the inbound `Cookie` header (via `@greenroom/auth`'s `parseRequestCookies`), calls guestlist to resolve the session, signs an Ed25519 envelope with `LOCAL_BNC_ATT_PRIV` + `kid: "dev"`, and stamps the platform header contract onto a forwarded `Request`. **Hard no-op outside `ENVIRONMENT === "development"`** — the stamper short-circuits before doing any work and never touches the request. Production bouncer remains the sole minter; the well-known dev `kid` lives in `BOUNCER_ATTESTATION_KEYS` alongside real prod keys, so the verifier accepts dev-stamped envelopes locally but the kid would mean nothing in prod (no holder of the matching private key).
+When an app opts in, the kit's `createDevEnvelopeStamper` runs at the worker `fetch` boundary, _before_ TSS captures the H3 event. It reads the inbound `Cookie` header (via `@si/auth`'s `parseRequestCookies`), calls guestlist to resolve the session, signs an Ed25519 envelope with `LOCAL_BNC_ATT_PRIV` + `kid: "dev"`, and stamps the platform header contract onto a forwarded `Request`. **Hard no-op outside `ENVIRONMENT === "development"`** — the stamper short-circuits before doing any work and never touches the request. Production bouncer remains the sole minter; the well-known dev `kid` lives in `BOUNCER_ATTESTATION_KEYS` alongside real prod keys, so the verifier accepts dev-stamped envelopes locally but the kid would mean nothing in prod (no holder of the matching private key).
 
 **Why this is safe in production.**
 
@@ -804,7 +804,7 @@ flowchart LR
 
    ```ts
    import startEntry from "@tanstack/react-start/server-entry";
-   import { extractPlatformStartContext } from "@greenroom/kit/react-start";
+   import { extractPlatformStartContext } from "@si/kit/react-start";
 
    declare module "@tanstack/react-start" {
      interface Register {
@@ -823,7 +823,7 @@ flowchart LR
 5. `workers/<new>/src/lib/auth-context.ts` + `lib/guestlist.ts` — thin wrappers around `createReactStartAuthProvider` and `createGuestlistFactory` respectively. ~10 lines each; copy from identity.
 6. `workers/<new>/src/app-brand.ts` — set `APP_PRODUCT_NAME`.
 7. `workers/<new>/wrangler.jsonc` — name, service bindings to `GUESTLIST` (+ `ROADIE`, `PROMOTER` if used). Apps must have `workers_dev: false` and no `routes`/`custom_domain` — bouncer owns the public hostname.
-8. `workers/bouncer/wrangler.jsonc` — add a `services` binding entry for the new app and a `ROUTES` entry mapping `<new>.sproutportal.ca` to the new binding.
+8. `workers/bouncer/wrangler.jsonc` — add a `services` binding entry for the new app and a `ROUTES` entry mapping `<new>.somewhatintelligent.ca` to the new binding.
 
 Apps that need an envelope on the inbound `Request` itself in dev (see §4.5) additionally pass `devEnvelopeSigner` + `devEnvelopeGuestlist` to `createPlatformStartApp` and call the returned `devEnvelopeStamper` from their worker `fetch` before TSS runs.
 
@@ -834,11 +834,11 @@ Total: ~50 code lines + ~80 lines of load-bearing comment across 8 files, of whi
 A non-Start app composes the same framework-agnostic primitives directly. The canonical entry looks like:
 
 ```ts
-import { createBouncerEnvelopeVerifier, PLATFORM_HEADERS } from "@greenroom/auth";
-import { createGuestlistClient } from "@greenroom/guestlist-service/client";
-import { withRequestContext, extractPlatformRequestId } from "@greenroom/kit/request-context";
-import { withRequestLog } from "@greenroom/kit/log";
-import { BOUNCER_ATTESTATION_KEYS } from "@greenroom/config";
+import { createBouncerEnvelopeVerifier, PLATFORM_HEADERS } from "@si/auth";
+import { createGuestlistClient } from "@si/guestlist-service/client";
+import { withRequestContext, extractPlatformRequestId } from "@si/kit/request-context";
+import { withRequestLog } from "@si/kit/log";
+import { BOUNCER_ATTESTATION_KEYS } from "@si/config";
 
 const verifyEnvelope = createBouncerEnvelopeVerifier({
   keys: BOUNCER_ATTESTATION_KEYS,
@@ -880,14 +880,14 @@ Everything else (config, secrets, bouncer wiring) is the same as the TSS path. T
 
 A small set of files owns the platform's branding and deploy surface.
 
-| File                                         | What lives here                                                                                                             | When you edit it                                          |
-| -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| `packages/config/src/brand.ts`               | `brand.{name, short, supportEmail}`; `cookies.prefix`; `auth.{providerId, passkeyRpName, twoFactorIssuer}`                  | Once per fork. Sets the visible identity of the platform. |
-| `packages/config/src/deploy.ts`              | `baseDomain`, `devDomain`, `workerPrefix`, `cloudflareAccountId` — code-consumed values only. Per-env D1 ids, routes, and domains live in each worker's `wrangler.jsonc` (§6.2). | Once per fork.                    |
-| `packages/config/src/bouncer-attestation.ts` | `BOUNCER_ATTESTATION_KEYS` — `kid → public-key` map                                                                         | On Ed25519 key rotation (see §6.4).                       |
-| `workers/<app>/src/app-brand.ts`             | `APP_PRODUCT_NAME` per app (each app is its own product)                                                                    | Once per app.                                             |
+| File                                         | What lives here                                                                                                                                                                  | When you edit it                                          |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `packages/config/src/brand.ts`               | `brand.{name, short, supportEmail}`; `cookies.prefix`; `auth.{providerId, passkeyRpName, twoFactorIssuer}`                                                                       | Once per fork. Sets the visible identity of the platform. |
+| `packages/config/src/deploy.ts`              | `baseDomain`, `devDomain`, `workerPrefix`, `cloudflareAccountId` — code-consumed values only. Per-env D1 ids, routes, and domains live in each worker's `wrangler.jsonc` (§6.2). | Once per fork.                                            |
+| `packages/config/src/bouncer-attestation.ts` | `BOUNCER_ATTESTATION_KEYS` — `kid → public-key` map                                                                                                                              | On Ed25519 key rotation (see §6.4).                       |
+| `workers/<app>/src/app-brand.ts`             | `APP_PRODUCT_NAME` per app (each app is its own product)                                                                                                                         | Once per app.                                             |
 
-These files cover every brandable / deployable constant in the platform. **Anything that needs branding reads from `@greenroom/config`** (or from the app's local `app-brand.ts`). No platform-name literal lives outside these files.
+These files cover every brandable / deployable constant in the platform. **Anything that needs branding reads from `@si/config`** (or from the app's local `app-brand.ts`). No platform-name literal lives outside these files.
 
 ## §6.2 Wrangler configs
 
@@ -945,7 +945,7 @@ When the platform is running, one of these topologies is in effect.
 | Topology                                   | Where                                                                     | What's in front of apps | Envelope present                            | Identity resolution                                                                                                                                          |
 | ------------------------------------------ | ------------------------------------------------------------------------- | ----------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Production**                             | `<host>.<baseDomain>` via CF Custom Domain                                | bouncer                 | always                                      | `getEnvelope()` = signed payload, no I/O. `getSession()` = guestlist service-binding RPC (cookies passed through bouncer). Verifier enforces.                |
-| **Staging**                                | `<host>-staging.<baseDomain>` via CF Custom Domain (`workers_dev: false`)  | bouncer                 | always                                      | same as prod (or dev fallback, see §4.1.4)                                                                                                                   |
+| **Staging**                                | `<host>-staging.<baseDomain>` via CF Custom Domain (`workers_dev: false`) | bouncer                 | always                                      | same as prod (or dev fallback, see §4.1.4)                                                                                                                   |
 | **Dev (full)**                             | `<host>.<devDomain>` via portless                                         | bouncer (run locally)   | always                                      | same as prod                                                                                                                                                 |
 | **Dev-direct, no stamper** (e.g. identity) | `<host>.<devDomain>` via portless, or `127.0.0.1:<port>` via wrangler dev | nothing                 | never                                       | `getEnvelope()` returns `null` (verifier kind `missing` in dev). `getSession()` still hits guestlist over service binding via inbound cookies.               |
 | **Dev-direct, with stamper**               | `<host>.<devDomain>` via portless                                         | nothing                 | always (app self-mints at `fetch` boundary) | `createDevEnvelopeStamper` reads cookie → guestlist → signs with `LOCAL_BNC_ATT_PRIV`. Verifier accepts the dev-kid envelope just like prod; same code path. |
@@ -959,7 +959,7 @@ The `getEnvelope()` fast path costs nothing — JWS verify is sub-millisecond. T
 - **`EnvelopeData`** — the verified envelope's `{ actor, session }` pair, returned by `platform.getEnvelope()`. Narrow, signed, no I/O.
 - **`PlatformSession`** — Better Auth's full plugin-inferred session, returned by `platform.getSession()` after a guestlist service-binding hop. Strict superset of `EnvelopeData`'s relevant fields.
 - **Bouncer** — the single public-ingress Worker. Translates `cf-*` → `x-platform-*`. Mints envelopes.
-- **Dev envelope stamper** — `createDevEnvelopeStamper` in `@greenroom/kit/react-start`. Per-app opt-in factory that self-mints an envelope at the worker `fetch` boundary in dev-direct topology (hard no-op outside `ENVIRONMENT=development`). Identity doesn't need it.
+- **Dev envelope stamper** — `createDevEnvelopeStamper` in `@si/kit/react-start`. Per-app opt-in factory that self-mints an envelope at the worker `fetch` boundary in dev-direct topology (hard no-op outside `ENVIRONMENT=development`). Identity doesn't need it.
 - **Identity** (the app) — the reference TanStack Start app. Owns sign-in, sign-up, account, admin sessions surface.
 - **Kid** — key id. A short string in the JWS header identifying which Ed25519 key signed the envelope. Allows key-set rotation. The well-known dev kid (`"dev"`) is committed alongside prod kids in `BOUNCER_ATTESTATION_KEYS`.
 - **Platform contract** — the `x-platform-*` header family. The only privileged header set apps and services read.

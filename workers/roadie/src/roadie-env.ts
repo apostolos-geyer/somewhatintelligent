@@ -1,5 +1,5 @@
 // Roadie's env shape — explicit rather than the wrangler-generated global
-// `Env`. Consumers of `@greenroom/roadie-service` obtain Roadie's RPC types via
+// `Env`. Consumers of `@si/roadie-service` obtain Roadie's RPC types via
 // `wrangler types -c ./wrangler.jsonc -c ../../workers/roadie/wrangler.jsonc`
 // (per RFC §6 — Consumer type integration). Using the global `Env` here would
 // collide with the consumer's own `Env` declaration from their wrangler types.

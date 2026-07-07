@@ -1,5 +1,5 @@
 {
-  "name": "@greenroom/audio",
+  "name": "@si/audio",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
     "zustand": "catalog:"
   },
   "devDependencies": {
-    "@greenroom/typescript-config": "workspace:*",
+    "@si/typescript-config": "workspace:*",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "vite-plus": "catalog:"

@@ -7,7 +7,7 @@ import { count, desc, eq, gt, isNull, sum } from "drizzle-orm";
 import { ADMIN_LIST_DEFAULT_LIMIT, ADMIN_LIST_MAX_LIMIT } from "../config";
 import { createDb } from "../db";
 import { newId } from "../ids";
-import { requireRequestLog } from "@greenroom/kit/log";
+import { requireRequestLog } from "@si/kit/log";
 import { type RoadieInstance } from "../log";
 import { validateMeta } from "../meta";
 import { err, ok, type Result } from "../result";

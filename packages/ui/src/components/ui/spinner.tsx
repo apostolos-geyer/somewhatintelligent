@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@greenroom/ui/lib/utils";
+import { cn } from "@si/ui/lib/utils";
 
 const sizeMap = {
   xs: "h-3 w-6",

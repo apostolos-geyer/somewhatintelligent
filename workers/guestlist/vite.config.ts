@@ -1,7 +1,7 @@
 import path from "node:path";
 import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-pool-workers";
 import { defineConfig } from "vite-plus";
-import { platformDeployConfig } from "@greenroom/config/deploy";
+import { platformDeployConfig } from "@si/config/deploy";
 
 // Worker-name prefix (mirrors workers/bouncer's vite.config): the checked-in
 // wrangler.jsonc (top level = staging) resolves service bindings to

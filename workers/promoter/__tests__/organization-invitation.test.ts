@@ -17,8 +17,8 @@
  */
 import { createElement } from "react";
 import { describe, expect, test } from "vite-plus/test";
-import { platformConfig, platformDeployConfig } from "@greenroom/config";
-import { GuestlistOrgInvitationEmail, render, sendEmailTemplate } from "@greenroom/email";
+import { platformConfig, platformDeployConfig } from "@si/config";
+import { GuestlistOrgInvitationEmail, render, sendEmailTemplate } from "@si/email";
 
 const baseDomain = platformDeployConfig.baseDomain;
 

@@ -1,19 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { type } from "arktype";
-import { useAppForm } from "@greenroom/ui/hooks/use-app-form";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@greenroom/ui/components/card";
-import { Button } from "@greenroom/ui/components/button";
-import { Input } from "@greenroom/ui/components/input";
-import { Label } from "@greenroom/ui/components/label";
-import { Field, FieldDescription } from "@greenroom/ui/components/field";
-import { Alert } from "@greenroom/ui/components/alert";
+import { useAppForm } from "@si/ui/hooks/use-app-form";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@si/ui/components/card";
+import { Button } from "@si/ui/components/button";
+import { Input } from "@si/ui/components/input";
+import { Label } from "@si/ui/components/label";
+import { Field, FieldDescription } from "@si/ui/components/field";
+import { Alert } from "@si/ui/components/alert";
 import { createClient, type CreateClientResult } from "@/lib/admin-clients.functions";
 
 export const Route = createFileRoute("/_dashboard/admin/clients/new")({

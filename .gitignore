@@ -27,7 +27,7 @@ out/
 .env.keys
 .dev.vars
 
-# @greenroom/secrets value store — generated/operator-provided secret values
+# @si/secrets value store — generated/operator-provided secret values
 .secrets/
 
 # Local databases
@@ -66,7 +66,7 @@ coverage/
 *.png
 # Generated OG/icon images should be committed for review
 !workers/*/public/og/*.png
-# Sprout brand assets (logos + textures) — real source, shared via @greenroom/design
+# Sprout brand assets (logos + textures) — real source, shared via @si/design
 !packages/design/src/assets/**/*.png
 .vercel
 

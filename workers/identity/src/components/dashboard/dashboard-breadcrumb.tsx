@@ -7,7 +7,7 @@ import {
   BreadcrumbLink,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "@greenroom/ui/components/breadcrumb";
+} from "@si/ui/components/breadcrumb";
 
 type BreadcrumbEntry = { label: string; href?: string };
 

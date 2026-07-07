@@ -1,5 +1,5 @@
 {
-  "extends": "@greenroom/typescript-config/bun.json",
+  "extends": "@si/typescript-config/bun.json",
   "compilerOptions": {
     "lib": ["ESNext", "DOM"],
     "jsx": "react-jsx"

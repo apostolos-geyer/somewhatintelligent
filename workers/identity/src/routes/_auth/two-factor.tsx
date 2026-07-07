@@ -1,11 +1,11 @@
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import { Alert } from "@greenroom/ui/components/alert";
-import { Button } from "@greenroom/ui/components/button";
-import { Card, CardContent } from "@greenroom/ui/components/card";
-import { Checkbox } from "@greenroom/ui/components/checkbox";
-import { Field, FieldLabel } from "@greenroom/ui/components/field";
-import { Input } from "@greenroom/ui/components/input";
+import { Alert } from "@si/ui/components/alert";
+import { Button } from "@si/ui/components/button";
+import { Card, CardContent } from "@si/ui/components/card";
+import { Checkbox } from "@si/ui/components/checkbox";
+import { Field, FieldLabel } from "@si/ui/components/field";
+import { Input } from "@si/ui/components/input";
 import { GuestlistBrand } from "@/components/guestlist-brand";
 import { authClient } from "@/lib/auth-client";
 import { decodeReturnTo } from "@/lib/return-to";

@@ -115,7 +115,11 @@ function makeWrapped(
         { service: config.service, event: "rpc", operation: `${config.service}.${name}` },
         async (log) => {
           log.outcome("internal_error");
-          log.add({ error_message: message, error_stack: stack ?? message, error_phase: "resolve_context" });
+          log.add({
+            error_message: message,
+            error_stack: stack ?? message,
+            error_phase: "resolve_context",
+          });
           if (!config.onError) throw e;
           return config.onError(e);
         },

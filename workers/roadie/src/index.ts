@@ -1,4 +1,4 @@
-import { instrumented } from "@greenroom/kit/log";
+import { instrumented } from "@si/kit/log";
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { readCallerApp, type RoadieInstance } from "./log";
 import { actorId, validateMeta } from "./meta";

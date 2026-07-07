@@ -1,12 +1,11 @@
-import { cn } from "@greenroom/ui/lib/utils";
-import { platformConfig } from "@greenroom/config";
+import { cn } from "@si/ui/lib/utils";
+import { platformConfig } from "@si/config";
 import type { LogoProps } from "./types";
 import { LogoIcon } from "./logo-icon";
 
 /**
- * Top-level Sprout logo component. Composes `LogoIcon` with the Sprout
- * wordmark — the friendly, green-forward lockup for the budtender-engagement
- * platform. The rendered text always comes from `platformConfig.brand`
+ * Top-level platform logo component. Composes `LogoIcon` with the wordmark.
+ * The rendered text always comes from `platformConfig.brand`
  * (`name` / `short`), so forks get their own wordmark with no change here.
  *
  * Composes `LogoIcon` with a wordmark in one of four layouts:

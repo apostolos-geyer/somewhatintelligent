@@ -1,13 +1,7 @@
 import { Link } from "@tanstack/react-router";
-import { Button } from "@greenroom/ui/components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@greenroom/ui/components/card";
-import { Alert } from "@greenroom/ui/components/alert";
+import { Button } from "@si/ui/components/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@si/ui/components/card";
+import { Alert } from "@si/ui/components/alert";
 import { GuestlistBrand } from "@/components/guestlist-brand";
 
 /**

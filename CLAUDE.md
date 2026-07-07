@@ -14,7 +14,7 @@ files.
 | `workers/identity/src/app-brand.ts` | per-app `APP_PRODUCT_NAME` (each app is a different product)                                                                                                                                  |
 
 **Do not** scatter brand/domain/cookie literals through code. Anything new
-that needs branding reads from `@greenroom/config` (or from the app's local
+that needs branding reads from `@si/config` (or from the app's local
 `app-brand.ts` if it's per-app product information).
 
 ## How wrangler config works
@@ -33,10 +33,10 @@ Local dev runs against the staging top level with **`.dev.vars` overrides**
 ids. After editing a `wrangler.jsonc` or `packages/config/src/deploy.ts`,
 regenerate per-service worker types: `cd <service> && bun run types`.
 
-## Code consumers that read `@greenroom/config`
+## Code consumers that read `@si/config`
 
 Whenever something new needs the brand name / cookie prefix / provider id,
-import from `@greenroom/config` rather than introducing a literal:
+import from `@si/config` rather than introducing a literal:
 
 - `workers/guestlist/src/auth-config.ts` — cookiePrefix, providerId,
   passkeyRpName, twoFactorIssuer, trustedOrigins (derived from env.AUTH_DOMAIN)
@@ -49,27 +49,27 @@ import from `@greenroom/config` rather than introducing a literal:
   Trusts the apex + every subdomain of `AUTH_DOMAIN` (a `.{baseDomain}` /
   `.{devDomain}` var rendered into identity's wrangler vars, allowlisted into the
   bundle by `vite.config.ts` CLIENT_VARS). No per-app origin list to maintain —
-  any host under the apex (incl. Sprout's `*.sprout.<apex>` brand portals) is
-  trusted by construction, mirroring the auth server's `*.{apex}` trustedOrigins.
+  any host under the apex is trusted by construction, mirroring the auth
+  server's `*.{apex}` trustedOrigins.
 - `workers/identity/src/components/guestlist-brand.tsx` — wordmark via Logo
 - `workers/identity/og/_brand.tsx` — same, for OG image rendering
 - `packages/ui/.../logo/logo.tsx` + `logo-animated.tsx` — wordmark text
 
 ## Local dev workflow
 
-> **The local-dev operating manual is
-> [`docs/sprout/10-local-stack-and-testing-runbook.md`](docs/sprout/10-local-stack-and-testing-runbook.md):**
-> boot, topologies (full fleet / subsets / solo-vs-staging / parallel
-> worktrees), the agent-browser sign-in recipe, and the three test tiers
-> (`bun run test` · `bun run test:pool` · `bun run test:e2e`).
+> **The local-dev operating manual** is the `/interactive-test` skill
+> (`.agents/skills/interactive-test/SKILL.md`): boot, the agent-browser
+> sign-in recipe, and the test tiers (`bun run test` · `bun run test:e2e`).
+> See also `.agents/skills/write-tests/SKILL.md` for which tier a new test
+> belongs in.
 
 ```sh
 bun install                 # -> typecheck + per-worker tests work immediately
 bun run dev                 # ONE command: cached prep (env:init + local D1
-                            #   migrations), then guestlist+identity+sprout+roadie
-bun run seed                # first boot: demo users/orgs/brands (pre-verified logins)
+                            #   migrations), then guestlist+identity+roadie
+bun run seed                # first boot: demo users/orgs (pre-verified logins)
 
-bun run dev sprout identity            # any subset of workers
+bun run dev guestlist identity         # any subset of workers
 cd workers/<name> && bun run dev       # or one worker from its own directory
 cd workers/<name> && bun run dev:solo  # one worker against the STAGING fleet
                                        #   (needs CLOUDFLARE_API_TOKEN or wrangler login)
@@ -79,11 +79,29 @@ Local dev is dev-direct (no bouncer in front — `docs/ARCHITECTURE.md` §4.5).
 The dev registry is per-worktree (`.wrangler/dev-registry`, path derived by
 each entry point), inspectors are off by default, and `GUESTLIST_PORT` /
 `ROADIE_PORT` shift the listeners — so parallel worktrees run tests and
-per-worker dev side by side; the `*.sproutportal.localhost` HTTPS journey is
+per-worker dev side by side; the `*.somewhatintelligent.localhost` HTTPS journey is
 one worktree at a time (machine-global proxy + hostnames).
 
 ## Things to know
 
+- **Bouncer's route table is single-host per env** (`workers/bouncer/wrangler.jsonc`
+  `vars.ROUTES`, schema + dispatch in `src/routes.ts` / `src/index.ts` /
+  `src/proxy.ts`): staging is `staging.somewhatintelligent.ca`, production is
+  `somewhatintelligent.ca` + `www.somewhatintelligent.ca`. Three mounts share
+  each host — `/api` → guestlist (`passthrough`), `/account` → identity
+  (`vmf`: bouncer strips the mount prefix before forwarding and rewrites
+  asset paths / redirect Location / Set-Cookie paths on the way back — see
+  `handleMountedApp`), `/` → a redirect (mode `"redirect"`, no upstream
+  binding) to the not-yet-built `/shop` storefront (404s at destination until
+  a parallel track adds that worker). Route modes are enforced per
+  `(host, mount)`, not per host, so passthrough/vmf/redirect can share one
+  host as long as they don't own the same mount. **Known gap:** vmf rewrites
+  HTTP-layer responses (HTML asset attrs, Location, Set-Cookie) but cannot
+  rewrite a client-side-routed SPA's own history/link state — identity's
+  TanStack Router has no basepath, so client-side navigation after hydration
+  can drop the `/account` prefix from the browser's URL bar. See the P1
+  decision log in `docs/exec-plans/active/0001-greenfield-bootstrap.md` for
+  the full writeup and why the basepath alternative was rejected.
 - **Browser automation is set up** (`docs/browser-automation.md`):
   **agent-browser** runs standalone locally (manages its own Chrome; one
   command at a time — concurrent/backgrounded calls wedge its daemon) or

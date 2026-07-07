@@ -5,7 +5,7 @@
 // Unauthed → compact Sign In button.
 import { ExternalLinkIcon } from "lucide-react";
 
-import { cn } from "@greenroom/ui/lib/utils";
+import { cn } from "@si/ui/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
 import { Button } from "./button";
 

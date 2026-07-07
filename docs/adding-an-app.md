@@ -14,7 +14,7 @@ Regardless of framework, every app participates in the platform by:
 1. Opening a `withRequestContext` scope at its fetch boundary, seeded with
    `extractPlatformRequestId(request)`.
 2. Verifying the bouncer attestation envelope via
-   `createBouncerEnvelopeVerifier(...)` from `@greenroom/auth`.
+   `createBouncerEnvelopeVerifier(...)` from `@si/auth`.
 3. Reading sessions via the verifier's actor (fast path) or falling back to
    `guestlist.getSession()` over the service binding (slow path).
 4. Having no public Custom Domain — only bouncer has one; apps are reached
@@ -50,7 +50,7 @@ workers/<myapp>/src/
 
 ```ts
 import startEntry from "@tanstack/react-start/server-entry";
-import { extractPlatformStartContext } from "@greenroom/kit/react-start";
+import { extractPlatformStartContext } from "@si/kit/react-start";
 
 declare module "@tanstack/react-start" {
   interface Register {
@@ -70,7 +70,7 @@ export default {
 ```ts
 import { env } from "cloudflare:workers";
 import { createServerOnlyFn } from "@tanstack/react-start";
-import { createPlatformStartApp } from "@greenroom/kit/react-start";
+import { createPlatformStartApp } from "@si/kit/react-start";
 import { getGuestlist, guestlistFetcher } from "@/lib/guestlist";
 
 export const platform = createPlatformStartApp({
@@ -90,7 +90,7 @@ export const {
 } = platform;
 ```
 
-`platform` exposes `getSession`, `getEnvelope`, `getActiveOrgId`, `getGuestlist`, `envelopeMiddleware`, `apiProxyHandlers`, and `devEnvelopeStamper` (only fires if you pass `devEnvelopeSigner` + `devEnvelopeGuestlist` — see ARCHITECTURE.md §4.5). It also still exposes `makeAuthProvider` as a legacy export; new apps should use `envelopeMiddleware` and `createReactStartAuthProvider` instead. (`sessionMiddleware` has been removed from `@greenroom/kit` entirely — it had zero real consumers.)
+`platform` exposes `getSession`, `getEnvelope`, `getActiveOrgId`, `getGuestlist`, `envelopeMiddleware`, `apiProxyHandlers`, and `devEnvelopeStamper` (only fires if you pass `devEnvelopeSigner` + `devEnvelopeGuestlist` — see ARCHITECTURE.md §4.5). It also still exposes `makeAuthProvider` as a legacy export; new apps should use `envelopeMiddleware` and `createReactStartAuthProvider` instead. (`sessionMiddleware` has been removed from `@si/kit` entirely — it had zero real consumers.)
 
 **`src/lib/session.functions.ts`** — the TSS-compiler-required server-fn
 wrapper. Stays minimal:
@@ -160,12 +160,12 @@ In `workers/bouncer/wrangler.jsonc`, add three things per env:
 2. **`vars.ROUTES.routes`** — dispatch rule mapping the host:
 
    ```jsonc
-   { "binding": "<MYAPP>", "host": "<myapp>.sproutportal.ca", "path": "/" }
+   { "binding": "<MYAPP>", "host": "<myapp>.somewhatintelligent.ca", "path": "/" }
    ```
 
 3. **`env.production.routes`** — Custom Domain entry:
    ```jsonc
-   { "pattern": "<myapp>.sproutportal.ca", "custom_domain": true }
+   { "pattern": "<myapp>.somewhatintelligent.ca", "custom_domain": true }
    ```
    (and the staging equivalent if you want a staging public URL).
 
@@ -177,10 +177,10 @@ Add a `"portless"` key to your app's own `workers/<myapp>/package.json` (there
 is no root `portless.json` — each app registers itself):
 
 ```jsonc
-"portless": { "name": "<myapp>.sproutportal", "script": "dev:bare" }
+"portless": { "name": "<myapp>.somewhatintelligent", "script": "dev:bare" }
 ```
 
-That serves the app at `https://<myapp>.sproutportal.localhost`. Then add
+That serves the app at `https://<myapp>.somewhatintelligent.localhost`. Then add
 `<myapp>` to the default worker list in `scripts/dev-stack.ts` (or boot it
 explicitly with `bun run dev <myapp>`).
 
@@ -223,16 +223,16 @@ cd workers/bouncer && bun run deploy:production
 
 ## 3. Non-Start path (Hono, plain Workers, Astro on Workers, etc.)
 
-The framework-agnostic primitives in `@greenroom/auth`, `@greenroom/guestlist-service/client`,
-`@greenroom/kit/request-context`, and `@greenroom/kit/log` work with any
+The framework-agnostic primitives in `@si/auth`, `@si/guestlist-service/client`,
+`@si/kit/request-context`, and `@si/kit/log` work with any
 CF-deployable framework. The canonical entry looks like:
 
 ```ts
-import { createBouncerEnvelopeVerifier, PLATFORM_HEADERS } from "@greenroom/auth";
-import { createGuestlistClient } from "@greenroom/guestlist-service/client";
-import { withRequestContext, extractPlatformRequestId } from "@greenroom/kit/request-context";
-import { withRequestLog } from "@greenroom/kit/log";
-import { BOUNCER_ATTESTATION_KEYS } from "@greenroom/config";
+import { createBouncerEnvelopeVerifier, PLATFORM_HEADERS } from "@si/auth";
+import { createGuestlistClient } from "@si/guestlist-service/client";
+import { withRequestContext, extractPlatformRequestId } from "@si/kit/request-context";
+import { withRequestLog } from "@si/kit/log";
+import { BOUNCER_ATTESTATION_KEYS } from "@si/config";
 
 const verifyEnvelope = createBouncerEnvelopeVerifier({
   keys: BOUNCER_ATTESTATION_KEYS,
@@ -265,10 +265,10 @@ defines its own routes via its framework of choice.
 
 ## 4. Brand wiring
 
-Every app reads platform-wide brand from `@greenroom/config`:
+Every app reads platform-wide brand from `@si/config`:
 
 ```ts
-import { platformConfig } from "@greenroom/config";
+import { platformConfig } from "@si/config";
 // platformConfig.brand.name      → "Platform" by default
 // platformConfig.cookies.prefix  → "platform"
 // platformConfig.auth.providerId → "platform"

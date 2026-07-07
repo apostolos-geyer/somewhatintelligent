@@ -1,5 +1,5 @@
 {
-  "name": "@greenroom/og",
+  "name": "@si/og",
   "version": "0.0.1",
   "private": true,
   "bin": {
@@ -13,12 +13,12 @@
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
-    "@greenroom/design": "workspace:*",
     "@resvg/resvg-js": "^2.6.2",
+    "@si/design": "workspace:*",
     "satori": "^0.26.0"
   },
   "devDependencies": {
-    "@greenroom/typescript-config": "workspace:*",
+    "@si/typescript-config": "workspace:*",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "react": "catalog:",

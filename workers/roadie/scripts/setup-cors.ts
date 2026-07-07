@@ -34,9 +34,9 @@ const BUCKETS: Record<Env, string> = {
 };
 
 const ORIGINS: Record<Env, string[]> = {
-  local: ["https://*.sproutportal.localhost"],
+  local: ["https://*.somewhatintelligent.localhost"],
   staging: ["https://*.example-account.workers.dev"],
-  production: ["https://*.sproutportal.ca"],
+  production: ["https://*.somewhatintelligent.ca"],
 };
 
 // PUT — single-part uploads + multipart part uploads.

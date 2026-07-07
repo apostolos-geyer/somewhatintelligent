@@ -264,7 +264,7 @@ export const InputGroupWithError: Story = {
       <InputGroup>
         <InputGroupInput id="email-ig" placeholder="you" aria-invalid />
         <InputGroupAddon align="inline-end">
-          <InputGroupText>@greenroom.example</InputGroupText>
+          <InputGroupText>@si.example</InputGroupText>
         </InputGroupAddon>
       </InputGroup>
       <FieldError>This email is not available.</FieldError>

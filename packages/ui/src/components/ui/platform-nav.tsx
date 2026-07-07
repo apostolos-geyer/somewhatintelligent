@@ -8,7 +8,7 @@ import * as React from "react";
 import { CheckIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-import { cn } from "@greenroom/ui/lib/utils";
+import { cn } from "@si/ui/lib/utils";
 import { LogoIcon } from "./logo";
 import {
   DropdownMenu,

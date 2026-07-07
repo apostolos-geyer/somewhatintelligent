@@ -1,5 +1,5 @@
 {
-  "name": "@greenroom/design",
+  "name": "@si/design",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -19,7 +19,7 @@
     "build": "bun run codegen && bun run audit:contrast"
   },
   "devDependencies": {
-    "@greenroom/typescript-config": "workspace:*",
+    "@si/typescript-config": "workspace:*",
     "@storybook/react": "^10",
     "@tailwindcss/typography": "catalog:",
     "@tailwindcss/vite": "catalog:",

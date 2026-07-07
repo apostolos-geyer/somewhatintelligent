@@ -16,7 +16,7 @@
  * Defaults: name = "User", role = "user"
  *
  * Examples:
- *   bun scripts/seed-users.ts '[{"email":"admin@greenroom.example","password":"admin123","name":"Admin","role":"admin"}]'
+ *   bun scripts/seed-users.ts '[{"email":"admin@si.example","password":"admin123","name":"Admin","role":"admin"}]'
  */
 import { $ } from "bun";
 import { resolve, dirname } from "node:path";

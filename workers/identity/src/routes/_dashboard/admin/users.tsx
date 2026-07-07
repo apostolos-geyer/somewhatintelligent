@@ -1,14 +1,14 @@
 import { createFileRoute, useRouter, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@greenroom/ui/components/avatar";
-import { Badge } from "@greenroom/ui/components/badge";
-import { buttonVariants } from "@greenroom/ui/components/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@si/ui/components/avatar";
+import { Badge } from "@si/ui/components/badge";
+import { buttonVariants } from "@si/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@greenroom/ui/components/dropdown-menu";
+} from "@si/ui/components/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,12 +18,12 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@greenroom/ui/components/alert-dialog";
-import { toast } from "@greenroom/ui/components/sonner";
-import { cn } from "@greenroom/ui/lib/utils";
+} from "@si/ui/components/alert-dialog";
+import { toast } from "@si/ui/components/sonner";
+import { cn } from "@si/ui/lib/utils";
 import { authClient } from "@/lib/auth-client";
 import { getUsers } from "@/lib/admin-users.functions";
-import { isAdminRole } from "@greenroom/kit/roles";
+import { isAdminRole } from "@si/kit/roles";
 
 export const Route = createFileRoute("/_dashboard/admin/users")({
   loader: () => getUsers(),

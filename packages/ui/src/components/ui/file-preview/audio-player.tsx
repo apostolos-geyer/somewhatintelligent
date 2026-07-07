@@ -10,7 +10,7 @@ import {
   useVolume,
   useAudioActions,
   useFrequencyData,
-} from "@greenroom/audio/react";
+} from "@si/audio/react";
 import { Waveform } from "../waveform";
 import { SpectrumAnalyzer } from "../spectrum-analyzer";
 import { Button } from "../button";

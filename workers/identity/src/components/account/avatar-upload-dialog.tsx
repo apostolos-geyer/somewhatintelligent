@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 import { CameraIcon, UploadCloudIcon } from "lucide-react";
-import { Alert } from "@greenroom/ui/components/alert";
-import { Avatar, AvatarFallback } from "@greenroom/ui/components/avatar";
-import { Button, buttonVariants } from "@greenroom/ui/components/button";
+import { Alert } from "@si/ui/components/alert";
+import { Avatar, AvatarFallback } from "@si/ui/components/avatar";
+import { Button, buttonVariants } from "@si/ui/components/button";
 import {
   Dialog,
   DialogClose,
@@ -12,12 +12,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@greenroom/ui/components/dialog";
-import { ImageCropper, type CropArea } from "@greenroom/ui/components/image-cropper";
-import { Slider } from "@greenroom/ui/components/slider";
-import { toast } from "@greenroom/ui/components/sonner";
-import { cn } from "@greenroom/ui/lib/utils";
-import { cropImageToBlob } from "@greenroom/ui/lib/crop";
+} from "@si/ui/components/dialog";
+import { ImageCropper, type CropArea } from "@si/ui/components/image-cropper";
+import { Slider } from "@si/ui/components/slider";
+import { toast } from "@si/ui/components/sonner";
+import { cn } from "@si/ui/lib/utils";
+import { cropImageToBlob } from "@si/ui/lib/crop";
 import { guestlist } from "@/lib/auth-client";
 
 const ACCEPT = "image/jpeg,image/png,image/webp";

@@ -1,4 +1,4 @@
-import { defineOg } from "@greenroom/og";
+import { defineOg } from "@si/og";
 import { OgBrand } from "./_brand.tsx";
 
 export default defineOg({

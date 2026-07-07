@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════
-   @greenroom/design — brand texture tokens
+   @si/design — brand texture tokens
    ───────────────────────────────────────
    Gradient + line-art background renders from the Sprout brand guidelines,
    exposed as CSS custom properties so any surface can reach a texture by
@@ -9,13 +9,13 @@
    large (~8 MB total) and only hero / marketing / splash surfaces want them.
    Import it explicitly where needed:
 
-     @import "@greenroom/design/assets.css";
+     @import "@si/design/assets.css";
 
    The relative url()s below are resolved + emitted (content-hashed) by the
    consuming app's bundler, exactly like the @font-face files in fonts.css.
    Logos are small and per-element, so import those as ESM URLs instead:
 
-     import lockup from "@greenroom/design/assets/logos/sprout-lockup-cream.png";
+     import lockup from "@si/design/assets/logos/sprout-lockup-cream.png";
    ═══════════════════════════════════════ */
 
 :root {

@@ -10,8 +10,8 @@ const byName = (name: string) => {
 
 describe("workerName", () => {
   test("applies the fork prefix + env suffix", () => {
-    expect(workerName("guestlist", "staging")).toBe("sprout-guestlist-staging");
-    expect(workerName("bouncer", "production")).toBe("sprout-bouncer-production");
+    expect(workerName("guestlist", "staging")).toBe("si-guestlist-staging");
+    expect(workerName("bouncer", "production")).toBe("si-bouncer-production");
   });
 });
 

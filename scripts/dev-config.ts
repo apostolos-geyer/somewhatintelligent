@@ -50,13 +50,13 @@ export const DEV_SPAWN_ENV: NodeJS.ProcessEnv = (() => {
 //
 // LOCAL_BETTER_AUTH_SECRET is a per-template dev placeholder. Rotate it
 // for your fork (any 32-byte base64 string works) — it only signs cookies
-// in `.sproutportal.localhost`, so it can be public in this file.
+// in `.somewhatintelligent.localhost`, so it can be public in this file.
 export const LOCAL_BETTER_AUTH_SECRET = "//oc0iA9surRLIWnCKmFs9DlnrN3brN7mt4lMahzW0M=";
-export const LOCAL_IDENTITY_URL = "https://identity.sproutportal.localhost";
-export const LOCAL_AUTH_DOMAIN = ".sproutportal.localhost";
+export const LOCAL_IDENTITY_URL = "https://identity.somewhatintelligent.localhost";
+export const LOCAL_AUTH_DOMAIN = ".somewhatintelligent.localhost";
 
 // LOCAL_BNC_ATT_PRIV is the well-known dev Ed25519 private key used by bouncer
-// to sign attestation envelopes on `.sproutportal.localhost`. The paired public
+// to sign attestation envelopes on `.somewhatintelligent.localhost`. The paired public
 // key lives in `packages/config/src/bouncer-attestation.ts` under `kid: "dev"`.
 // Rotate both per fork before any non-local deploy.
 //
@@ -103,7 +103,7 @@ export function applyD1MigrationsLocal(cwd: string, label: string): void {
 // Thin wrappers around `wrangler d1 execute DB --local`. Each call shells
 // out — fine for seed scripts where DX > throughput. `cwd` is the package
 // dir whose `wrangler.jsonc` binds the target D1 (e.g. workers/guestlist
-// or workers/sprout).
+// or workers/roadie).
 
 interface D1JsonShape<T = Record<string, unknown>> {
   results?: T[];

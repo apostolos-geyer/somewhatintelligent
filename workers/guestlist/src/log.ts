@@ -12,13 +12,8 @@
 //     emissions (Better Auth's `backgroundTasks.handler` failure
 //     notification, e.g.) that don't have a request_id at emit time and
 //     aren't part of an inbound HTTP lifecycle.
-import { withCanonicalLog } from "@greenroom/kit/log";
-import {
-  extractRequestId,
-  getActorId,
-  getActorKind,
-  getCallerApp,
-} from "@greenroom/kit/request-context";
+import { withCanonicalLog } from "@si/kit/log";
+import { extractRequestId, getActorId, getActorKind, getCallerApp } from "@si/kit/request-context";
 
 type Level = "info" | "warn" | "error";
 type Fields = Record<string, unknown>;

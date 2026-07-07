@@ -1,14 +1,8 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@greenroom/ui/components/card";
-import { Badge } from "@greenroom/ui/components/badge";
-import { buttonVariants } from "@greenroom/ui/components/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@si/ui/components/card";
+import { Badge } from "@si/ui/components/badge";
+import { buttonVariants } from "@si/ui/components/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,9 +13,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@greenroom/ui/components/alert-dialog";
-import { toast } from "@greenroom/ui/components/sonner";
-import { cn } from "@greenroom/ui/lib/utils";
+} from "@si/ui/components/alert-dialog";
+import { toast } from "@si/ui/components/sonner";
+import { cn } from "@si/ui/lib/utils";
 import { authClient } from "@/lib/auth-client";
 import { getScopeLabel } from "@/lib/scopes";
 import { fetchConnections } from "@/lib/connections.functions";

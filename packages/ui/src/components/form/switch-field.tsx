@@ -1,14 +1,14 @@
 "use client";
 
-import { useFieldContext } from "@greenroom/ui/hooks/form-context";
-import { Switch } from "@greenroom/ui/components/switch";
+import { useFieldContext } from "@si/ui/hooks/form-context";
+import { Switch } from "@si/ui/components/switch";
 import {
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
-} from "@greenroom/ui/components/field";
+} from "@si/ui/components/field";
 
 export function SwitchField({
   label,

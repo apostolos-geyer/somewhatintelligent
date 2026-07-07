@@ -1,5 +1,5 @@
-import { LogoIcon } from "@greenroom/ui/components/logo";
-import { platformConfig } from "@greenroom/config";
+import { LogoIcon } from "@si/ui/components/logo";
+import { platformConfig } from "@si/config";
 import { APP_PRODUCT_NAME } from "../src/app-brand";
 
 /**

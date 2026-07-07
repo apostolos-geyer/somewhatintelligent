@@ -1,6 +1,6 @@
 /**
  * Request-scoped context — request_id, actor, callerApp — propagated via
- * AsyncLocalStorage. Distinct from `@greenroom/kit/log`'s `logStorage`
+ * AsyncLocalStorage. Distinct from `@si/kit/log`'s `logStorage`
  * (which holds the CanonicalLogBuilder for the active emit scope) — this
  * holds the request-level identity that any number of canonical-log lines
  * inside the same request might want to read.
@@ -13,8 +13,8 @@
  *
  * Consumers open the scope at the fetch boundary:
  *
- *   import { withRequestContext, getRequestId } from "@greenroom/kit/request-context";
- *   import { ulid } from "@greenroom/kit/ids";
+ *   import { withRequestContext, getRequestId } from "@si/kit/request-context";
+ *   import { ulid } from "@si/kit/ids";
  *
  *   export default {
  *     async fetch(request, _env, ctx) {
@@ -56,7 +56,7 @@ import { ulid } from "../ids";
  * + internal services) reaches request context via `extractPlatformRequestId`
  * below, which speaks the internal `x-platform-rid` contract.
  *
- *   import { extractRequestId } from "@greenroom/kit/request-context";
+ *   import { extractRequestId } from "@si/kit/request-context";
  *   const requestId = extractRequestId(request);
  */
 export function extractRequestId(req: Request): string {
@@ -81,7 +81,7 @@ export function extractRequestId(req: Request): string {
  * there is no `x-platform-rid`, the mint branch fires, and logs key off the
  * minted id for the lifetime of that one request.
  *
- *   import { extractPlatformRequestId } from "@greenroom/kit/request-context";
+ *   import { extractPlatformRequestId } from "@si/kit/request-context";
  *   const requestId = extractPlatformRequestId(request);
  */
 export function extractPlatformRequestId(req: Request): string {

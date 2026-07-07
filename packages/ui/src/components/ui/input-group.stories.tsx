@@ -195,7 +195,7 @@ export const WithTextSuffix: Story = {
     <InputGroup className="w-72">
       <InputGroupInput placeholder="username" />
       <InputGroupAddon align="inline-end">
-        <InputGroupText>@greenroom.example</InputGroupText>
+        <InputGroupText>@si.example</InputGroupText>
       </InputGroupAddon>
     </InputGroup>
   ),
@@ -232,7 +232,7 @@ export const WithButtonSuffix: Story = {
 export const WithCopyButton: Story = {
   render: () => (
     <InputGroup className="w-80">
-      <InputGroupInput defaultValue="npm install @greenroom/ui" readOnly className="font-mono" />
+      <InputGroupInput defaultValue="npm install @si/ui" readOnly className="font-mono" />
       <InputGroupAddon align="inline-end">
         <InputGroupButton size="icon-xs" aria-label="Copy">
           <CopyIcon />

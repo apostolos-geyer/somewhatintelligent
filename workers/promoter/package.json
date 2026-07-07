@@ -1,5 +1,5 @@
 {
-  "name": "@greenroom/promoter-service",
+  "name": "@si/promoter-service",
   "version": "0.2.2",
   "private": true,
   "type": "module",
@@ -17,13 +17,13 @@
     "test": "vp test run"
   },
   "dependencies": {
-    "@greenroom/config": "workspace:*",
-    "@greenroom/email": "workspace:*",
-    "@greenroom/kit": "workspace:*"
+    "@si/config": "workspace:*",
+    "@si/email": "workspace:*",
+    "@si/kit": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4",
-    "@greenroom/typescript-config": "workspace:*",
+    "@si/typescript-config": "workspace:*",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "react": "catalog:",

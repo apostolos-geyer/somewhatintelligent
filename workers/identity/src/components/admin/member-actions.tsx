@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { buttonVariants } from "@greenroom/ui/components/button";
+import { buttonVariants } from "@si/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +10,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from "@greenroom/ui/components/dropdown-menu";
+} from "@si/ui/components/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,8 +20,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@greenroom/ui/components/alert-dialog";
-import { cn } from "@greenroom/ui/lib/utils";
+} from "@si/ui/components/alert-dialog";
+import { cn } from "@si/ui/lib/utils";
 
 type Role = "owner" | "admin" | "member";
 

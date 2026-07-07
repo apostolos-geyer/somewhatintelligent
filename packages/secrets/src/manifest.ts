@@ -7,7 +7,7 @@
  * a secret: append a {@link SecretSpec} here — the CLI, dev-vars writer, and
  * `wrangler secret put` targeting all flow from it. Nothing else to wire.
  */
-import { platformDeployConfig } from "@greenroom/config";
+import { platformDeployConfig } from "@si/config";
 
 export type Env = "local" | "staging" | "production";
 export const ENVS = ["local", "staging", "production"] as const satisfies readonly Env[];
@@ -37,7 +37,7 @@ export const SERVICE_DIR: Record<ServiceName, string> = {
  * Deployed Cloudflare worker name for a service in a remote env. Mirrors
  * wrangler's behaviour: the rendered `name` is `<prefix>-<service>` and
  * `--env <env>` appends the `-<env>` suffix, so the live worker is
- * `<prefix>-<service>-<env>` (e.g. `sprout-guestlist-staging`). The prefix is
+ * `<prefix>-<service>-<env>` (e.g. `si-guestlist-staging`). The prefix is
  * the same per-fork knob the wrangler configs use.
  */
 export function workerName(service: ServiceName, env: RemoteEnv): string {

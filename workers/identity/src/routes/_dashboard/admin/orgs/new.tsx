@@ -1,19 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Button } from "@greenroom/ui/components/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@greenroom/ui/components/card";
-import { Input } from "@greenroom/ui/components/input";
-import { Label } from "@greenroom/ui/components/label";
-import { Field, FieldDescription, FieldError } from "@greenroom/ui/components/field";
-import { Alert } from "@greenroom/ui/components/alert";
-import { Avatar, AvatarFallback, AvatarImage } from "@greenroom/ui/components/avatar";
-import { toast } from "@greenroom/ui/components/sonner";
+import { Button } from "@si/ui/components/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@si/ui/components/card";
+import { Input } from "@si/ui/components/input";
+import { Label } from "@si/ui/components/label";
+import { Field, FieldDescription, FieldError } from "@si/ui/components/field";
+import { Alert } from "@si/ui/components/alert";
+import { Avatar, AvatarFallback, AvatarImage } from "@si/ui/components/avatar";
+import { toast } from "@si/ui/components/sonner";
 import {
   createOrgAsOperator,
   searchUsersByEmail,

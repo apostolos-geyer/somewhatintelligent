@@ -13,18 +13,18 @@
     "dev:solo": "bun ../../scripts/dev-solo.ts",
     "preview": "vp preview",
     "deploy": "vp run build && wrangler deploy",
-    "deploy:staging": "GREENROOM_BUILD=1 vp run build && wrangler deploy",
+    "deploy:staging": "SI_BUILD=1 vp run build && wrangler deploy",
     "deploy:production": "CLOUDFLARE_ENV=production vp run build && wrangler deploy --env production",
     "types": "wrangler types -c ./wrangler.jsonc -c ../guestlist/wrangler.jsonc -c ../roadie/wrangler.jsonc",
     "typecheck": "tsgo --noEmit",
     "test": "vp test run"
   },
   "dependencies": {
-    "@greenroom/config": "workspace:*",
-    "@greenroom/design": "workspace:*",
-    "@greenroom/guestlist-service": "workspace:*",
-    "@greenroom/kit": "workspace:*",
-    "@greenroom/ui": "workspace:*",
+    "@si/config": "workspace:*",
+    "@si/design": "workspace:*",
+    "@si/guestlist-service": "workspace:*",
+    "@si/kit": "workspace:*",
+    "@si/ui": "workspace:*",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-devtools": "latest",
     "@tanstack/react-router": "1.170.10",
@@ -40,7 +40,7 @@
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.37.1",
-    "@greenroom/og": "workspace:*",
+    "@si/og": "workspace:*",
     "@tanstack/devtools-vite": "latest",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.0",
@@ -62,7 +62,7 @@
     ]
   },
   "portless": {
-    "name": "identity.sproutportal",
+    "name": "identity.somewhatintelligent",
     "script": "dev:bare"
   }
 }

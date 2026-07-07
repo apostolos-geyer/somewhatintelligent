@@ -21,7 +21,7 @@ import { b64uDecodeBytes, b64uDecodeString, importEd25519PublicKey } from "./jws
 import type { EnvelopePayload, EnvelopeResult, PlatformEnvironment } from "./types";
 
 export interface BouncerEnvelopeVerifierOpts {
-  /** kid → base64-SPKI Ed25519 public key. Typically `BOUNCER_ATTESTATION_KEYS` from `@greenroom/config`. */
+  /** kid → base64-SPKI Ed25519 public key. Typically `BOUNCER_ATTESTATION_KEYS` from `@si/config`. */
   keys: Record<string, string>;
   /** Runtime environment label. Drives the missing/invalid gate. */
   env: PlatformEnvironment;
@@ -45,7 +45,7 @@ export function createBouncerEnvelopeVerifier(
   if (env === "production" && Object.keys(keys).length === 0) {
     throw new Error(
       "createBouncerEnvelopeVerifier: production env requires a non-empty key set; " +
-        "ensure BOUNCER_ATTESTATION_KEYS in @greenroom/config is populated.",
+        "ensure BOUNCER_ATTESTATION_KEYS in @si/config is populated.",
     );
   }
 

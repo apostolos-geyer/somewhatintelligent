@@ -1,11 +1,11 @@
 import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@greenroom/ui/components/sidebar";
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@si/ui/components/sidebar";
 import { AppSidebar } from "@/components/dashboard/app-sidebar";
 import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb";
 import { OrgSwitcher } from "@/components/header/org-switcher";
 import { authClient } from "@/lib/auth-client";
-import { isAdminRole } from "@greenroom/kit/roles";
+import { isAdminRole } from "@si/kit/roles";
 
 export const Route = createFileRoute("/_dashboard")({
   component: DashboardLayout,

@@ -11,7 +11,7 @@ import {
 } from "../config";
 import { createDb } from "../db";
 import { newId } from "../ids";
-import { requireRequestLog } from "@greenroom/kit/log";
+import { requireRequestLog } from "@si/kit/log";
 import { readCallerApp, type RoadieInstance } from "../log";
 import { validateMeta, type CallMeta } from "../meta";
 import { err, ok, type Result } from "../result";

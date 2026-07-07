@@ -1,6 +1,6 @@
 import { siGoogle, siMeta } from "simple-icons";
-import { Button } from "@greenroom/ui/components/button";
-import { BrandIcon } from "@greenroom/ui/components/brand-icon";
+import { Button } from "@si/ui/components/button";
+import { BrandIcon } from "@si/ui/components/brand-icon";
 import { authClient } from "@/lib/auth-client";
 import type { SocialProviders } from "@/lib/providers.functions";
 

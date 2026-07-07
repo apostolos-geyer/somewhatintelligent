@@ -2,9 +2,9 @@
 
 import type { ReactNode } from "react";
 import type { VariantProps } from "class-variance-authority";
-import { useFormContext } from "@greenroom/ui/hooks/form-context";
-import { Button, buttonVariants } from "@greenroom/ui/components/button";
-import { Spinner } from "@greenroom/ui/components/spinner";
+import { useFormContext } from "@si/ui/hooks/form-context";
+import { Button, buttonVariants } from "@si/ui/components/button";
+import { Spinner } from "@si/ui/components/spinner";
 
 export function SubmitButton({
   label = "Submit",

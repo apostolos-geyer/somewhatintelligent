@@ -1,12 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Badge } from "@greenroom/ui/components/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@greenroom/ui/components/card";
+import { Badge } from "@si/ui/components/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@si/ui/components/card";
 import {
   Item,
   ItemActions,
@@ -14,7 +8,7 @@ import {
   ItemDescription,
   ItemGroup,
   ItemTitle,
-} from "@greenroom/ui/components/item";
+} from "@si/ui/components/item";
 import { ChevronRightIcon } from "lucide-react";
 import { ChangePasswordDialog } from "@/components/account/change-password-dialog";
 import { DeleteAccountDialog } from "@/components/account/delete-account-dialog";

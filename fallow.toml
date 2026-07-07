@@ -39,13 +39,13 @@ ignorePatterns = [
 ]
 
 # Referenced outside the import graph fallow sees:
-# @greenroom/design — packages/og/src/fonts.ts require.resolve()s its font files by string spec
+# @si/design — packages/og/src/fonts.ts require.resolve()s its font files by string spec
 # agent-browser — CLI driven by docs/browser-automation.md + the agent-browser skill, no imports
 # playwright-core — imported by scripts/setup-browsers.ts (scripts/** is in ignorePatterns)
 # @react-email/preview-server — resolved at runtime by `email dev` (packages/email dev script)
 # @babel/plugin-proposal-decorators — string-referenced in packages/kit + workers/roadie vite.config.ts
 ignoreDependencies = [
-  "@greenroom/design",
+  "@si/design",
   "agent-browser",
   "playwright-core",
   "@react-email/preview-server",

@@ -36,7 +36,7 @@ describe("buildPlan — staging", () => {
     const plan = buildPlan("staging", {});
     const auth = find(plan, "BETTER_AUTH_SECRET");
     expect(auth.status).toBe("to-generate");
-    expect(auth.target).toBe("sprout-guestlist-staging");
+    expect(auth.target).toBe("si-guestlist-staging");
     expect(find(plan, "BNC_ATT_PRIV").status).toBe("ready");
   });
   test("a stored value flips status to ready", () => {

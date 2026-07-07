@@ -8,8 +8,8 @@ import {
   type Transition,
   useReducedMotion,
 } from "motion/react";
-import { platformConfig } from "@greenroom/config";
-import { cn } from "@greenroom/ui/lib/utils";
+import { platformConfig } from "@si/config";
+import { cn } from "@si/ui/lib/utils";
 import type { LogoIconProps } from "./types";
 import { LogoIcon } from "./logo-icon";
 

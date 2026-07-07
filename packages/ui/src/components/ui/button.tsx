@@ -3,8 +3,8 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button";
 import { cva, type VariantProps } from "class-variance-authority";
 
-import { cn } from "@greenroom/ui/lib/utils";
-import { interactiveMaterials } from "@greenroom/ui/lib/materials";
+import { cn } from "@si/ui/lib/utils";
+import { interactiveMaterials } from "@si/ui/lib/materials";
 
 // Sprout brand buttons are FULLY PILL with a quick, gentle press.
 // Transitions are 150–200ms ease-out; active state scales to 0.97 (the

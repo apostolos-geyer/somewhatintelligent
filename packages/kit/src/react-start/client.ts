@@ -1,7 +1,7 @@
 /**
- * Client-safe subset of `@greenroom/kit/react-start`.
+ * Client-safe subset of `@si/kit/react-start`.
  *
- * Importing from `@greenroom/kit/react-start` (the server barrel) drags in
+ * Importing from `@si/kit/react-start` (the server barrel) drags in
  * modules that top-level-instantiate `AsyncLocalStorage` from
  * `node:async_hooks`, which Vite externalizes for the browser. Client code
  * imports from this entry instead. Only TSS bindings that are safe to evaluate

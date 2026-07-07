@@ -8,7 +8,7 @@
  * (bouncer in prod; the dev stamper in portless), so this reader is
  * topology-agnostic.
  */
-import { PLATFORM_HEADERS } from "@greenroom/auth";
+import { PLATFORM_HEADERS } from "@si/auth";
 import { extractPlatformRequestId } from "../request-context";
 
 export interface PlatformStartContext {

@@ -1,10 +1,10 @@
 "use client";
 
 import type { VariantProps } from "class-variance-authority";
-import { useFieldContext } from "@greenroom/ui/hooks/form-context";
-import { Slider } from "@greenroom/ui/components/slider";
-import { Field, FieldDescription, FieldError, FieldLabel } from "@greenroom/ui/components/field";
-import type { fieldVariants } from "@greenroom/ui/components/field";
+import { useFieldContext } from "@si/ui/hooks/form-context";
+import { Slider } from "@si/ui/components/slider";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@si/ui/components/field";
+import type { fieldVariants } from "@si/ui/components/field";
 
 export function SliderField({
   label,

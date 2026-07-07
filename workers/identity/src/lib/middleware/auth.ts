@@ -1,6 +1,6 @@
 import { redirect } from "@tanstack/react-router";
-import { createPrincipalGate, type Principal } from "@greenroom/kit/react-start";
-import { isAdminRole } from "@greenroom/kit/roles";
+import { createPrincipalGate, type Principal } from "@si/kit/react-start";
+import { isAdminRole } from "@si/kit/roles";
 import { envelopeMiddleware } from "@/lib/platform";
 
 export { envelopeMiddleware };

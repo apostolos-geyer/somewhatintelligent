@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { buttonVariants } from "@greenroom/ui/components/button";
-import { cn } from "@greenroom/ui/lib/utils";
+import { buttonVariants } from "@si/ui/components/button";
+import { cn } from "@si/ui/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,8 +12,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@greenroom/ui/components/alert-dialog";
-import { toast } from "@greenroom/ui/components/sonner";
+} from "@si/ui/components/alert-dialog";
+import { toast } from "@si/ui/components/sonner";
 import { authClient } from "@/lib/auth-client";
 
 export function DeleteAccountDialog() {

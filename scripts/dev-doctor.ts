@@ -6,7 +6,7 @@
  *
  * Checks, in order:
  *  1. Surface probes (short timeouts, via curl so *.localhost bypasses any
- *     container proxy): identity sign-in, brand portal, Hub.
+ *     container proxy): identity sign-in.
  *  2. Duplicate-fleet detection: more than one vite dev server per worker
  *     directory means an orphan from a previous boot is still holding ports —
  *     the classic "Port NNNN is in use, trying another one…" squatter that
@@ -31,9 +31,7 @@ function probe(label: string, url: string, expect: number[]): void {
 }
 
 console.log("── surfaces ──────────────────────────────────────────────────");
-probe("identity sign-in ", "https://identity.sproutportal.localhost/sign-in", [200]);
-probe("brand portal     ", "https://acme.sprout.sproutportal.localhost/", [200, 307]);
-probe("hub (apex)       ", "https://sprout.sproutportal.localhost/", [200, 307]);
+probe("identity sign-in ", "https://identity.somewhatintelligent.localhost/sign-in", [200]);
 
 // ── fleet process census ─────────────────────────────────────────────────────
 // One vite dev server per worker dir is healthy; two means an orphaned fleet.

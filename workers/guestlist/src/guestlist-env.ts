@@ -17,8 +17,8 @@
  * separate `env.d.ts` ambient — same reason as above (ambients don't
  * travel).
  */
-import type { Promoter } from "@greenroom/promoter-service";
-import type { Roadie } from "@greenroom/roadie-service";
+import type { Promoter } from "@si/promoter-service";
+import type { Roadie } from "@si/roadie-service";
 
 export interface GuestlistEnv {
   DB: D1Database;

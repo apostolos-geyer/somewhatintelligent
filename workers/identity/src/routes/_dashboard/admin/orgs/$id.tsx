@@ -1,23 +1,17 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@greenroom/ui/components/avatar";
-import { Badge } from "@greenroom/ui/components/badge";
-import { Button, buttonVariants } from "@greenroom/ui/components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@greenroom/ui/components/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@si/ui/components/avatar";
+import { Badge } from "@si/ui/components/badge";
+import { Button, buttonVariants } from "@si/ui/components/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@si/ui/components/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@greenroom/ui/components/dropdown-menu";
-import { toast } from "@greenroom/ui/components/sonner";
-import { cn } from "@greenroom/ui/lib/utils";
+} from "@si/ui/components/dropdown-menu";
+import { toast } from "@si/ui/components/sonner";
+import { cn } from "@si/ui/lib/utils";
 import { AddMemberModal } from "@/components/admin/add-member-modal";
 import { InviteMemberModal } from "@/components/admin/invite-member-modal";
 import { MemberActions } from "@/components/admin/member-actions";

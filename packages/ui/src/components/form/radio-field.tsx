@@ -1,7 +1,7 @@
 "use client";
 
-import { useFieldContext } from "@greenroom/ui/hooks/form-context";
-import { RadioGroup, RadioGroupItem } from "@greenroom/ui/components/radio-group";
+import { useFieldContext } from "@si/ui/hooks/form-context";
+import { RadioGroup, RadioGroupItem } from "@si/ui/components/radio-group";
 import {
   Field,
   FieldContent,
@@ -11,7 +11,7 @@ import {
   FieldSet,
   FieldLegend,
   FieldTitle,
-} from "@greenroom/ui/components/field";
+} from "@si/ui/components/field";
 
 export function RadioField({
   legend,

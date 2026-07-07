@@ -1,5 +1,5 @@
 {
-  "name": "@greenroom/email",
+  "name": "@si/email",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -12,14 +12,14 @@
     "dev": "email dev -p 3001 -d src/templates"
   },
   "dependencies": {
-    "@greenroom/config": "workspace:*",
     "@react-email/components": "^1.0.1",
     "@react-email/render": "^1.0.0",
+    "@si/config": "workspace:*",
     "resend": "^4.0.0"
   },
   "devDependencies": {
-    "@greenroom/typescript-config": "workspace:*",
     "@react-email/preview-server": "5.2.11",
+    "@si/typescript-config": "workspace:*",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "react": "catalog:",

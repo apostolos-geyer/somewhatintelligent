@@ -10,26 +10,20 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@greenroom/ui/components/alert-dialog";
-import { Avatar, AvatarFallback, AvatarImage } from "@greenroom/ui/components/avatar";
-import { Badge } from "@greenroom/ui/components/badge";
-import { Button, buttonVariants } from "@greenroom/ui/components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@greenroom/ui/components/card";
-import { DialogTrigger } from "@greenroom/ui/components/dialog";
-import { toast } from "@greenroom/ui/components/sonner";
-import { cn } from "@greenroom/ui/lib/utils";
+} from "@si/ui/components/alert-dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@si/ui/components/avatar";
+import { Badge } from "@si/ui/components/badge";
+import { Button, buttonVariants } from "@si/ui/components/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@si/ui/components/card";
+import { DialogTrigger } from "@si/ui/components/dialog";
+import { toast } from "@si/ui/components/sonner";
+import { cn } from "@si/ui/lib/utils";
 import { guestlist } from "@/lib/auth-client";
 import { AvatarUploadDialog } from "@/components/account/avatar-upload-dialog";
 import { ChangeEmailDialog } from "@/components/account/change-email-dialog";
 import { EditNameDialog } from "@/components/account/edit-name-dialog";
 import { EditUsernameDialog } from "@/components/account/edit-username-dialog";
-import { isAdminRole } from "@greenroom/kit/roles";
+import { isAdminRole } from "@si/kit/roles";
 
 export type IdentityUser = {
   name: string;

@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 import { type } from "arktype";
-import { useAppForm } from "@greenroom/ui/hooks/use-app-form";
-import { buttonVariants } from "@greenroom/ui/components/button";
-import { cn } from "@greenroom/ui/lib/utils";
+import { useAppForm } from "@si/ui/hooks/use-app-form";
+import { buttonVariants } from "@si/ui/components/button";
+import { cn } from "@si/ui/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -13,8 +13,8 @@ import {
   DialogTrigger,
   DialogClose,
   DialogFooter,
-} from "@greenroom/ui/components/dialog";
-import { Alert } from "@greenroom/ui/components/alert";
+} from "@si/ui/components/dialog";
+import { Alert } from "@si/ui/components/alert";
 import { authClient } from "@/lib/auth-client";
 
 const usernameSchema = type({

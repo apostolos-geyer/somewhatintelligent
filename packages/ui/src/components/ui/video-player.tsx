@@ -16,7 +16,7 @@ import {
   Download,
   AlertTriangle,
 } from "lucide-react";
-import { cn } from "@greenroom/ui/lib/utils";
+import { cn } from "@si/ui/lib/utils";
 
 function formatTime(seconds: number): string {
   if (!isFinite(seconds) || isNaN(seconds)) return "0:00";

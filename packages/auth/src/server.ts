@@ -4,7 +4,7 @@
  * Wraps `betterAuth` from `better-auth/minimal` with the platform's canonical
  * plugin set + session/rateLimit/advanced config. Every per-fork or per-env
  * value is passed in via opts — this module deliberately imports nothing
- * from `cloudflare:workers`, `drizzle-orm`, or `@greenroom/config`. Callers
+ * from `cloudflare:workers`, `drizzle-orm`, or `@si/config`. Callers
  * thread those in.
  *
  * Consumers:

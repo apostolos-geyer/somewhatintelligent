@@ -1,16 +1,10 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { type } from "arktype";
-import { useAppForm } from "@greenroom/ui/hooks/use-app-form";
-import { Button } from "@greenroom/ui/components/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@greenroom/ui/components/card";
-import { Alert } from "@greenroom/ui/components/alert";
+import { useAppForm } from "@si/ui/hooks/use-app-form";
+import { Button } from "@si/ui/components/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@si/ui/components/card";
+import { Alert } from "@si/ui/components/alert";
 import { GuestlistBrand } from "@/components/guestlist-brand";
 import { authClient } from "@/lib/auth-client";
 

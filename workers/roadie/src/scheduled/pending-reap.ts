@@ -2,9 +2,9 @@
 // pending blobs older than DEFAULT_PENDING_TIMER_SECONDS to deleted, enqueues
 // backend removal of any partial bytes, and drops the reference rows that
 // pointed at them. See spec §Scheduled tasks and RFC §13.
-import { loggedJob, requireRequestLog } from "@greenroom/kit/log";
+import { loggedJob, requireRequestLog } from "@si/kit/log";
 import { and, eq, isNull, lt } from "drizzle-orm";
-import { ulid } from "@greenroom/kit/ids";
+import { ulid } from "@si/kit/ids";
 import { DEFAULT_PENDING_TIMER_SECONDS, PENDING_REAP_BATCH_SIZE } from "../config";
 import { createDb } from "../db";
 import { newId } from "../ids";

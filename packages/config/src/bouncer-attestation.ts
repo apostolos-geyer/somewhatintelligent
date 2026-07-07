@@ -3,7 +3,7 @@
  *
  * Maps `kid` → base64-encoded SPKI Ed25519 public key (the X.509 SPKI body
  * between the PEM `-----BEGIN PUBLIC KEY-----` / `-----END PUBLIC KEY-----`
- * markers, with newlines stripped). The verifier in `@greenroom/auth` imports
+ * markers, with newlines stripped). The verifier in `@si/auth` imports
  * this map and accepts any envelope whose JWS header `kid` matches one of
  * these entries — supports rolling rotation with overlap.
  *
@@ -12,7 +12,7 @@
  * See `docs/secrets.md` §"Rotating BNC_ATT_PRIV" for the runbook.
  *
  * The `dev` kid is a well-known dev keypair shared with `scripts/dev-config.ts`
- * (`LOCAL_BNC_ATT_PRIV`). It only signs envelopes on `.sproutportal.localhost`,
+ * (`LOCAL_BNC_ATT_PRIV`). It only signs envelopes on `.somewhatintelligent.localhost`,
  * so the keypair is intentionally public. Rotate it per fork before any
  * non-local deploy.
  *
@@ -26,7 +26,7 @@
 export const BOUNCER_ATTESTATION_KEYS = {
   /** Well-known dev keypair — paired with `LOCAL_BNC_ATT_PRIV` in scripts/dev-config.ts. */
   dev: "MCowBQYDK2VwAyEAfw6nHplwIGKJBTJeITzErHw5kQej7FjhrcNIWEbP5cg=",
-  /** Sprout production — paired private key is sprout-bouncer-production's BNC_ATT_PRIV secret. */
+  /** Production — paired private key is si-bouncer-production's BNC_ATT_PRIV secret. */
   production: "MCowBQYDK2VwAyEAdbRDzkgTCIpywDrP9yGs5Qzc3QL0gsBCzipLNSqO9AM=",
 } as const satisfies Record<string, string>;
 

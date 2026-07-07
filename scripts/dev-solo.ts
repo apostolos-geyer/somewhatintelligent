@@ -36,7 +36,9 @@ if (!existsSync(configPath)) {
 }
 
 const hasToken = !!process.env.CLOUDFLARE_API_TOKEN;
-const hasLogin = existsSync(resolve(homedir(), ".wrangler")) || existsSync(resolve(homedir(), "Library/Preferences/.wrangler"));
+const hasLogin =
+  existsSync(resolve(homedir(), ".wrangler")) ||
+  existsSync(resolve(homedir(), "Library/Preferences/.wrangler"));
 if (!hasToken && !hasLogin) {
   console.error(
     "dev-solo: remote bindings need Cloudflare auth — set CLOUDFLARE_API_TOKEN or `wrangler login` first.",

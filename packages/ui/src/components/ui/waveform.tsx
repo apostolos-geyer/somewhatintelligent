@@ -1,8 +1,8 @@
 "use client";
 
 import { useRef, useEffect, useCallback, useMemo, useState, type MouseEvent } from "react";
-import { generateWaveformFromUrl } from "@greenroom/audio/waveform";
-import { cn } from "@greenroom/ui/lib/utils";
+import { generateWaveformFromUrl } from "@si/audio/waveform";
+import { cn } from "@si/ui/lib/utils";
 
 // CSS custom properties resolve to a fully-formed color (e.g., "hsl(210 60% 62%)"
 // or "rgb(106, 158, 209)") via getComputedStyle. Wrapping that again in hsl(...)

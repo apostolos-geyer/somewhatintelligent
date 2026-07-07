@@ -8,8 +8,8 @@
  *
  * Usage:
  *
- *   import { loggedJob, requireRequestLog } from "@greenroom/kit/log";
- *   import { ulid } from "@greenroom/kit/ids";
+ *   import { loggedJob, requireRequestLog } from "@si/kit/log";
+ *   import { ulid } from "@si/kit/ids";
  *
  *   const reapExpiredGrants = loggedJob(
  *     {

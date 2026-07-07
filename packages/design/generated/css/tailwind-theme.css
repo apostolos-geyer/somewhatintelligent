@@ -4,8 +4,8 @@
 
    Import AFTER tokens.css:
    @import "tailwindcss";
-   @import "@greenroom/design/generated/css/tokens.css";
-   @import "@greenroom/design/generated/css/tailwind-theme.css";
+   @import "@si/design/generated/css/tokens.css";
+   @import "@si/design/generated/css/tailwind-theme.css";
    ═══════════════════════════════════════════════════ */
 
 @theme inline {

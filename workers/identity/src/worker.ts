@@ -1,7 +1,7 @@
 // Hand-written entry; do not wrap in a kit factory. Rationale in
 // docs/ARCHITECTURE.md §3.3 + §4.4.
 import startEntry from "@tanstack/react-start/server-entry";
-import { extractPlatformStartContext } from "@greenroom/kit/react-start";
+import { extractPlatformStartContext } from "@si/kit/react-start";
 import { devEnvelopeStamper } from "./lib/platform";
 
 declare module "@tanstack/react-start" {

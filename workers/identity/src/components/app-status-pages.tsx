@@ -1,8 +1,8 @@
 // Root-level errorComponent + notFoundComponent used by the root route.
 import { Link } from "@tanstack/react-router";
 
-import { Button } from "@greenroom/ui/components/button";
-import { StatusPage } from "@greenroom/ui/components/status-page";
+import { Button } from "@si/ui/components/button";
+import { StatusPage } from "@si/ui/components/status-page";
 
 function trimMessage(raw: string, max = 200): string {
   const clean = raw.replace(/\s+/g, " ").trim();

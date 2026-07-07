@@ -4,12 +4,7 @@ import { defaultExclude, defineConfig } from "vite-plus";
 // its own header says to exclude it from linter/formatter. Keeping it out of
 // `fmt`/`lint` stops `vp check --fix` from reflowing it into the repo style
 // (semi + double-quote) on every boot and churning the diff.
-const ignorePatterns = [
-  ".agents/**",
-  ".claude/**",
-  "dist/**",
-  "**/routeTree.gen.ts",
-];
+const ignorePatterns = [".agents/**", ".claude/**", "dist/**", "**/routeTree.gen.ts"];
 
 export default defineConfig({
   fmt: {
@@ -36,8 +31,8 @@ export default defineConfig({
     // drag in stale copies) — plus the Playwright `e2e/**` specs, which call
     // Playwright's `test()` and must run via `bun run test:e2e`, never vitest.
     // Per-worker pool-worker suites still run in their own per-service tier
-    // (`cd <service> && bun run test` / sprout `test:pool`); see
-    // docs/sprout/10-local-stack-and-testing-runbook.md.
+    // (`cd <service> && bun run test`) — see docs/ARCHITECTURE.md and each
+    // worker's own README for the pool-worker test tier.
     exclude: [...defaultExclude, ...ignorePatterns, "e2e/**"],
   },
 });

@@ -1,7 +1,7 @@
 "use client";
 
-import { useFieldContext } from "@greenroom/ui/hooks/form-context";
-import { Checkbox } from "@greenroom/ui/components/checkbox";
+import { useFieldContext } from "@si/ui/hooks/form-context";
+import { Checkbox } from "@si/ui/components/checkbox";
 import {
   Field,
   FieldDescription,
@@ -10,7 +10,7 @@ import {
   FieldLabel,
   FieldLegend,
   FieldSet,
-} from "@greenroom/ui/components/field";
+} from "@si/ui/components/field";
 
 export function CheckboxGroupField({
   legend,

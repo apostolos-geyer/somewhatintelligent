@@ -1,11 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
-import {
-  getActorId,
-  getActorKind,
-  getCallerApp,
-  getRequestId,
-} from "@greenroom/kit/request-context";
+import { getActorId, getActorKind, getCallerApp, getRequestId } from "@si/kit/request-context";
 
 // Catch-all proxy for every `/api/*` route on identity. Forwards to guestlist
 // over the service binding so requests stay same-origin from the browser's

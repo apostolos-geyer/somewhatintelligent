@@ -88,7 +88,7 @@ To rotate `BETTER_AUTH_SECRET`:
 ## Tests
 
 ```bash
-vp test --filter @greenroom/guestlist-service
+vp test --filter @si/guestlist-service
 ```
 
 Integration tests run in workerd via `@cloudflare/vitest-pool-workers`.

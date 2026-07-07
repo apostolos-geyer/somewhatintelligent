@@ -6,20 +6,20 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@greenroom/ui/components/dialog";
-import { Button } from "@greenroom/ui/components/button";
-import { Input } from "@greenroom/ui/components/input";
-import { Label } from "@greenroom/ui/components/label";
-import { Field, FieldDescription } from "@greenroom/ui/components/field";
-import { Alert } from "@greenroom/ui/components/alert";
-import { Avatar, AvatarFallback, AvatarImage } from "@greenroom/ui/components/avatar";
+} from "@si/ui/components/dialog";
+import { Button } from "@si/ui/components/button";
+import { Input } from "@si/ui/components/input";
+import { Label } from "@si/ui/components/label";
+import { Field, FieldDescription } from "@si/ui/components/field";
+import { Alert } from "@si/ui/components/alert";
+import { Avatar, AvatarFallback, AvatarImage } from "@si/ui/components/avatar";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@greenroom/ui/components/select";
+} from "@si/ui/components/select";
 import { addOrgMember, searchUsersByEmail, type UserSearchHit } from "@/lib/org-admin.functions";
 
 type Role = "owner" | "admin" | "member";

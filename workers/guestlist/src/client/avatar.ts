@@ -4,7 +4,7 @@
 // `GuestlistApp`; the R2 PUT in step 2 uses `runUpload` from roadie's
 // client SDK.
 import { treaty } from "@elysiajs/eden";
-import { runUpload, type UploadDriver } from "@greenroom/roadie-service/client/upload";
+import { runUpload, type UploadDriver } from "@si/roadie-service/client/upload";
 import type { GuestlistApp } from "../index";
 
 export type AvatarContentType = "image/jpeg" | "image/png" | "image/webp";

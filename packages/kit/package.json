@@ -1,5 +1,5 @@
 {
-  "name": "@greenroom/kit",
+  "name": "@si/kit",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -17,14 +17,14 @@
     "test": "vp test run"
   },
   "dependencies": {
-    "@greenroom/auth": "workspace:*",
-    "@greenroom/config": "workspace:*",
+    "@si/auth": "workspace:*",
+    "@si/config": "workspace:*",
     "ulidx": "catalog:"
   },
   "devDependencies": {
     "@babel/plugin-proposal-decorators": "^7.29.0",
-    "@greenroom/typescript-config": "workspace:*",
     "@rolldown/plugin-babel": "^0.2.3",
+    "@si/typescript-config": "workspace:*",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "vite-plus": "catalog:"

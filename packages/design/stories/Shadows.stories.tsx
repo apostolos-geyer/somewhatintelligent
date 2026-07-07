@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 /**
  * Pure token specimens — no UI component imports.
  * These show the raw shadow/material CSS tokens.
- * For component variants, see the Card and Button stories in @greenroom/ui.
+ * For component variants, see the Card and Button stories in @si/ui.
  */
 function ShadowsPage() {
   const shadows = [

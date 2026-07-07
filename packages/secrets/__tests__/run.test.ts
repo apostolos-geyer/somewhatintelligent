@@ -67,13 +67,11 @@ describe("provision — staging", () => {
       "put",
       "BETTER_AUTH_SECRET",
       "--name",
-      "sprout-guestlist-staging",
+      "si-guestlist-staging",
     ]);
     // attestation pushed too, using the dev key, to the staging bouncer
     expect(
-      calls.some(
-        (c) => c.args.includes("BNC_ATT_PRIV") && c.args.includes("sprout-bouncer-staging"),
-      ),
+      calls.some((c) => c.args.includes("BNC_ATT_PRIV") && c.args.includes("si-bouncer-staging")),
     ).toBe(true);
   });
 
@@ -134,7 +132,7 @@ describe("provision — guards", () => {
       "put",
       "RESEND_API_KEY",
       "--name",
-      "sprout-promoter-staging",
+      "si-promoter-staging",
     ]);
     expect(calls[0]?.stdin).toBe("re_test");
   });

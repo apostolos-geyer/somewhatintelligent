@@ -12,7 +12,7 @@
  *
  *   // workers/<app>/src/start.ts
  *   import { createStart } from "@tanstack/react-start";
- *   import { createRequestLogger } from "@greenroom/kit/react-start";
+ *   import { createRequestLogger } from "@si/kit/react-start";
  *
  *   const requestLogger = createRequestLogger({ service: "<app>" });
  *

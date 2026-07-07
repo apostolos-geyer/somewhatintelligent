@@ -1,5 +1,5 @@
-import { defineOg } from "@greenroom/og";
-import { LogoIcon } from "@greenroom/ui/components/logo";
+import { defineOg } from "@si/og";
+import { LogoIcon } from "@si/ui/components/logo";
 
 export default defineOg({
   name: "icon",

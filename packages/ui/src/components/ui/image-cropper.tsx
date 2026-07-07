@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { cn } from "@greenroom/ui/lib/utils";
+import { cn } from "@si/ui/lib/utils";
 
 export type CropArea = { x: number; y: number; width: number; height: number };
 

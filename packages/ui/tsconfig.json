@@ -9,7 +9,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "paths": {
-      "@greenroom/ui/*": ["./src/*"]
+      "@si/ui/*": ["./src/*"]
     }
   },
   "include": ["src"],

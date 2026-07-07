@@ -1,5 +1,5 @@
 {
-  "extends": "@greenroom/typescript-config/base.json",
+  "extends": "@si/typescript-config/base.json",
   "compilerOptions": {
     "module": "ESNext",
     "moduleResolution": "bundler",

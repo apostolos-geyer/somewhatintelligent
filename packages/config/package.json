@@ -1,5 +1,5 @@
 {
-  "name": "@greenroom/config",
+  "name": "@si/config",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,6 +12,6 @@
     "typecheck": "tsgo --noEmit"
   },
   "devDependencies": {
-    "@greenroom/typescript-config": "workspace:*"
+    "@si/typescript-config": "workspace:*"
   }
 }

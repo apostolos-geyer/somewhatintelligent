@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { type } from "arktype";
-import { useAppForm } from "@greenroom/ui/hooks/use-app-form";
-import { FieldSeparator } from "@greenroom/ui/components/field";
+import { useAppForm } from "@si/ui/hooks/use-app-form";
+import { FieldSeparator } from "@si/ui/components/field";
 
 const meta = {
   title: "Forms/useAppForm",

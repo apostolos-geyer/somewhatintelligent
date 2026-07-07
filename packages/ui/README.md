@@ -1,4 +1,4 @@
-# @greenroom/ui
+# @si/ui
 
 Component library for the Platform platform, built on [Base UI](https://base-ui.com) primitives and styled with the **Glyph** design system.
 
@@ -6,28 +6,28 @@ Component library for the Platform platform, built on [Base UI](https://base-ui.
 
 ```ts
 // Import a component
-import { Button } from "@greenroom/ui/components/button";
+import { Button } from "@si/ui/components/button";
 
 // Import a utility
-import { cn } from "@greenroom/ui/lib/utils";
+import { cn } from "@si/ui/lib/utils";
 
 // Import the form hook
-import { useAppForm } from "@greenroom/ui/hooks/use-app-form";
+import { useAppForm } from "@si/ui/hooks/use-app-form";
 ```
 
-All components are consumed via the `@greenroom/ui` package alias. The export map supports three entry points:
+All components are consumed via the `@si/ui` package alias. The export map supports three entry points:
 
-| Pattern                      | Resolves to               | Example                                |
-| ---------------------------- | ------------------------- | -------------------------------------- |
-| `@greenroom/ui`              | `src/components/index.ts` | Barrel re-export of core UI primitives |
-| `@greenroom/ui/components/*` | `src/components/ui/*.tsx` | `@greenroom/ui/components/button`      |
-| `@greenroom/ui/lib/*`        | `src/lib/*.ts`            | `@greenroom/ui/lib/utils`              |
+| Pattern               | Resolves to               | Example                                |
+| --------------------- | ------------------------- | -------------------------------------- |
+| `@si/ui`              | `src/components/index.ts` | Barrel re-export of core UI primitives |
+| `@si/ui/components/*` | `src/components/ui/*.tsx` | `@si/ui/components/button`             |
+| `@si/ui/lib/*`        | `src/lib/*.ts`            | `@si/ui/lib/utils`                     |
 
 Form components and hooks are imported directly:
 
 ```ts
-import { useAppForm } from "@greenroom/ui/hooks/use-app-form";
-import { TextField } from "@greenroom/ui/components/form/text-field";
+import { useAppForm } from "@si/ui/hooks/use-app-form";
+import { TextField } from "@si/ui/components/form/text-field";
 ```
 
 ## Storybook
@@ -55,7 +55,7 @@ Every component follows the **Glyph** design language defined in `packages/desig
 Components accept material variants through their existing `variant` props. The shared class strings live in `lib/materials.ts`:
 
 ```ts
-import { surfaceMaterials, interactiveMaterials } from "@greenroom/ui/lib/materials";
+import { surfaceMaterials, interactiveMaterials } from "@si/ui/lib/materials";
 ```
 
 | Material | Surface use                                               | Interactive use                          |
@@ -161,14 +161,14 @@ The form system is built on [TanStack Form](https://tanstack.com/form) with pre-
 
 ```ts
 // hooks/use-app-form.ts is already configured with all field + form components.
-import { useAppForm } from "@greenroom/ui/hooks/use-app-form";
+import { useAppForm } from "@si/ui/hooks/use-app-form";
 ```
 
 ### Basic usage
 
 ```tsx
 import { type } from "arktype";
-import { useAppForm } from "@greenroom/ui/hooks/use-app-form";
+import { useAppForm } from "@si/ui/hooks/use-app-form";
 
 const schema = type({
   name: "string >= 2",
@@ -226,7 +226,7 @@ Each field component is accessed via `field.<Component>` inside `form.AppField`'
 <field.TextareaField label="Bio" placeholder="..." rows={4} description="Max 280 chars." />
 
 // EmailField — auto mail icon, type="email", autoComplete="email"
-<field.EmailField label="Email" suffix="@greenroom.example" />
+<field.EmailField label="Email" suffix="@si.example" />
 
 // PasswordField — lock icon, eye toggle, password/text type switch
 <field.PasswordField label="Password" autoComplete="new-password" showLockIcon showToggle />
@@ -342,7 +342,7 @@ Errors are automatically displayed by each field component when `field.state.met
 For large forms, split into sub-components while keeping full type safety:
 
 ```tsx
-import { useAppForm, withForm } from "@greenroom/ui/hooks/use-app-form";
+import { useAppForm, withForm } from "@si/ui/hooks/use-app-form";
 
 const SecuritySection = withForm({
   defaultValues: { password: "", twoFactor: false },
@@ -376,7 +376,7 @@ function SettingsPage() {
 For field combinations used across multiple forms (e.g., password + confirm):
 
 ```tsx
-import { withFieldGroup } from "@greenroom/ui/hooks/use-app-form";
+import { withFieldGroup } from "@si/ui/hooks/use-app-form";
 
 const PasswordFields = withFieldGroup({
   defaultValues: { password: "", confirmPassword: "" },
@@ -413,12 +413,12 @@ const PasswordFields = withFieldGroup({
 
 ## Lib utilities
 
-| Export                 | Module                        | Description                                                |
-| ---------------------- | ----------------------------- | ---------------------------------------------------------- |
-| `cn(...classes)`       | `@greenroom/ui/lib/utils`     | Merges class names via `clsx` + `tailwind-merge`           |
-| `surfaceMaterials`     | `@greenroom/ui/lib/materials` | Static surface class strings (brutal, soft, neo, glass)    |
-| `interactiveMaterials` | `@greenroom/ui/lib/materials` | Interactive element class strings with hover/active states |
-| `compactMaterials`     | `@greenroom/ui/lib/materials` | Compact element class strings (badges)                     |
+| Export                 | Module                 | Description                                                |
+| ---------------------- | ---------------------- | ---------------------------------------------------------- |
+| `cn(...classes)`       | `@si/ui/lib/utils`     | Merges class names via `clsx` + `tailwind-merge`           |
+| `surfaceMaterials`     | `@si/ui/lib/materials` | Static surface class strings (brutal, soft, neo, glass)    |
+| `interactiveMaterials` | `@si/ui/lib/materials` | Interactive element class strings with hover/active states |
+| `compactMaterials`     | `@si/ui/lib/materials` | Compact element class strings (badges)                     |
 
 ---
 

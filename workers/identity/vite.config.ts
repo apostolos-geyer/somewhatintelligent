@@ -30,17 +30,17 @@ const vars: Record<string, string> = {
 };
 
 // docs/ops/02 flipped each wrangler.jsonc so its TOP LEVEL is now the STAGING
-// section: `vars` above carries staging IDENTITY_URL / MARKETING_URL /
-// SPROUT_URL / AUTH_DOMAIN. Those must never bake into a LOCAL DEV client
-// bundle. Dev truth lives in ./.dev.vars, which the wrangler-vars define path
+// section: `vars` above carries staging IDENTITY_URL / AUTH_DOMAIN. Those
+// must never bake into a LOCAL DEV client bundle. Dev truth lives in
+// ./.dev.vars, which the wrangler-vars define path
 // above never reads — so overlay it here.
 //   • CLOUDFLARE_ENV set → a real staging/prod build: keep the wrangler vars.
-//   • GREENROOM_BUILD=1  → marks any real shipped build (see package.json
+//   • SI_BUILD=1  → marks any real shipped build (see package.json
 //     deploy:staging) so CI's seeded .dev.vars can never leak into a shipped
 //     bundle even when CLOUDFLARE_ENV happens to be absent.
 //   • missing .dev.vars  → silent no-op (fresh clone / CI typecheck).
 // The PORTLESS_URL override below still wins — it stays AFTER this overlay.
-if (!cfEnv && !process.env.GREENROOM_BUILD) {
+if (!cfEnv && !process.env.SI_BUILD) {
   try {
     for (const line of readFileSync(path.resolve(__dirname, "./.dev.vars"), "utf8").split("\n")) {
       const trimmed = line.trim();
@@ -61,7 +61,7 @@ if (!cfEnv && !process.env.GREENROOM_BUILD) {
 
 // Portless prefixes the dev host with the worktree branch name (see
 // `dev` script in package.json), so the wrangler.jsonc dev IDENTITY_URL
-// (https://identity.sproutportal.localhost) doesn't match where the worker is
+// (https://identity.somewhatintelligent.localhost) doesn't match where the worker is
 // actually reachable. When PORTLESS_URL is present, prefer it for the
 // client bundle so `import.meta.env.IDENTITY_URL` matches the live origin.
 if (!cfEnv && process.env.PORTLESS_URL) {
@@ -69,19 +69,13 @@ if (!cfEnv && process.env.PORTLESS_URL) {
 }
 
 // Allowlist wrangler vars that are safe/intended to reach the browser bundle.
-const CLIENT_VARS = [
-  "IDENTITY_URL",
-  "MARKETING_URL",
-  "SPROUT_URL",
-  "AUTH_DOMAIN",
-  "ENVIRONMENT",
-] as const;
+const CLIENT_VARS = ["IDENTITY_URL", "AUTH_DOMAIN", "ENVIRONMENT"] as const;
 // Under vitest there is no build: leave `import.meta.env.*` unset. The only
 // __tests__ file (return-to.test.ts) exercises the env-free core
 // (isPlatformHost / resolveReturnTo take the apex as an explicit argument and
 // never read import.meta.env — verified: no `import.meta` references in the
-// test), so staging defines would only skew, never help. Mirrors workers/sprout's
-// guard. Real builds (non-VITEST) still inject every allowlisted var.
+// test), so staging defines would only skew, never help. Real builds
+// (non-VITEST) still inject every allowlisted var.
 const clientDefines = process.env.VITEST
   ? {}
   : Object.fromEntries(
@@ -93,7 +87,7 @@ const clientDefines = process.env.VITEST
 
 // CF plugin's `ssr` environment declares every node built-in as `external`,
 // which vitest rejects. Drop CF-specific plugins under VITEST; the return-to
-// unit tests run as plain node. Mirrors workers/sprout.
+// unit tests run as plain node.
 function makePlugins(): PluginOption[] {
   if (process.env.VITEST) return [...react()];
   return [
@@ -119,7 +113,7 @@ export default defineConfig({
   server: {
     port: Number(process.env.PORT) || 5173,
     host: "0.0.0.0",
-    allowedHosts: [".sproutportal.localhost"],
+    allowedHosts: [".somewhatintelligent.localhost"],
     // HMR direct to identity's port — bypasses portless's miniflare loopback bug.
     hmr: { host: "localhost", clientPort: Number(process.env.PORT) || 5173, protocol: "ws" },
   },
@@ -147,7 +141,7 @@ export default defineConfig({
       build: {
         command: "vp build",
         dependsOn: ["og:build"],
-        env: ["CLOUDFLARE_ENV", "GREENROOM_BUILD", "NODE_ENV", "VITE_*"],
+        env: ["CLOUDFLARE_ENV", "SI_BUILD", "NODE_ENV", "VITE_*"],
         input: [
           { auto: true },
           "!**/.output/**",

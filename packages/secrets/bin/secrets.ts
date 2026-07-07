@@ -154,7 +154,7 @@ async function main(): Promise<void> {
     );
   }
 
-  process.stdout.write(`\n@greenroom/secrets — env: ${args.env}\n\n`);
+  process.stdout.write(`\n@si/secrets — env: ${args.env}\n\n`);
 
   if (args.status) {
     printPlan(buildPlan(args.env, loadStore(args.env), filter));

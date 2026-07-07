@@ -31,7 +31,7 @@ export function loadStore(env: Env): Record<string, string> {
 /** Persist the value store for an env (generated secrets land here). */
 export function saveStore(env: Env, values: Record<string, string>): void {
   if (!existsSync(SECRETS_DIR)) mkdirSync(SECRETS_DIR, { recursive: true });
-  const header = `# @greenroom/secrets value store for ${env} — gitignored, DO NOT COMMIT\n`;
+  const header = `# @si/secrets value store for ${env} — gitignored, DO NOT COMMIT\n`;
   writeFileSync(storePath(env), header + serializeDotenv(values));
 }
 

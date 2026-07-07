@@ -1,6 +1,6 @@
-import { createGuestlistClient } from "@greenroom/guestlist-service/client";
+import { createGuestlistClient } from "@si/guestlist-service/client";
 import { env } from "cloudflare:workers";
-import { createGuestlistFactory } from "@greenroom/kit/react-start";
+import { createGuestlistFactory } from "@si/kit/react-start";
 import { createServerOnlyFn } from "@tanstack/react-start";
 
 export const guestlistFetcher = createServerOnlyFn(() => env.GUESTLIST.fetch.bind(env.GUESTLIST));

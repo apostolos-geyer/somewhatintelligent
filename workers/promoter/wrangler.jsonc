@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "sprout-promoter-staging",
-  "account_id": "30ce6004cd9c2907f0b06fe401c4f4ba",
+  "name": "si-promoter-staging",
+  "account_id": "c735c5a53d864bee37400befb7f4c7f4",
   "main": "src/index.ts",
   "compatibility_date": "2026-04-14",
   "compatibility_flags": ["nodejs_compat"],
@@ -18,12 +18,12 @@
   },
   "env": {
     "production": {
-      "name": "sprout-promoter-production",
+      "name": "si-promoter-production",
       "preview_urls": false,
       "vars": {
         "ENVIRONMENT": "production",
         // Cloudflare Email Service. Sends from the onboarded domain
-        // (EMAIL_FROM_PROD = hello@sproutportal.ca) via the EMAIL binding below.
+        // (EMAIL_FROM_PROD = hello@somewhatintelligent.ca) via the EMAIL binding below.
         "EMAIL_PROVIDER": "cloudflare",
       },
       // Cloudflare Email Service send_email binding (requires the domain

@@ -11,8 +11,8 @@
  *
  * @example
  *   // app/src/lib/auth-context.ts
- *   import { createAuthContext } from "@greenroom/kit/react";
- *   import { createReactStartAuthProvider } from "@greenroom/kit/react-start/client";
+ *   import { createAuthContext } from "@si/kit/react";
+ *   import { createReactStartAuthProvider } from "@si/kit/react-start/client";
  *   import { loadSession } from "@/lib/session.server";
  *
  *   const authContext = createAuthContext<PlatformSession>();
@@ -24,7 +24,7 @@ import { useCallback, useMemo, useState, type ReactNode } from "react";
 import type { AuthContextValue, createAuthContext } from "../react/auth";
 
 export interface ReactStartAuthProviderOpts<S extends { user: { role?: string | null } }> {
-  /** Output of `createAuthContext<S>()` from `@greenroom/kit/react`. */
+  /** Output of `createAuthContext<S>()` from `@si/kit/react`. */
   authContext: ReturnType<typeof createAuthContext<S>>;
   /**
    * The `createServerFn` returned by `createSessionFactory` (or any

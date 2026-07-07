@@ -1,14 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Button } from "@greenroom/ui/components/button";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@greenroom/ui/components/card";
-import { Alert } from "@greenroom/ui/components/alert";
+import { Button } from "@si/ui/components/button";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@si/ui/components/card";
+import { Alert } from "@si/ui/components/alert";
 import { GuestlistBrand } from "@/components/guestlist-brand";
 import { authClient } from "@/lib/auth-client";
 

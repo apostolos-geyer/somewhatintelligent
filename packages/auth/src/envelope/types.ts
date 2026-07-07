@@ -3,7 +3,7 @@
  *
  * The signed JWS payload that bouncer stamps onto every forwarded request
  * via `x-platform-att`. Apps verify against the public-key set in
- * `@greenroom/config`'s `BOUNCER_ATTESTATION_KEYS`.
+ * `@si/config`'s `BOUNCER_ATTESTATION_KEYS`.
  *
  * See `docs/ARCHITECTURE.md` §4.1.2.
  */

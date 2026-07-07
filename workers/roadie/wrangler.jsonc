@@ -1,8 +1,8 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "sprout-roadie-staging",
+  "name": "si-roadie-staging",
   "main": "src/index.ts",
-  "account_id": "30ce6004cd9c2907f0b06fe401c4f4ba",
+  "account_id": "c735c5a53d864bee37400befb7f4c7f4",
   "compatibility_date": "2026-04-19",
   "compatibility_flags": ["nodejs_compat"],
   "observability": {
@@ -14,13 +14,14 @@
   "vars": {
     "ENVIRONMENT": "staging",
     "R2_BUCKET": "roadie-staging-blobs",
-    "R2_ACCOUNT_ID": "30ce6004cd9c2907f0b06fe401c4f4ba",
+    "R2_ACCOUNT_ID": "c735c5a53d864bee37400befb7f4c7f4",
   },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "roadie-staging-db",
-      "database_id": "a3558a3a-5dc6-4526-acf7-8e546b685743",
+      // TODO(provision): real D1 database_id from this fork's Cloudflare account.
+      "database_id": "00000000-0000-0000-0000-000000000000",
       "migrations_dir": "migrations",
     },
   ],
@@ -37,17 +38,18 @@
   },
   "env": {
     "production": {
-      "name": "sprout-roadie-production",
+      "name": "si-roadie-production",
       "vars": {
         "ENVIRONMENT": "production",
         "R2_BUCKET": "roadie-production-blobs",
-        "R2_ACCOUNT_ID": "30ce6004cd9c2907f0b06fe401c4f4ba",
+        "R2_ACCOUNT_ID": "c735c5a53d864bee37400befb7f4c7f4",
       },
       "d1_databases": [
         {
           "binding": "DB",
           "database_name": "roadie-production-db",
-          "database_id": "d433005f-a673-420b-b8f5-f1fbf6276ac8",
+          // TODO(provision): real D1 database_id from this fork's Cloudflare account.
+          "database_id": "00000000-0000-0000-0000-000000000000",
           "migrations_dir": "migrations",
         },
       ],

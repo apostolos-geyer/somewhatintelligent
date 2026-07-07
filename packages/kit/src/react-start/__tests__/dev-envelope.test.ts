@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
-import { PLATFORM_HEADERS } from "@greenroom/auth";
-import { platformDeployConfig } from "@greenroom/config";
+import { PLATFORM_HEADERS } from "@si/auth";
+import { platformDeployConfig } from "@si/config";
 import { createDevEnvelopeStamper } from "../dev-envelope";
 
 // Dev chat host is brand-derived: rebrands change `devDomain` in config.

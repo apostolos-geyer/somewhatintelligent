@@ -1,23 +1,23 @@
 /**
  * Guestlist-specific wiring of the platform's canonical auth factory.
  *
- * `createPlatformAuth` (in `@greenroom/auth`) owns the plugin set + session/
+ * `createPlatformAuth` (in `@si/auth`) owns the plugin set + session/
  * rateLimit/advanced config. This shim threads guestlist's environment:
  *
  *   - drizzle adapter (with the local schema)
  *   - PROMOTER-backed sendEmail callbacks (correlated via request-context)
  *   - executionContext-backed backgroundTasks handler
- *   - brand info pulled from `@greenroom/config`
+ *   - brand info pulled from `@si/config`
  *
  * Kept as a `(env, db) => auth` factory (not a top-level instance) so
  * `auth.codegen.ts` can call it with `process.env` stubs without importing
  * `cloudflare:workers` indirectly.
  */
-import { createPlatformAuth, type PlatformAuthSocialProviders } from "@greenroom/auth";
+import { createPlatformAuth, type PlatformAuthSocialProviders } from "@si/auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { ulid } from "@greenroom/kit/ids";
-import { getRequestId } from "@greenroom/kit/request-context";
-import { platformConfig } from "@greenroom/config";
+import { ulid } from "@si/kit/ids";
+import { getRequestId } from "@si/kit/request-context";
+import { platformConfig } from "@si/config";
 
 import type { Database } from "./db";
 import type { GuestlistEnv } from "./guestlist-env";

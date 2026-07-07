@@ -1,4 +1,4 @@
-/** @greenroom/secrets — codified, idempotent secret provisioning across envs. */
+/** @si/secrets — codified, idempotent secret provisioning across envs. */
 export * from "./manifest";
 export * from "./generate";
 export * from "./dotenv";

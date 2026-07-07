@@ -1,5 +1,5 @@
 import { env, SELF } from "cloudflare:test";
-import { platformConfig, platformDeployConfig } from "@greenroom/config";
+import { platformConfig, platformDeployConfig } from "@si/config";
 
 /**
  * Dev origin used as the `Origin` header on auth requests in tests, derived

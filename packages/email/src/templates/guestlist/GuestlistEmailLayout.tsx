@@ -9,7 +9,7 @@ import {
   Hr,
   Font,
 } from "@react-email/components";
-import { platformConfig, platformDeployConfig } from "@greenroom/config";
+import { platformConfig, platformDeployConfig } from "@si/config";
 import {
   COLOR_BG,
   COLOR_SURFACE_RAISED,
@@ -23,7 +23,7 @@ import {
 } from "./constants";
 
 // Brand wordmark + footer URLs derive from config so a rebrand only touches
-// `@greenroom/config`, never this template.
+// `@si/config`, never this template.
 const BRAND_HOST = `guestlist.${platformDeployConfig.baseDomain}`;
 
 export interface GuestlistEmailLayoutProps {

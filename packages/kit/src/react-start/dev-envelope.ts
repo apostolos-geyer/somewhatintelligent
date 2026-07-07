@@ -11,7 +11,7 @@
  * authoritative actor-resolution step.
  *
  * Per `docs/REQUEST-FLOW.md` §6.5 — dev-direct shares bouncer's mint code via
- * `@greenroom/auth`'s `createEnvelopeStamper`.
+ * `@si/auth`'s `createEnvelopeStamper`.
  */
 import { createServerOnlyFn } from "@tanstack/react-start";
 import {
@@ -22,7 +22,7 @@ import {
   type SessionResolver,
   type SessionResolverResult,
   type StampableSession,
-} from "@greenroom/auth";
+} from "@si/auth";
 import { extractPlatformRequestId } from "../request-context";
 
 export type { StampableSession };

@@ -15,7 +15,7 @@ import {
   type EnvelopeActorUser,
   type EnvelopeResult,
   type EnvelopeSessionData,
-} from "@greenroom/auth";
+} from "@si/auth";
 import { updateRequestContext } from "../request-context";
 
 /**

@@ -5,20 +5,20 @@ import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
 import { cva, type VariantProps } from "class-variance-authority";
 
-import { useIsMobile } from "@greenroom/ui/hooks/use-mobile";
-import { cn } from "@greenroom/ui/lib/utils";
-import { Button } from "@greenroom/ui/components/button";
-import { Input } from "@greenroom/ui/components/input";
-import { Separator } from "@greenroom/ui/components/separator";
+import { useIsMobile } from "@si/ui/hooks/use-mobile";
+import { cn } from "@si/ui/lib/utils";
+import { Button } from "@si/ui/components/button";
+import { Input } from "@si/ui/components/input";
+import { Separator } from "@si/ui/components/separator";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@greenroom/ui/components/sheet";
-import { Skeleton } from "@greenroom/ui/components/skeleton";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@greenroom/ui/components/tooltip";
+} from "@si/ui/components/sheet";
+import { Skeleton } from "@si/ui/components/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@si/ui/components/tooltip";
 import { PanelLeftIcon } from "lucide-react";
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state";

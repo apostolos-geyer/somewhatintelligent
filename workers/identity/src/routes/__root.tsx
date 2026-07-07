@@ -1,10 +1,14 @@
 import { HeadContent, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
+import { platformConfig } from "@si/config";
 import type { RouterContext } from "@/router";
 import { AppError, AppNotFound } from "@/components/app-status-pages";
 import { AuthProvider } from "@/lib/auth-context";
 import { loadSession } from "@/lib/session.functions";
+
+const SITE_TITLE = `Identity — ${platformConfig.brand.name}`;
+const SITE_DESCRIPTION = `Sign in, manage your account, and control access across ${platformConfig.brand.name}'s platform.`;
 
 import appCss from "@/styles.css?url";
 
@@ -19,26 +23,26 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Identity — Sprout" },
+      { title: SITE_TITLE },
       {
         name: "description",
-        content: "Sign in, manage your account, and control access across Sprout's platform.",
+        content: SITE_DESCRIPTION,
       },
       { property: "og:type", content: "website" },
-      { property: "og:title", content: "Identity — Sprout" },
+      { property: "og:title", content: SITE_TITLE },
       {
         property: "og:description",
-        content: "Sign in, manage your account, and control access across Sprout's platform.",
+        content: SITE_DESCRIPTION,
       },
       { property: "og:image", content: "/og/opengraph-image.png" },
       { property: "og:image:type", content: "image/png" },
       { property: "og:image:width", content: "1200" },
       { property: "og:image:height", content: "630" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Identity — Sprout" },
+      { name: "twitter:title", content: SITE_TITLE },
       {
         name: "twitter:description",
-        content: "Sign in, manage your account, and control access across Sprout's platform.",
+        content: SITE_DESCRIPTION,
       },
       { name: "twitter:image", content: "/og/twitter-image.png" },
     ],

@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { type } from "arktype";
-import { useAppForm } from "@greenroom/ui/hooks/use-app-form";
-import { Card, CardContent } from "@greenroom/ui/components/card";
-import { Alert } from "@greenroom/ui/components/alert";
+import { useAppForm } from "@si/ui/hooks/use-app-form";
+import { Card, CardContent } from "@si/ui/components/card";
+import { Alert } from "@si/ui/components/alert";
 import { GuestlistBrand } from "@/components/guestlist-brand";
 import { authClient } from "@/lib/auth-client";
 import type { SocialProviders } from "@/lib/providers.functions";

@@ -1,5 +1,5 @@
 import { createRouter as createTanStackRouter } from "@tanstack/react-router";
-import type { PlatformSession } from "@greenroom/auth";
+import type { PlatformSession } from "@si/auth";
 import { routeTree } from "@/routeTree.gen";
 
 export interface RouterContext {

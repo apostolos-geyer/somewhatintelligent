@@ -14,7 +14,7 @@ set -euo pipefail
 pr="${1:?pr number required}"
 body_file="${2:?body file required}"
 repo="apostolos-geyer/greenroom"
-marker="<!-- greenroom-previews -->"
+marker="<!-- si-previews -->"
 
 api() { gh api "$@" 2>&1; }
 

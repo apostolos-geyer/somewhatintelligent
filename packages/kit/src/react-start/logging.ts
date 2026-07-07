@@ -22,7 +22,7 @@
  *   import {
  *     createLoggingFunctionMiddleware,
  *     createRequestLogger,
- *   } from "@greenroom/kit/react-start";
+ *   } from "@si/kit/react-start";
  *
  *   const requestLogger = createRequestLogger({ service: "<app>" });
  *   const functionLogger = createLoggingFunctionMiddleware({ service: "<app>" });

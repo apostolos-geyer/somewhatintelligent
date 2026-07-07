@@ -6,10 +6,10 @@ import {
   oauthProviderAuthServerMetadata,
 } from "@better-auth/oauth-provider";
 import { and, count, desc, eq, inArray, like, or } from "drizzle-orm";
-import { extractRequestId, getRequestId, withRequestContext } from "@greenroom/kit/request-context";
-import { ulid } from "@greenroom/kit/ids";
-import { createRoadieClient } from "@greenroom/roadie-service/client";
-import { platformDeployConfig } from "@greenroom/config";
+import { extractRequestId, getRequestId, withRequestContext } from "@si/kit/request-context";
+import { ulid } from "@si/kit/ids";
+import { createRoadieClient } from "@si/roadie-service/client";
+import { platformDeployConfig } from "@si/config";
 
 const escapeDot = (d: string) => d.replace(/\./g, "\\.");
 const corsOrigins = [

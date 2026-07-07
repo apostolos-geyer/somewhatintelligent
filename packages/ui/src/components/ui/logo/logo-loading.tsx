@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { cn } from "@greenroom/ui/lib/utils";
+import { cn } from "@si/ui/lib/utils";
 import { GEOMETRIES, resolveColors, resolveWeights } from "./presets";
 import type { LogoColorScheme } from "./types";
 

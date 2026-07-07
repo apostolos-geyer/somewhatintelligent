@@ -1,4 +1,4 @@
-import { instrumented, requireRequestLog } from "@greenroom/kit/log";
+import { instrumented, requireRequestLog } from "@si/kit/log";
 import { WorkerEntrypoint } from "cloudflare:workers";
 import {
   GuestlistDeleteConfirmationEmail,
@@ -10,8 +10,8 @@ import {
   type EmailProvider,
   emailTo,
   sendEmailTemplate,
-} from "@greenroom/email";
-import { platformConfig } from "@greenroom/config";
+} from "@si/email";
+import { platformConfig } from "@si/config";
 import { actorId, hashEmail, validateMeta } from "./meta";
 import type { PromoterEnv } from "./promoter-env";
 
@@ -84,7 +84,7 @@ export class Promoter extends WorkerEntrypoint<PromoterEnv> {
     });
 
     // Transport is switchable per environment. "cloudflare" uses the Email
-    // Service `send_email` binding (real domain, e.g. sproutportal.ca); anything
+    // Service `send_email` binding (real domain, e.g. somewhatintelligent.ca); anything
     // else falls back to Resend. Falls back to Resend too if the CF binding
     // isn't actually present, so a misconfigured env degrades instead of throwing.
     const provider: EmailProvider =

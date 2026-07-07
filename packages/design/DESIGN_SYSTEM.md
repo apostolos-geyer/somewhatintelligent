@@ -921,7 +921,7 @@ treatment. The arrow matches: `bg-foreground/90`.
 In any app's CSS entry point:
 
 ```css
-@import "@greenroom/design/theme.css";
+@import "@si/design/theme.css";
 ```
 
 This single import provides:

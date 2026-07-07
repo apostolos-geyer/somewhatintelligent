@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useRouter } from "@tanstack/react-router";
-import { Badge } from "@greenroom/ui/components/badge";
-import { Button, buttonVariants } from "@greenroom/ui/components/button";
-import { cn } from "@greenroom/ui/lib/utils";
+import { Badge } from "@si/ui/components/badge";
+import { Button, buttonVariants } from "@si/ui/components/button";
+import { cn } from "@si/ui/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -10,10 +10,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@greenroom/ui/components/dialog";
-import { Input } from "@greenroom/ui/components/input";
-import { Field, FieldLabel } from "@greenroom/ui/components/field";
-import { Alert } from "@greenroom/ui/components/alert";
+} from "@si/ui/components/dialog";
+import { Input } from "@si/ui/components/input";
+import { Field, FieldLabel } from "@si/ui/components/field";
+import { Alert } from "@si/ui/components/alert";
 import { authClient } from "@/lib/auth-client";
 
 export function TwoFactorDialog({ enabled }: { enabled: boolean }) {

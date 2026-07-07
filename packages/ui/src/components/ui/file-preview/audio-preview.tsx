@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AudioPlayerProvider } from "@greenroom/audio/react";
-import { createWebAudioEngine } from "@greenroom/audio/web";
-import { generateWaveformFromUrl } from "@greenroom/audio/waveform";
+import { AudioPlayerProvider } from "@si/audio/react";
+import { createWebAudioEngine } from "@si/audio/web";
+import { generateWaveformFromUrl } from "@si/audio/waveform";
 import { AudioPlayer } from "./audio-player";
 
 interface AudioPreviewProps {

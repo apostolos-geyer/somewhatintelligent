@@ -479,14 +479,14 @@ The phases are sequenced so each lands as a self-contained PR with no regression
 
 #### Phase 3 — Kit envelope-driven middleware (new surface, old surface untouched)
 
-- **New** `createEnvelopeMiddleware(opts)` in `@greenroom/kit/react-start`. Request-type middleware. Local Ed25519 verify. Projects to `ctx.principal` (the §8 discriminated union). Zero RPC.
+- **New** `createEnvelopeMiddleware(opts)` in `@si/kit/react-start`. Request-type middleware. Local Ed25519 verify. Projects to `ctx.principal` (the §8 discriminated union). Zero RPC.
 - **New** `createPrincipalGate({ envelope, predicate, onReject })` factory. Composes by reference on the singleton envelope middleware. TSS dedupes by reference — verified against `flattenMiddlewares` in `@tanstack/start-client-core/dist/esm/createServerFn.js:147` — so attaching a gate to a server fn does not double-run envelope verification.
 - **(Optional, defer if not needed)** `createFullSessionMiddleware({ envelope, getGuestlist })` — function-type middleware that composes on envelope and adds `ctx.fullSession` for the rare handler that wants plugin-extended BA fields. Not used by anything today; ship only when there's a caller.
-- **`platform.getSession`, `platform.getActiveOrgId` dev fallback both stay** — they back the client-side `loadSession` path (§9). (`createSessionMiddleware`/`createGateMiddleware`, once slated to stay alongside them, have since been removed from `@greenroom/kit` entirely — they had zero real consumers.)
+- **`platform.getSession`, `platform.getActiveOrgId` dev fallback both stay** — they back the client-side `loadSession` path (§9). (`createSessionMiddleware`/`createGateMiddleware`, once slated to stay alongside them, have since been removed from `@si/kit` entirely — they had zero real consumers.)
 
 #### Phase 4 — Identity server-side migration
 
-Identity's `workers/identity/src/start.ts` already uses the singleton `envelopeMiddleware`, the same migration pattern established in Phases 1–3. `sessionMiddleware` itself has since been removed from `@greenroom/kit` entirely (zero real consumers), so there's no longer a legacy global path to swap away from.
+Identity's `workers/identity/src/start.ts` already uses the singleton `envelopeMiddleware`, the same migration pattern established in Phases 1–3. `sessionMiddleware` itself has since been removed from `@si/kit` entirely (zero real consumers), so there's no longer a legacy global path to swap away from.
 
 #### Phase 5 — Production key registry
 

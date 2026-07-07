@@ -67,7 +67,7 @@ export function mergeDevVars(existing: string, updates: Record<string, string>):
 
   if (pending.size > 0) {
     if (out.length > 0 && out[out.length - 1]?.trim() !== "") out.push("");
-    out.push("# secrets — managed by @greenroom/secrets");
+    out.push("# secrets — managed by @si/secrets");
     for (const [key, value] of pending) {
       out.push(`${key}=${escapeDotenvValue(value)}`);
     }

@@ -7,14 +7,14 @@
 export const platformConfig = {
   brand: {
     /** Full product/brand name. Shown in wordmarks, page titles, button text. */
-    name: "Sprout",
+    name: "somewhatintelligent",
     /** Short uppercase wordmark variant (used in stacked logo layout). */
-    short: "SPROUT",
+    short: "SI",
     /**
      * Support address for outbound transactional email. Using hello@ as the
-     * friendly front-door inbox (grow@sproutportal.ca is the on-brand alternative).
+     * friendly front-door inbox.
      */
-    supportEmail: "hello@sproutportal.ca",
+    supportEmail: "hello@somewhatintelligent.ca",
   },
   cookies: {
     /**
@@ -22,7 +22,7 @@ export const platformConfig = {
      * The wire cookie names become e.g. `<prefix>.session_token`,
      * `<prefix>.session_data`. Used as the better-auth `cookiePrefix`.
      */
-    prefix: "sprout",
+    prefix: "si",
   },
   auth: {
     /**
@@ -30,11 +30,11 @@ export const platformConfig = {
      * via better-auth's generic-OAuth plugin. Must match between guestlist's
      * `oauthProvider({ providerId })` and each app's `genericOAuth({ providerId })`.
      */
-    providerId: "sprout",
+    providerId: "si",
     /** Human-visible WebAuthn relying-party name shown in the OS passkey UI. */
-    passkeyRpName: "Sprout",
+    passkeyRpName: "somewhatintelligent",
     /** Issuer label for TOTP / 2FA (shown in Authenticator apps). */
-    twoFactorIssuer: "Sprout",
+    twoFactorIssuer: "somewhatintelligent",
   },
 } as const;
 

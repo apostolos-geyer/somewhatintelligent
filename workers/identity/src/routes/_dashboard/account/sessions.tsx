@@ -1,14 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, useTransition } from "react";
-import { Badge } from "@greenroom/ui/components/badge";
-import { Button } from "@greenroom/ui/components/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@greenroom/ui/components/card";
+import { Badge } from "@si/ui/components/badge";
+import { Button } from "@si/ui/components/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@si/ui/components/card";
 import {
   Item,
   ItemContent,
@@ -16,8 +10,8 @@ import {
   ItemDescription,
   ItemActions,
   ItemGroup,
-} from "@greenroom/ui/components/item";
-import { toast } from "@greenroom/ui/components/sonner";
+} from "@si/ui/components/item";
+import { toast } from "@si/ui/components/sonner";
 import { authClient } from "@/lib/auth-client";
 
 interface SessionInfo {

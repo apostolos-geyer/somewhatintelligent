@@ -2,17 +2,11 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { type } from "arktype";
 import { FingerprintIcon } from "lucide-react";
-import { useAppForm } from "@greenroom/ui/hooks/use-app-form";
-import { Button } from "@greenroom/ui/components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@greenroom/ui/components/card";
-import { Alert } from "@greenroom/ui/components/alert";
-import { Separator } from "@greenroom/ui/components/separator";
+import { useAppForm } from "@si/ui/hooks/use-app-form";
+import { Button } from "@si/ui/components/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@si/ui/components/card";
+import { Alert } from "@si/ui/components/alert";
+import { Separator } from "@si/ui/components/separator";
 import { GuestlistBrand } from "@/components/guestlist-brand";
 import { authClient } from "@/lib/auth-client";
 import type { SocialProviders } from "@/lib/providers.functions";

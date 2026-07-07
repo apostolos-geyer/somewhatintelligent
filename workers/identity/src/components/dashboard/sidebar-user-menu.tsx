@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@greenroom/ui/components/sidebar";
+import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@si/ui/components/sidebar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,12 +8,12 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@greenroom/ui/components/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@greenroom/ui/components/avatar";
+} from "@si/ui/components/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@si/ui/components/avatar";
 import { ChevronsUpDownIcon } from "lucide-react";
-import { toast } from "@greenroom/ui/components/sonner";
+import { toast } from "@si/ui/components/sonner";
 import { authClient } from "@/lib/auth-client";
-import { isAdminRole } from "@greenroom/kit/roles";
+import { isAdminRole } from "@si/kit/roles";
 
 type User = {
   name: string;

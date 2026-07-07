@@ -2,8 +2,8 @@ import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
 import { cva, type VariantProps } from "class-variance-authority";
 
-import { cn } from "@greenroom/ui/lib/utils";
-import { compactMaterials } from "@greenroom/ui/lib/materials";
+import { cn } from "@si/ui/lib/utils";
+import { compactMaterials } from "@si/ui/lib/materials";
 
 const accentVariants = {
   // Solid

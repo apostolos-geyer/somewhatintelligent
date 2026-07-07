@@ -6,8 +6,8 @@
  * process tree beyond spawn+group-kill).
  *
  * Usage:
- *   bun run dev                    # guestlist identity sprout roadie
- *   bun run dev sprout identity    # any subset of workers/<name>
+ *   bun run dev                    # guestlist identity roadie
+ *   bun run dev guestlist identity # any subset of workers/<name>
  *
  * Sequence: cached prep (env:init + local D1 migrations via vp — warm re-runs
  * are no-ops), portless HTTPS proxy ensured (started if absent, exact command
@@ -21,7 +21,7 @@ import { connect } from "node:net";
 import { resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dir, "..");
-const DEFAULT_WORKERS = ["guestlist", "identity", "sprout", "roadie"];
+const DEFAULT_WORKERS = ["guestlist", "identity", "roadie"];
 const COLORS = ["\x1b[36m", "\x1b[35m", "\x1b[33m", "\x1b[32m", "\x1b[34m", "\x1b[31m"];
 const RESET = "\x1b[0m";
 
@@ -43,12 +43,15 @@ function portOpen(port: number): Promise<boolean> {
 }
 
 // 1. Prep — vp-cached, so this is fast when nothing changed.
-for (const args of [["run", "-r", "env:init"], ["run", "-r", "db:migrate:local"]]) {
+for (const args of [
+  ["run", "-r", "env:init"],
+  ["run", "-r", "db:migrate:local"],
+]) {
   const r = spawnSync("bunx", ["vp", ...args], { cwd: ROOT, stdio: "inherit" });
   if (r.status !== 0) process.exit(r.status ?? 1);
 }
 
-// 2. Proxy — the wildcard HTTPS proxy serves *.sproutportal.localhost on :443.
+// 2. Proxy — the wildcard HTTPS proxy serves *.somewhatintelligent.localhost on :443.
 if (!(await portOpen(443))) {
   console.log("dev-stack: portless proxy not detected on :443 — starting it…");
   spawnSync("bunx", ["portless", "proxy", "start", "--https", "--wildcard"], {
@@ -116,7 +119,5 @@ process.on("SIGINT", () => shutdown(0));
 process.on("SIGTERM", () => shutdown(0));
 
 console.log(`dev-stack: ${workers.join(" + ")} starting…
-  hub     https://sprout.sproutportal.localhost
-  portal  https://<slug>.sprout.sproutportal.localhost  (acme/beta once seeded)
-  sign-in https://identity.sproutportal.localhost
+  sign-in https://identity.somewhatintelligent.localhost/sign-in
   first run? seed demo data in another terminal:  bun run seed`);
