@@ -18,8 +18,6 @@ export type Derived<E extends ServerEvent> = {
 export function makeAnalyticsEvent(config: {
   app: AppName;
   requireAuth: AnyFunctionMiddleware;
-  // The deploy env, stamped on every event. The worker passes it in (e.g.
-  // `import.meta.env.ENVIRONMENT`) so this package never reads the build/runtime env.
   environment: string | undefined;
 }) {
   return function analyticsEvent<E extends ServerEvent>(
@@ -37,8 +35,6 @@ export function makeAnalyticsEvent(config: {
           ? derive({ session, data, result: (res as unknown as { result: unknown }).result })
           : ({ properties: {} as ServerEventProps[E] } as Derived<E>);
         if (derived) {
-          // Load posthog-node lazily and server-side only — it must never be
-          // pulled into a client bundle through this middleware reference.
           const { deliverIdentified } = await import("./delivery");
           const orgId = session.session.activeOrganizationId;
           await deliverIdentified(

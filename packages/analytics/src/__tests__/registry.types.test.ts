@@ -9,9 +9,6 @@ import { createMiddleware } from "@tanstack/react-start";
 import type { useCapture } from "../client";
 import type { CheckoutFailureReason } from "../events";
 
-// `../server/analytics-event` no longer statically pulls `./delivery` (posthog-node
-// is a lazy import inside the server-only leg), so this pure type test resolves
-// with no vendor/platform mocks. Nothing below is ever invoked.
 import { makeAnalyticsEvent } from "../server/analytics-event";
 
 type Capture = ReturnType<typeof useCapture>;

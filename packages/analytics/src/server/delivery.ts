@@ -1,11 +1,5 @@
 // packages/analytics/src/server/delivery.ts   —  INTERNAL to @si/analytics (NOT in "exports")
 // The only place in the platform that supplies a PostHog distinctId.
-//
-// Platform-agnostic by design: this package knows NOTHING about Cloudflare or
-// the build env. The deploy `environment` is passed in by the worker, and the
-// waitUntil context is read from the structurally-typed @si/kit/execution-context
-// ALS the worker seeds. `posthog-node` is only ever reached via a dynamic
-// import from analytics-event.ts, so it never enters a client bundle.
 import { PostHog } from "posthog-node";
 import { executionContext } from "@si/kit/execution-context";
 import { platformAnalyticsConfig } from "@si/config";
@@ -32,8 +26,7 @@ async function send(payload: Parameters<PostHog["captureImmediate"]>[0]): Promis
 }
 
 /** Person-scoped. `distinctId` is REQUIRED and — by construction of its only
- *  caller, `analyticsEvent` — is always `session.user.id`. `environment` is the
- *  deploy env the worker threads through; it is stamped on every event. */
+ *  caller, `analyticsEvent` — is always `session.user.id`. */
 export function deliverIdentified<E extends ServerEvent>(
   app: AppName,
   distinctId: string,

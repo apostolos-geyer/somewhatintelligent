@@ -1,7 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vite-plus/test";
 
-// No cloudflare:workers mock — the package is platform-agnostic; `environment`
-// is passed in as a plain argument by the caller (the worker).
 vi.mock("posthog-node", () => {
   const captureImmediate = vi.fn().mockResolvedValue(undefined);
   return {

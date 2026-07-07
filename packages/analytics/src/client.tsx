@@ -12,8 +12,6 @@ export function AnalyticsProvider({
   children,
 }: {
   app: AppName;
-  // The deploy env, passed in by the worker (e.g. `import.meta.env.ENVIRONMENT`)
-  // so this package never reads the build env itself.
   environment: string | undefined;
   session: PlatformSession | null;
   children: ReactNode;

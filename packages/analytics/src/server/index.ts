@@ -13,7 +13,6 @@ export function serverAnalytics(app: AppName, environment: string | undefined) {
       event: E,
       properties: ServerEventProps[E],
     ): Promise<void> {
-      // Lazy + server-side only — keeps posthog-node out of client bundles.
       const { deliverAnonymous } = await import("./delivery");
       return deliverAnonymous(app, event, properties, environment);
     },
