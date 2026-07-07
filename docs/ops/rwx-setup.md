@@ -28,6 +28,16 @@ env-parameterized full-fleet reference (`.rwx/deploy.yml`).
    are all org-scoped, so a shared org would put this fork's deploy secrets
    inside the template org's blast radius). Every step below happens inside
    the new org; the CLI needs a token minted under it (`rwx login`).
+
+   > **Interim state (2026-07-07):** the dedicated `somewhatintelligent` org
+   > was created but its trial-credit verification was broken on RWX's side,
+   > so the lanes currently run under **`greenroom`** — both vaults +
+   > secrets exist there (and, dormant, in the `somewhatintelligent` org),
+   > and the RWX GitHub App installation covers this repo. Nothing in
+   > `.rwx/*.yml` references an org name, so migrating later is purely
+   > account-side: reinstall the GitHub App under the new org, recreate the
+   > two vaults there (steps 2–3), re-attach the automation GitHub App.
+
 2. Install the RWX GitHub App on **apostolos-geyer/somewhatintelligent**
    (Getting Started → GitHub integration). This is what makes `github.token`
    resolve in the lanes (clone + status checks) and turns on the `github:`

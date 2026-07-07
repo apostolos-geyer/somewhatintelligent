@@ -7,6 +7,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "env:init": "test -f src/generated.ts || bun run scripts/fetch.ts",
     "fetch": "bun run scripts/fetch.ts",
     "fetch:strict": "bun run scripts/fetch.ts --strict",
     "sync": "bun run scripts/sync.ts",
