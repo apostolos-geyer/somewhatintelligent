@@ -125,7 +125,10 @@ one worktree at a time (machine-global proxy + hostnames).
   squash merges make the title the main-branch commit message, and
   release-please versions each worker from those; CI's `pr-title-lint`
   rejects non-conforming titles. Scope with the worker touched when there is
-  one. `.github/PULL_REQUEST_TEMPLATE.md` carries the format.
+  one. **The full scoping guide (valid-scope table, packages convention,
+  release mechanics, definition-of-done stance) is
+  [`docs/ops/commit-scoping.md`](docs/ops/commit-scoping.md)**;
+  `.github/PULL_REQUEST_TEMPLATE.md` carries the format.
 - **Seeded demo users are pre-verified** — sign in with them directly. Email
   verification only gates brand-new sign-ups (production-only gate), and real
   emails need `RESEND_API_KEY` in `workers/promoter/.dev.vars`.
