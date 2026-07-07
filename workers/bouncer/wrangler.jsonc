@@ -70,6 +70,12 @@
           "mode": "passthrough",
         },
         {
+          "binding": "STORE",
+          "host": "staging.somewhatintelligent.ca",
+          "path": "/hooks/store",
+          "mode": "passthrough",
+        },
+        {
           "binding": "IDENTITY",
           "host": "staging.somewhatintelligent.ca",
           "path": "/_sfn/account",
@@ -132,6 +138,12 @@
               "mode": "passthrough",
             },
             {
+              "binding": "STORE",
+              "host": "somewhatintelligent.ca",
+              "path": "/hooks/store",
+              "mode": "passthrough",
+            },
+            {
               "binding": "IDENTITY",
               "host": "somewhatintelligent.ca",
               "path": "/_sfn/account",
@@ -167,6 +179,12 @@
               "binding": "STORE",
               "host": "www.somewhatintelligent.ca",
               "path": "/_sfn/store",
+              "mode": "passthrough",
+            },
+            {
+              "binding": "STORE",
+              "host": "www.somewhatintelligent.ca",
+              "path": "/hooks/store",
               "mode": "passthrough",
             },
             {

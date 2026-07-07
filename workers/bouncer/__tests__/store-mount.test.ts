@@ -1,5 +1,6 @@
 import { SELF, env } from "cloudflare:test";
 import { compileRoutes } from "../src/routes";
+import { LOCAL_BNC_ATT_PRIV } from "../../../scripts/dev-config";
 
 // The store (`/shop`) is vmf-mounted exactly like identity (`/account`):
 // bouncer strips the mount inbound so the app serves at its own root, and
@@ -12,11 +13,13 @@ import { compileRoutes } from "../src/routes";
 // the `/shop` mount. APP1 → worker-a-stub (echoes received path + emits
 // root-relative asset URLs).
 beforeEach(() => {
+  env.BNC_ATT_PRIV = LOCAL_BNC_ATT_PRIV;
   env.ROUTES = {
     routes: [
       { binding: "WWW", host: "platform.test", path: "/api", mode: "passthrough" },
       { binding: "APP2", host: "platform.test", path: "/account", mode: "vmf" },
       { binding: "APP1", host: "platform.test", path: "/shop", mode: "vmf" },
+      { binding: "APP1", host: "platform.test", path: "/hooks/store", mode: "passthrough" },
       { host: "platform.test", path: "/", mode: "redirect", to: "/shop" },
     ],
   } as unknown as Env["ROUTES"];
@@ -65,11 +68,15 @@ describe("compileRoutes: the staging-shaped store route table", () => {
         { binding: "GUESTLIST", host: "h.test", path: "/api", mode: "passthrough" },
         { binding: "IDENTITY", host: "h.test", path: "/account", mode: "vmf" },
         { binding: "STORE", host: "h.test", path: "/shop", mode: "vmf" },
+        { binding: "STORE", host: "h.test", path: "/hooks/store", mode: "passthrough" },
         { host: "h.test", path: "/", mode: "redirect", to: "/shop", status: 308 },
       ],
     });
     const shop = routes.find((r) => r.staticMount === "/shop");
     expect(shop?.mode).toBe("vmf");
     expect(shop?.bindingName).toBe("STORE");
+    const hooks = routes.find((r) => r.staticMount === "/hooks/store");
+    expect(hooks?.mode).toBe("passthrough");
+    expect(hooks?.bindingName).toBe("STORE");
   });
 });

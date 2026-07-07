@@ -41,6 +41,7 @@
     "lucide-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "stripe": "catalog:",
     "tailwindcss": "catalog:"
   },
   "devDependencies": {
