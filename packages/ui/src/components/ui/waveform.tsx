@@ -116,7 +116,7 @@ export function Waveform({
       played: playedColor ?? resolveThemeColor("--color-primary", "210 60% 62%"),
       unplayed: unplayedColor ?? resolveThemeColor("--color-text-secondary", "45 8% 60%", 0.7),
       loop: loopColor ?? resolveThemeColor("--color-primary", "210 60% 62%", 0.18),
-      comment: resolveThemeColor("--color-pistil", "42 50% 58%"),
+      comment: resolveThemeColor("--color-warning", "42 50% 58%"),
       tertiary: resolveThemeColor("--color-text-secondary", "45 8% 60%", 0.45),
     }),
     [playedColor, unplayedColor, loopColor],

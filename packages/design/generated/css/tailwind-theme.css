@@ -22,73 +22,46 @@
   --color-text-on-accent: var(--color-text-on-accent);
 
   /* Accents */
-  --color-sprout: var(--color-sprout);
-  --color-sprout-hover: var(--color-sprout-hover);
-  --color-stigma: var(--color-stigma);
-  --color-stigma-hover: var(--color-stigma-hover);
-  --color-growth: var(--color-growth);
-  --color-growth-hover: var(--color-growth-hover);
-  --color-pistil: var(--color-pistil);
-  --color-pistil-hover: var(--color-pistil-hover);
-  --color-haze: var(--color-haze);
-  --color-haze-hover: var(--color-haze-hover);
+  --color-ink: var(--color-ink);
+  --color-ink-hover: var(--color-ink-hover);
+  --color-rust: var(--color-rust);
+  --color-rust-hover: var(--color-rust-hover);
+  --color-success: var(--color-success);
+  --color-success-hover: var(--color-success-hover);
+  --color-warning: var(--color-warning);
+  --color-warning-hover: var(--color-warning-hover);
+  --color-info: var(--color-info);
+  --color-info-hover: var(--color-info-hover);
 
   /* Glass */
   --color-glass-bg: var(--glass-bg);
   --color-glass-border: var(--glass-border);
 
-  /* Raw brand palette — exact-hex utilities (bg-sprout-green, text-forest-800, …) */
-  --color-sprout-green: var(--color-sprout-green);
-  --color-growth-green: var(--color-growth-green);
-  --color-sativa-green: var(--color-sativa-green);
-  --color-indica-green: var(--color-indica-green);
-  --color-purple-haze: var(--color-purple-haze);
-  --color-plum-kush: var(--color-plum-kush);
-  --color-lilac-diesel: var(--color-lilac-diesel);
-  --color-trichome: var(--color-trichome);
-  --color-cream: var(--color-cream);
-  --color-charcoal: var(--color-charcoal);
-  --color-tinder: var(--color-tinder);
-  --color-stoned: var(--color-stoned);
-  --color-kief: var(--color-kief);
-  --color-lime-50: var(--color-lime-50);
-  --color-lime-100: var(--color-lime-100);
-  --color-lime-200: var(--color-lime-200);
-  --color-lime-300: var(--color-lime-300);
-  --color-lime-400: var(--color-lime-400);
-  --color-lime-500: var(--color-lime-500);
-  --color-lime-600: var(--color-lime-600);
-  --color-growth-300: var(--color-growth-300);
-  --color-growth-400: var(--color-growth-400);
-  --color-growth-500: var(--color-growth-500);
-  --color-growth-600: var(--color-growth-600);
-  --color-growth-700: var(--color-growth-700);
-  --color-forest-50: var(--color-forest-50);
-  --color-forest-100: var(--color-forest-100);
-  --color-forest-200: var(--color-forest-200);
-  --color-forest-300: var(--color-forest-300);
-  --color-forest-400: var(--color-forest-400);
-  --color-forest-500: var(--color-forest-500);
-  --color-forest-600: var(--color-forest-600);
-  --color-forest-700: var(--color-forest-700);
-  --color-forest-800: var(--color-forest-800);
-  --color-forest-900: var(--color-forest-900);
-  --color-forest-950: var(--color-forest-950);
+  /* Raw ink/paper ramps — exact-hex utilities (bg-ink-900, text-paper-100, …) */
+  --color-ink-200: var(--color-ink-200);
+  --color-ink-300: var(--color-ink-300);
+  --color-ink-400: var(--color-ink-400);
+  --color-ink-500: var(--color-ink-500);
+  --color-ink-600: var(--color-ink-600);
+  --color-ink-700: var(--color-ink-700);
+  --color-ink-800: var(--color-ink-800);
+  --color-ink-900: var(--color-ink-900);
+  --color-ink-950: var(--color-ink-950);
   --color-paper-0: var(--color-paper-0);
   --color-paper-50: var(--color-paper-50);
   --color-paper-100: var(--color-paper-100);
   --color-paper-200: var(--color-paper-200);
   --color-paper-300: var(--color-paper-300);
-  --color-success: var(--color-success);
-  --color-success-bg: var(--color-success-bg);
-  --color-warning: var(--color-warning);
-  --color-warning-bg: var(--color-warning-bg);
-  --color-warning-ink: var(--color-warning-ink);
-  --color-danger: var(--color-danger);
-  --color-danger-bg: var(--color-danger-bg);
-  --color-danger-ink: var(--color-danger-ink);
-  --color-info: var(--color-info);
-  --color-info-bg: var(--color-info-bg);
+  --color-status-success: var(--color-status-success);
+  --color-status-success-bg: var(--color-status-success-bg);
+  --color-status-warning: var(--color-status-warning);
+  --color-status-warning-bg: var(--color-status-warning-bg);
+  --color-status-warning-ink: var(--color-status-warning-ink);
+  --color-status-danger: var(--color-status-danger);
+  --color-status-danger-bg: var(--color-status-danger-bg);
+  --color-status-danger-ink: var(--color-status-danger-ink);
+  --color-status-info: var(--color-status-info);
+  --color-status-info-bg: var(--color-status-info-bg);
 
   /* Fonts */
   --font-display: var(--font-display);

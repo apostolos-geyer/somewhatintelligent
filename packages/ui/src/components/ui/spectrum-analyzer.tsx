@@ -107,15 +107,15 @@ export function SpectrumAnalyzer({
       // Determine color — read from CSS custom properties for theme awareness
       let fillColor: string;
       const glyphColor = getComputedStyle(document.documentElement)
-        .getPropertyValue("--color-sprout")
+        .getPropertyValue("--color-ink")
         .trim();
       const bloodColor = getComputedStyle(document.documentElement)
-        .getPropertyValue("--color-stigma")
+        .getPropertyValue("--color-rust")
         .trim();
       if (colorScheme === "orange") {
         fillColor = glyphColor ? `hsl(${glyphColor})` : "hsl(210 60% 62%)";
       } else {
-        // Gradient from sprout to stigma based on frequency
+        // Gradient from ink to rust based on frequency
         const t = i / barCount;
         fillColor =
           t < 0.5

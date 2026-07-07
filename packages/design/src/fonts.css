@@ -1,55 +1,74 @@
-/* ═══════════════════════════════════════
-   Sprout — @font-face declarations
-   Zerove (display) · Switzer (UI/body) ·
-   IBM Plex Serif (editorial) · Quadrillion (accent) ·
-   Iosevka (mono)
-   ═══════════════════════════════════════ */
-
-/* Zerove — rounded unicase display. Single weight (renders ~all-caps). */
+/* Iosevka Aile — the quasi-proportional voice of the blueprint system.
+   Display, body, editorial. */
 @font-face {
-  font-family: "Zerove";
-  src:
-    url("./fonts/zerove/Zerove-Regular.otf") format("opentype"),
-    url("./fonts/zerove/Zerove-Regular.ttf") format("truetype");
-  font-weight: 400;
-  font-display: swap;
-  font-style: normal;
-}
-
-/* Switzer — variable grotesque sans, the UI/body workhorse (100–900). */
-@font-face {
-  font-family: "Switzer";
-  src: url("./fonts/switzer/Switzer-Variable.woff2") format("woff2");
-  font-weight: 100 900;
-  font-display: swap;
-  font-style: normal;
-}
-/* Switzer italic — single static italic covers any italic weight. */
-@font-face {
-  font-family: "Switzer";
-  src: url("./fonts/switzer/Switzer-Italic.woff2") format("woff2");
-  font-weight: 100 900;
-  font-display: swap;
-  font-style: italic;
-}
-
-/* IBM Plex Serif Light — editorial long-form serif.
-   Only the Light upright is shipped; italics are synthesized (faux). */
-@font-face {
-  font-family: "IBM Plex Serif";
-  src: url("./fonts/ibm-plex-serif/IBMPlexSerif-Light.ttf") format("truetype");
+  font-family: "Iosevka Aile";
+  src: url("./fonts/iosevka-aile/IosevkaAile-Light.woff2") format("woff2");
   font-weight: 300;
   font-display: swap;
   font-style: normal;
 }
-
-/* Quadrillion — supporting accent face (semibold) for taglines / marks. */
 @font-face {
-  font-family: "Quadrillion";
-  src: url("./fonts/quadrillion/Quadrillion-Sb.otf") format("opentype");
+  font-family: "Iosevka Aile";
+  src: url("./fonts/iosevka-aile/IosevkaAile-LightItalic.woff2") format("woff2");
+  font-weight: 300;
+  font-display: swap;
+  font-style: italic;
+}
+@font-face {
+  font-family: "Iosevka Aile";
+  src: url("./fonts/iosevka-aile/IosevkaAile-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: "Iosevka Aile";
+  src: url("./fonts/iosevka-aile/IosevkaAile-Italic.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+  font-style: italic;
+}
+@font-face {
+  font-family: "Iosevka Aile";
+  src: url("./fonts/iosevka-aile/IosevkaAile-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: "Iosevka Aile";
+  src: url("./fonts/iosevka-aile/IosevkaAile-MediumItalic.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+  font-style: italic;
+}
+@font-face {
+  font-family: "Iosevka Aile";
+  src: url("./fonts/iosevka-aile/IosevkaAile-SemiBold.woff2") format("woff2");
   font-weight: 600;
   font-display: swap;
   font-style: normal;
+}
+@font-face {
+  font-family: "Iosevka Aile";
+  src: url("./fonts/iosevka-aile/IosevkaAile-SemiBoldItalic.woff2") format("woff2");
+  font-weight: 600;
+  font-display: swap;
+  font-style: italic;
+}
+@font-face {
+  font-family: "Iosevka Aile";
+  src: url("./fonts/iosevka-aile/IosevkaAile-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: "Iosevka Aile";
+  src: url("./fonts/iosevka-aile/IosevkaAile-BoldItalic.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+  font-style: italic;
 }
 
 /* Iosevka — monospace (code, IDs, timestamps, technical metadata). */

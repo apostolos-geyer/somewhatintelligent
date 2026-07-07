@@ -84,17 +84,17 @@ function UsersPage() {
                 <td className="px-4 py-3 font-medium">{u.name}</td>
                 <td className="px-4 py-3 font-mono text-xs text-text-tertiary">{u.email}</td>
                 <td className="px-4 py-3">
-                  <Badge variant={isAdminRole(u.role) ? "sprout" : "secondary"}>
+                  <Badge variant={isAdminRole(u.role) ? "ink" : "secondary"}>
                     {u.role ?? "user"}
                   </Badge>
                 </td>
                 <td className="px-4 py-3">
                   {u.banned ? (
-                    <Badge variant="stigma">Banned</Badge>
+                    <Badge variant="rust">Banned</Badge>
                   ) : u.emailVerified ? (
-                    <Badge variant="growth">Active</Badge>
+                    <Badge variant="success">Active</Badge>
                   ) : (
-                    <Badge variant="pistil">Pending</Badge>
+                    <Badge variant="warning">Pending</Badge>
                   )}
                 </td>
                 <td className="px-4 py-3 text-right">
@@ -172,7 +172,7 @@ function UserActions({
           <DropdownMenuItem onClick={handleBan}>{banned ? "Unban" : "Ban"}</DropdownMenuItem>
           {userId !== currentUserId && (
             <DropdownMenuItem
-              className="text-text-stigma focus:text-text-stigma-hover"
+              className="text-text-rust focus:text-text-rust-hover"
               onClick={() => setDeleteOpen(true)}
             >
               Delete

@@ -6,24 +6,25 @@ import { cn } from "@si/ui/lib/utils";
 import { compactMaterials } from "@si/ui/lib/materials";
 
 const accentVariants = {
-  // Solid
-  sprout: "bg-sprout text-primary-foreground border-sprout",
-  stigma: "bg-stigma text-primary-foreground border-stigma",
-  growth: "bg-growth text-primary-foreground border-growth",
-  pistil: "bg-pistil text-primary-foreground border-pistil",
-  haze: "bg-haze text-primary-foreground border-haze",
-  // Brutalist
-  "sprout-brutal": `bg-sprout text-primary-foreground ${compactMaterials.brutal}`,
-  "stigma-brutal": `bg-stigma text-primary-foreground ${compactMaterials.brutal}`,
-  "growth-brutal": `bg-growth text-primary-foreground ${compactMaterials.brutal}`,
-  "pistil-brutal": `bg-pistil text-primary-foreground ${compactMaterials.brutal}`,
-  "haze-brutal": `bg-haze text-primary-foreground ${compactMaterials.brutal}`,
-  // Glass
-  "sprout-glass": `${compactMaterials.glass} text-sprout`,
-  "stigma-glass": `${compactMaterials.glass} text-stigma`,
-  "growth-glass": `${compactMaterials.glass} text-growth`,
-  "pistil-glass": `${compactMaterials.glass} text-pistil`,
-  "haze-glass": `${compactMaterials.glass} text-haze`,
+  // Solid ink fills
+  ink: "bg-ink text-primary-foreground border-ink",
+  rust: "bg-rust text-primary-foreground border-rust",
+  success: "bg-success text-primary-foreground border-success",
+  warning: "bg-warning text-primary-foreground border-warning",
+  // NOTE: no plain `info` accent fill — `info` is the dotted status stamp
+  // below. The -brutal/-glass compounds keep the accent forms.
+  // Drafted offset (brutal)
+  "ink-brutal": `bg-ink text-primary-foreground ${compactMaterials.brutal}`,
+  "rust-brutal": `bg-rust text-primary-foreground ${compactMaterials.brutal}`,
+  "success-brutal": `bg-success text-primary-foreground ${compactMaterials.brutal}`,
+  "warning-brutal": `bg-warning text-primary-foreground ${compactMaterials.brutal}`,
+  "info-brutal": `bg-info text-primary-foreground ${compactMaterials.brutal}`,
+  // Sheet chips (legacy "glass" — opaque sheet + solid rule)
+  "ink-glass": `${compactMaterials.glass} text-ink`,
+  "rust-glass": `${compactMaterials.glass} text-rust`,
+  "success-glass": `${compactMaterials.glass} text-success`,
+  "warning-glass": `${compactMaterials.glass} text-warning`,
+  "info-glass": `${compactMaterials.glass} text-info`,
 } as const;
 
 const badgeVariants = cva(
@@ -35,17 +36,15 @@ const badgeVariants = cva(
         secondary: "bg-secondary text-secondary-foreground",
         destructive: "bg-destructive text-primary-foreground",
         outline: "border-border text-foreground",
-        // === Sprout tone scale (status pills) ===
-        // Soft success: green-tinted bg, growth ink — the default-feel chip.
-        soft: "bg-success-bg text-growth",
-        // Lime on dark: Indica fill, bright Sprout-Green ink.
-        lime: "bg-indica-green text-sprout-green",
-        // Warn: Pistil amber.
-        warn: "bg-warning-bg text-warning-ink",
-        // Danger: Stigma terracotta.
-        danger: "bg-danger-bg text-danger-ink",
-        // Info: Purple Haze.
-        info: "bg-info-bg text-info",
+        // === Status stamps ===
+        // State is carried by BORDER TREATMENT, not hue (monochrome system):
+        // success = solid rule, warning = dashed, info = dotted,
+        // danger = solid rust (the red pen — the one functional color).
+        soft: "border-solid border-status-success bg-status-success-bg text-status-success",
+        contrast: "bg-ink-950 text-paper-100 border-ink-950",
+        warn: "border-dashed border-status-warning bg-status-warning-bg text-status-warning-ink",
+        danger: "border-solid border-status-danger bg-status-danger-bg text-status-danger-ink",
+        info: "border-dotted border-status-info bg-status-info-bg text-status-info",
         ...accentVariants,
       },
       size: {

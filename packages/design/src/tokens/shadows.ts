@@ -1,21 +1,27 @@
 /**
- * Platform Shadow Tokens
+ * Platform Shadow Tokens — "DRAFT" (blueprint monochrome)
  *
- * Three families with semantic purpose:
- * - Brutal: hard offset, conveys weight and permanence
- * - Soft: diffused elevation, for secondary/receding surfaces
- * - Neo: raised/inset, for toggle-like interactive elements
+ * There are NO soft shadows and NO blur anywhere in this system. Depth is
+ * drawn, not diffused: every former shadow family now resolves to crisp,
+ * zero-blur ink lines, and real elevation should be expressed with border
+ * treatment (solid / dashed / dotted — see DESIGN_SYSTEM.md).
  *
- * Shadow color references are relative to the current theme
- * (light vs dark mode), so these are templates — the actual
- * CSS values are computed in codegen using the color tokens.
+ * The families keep their historical names/keys so the generated CSS
+ * variable surface (--brutal-*, --soft-*, --neo-*, --glass-*) stays stable
+ * for consumers, but their VALUES are all hard-edged:
+ * - Brutal: hard ink offset — a drafted duplicate line. The primary
+ *   "elevation" effect for cards/CTAs that want weight.
+ * - Soft: a single hard rule under the element (blur 0). Legacy slots;
+ *   prefer borders.
+ * - Neo: hard chisel for toggle-like elements (blur 0).
+ * - Glass: dead — zero size, zero opacity.
  *
  * Every CSS variable name is derived from token keys here.
  * Codegen must not hardcode any shadow variable names.
  */
 
 // ============================================
-// Brutal — hard offset shadows
+// Brutal — hard offset ink lines (the blueprint elevation)
 // Keys become CSS vars: --{familyPrefix}-{key}
 // ============================================
 
@@ -26,73 +32,62 @@ export const brutalShadows = {
 } as const;
 
 // ============================================
-// Soft — diffused elevation shadows
+// Soft — LEGACY slots, now hard single rules (blur 0)
 // Keys become CSS vars: --{familyPrefix}-{key}
 // ============================================
 
 export const softShadows = {
   sm: {
-    layers: [
-      { y: 1, blur: 3, opacity: 0.06 },
-      { y: 1, blur: 2, opacity: 0.04 },
-    ],
+    layers: [{ y: 1, blur: 0, opacity: 0.3 }],
   },
   md: {
-    layers: [
-      { y: 4, blur: 8, opacity: 0.08 },
-      { y: 2, blur: 4, opacity: 0.04 },
-    ],
+    layers: [{ y: 3, blur: 0, opacity: 0.25 }],
   },
   lg: {
-    layers: [
-      { y: 12, blur: 24, opacity: 0.1 },
-      { y: 4, blur: 8, opacity: 0.05 },
-    ],
+    layers: [{ y: 5, blur: 0, opacity: 0.22 }],
   },
 } as const;
 
 // ============================================
-// Neumorphic — raised/inset shadows
+// Neumorphic — hard chisel (blur 0), toggle-like elements
 // Variant keys (raised, inset) become CSS vars: --{familyPrefix}-{key}
 // ============================================
 
 export const neoShadows = {
-  /** HSL base colors for the two light directions in neumorphic shadows */
+  /** HSL base colors for the two directions */
   colors: {
-    /** Light mode: dark direction uses theme text color, highlight uses white */
-    light: { darkHsl: "60 90% 5%", lightHsl: "0 0% 100%" },
-    /** Dark mode: dark direction uses pure black, highlight uses white */
+    light: { darkHsl: "45 8% 8%", lightHsl: "0 0% 100%" },
     dark: { darkHsl: "0 0% 0%", lightHsl: "0 0% 100%" },
   },
   light: {
     raised: {
-      dark: { x: 4, y: 4, blur: 8, opacity: 0.08 },
-      light: { x: -2, y: -2, blur: 6, opacity: 0.7 },
+      dark: { x: 2, y: 2, blur: 0, opacity: 0.25 },
+      light: { x: -1, y: -1, blur: 0, opacity: 0.9 },
     },
     inset: {
-      dark: { x: 2, y: 2, blur: 5, opacity: 0.08 },
-      light: { x: -2, y: -2, blur: 5, opacity: 0.6 },
+      dark: { x: 1, y: 1, blur: 0, opacity: 0.25 },
+      light: { x: -1, y: -1, blur: 0, opacity: 0.7 },
     },
   },
   dark: {
     raised: {
-      dark: { x: 6, y: 6, blur: 14, opacity: 0.5 },
-      light: { x: -3, y: -3, blur: 10, opacity: 0.04 },
+      dark: { x: 3, y: 3, blur: 0, opacity: 0.6 },
+      light: { x: -1, y: -1, blur: 0, opacity: 0.06 },
     },
     inset: {
-      dark: { x: 3, y: 3, blur: 8, opacity: 0.5 },
-      light: { x: -3, y: -3, blur: 8, opacity: 0.03 },
+      dark: { x: 2, y: 2, blur: 0, opacity: 0.6 },
+      light: { x: -1, y: -1, blur: 0, opacity: 0.05 },
     },
   },
 } as const;
 
 // ============================================
-// Glass — subtle drop shadow on translucent surfaces
+// Glass — dead. Zero blur, zero opacity (flat system).
 // ============================================
 
 export const glassShadow = {
-  blur: 12,
-  opacity: 0.15,
+  blur: 0,
+  opacity: 0,
 } as const;
 
 // ============================================
@@ -109,10 +104,9 @@ export const shadowFamilies = {
 
 // ============================================
 // Soft shadow base colors per theme
-// Used by codegen to determine the HSL base for soft shadows
 // ============================================
 
 export const softShadowColors = {
-  /** Dark mode: pure black base for soft shadows */
+  /** Dark mode: pure black base */
   darkHsl: "0 0% 0%",
 } as const;

@@ -25,7 +25,7 @@ export const Display: StoryObj = {
           className="font-display leading-[0.95] tracking-[0.005em]"
           style={{ fontSize: "clamp(80px, 14vw, 200px)", fontWeight: 400 }}
         >
-          sprout
+          ink
         </div>
         <div
           className="font-display italic leading-[0.95] tracking-[0.005em] text-text-secondary"
@@ -100,7 +100,7 @@ export const Display: StoryObj = {
       {/* Accent lockup */}
       <div>
         <div
-          className="font-display italic text-sprout"
+          className="font-display italic text-ink"
           style={{
             fontSize: "clamp(48px, 8vw, 120px)",
             fontWeight: 400,
@@ -143,9 +143,9 @@ export const Body: StoryObj = {
         <div>
           <p className="mb-2 type-mono-label text-text-tertiary">16px / 400</p>
           <p className="text-base leading-relaxed text-text-secondary">
-            Rooted in nature, designed for connection. Warm cream paper meets forest-green ink. A
-            budtender-engagement platform for Canadian licensed producers and retailers — the design
-            system is the material itself.
+            Drawn, not decorated. Warm drafting paper meets graphite ink. A budtender-engagement
+            platform for Canadian licensed producers and retailers — the design system is the
+            material itself.
           </p>
         </div>
         <div>
@@ -155,7 +155,7 @@ export const Body: StoryObj = {
             <span className="font-semibold">Semibold</span> ·{" "}
             <span className="font-bold">Bold</span> · <span className="italic">Italic</span>
           </p>
-          <p className="mt-3 rounded bg-surface-sunken px-2 py-1 font-mono text-[11px] text-haze">
+          <p className="mt-3 rounded bg-surface-sunken px-2 py-1 font-mono text-[11px] text-info">
             BOLD: labels, emphasis · ITALIC: inline prose only · 600+ for buttons
           </p>
         </div>
@@ -211,13 +211,13 @@ export const Editorial: StoryObj = {
         <div>
           <p className="mb-2 type-mono-label text-text-tertiary">18px / 300 — Article body</p>
           <p className="font-editorial text-lg leading-[1.75] text-text-secondary">
-            Soft structure with organic warmth — gentle elevation and friendly corners, warm cream
+            Ruled structure with generous rounding — drafted lines and friendly corners, warm paper
             surfaces and forest-green ink. The material speaks of growth.
           </p>
         </div>
         <div>
           <p className="mb-2 type-mono-label text-text-tertiary">24px / 300 italic — Pull quote</p>
-          <p className="font-editorial-display text-2xl font-light italic leading-snug text-sprout">
+          <p className="font-editorial-display text-2xl font-light italic leading-snug text-ink">
             "Rooted in nature. Designed for connection. Learn green, earn green."
           </p>
         </div>
@@ -258,12 +258,12 @@ export const Mono: StoryObj = {
 
       {/* Code block */}
       <div className="overflow-x-auto rounded border-2 border-border bg-surface-sunken p-5 font-mono text-sm leading-relaxed">
-        <span className="text-haze">const</span> palette = {"{"} bg:{" "}
-        <span className="text-sprout">"cream"</span>,{" "}
+        <span className="text-info">const</span> palette = {"{"} bg:{" "}
+        <span className="text-ink">"paper"</span>,{" "}
         <span className="text-text-tertiary">{"// hsl(60 23% 94%)"}</span> text:{" "}
-        <span className="text-sprout">"indica"</span>,{" "}
-        <span className="text-text-tertiary">{"// hsl(143 100% 7%)"}</span> sprout:{" "}
-        <span className="text-sprout">"#C7F27D"</span>,{" "}
+        <span className="text-ink">"graphite"</span>,{" "}
+        <span className="text-text-tertiary">{"// hsl(45 8% 8%)"}</span> ink:{" "}
+        <span className="text-ink">"#C7F27D"</span>,{" "}
         <span className="text-text-tertiary">{"// brand green"}</span> {"}"};
       </div>
 
@@ -289,10 +289,10 @@ export const Mono: StoryObj = {
         <p className="mb-4 type-mono-label text-text-tertiary">Data specimen</p>
         <div className="space-y-1 font-mono text-sm text-text-secondary">
           <p>
-            user_id: <span className="text-sprout">usr_01HZ3KPXV7BNWQ</span>
+            user_id: <span className="text-ink">usr_01HZ3KPXV7BNWQ</span>
           </p>
           <p>
-            session: <span className="text-sprout">sess_9f4a2c8b-e1d7</span>
+            session: <span className="text-ink">sess_9f4a2c8b-e1d7</span>
           </p>
           <p>
             created: <span className="text-text-tertiary">2026-04-05T14:32:00Z</span>
@@ -322,9 +322,9 @@ export const ProsePlatform: StoryObj = {
       <div className="prose prose-platform max-w-none">
         <h1>Rooted in Nature</h1>
         <p>
-          On warm cream paper, the brand grows — fresh sprout-green shoots against forest-green ink.
-          Every mark is an invitation to connect, set with intention, designed for the people who
-          work the counter.
+          On warm drafting paper, the system is drawn — ruled ink lines against graphite text. Every
+          mark is an invitation to connect, set with intention, designed for the people who work the
+          counter.
         </p>
         <h2>Learn Green, Earn Green</h2>
         <p>
@@ -344,9 +344,9 @@ export const ProsePlatform: StoryObj = {
         <h3>Code Fragment</h3>
         <pre>
           <code>{`const palette = {
-  sprout: "hsl(80 81% 72%)",
-  stigma: "hsl(17 54% 47%)",
-  cream: "hsl(60 23% 94%)",
+  ink: "hsl(45 20% 88%)",
+  rust: "hsl(14 55% 38%)",
+  paper: "hsl(45 33% 96%)",
 };`}</code>
         </pre>
         <p>

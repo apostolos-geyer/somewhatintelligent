@@ -98,7 +98,7 @@ function SessionsPage() {
                         <span className="flex items-center gap-2">
                           {s.userAgent?.slice(0, 40) ?? "Unknown device"}
                           {s.isCurrent && (
-                            <Badge variant="sprout" size="sm">
+                            <Badge variant="ink" size="sm">
                               Current
                             </Badge>
                           )}

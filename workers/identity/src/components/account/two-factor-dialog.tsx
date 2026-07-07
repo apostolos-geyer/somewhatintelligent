@@ -79,7 +79,7 @@ export function TwoFactorDialog({ enabled }: { enabled: boolean }) {
           <div className="flex items-center gap-3">
             <span className="text-sm text-text-secondary">Status:</span>
             {enabled ? (
-              <Badge variant="growth">Enabled</Badge>
+              <Badge variant="success">Enabled</Badge>
             ) : (
               <Badge variant="secondary">Disabled</Badge>
             )}
@@ -88,7 +88,7 @@ export function TwoFactorDialog({ enabled }: { enabled: boolean }) {
           {totpUri && (
             <div className="rounded-sm bg-surface-sunken px-4 py-3">
               <div className="type-mono-label mb-2 text-text-tertiary">TOTP URI</div>
-              <code className="type-code break-all text-sprout">{totpUri}</code>
+              <code className="type-code break-all text-ink">{totpUri}</code>
               <p className="mt-2 text-xs text-text-tertiary">
                 Scan this with your authenticator app. Or copy it — the result is the same.
               </p>

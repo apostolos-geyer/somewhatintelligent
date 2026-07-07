@@ -8,7 +8,7 @@ const meta = {
   argTypes: {
     variant: {
       control: "select",
-      options: ["default", "destructive", "sprout", "growth", "pistil"],
+      options: ["default", "destructive", "ink", "success", "warning"],
     },
   },
 } satisfies Meta<typeof Alert>;
@@ -36,7 +36,7 @@ export const Destructive: Story = {
 };
 
 export const Glyph: Story = {
-  args: { variant: "sprout" },
+  args: { variant: "ink" },
   render: (args) => (
     <Alert {...args} className="w-96">
       <AlertTitle>Info</AlertTitle>
@@ -46,7 +46,7 @@ export const Glyph: Story = {
 };
 
 export const Verdigris: Story = {
-  args: { variant: "growth" },
+  args: { variant: "success" },
   render: (args) => (
     <Alert {...args} className="w-96">
       <AlertTitle>Success</AlertTitle>
@@ -56,7 +56,7 @@ export const Verdigris: Story = {
 };
 
 export const Ochre: Story = {
-  args: { variant: "pistil" },
+  args: { variant: "warning" },
   render: (args) => (
     <Alert {...args} className="w-96">
       <AlertTitle>Warning</AlertTitle>
@@ -72,15 +72,15 @@ export const AllVariants: Story = {
         <AlertTitle>Default</AlertTitle>
         <AlertDescription>Brutalist border, neutral surface.</AlertDescription>
       </Alert>
-      <Alert variant="sprout">
+      <Alert variant="ink">
         <AlertTitle>Info</AlertTitle>
         <AlertDescription>Glyph blue — informational.</AlertDescription>
       </Alert>
-      <Alert variant="growth">
+      <Alert variant="success">
         <AlertTitle>Success</AlertTitle>
         <AlertDescription>Verdigris — confirmation.</AlertDescription>
       </Alert>
-      <Alert variant="pistil">
+      <Alert variant="warning">
         <AlertTitle>Warning</AlertTitle>
         <AlertDescription>Ochre — attention needed.</AlertDescription>
       </Alert>

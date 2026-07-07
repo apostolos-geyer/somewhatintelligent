@@ -8,15 +8,18 @@ const alertVariants = cva(
   {
     variants: {
       variant: {
+        // Border treatment carries state (monochrome system):
+        // default solid, ink solid, success solid, warning DASHED, info DOTTED,
+        // destructive solid rust (the red pen).
         default: "border-border-strong bg-surface-raised text-foreground",
         destructive:
-          "border-stigma bg-stigma/10 text-stigma *:data-[slot=alert-description]:text-stigma/80",
-        sprout:
-          "border-sprout bg-sprout/10 text-sprout *:data-[slot=alert-description]:text-sprout/80",
-        growth:
-          "border-growth bg-growth/10 text-growth *:data-[slot=alert-description]:text-growth/80",
-        pistil:
-          "border-pistil bg-pistil/10 text-pistil *:data-[slot=alert-description]:text-pistil/80",
+          "border-rust bg-rust/10 text-rust *:data-[slot=alert-description]:text-rust/80",
+        ink: "border-ink bg-ink/5 text-ink *:data-[slot=alert-description]:text-ink/80",
+        success:
+          "border-success bg-success/5 text-success *:data-[slot=alert-description]:text-success/80",
+        warning:
+          "border-dashed border-warning bg-warning/5 text-warning *:data-[slot=alert-description]:text-warning/80",
+        info: "border-dotted border-info bg-info/5 text-info *:data-[slot=alert-description]:text-info/80",
       },
     },
     defaultVariants: {

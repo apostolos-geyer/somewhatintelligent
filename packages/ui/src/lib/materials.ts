@@ -1,15 +1,22 @@
 /**
- * Shared Material Language Styles — Sprout
+ * Shared Material Language Styles — "DRAFT" (blueprint monochrome)
  *
- * Sprout's surfaces are warm, soft, and friendly: gently-rounded cards
- * that lift on hover and press in when activated. There is no hard
- * brutalist stone here — elevation is conveyed with soft, diffused
- * shadows, and depth with neumorphism and frosted glass.
+ * Surfaces are technical drawings: flat paper, crisp ink rules, generous
+ * rounding. There is NO diffused shadow and NO blur anywhere — depth is
+ * drawn with border treatment and hard-offset drafted lines:
+ *
+ *   solid rule    — primary surface / strongest emphasis
+ *   dashed rule   — secondary / interactive affordance (dashes invite touch)
+ *   dotted rule   — tertiary / hints / dividers
+ *   brutal offset — a hard ink offset (--brutal-*), the drafted "duplicate
+ *                   line" that stands a surface off the paper
  *
  * The four material keys (brutal / soft / neo / glass) are kept for
- * backwards compatibility with every consumer; `brutal` is now Sprout's
- * primary "signature" feel (a confident soft elevation), NOT a hard
- * offset. Components compose these strings with their own overrides.
+ * backwards compatibility with every consumer:
+ *   brutal — the signature: solid rule + drafted offset
+ *   soft   — quiet secondary: dashed rule, no offset
+ *   neo    — chiseled toggle surfaces (hard 0-blur chisel)
+ *   glass  — LEGACY name; renders as an opaque fresh sheet + solid rule
  *
  * Surface = static containers (cards, alerts).
  * Interactive = elements with hover/active states (buttons, badges).
@@ -25,15 +32,15 @@
 // material strings are appended last in cn()/twMerge, so they must match or
 // they silently downgrade every card back to the control radius.
 export const surfaceMaterials = {
-  /** Signature: soft, confident elevation — the default card */
-  brutal: "rounded-md bg-card border border-border shadow-soft-md",
-  /** Soft: gentle elevation, subtle border */
-  soft: "rounded-md border border-border bg-surface-raised shadow-soft-lg",
-  /** Neumorphic raised: standing proud of surface */
-  neo: "rounded-md border-none bg-surface shadow-neo-raised",
-  /** Neumorphic inset: pressed/sunken into surface */
-  neoInset: "rounded-md border-none bg-surface shadow-neo-inset",
-  /** Glass: frosted translucent backdrop */
+  /** Signature: solid rule + drafted ink offset — the default card */
+  brutal: "rounded-md bg-card border border-border-strong shadow-brutal-sm",
+  /** Soft: quiet secondary sheet — dashed rule, flat */
+  soft: "rounded-md border border-dashed border-border bg-surface-raised",
+  /** Neo raised: chiseled, standing proud of the paper */
+  neo: "rounded-md border border-border bg-surface shadow-neo-raised",
+  /** Neo inset: pressed/sunken into the paper */
+  neoInset: "rounded-md border border-border bg-surface-sunken shadow-neo-inset",
+  /** Legacy "glass": an opaque fresh sheet with a solid rule (flat) */
   glass: "rounded-md glass",
 } as const;
 
@@ -42,18 +49,18 @@ export const surfaceMaterials = {
 // ============================================
 
 export const interactiveMaterials = {
-  /** Signature: soft elevation, gentle lift on hover, press-in on active.
-   *  Card-tile interaction — consumed only by clickable card surfaces (never
-   *  buttons/badges), so it rounds on the `md` Cards token like the surfaces. */
+  /** Signature: drafted offset that grows on hover and collapses on press —
+   *  the element physically sits down on the paper. Card-tile interaction —
+   *  consumed only by clickable card surfaces (never buttons/badges), so it
+   *  rounds on the `md` Cards token like the surfaces. */
   brutal:
-    "rounded-md shadow-soft-md transition-all hover:shadow-soft-lg hover:-translate-y-0.5 active:shadow-soft-sm active:translate-y-0 active:press-in",
-  /** Soft: press-in active state */
-  soft: "rounded-sm border border-border shadow-soft-md hover:shadow-soft-lg active:shadow-soft-sm active:press-in",
-  /** Neumorphic: inset flip on active */
-  neo: "rounded-sm border-none shadow-neo-raised hover:shadow-neo-inset active:shadow-neo-inset active:press-in",
-  /** Glass: brightness shift + press-in */
-  glass:
-    "rounded-sm glass shadow-soft-md hover:shadow-soft-lg hover:brightness-110 active:shadow-soft-sm active:press-in",
+    "rounded-md border border-border-strong shadow-brutal-sm transition-all hover:shadow-brutal-md hover:-translate-x-0.5 hover:-translate-y-0.5 active:shadow-none active:translate-x-0.5 active:translate-y-0.5",
+  /** Soft: dashed affordance that commits to a solid rule on hover */
+  soft: "rounded-sm border border-dashed border-border transition-colors hover:[border-style:solid] hover:border-border-strong active:press-in",
+  /** Neo: chisel flips inset on active */
+  neo: "rounded-sm border border-border shadow-neo-raised hover:shadow-neo-inset active:shadow-neo-inset active:press-in",
+  /** Legacy "glass": flat sheet; rule strengthens on hover */
+  glass: "rounded-sm glass transition-colors hover:border-border-strong active:press-in",
 } as const;
 
 // ============================================
@@ -61,9 +68,9 @@ export const interactiveMaterials = {
 // ============================================
 
 export const compactMaterials = {
-  /** Soft: hairline border + small soft shadow */
-  brutal: "border border-border shadow-soft-sm",
-  /** Glass: frosted translucent */
+  /** Solid rule + tiny drafted offset */
+  brutal: "border border-border-strong shadow-brutal-sm",
+  /** Legacy "glass": opaque sheet chip with a solid rule */
   glass: "glass",
 } as const;
 

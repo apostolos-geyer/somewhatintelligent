@@ -59,7 +59,7 @@ function ApiKeysPage() {
                   {k.prefix ?? "\u2014"}
                 </td>
                 <td className="px-4 py-3">
-                  <Badge variant={k.enabled ? "growth" : "secondary"}>
+                  <Badge variant={k.enabled ? "success" : "secondary"}>
                     {k.enabled ? "Enabled" : "Disabled"}
                   </Badge>
                 </td>

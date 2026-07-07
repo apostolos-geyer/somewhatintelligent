@@ -16,7 +16,7 @@ import {
   COLOR_TEXT,
   COLOR_TEXT_TERTIARY,
   COLOR_BORDER_STRONG,
-  COLOR_SPROUT,
+  COLOR_INK,
   FONT_BODY,
   FONT_DISPLAY,
   EMAIL_MAX_WIDTH,
@@ -114,7 +114,7 @@ export function GuestlistEmailLayout({ title, previewText, children }: Guestlist
           >
             <Link
               href={`https://${BRAND_HOST}`}
-              style={{ color: COLOR_SPROUT, textDecoration: "none" }}
+              style={{ color: COLOR_INK, textDecoration: "none" }}
             >
               {BRAND_HOST}
             </Link>

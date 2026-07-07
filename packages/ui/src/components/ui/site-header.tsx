@@ -23,7 +23,7 @@ export function SiteHeader({
 }: SiteHeaderProps) {
   return (
     <header
-      className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-lg"
+      className="sticky top-0 z-50 border-b border-border bg-background"
       style={{ viewTransitionName: "site-header" }}
     >
       <div className="relative mx-auto flex h-14 max-w-content items-center px-page">

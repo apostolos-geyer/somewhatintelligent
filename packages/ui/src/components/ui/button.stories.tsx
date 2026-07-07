@@ -65,7 +65,7 @@ export const Glass: Story = {
   args: { variant: "glass", children: "Glass" },
   decorators: [
     (Story) => (
-      <div className="rounded-sm bg-gradient-to-br from-sprout/30 via-stigma/20 to-growth/30 p-8">
+      <div className="rounded-sm bg-gradient-to-br from-ink/30 via-rust/20 to-success/30 p-8">
         <Story />
       </div>
     ),

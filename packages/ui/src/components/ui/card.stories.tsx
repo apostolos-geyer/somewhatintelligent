@@ -79,7 +79,7 @@ export const Neumorphic: Story = {
 export const Glass: Story = {
   args: { variant: "glass" },
   render: (args) => (
-    <div className="relative h-64 w-96 overflow-hidden rounded-sm bg-gradient-to-br from-sprout/30 via-stigma/20 to-growth/30 p-8">
+    <div className="relative h-64 w-96 overflow-hidden rounded-sm bg-gradient-to-br from-ink/30 via-rust/20 to-success/30 p-8">
       <Card {...args} className="h-full">
         <CardHeader>
           <CardTitle>Glass</CardTitle>

@@ -13,10 +13,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
       icons={{
-        success: <CircleCheckIcon className="size-4 text-growth" />,
+        success: <CircleCheckIcon className="size-4 text-success" />,
         info: <InfoIcon className="size-4" />,
-        warning: <TriangleAlertIcon className="size-4 text-pistil" />,
-        error: <OctagonXIcon className="size-4 text-stigma" />,
+        warning: <TriangleAlertIcon className="size-4 text-warning" />,
+        error: <OctagonXIcon className="size-4 text-rust" />,
         loading: <Spinner className="size-4" />,
       }}
       style={
@@ -25,14 +25,14 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--normal-text": "var(--popover-foreground)",
           "--normal-border": "var(--glass-border)",
           "--success-bg": "var(--glass-bg)",
-          "--success-text": "var(--color-growth)",
-          "--success-border": "var(--color-growth)",
+          "--success-text": "var(--color-success)",
+          "--success-border": "var(--color-success)",
           "--error-bg": "var(--glass-bg)",
-          "--error-text": "var(--color-stigma)",
-          "--error-border": "var(--color-stigma)",
+          "--error-text": "var(--color-rust)",
+          "--error-border": "var(--color-rust)",
           "--warning-bg": "var(--glass-bg)",
-          "--warning-text": "var(--color-pistil)",
-          "--warning-border": "var(--color-pistil)",
+          "--warning-text": "var(--color-warning)",
+          "--warning-border": "var(--color-warning)",
           "--border-radius": "var(--radius-md)",
         } as React.CSSProperties
       }

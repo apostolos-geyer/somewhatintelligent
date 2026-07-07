@@ -1,27 +1,28 @@
-// Guestlist (Sprout IDP) — light theme email constants
+// Guestlist (somewhatintelligent IDP) — light theme email constants
 // Email clients don't support CSS variables, so we inline hex values.
-// These mirror the Sprout light-mode design tokens (packages/design).
+// These mirror the blueprint light-mode design tokens (packages/design):
+// ink on drafting paper, flat surfaces, NO shadows.
 
 // Surfaces (light)
-export const COLOR_BG = "#F2F2EC"; // cream
+export const COLOR_BG = "#F8F7F1"; // drafting paper
 export const COLOR_SURFACE = "#ffffff";
 export const COLOR_SURFACE_RAISED = "#ffffff";
 
-// Borders
-export const COLOR_BORDER = "#6A9778";
-export const COLOR_BORDER_STRONG = "#538268";
+// Borders — ruled ink lines
+export const COLOR_BORDER = "#8E8B80"; // ink-400
+export const COLOR_BORDER_STRONG = "#4A4841"; // ink-700
 
-// Text
-export const COLOR_TEXT = "#00240D"; // indica ink
-export const COLOR_TEXT_SECONDARY = "#356B49";
-export const COLOR_TEXT_TERTIARY = "#5E8770";
-export const COLOR_TEXT_ON_ACCENT = "#F2F2EC"; // cream on accent fills
+// Text — ink
+export const COLOR_TEXT = "#171613"; // ink-950
+export const COLOR_TEXT_SECONDARY = "#4A4841"; // ink-700
+export const COLOR_TEXT_TERTIARY = "#757268"; // ink-500
+export const COLOR_TEXT_ON_ACCENT = "#F8F7F1"; // paper on ink fills
 
 // Accents
-export const COLOR_SPROUT = "#20722E"; // deep growth green — primary
-export const COLOR_STIGMA = "#9F4A2D"; // terracotta — destructive
+export const COLOR_INK = "#23221E"; // primary — the pen
+export const COLOR_RUST = "#96432B"; // destructive — the red pen
 
-// Shared base for all email buttons
+// Shared base for all email buttons — flat, no shadow
 const BUTTON_BASE = {
   fontSize: "15px",
   fontWeight: "600" as const,
@@ -34,21 +35,20 @@ const BUTTON_BASE = {
 
 export const CTA_BUTTON_STYLE = {
   ...BUTTON_BASE,
-  backgroundColor: COLOR_SPROUT,
+  backgroundColor: COLOR_INK,
   color: COLOR_TEXT_ON_ACCENT,
-  boxShadow: "0 2px 6px rgba(0,36,13,0.18)",
 } as const;
 
 export const DESTRUCTIVE_BUTTON_STYLE = {
   ...BUTTON_BASE,
-  backgroundColor: COLOR_STIGMA,
+  backgroundColor: COLOR_RUST,
   color: COLOR_TEXT_ON_ACCENT,
-  boxShadow: "0 2px 6px rgba(0,36,13,0.18)",
 } as const;
 
-// Typography — Sprout email faces with web-safe fallbacks
-export const FONT_BODY = '"IBM Plex Serif", Georgia, "Times New Roman", serif';
-export const FONT_DISPLAY = '"Zerove", "Switzer", Helvetica, Arial, sans-serif';
+// Typography — Iosevka voices with web-safe fallbacks (email clients
+// won't load webfonts; the fallbacks carry the plain technical look).
+export const FONT_BODY = "Helvetica, Arial, sans-serif";
+export const FONT_DISPLAY = '"Iosevka Aile", Helvetica, Arial, sans-serif';
 export const FONT_MONO = '"Iosevka", "SF Mono", "Fira Code", Consolas, monospace';
 
 export const HEADING_STYLE = {

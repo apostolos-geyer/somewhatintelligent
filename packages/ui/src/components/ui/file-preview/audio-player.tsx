@@ -64,7 +64,7 @@ export function AudioPlayer({ url, fileName, waveformData }: AudioPlayerProps) {
   }, [isAlteredSpeed]);
 
   // Canvas fillStyle can't resolve CSS custom properties (no element context),
-  // so we read `--color-pistil-hsl` off :root and hand Waveform fully-formed
+  // so we read `--color-warning-hsl` off :root and hand Waveform fully-formed
   // hsl() strings. The MutationObserver picks up theme class flips.
   const [waveformColors, setWaveformColors] = useState<{
     played: string;
@@ -74,7 +74,7 @@ export function AudioPlayer({ url, fileName, waveformData }: AudioPlayerProps) {
     if (typeof window === "undefined") return;
     const read = () => {
       const tuple = getComputedStyle(document.documentElement)
-        .getPropertyValue("--color-pistil-hsl")
+        .getPropertyValue("--color-warning-hsl")
         .trim();
       if (!tuple) return;
       setWaveformColors({

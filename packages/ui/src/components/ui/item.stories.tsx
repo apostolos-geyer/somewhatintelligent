@@ -22,7 +22,7 @@ export const Default: Story = {
           <ItemDescription>elena@example.com</ItemDescription>
         </ItemContent>
         <ItemActions>
-          <Badge variant="growth">Active</Badge>
+          <Badge variant="success">Active</Badge>
         </ItemActions>
       </Item>
       <Item>
@@ -31,7 +31,7 @@ export const Default: Story = {
           <ItemDescription>marcus@example.com</ItemDescription>
         </ItemContent>
         <ItemActions>
-          <Badge variant="sprout">Admin</Badge>
+          <Badge variant="ink">Admin</Badge>
         </ItemActions>
       </Item>
       <Item>
@@ -40,7 +40,7 @@ export const Default: Story = {
           <ItemDescription>theo@example.com</ItemDescription>
         </ItemContent>
         <ItemActions>
-          <Badge variant="stigma">Banned</Badge>
+          <Badge variant="rust">Banned</Badge>
           <Button variant="ghost" size="sm">
             Unban
           </Button>

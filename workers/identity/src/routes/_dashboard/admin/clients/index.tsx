@@ -70,9 +70,9 @@ function ClientsPage() {
                 </td>
                 <td className="px-4 py-3">
                   {isManaged(c.referenceId) ? (
-                    <Badge variant="pistil">Managed</Badge>
+                    <Badge variant="warning">Managed</Badge>
                   ) : (
-                    <Badge variant="sprout">Custom</Badge>
+                    <Badge variant="ink">Custom</Badge>
                   )}
                 </td>
               </tr>

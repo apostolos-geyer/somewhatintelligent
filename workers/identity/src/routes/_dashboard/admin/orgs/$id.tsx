@@ -126,7 +126,7 @@ function OrgDetailPage() {
             <div>
               <dt className="type-mono-label text-text-tertiary">Plan</dt>
               <dd className="mt-1">
-                <Badge variant="pistil">trial</Badge>
+                <Badge variant="warning">trial</Badge>
               </dd>
             </div>
             <div>
@@ -289,7 +289,7 @@ function OrgDetailPage() {
                               Copy accept link
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              className="text-text-stigma focus:text-text-stigma-hover"
+                              className="text-text-rust focus:text-text-rust-hover"
                               onClick={() => void handleCancelInvitation(inv)}
                             >
                               Cancel
@@ -326,7 +326,7 @@ function OrgDetailPage() {
 }
 
 function RoleBadge({ role }: { role: string }) {
-  if (role === "owner") return <Badge variant="sprout">owner</Badge>;
-  if (role === "admin") return <Badge variant="pistil">admin</Badge>;
+  if (role === "owner") return <Badge variant="ink">owner</Badge>;
+  if (role === "admin") return <Badge variant="warning">admin</Badge>;
   return <Badge variant="secondary">{role}</Badge>;
 }

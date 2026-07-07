@@ -4,7 +4,7 @@ import {
   COLOR_TEXT,
   COLOR_TEXT_SECONDARY,
   COLOR_TEXT_TERTIARY,
-  COLOR_SPROUT,
+  COLOR_INK,
   FONT_MONO,
   CTA_BUTTON_STYLE,
   HEADING_STYLE,
@@ -60,7 +60,7 @@ export function GuestlistEmailChangeEmail({
         }}
       >
         <span style={{ color: COLOR_TEXT_SECONDARY }}>to:</span>{" "}
-        <span style={{ color: COLOR_SPROUT }}>{newEmail}</span>
+        <span style={{ color: COLOR_INK }}>{newEmail}</span>
       </Text>
 
       <Section style={{ textAlign: "center", margin: "32px 0" }}>

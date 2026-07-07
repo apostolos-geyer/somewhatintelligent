@@ -200,9 +200,9 @@ function Dial({
           </div>
 
           {/* Fixed center indicator (always in the middle) */}
-          <div className="absolute left-1/2 top-1/2 z-10 h-full w-1 -translate-x-1/2 -translate-y-1/2 border-2 border-foreground bg-sprout shadow-[0_0_8px_rgba(255,87,34,0.5)]">
+          <div className="absolute left-1/2 top-1/2 z-10 h-full w-1 -translate-x-1/2 -translate-y-1/2 border-2 border-foreground bg-ink shadow-[0_0_8px_rgba(255,87,34,0.5)]">
             {/* Indicator arrow/pointer */}
-            <div className="absolute left-1/2 top-0 h-0 w-0 -translate-x-1/2 -translate-y-full border-x-4 border-b-4 border-x-transparent border-b-sprout" />
+            <div className="absolute left-1/2 top-0 h-0 w-0 -translate-x-1/2 -translate-y-full border-x-4 border-b-4 border-x-transparent border-b-ink" />
           </div>
         </div>
       </div>

@@ -15,8 +15,8 @@ const cardVariants = cva(
         neo: surfaceMaterials.neo,
         "neo-inset": surfaceMaterials.neoInset,
         glass: surfaceMaterials.glass,
-        // Dark reward tile: Indica surface, cream ink (Sprout-Green display numbers via child class).
-        dark: "bg-indica-green text-cream border-none shadow-md",
+        // Dark tile: fixed graphite sheet, paper ink — flat, heavy rule.
+        dark: "bg-ink-950 text-paper-100 border border-ink-800",
       },
     },
     defaultVariants: {

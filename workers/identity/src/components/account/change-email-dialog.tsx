@@ -74,7 +74,7 @@ export function ChangeEmailDialog({ defaultEmail }: { defaultEmail: string }) {
 
         {success ? (
           <div className="flex flex-col gap-4">
-            <Alert variant="growth">
+            <Alert variant="success">
               Confirmation sent to your current email. Check it, click the link, and so on.
             </Alert>
             <DialogClose

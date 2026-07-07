@@ -104,3 +104,6 @@ playwright/.cache/
 # Claude Code session-local lock file (rewritten per session, not project state)
 .claude/scheduled_tasks.lock
 wrangler.solo.jsonc
+
+# design redesign proof screenshots (committed evidence)
+!docs/design/redesign-proof/*.png

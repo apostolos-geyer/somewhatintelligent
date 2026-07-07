@@ -1,24 +1,26 @@
 import type { LogoColorScheme, LogoIconProps } from "./types";
 
 /**
- * The Sprout brand mark — the two-leaf seedling (lucide's `sprout` path data,
- * inlined). This is the SINGLE source of the mark, used by the app AND by
- * satori/OG image generation. It is deliberately NOT the lucide `<Sprout>`
- * component: lucide icons call React hooks (useContext), which satori cannot
- * run ("Invalid hook call"), so OG rendering needs a hook-free SVG. Inlining
- * the paths keeps one definition that works in both worlds.
+ * The somewhatintelligent brand mark — a drafting REGISTRATION MARK:
+ * a circle with four tick lines crossing its cardinal points and a plotted
+ * center. The symbol printers and drafters use to line a drawing up.
+ *
+ * This is the SINGLE source of the mark, used by the app AND by satori/OG
+ * image generation, so it must stay a hook-free SVG (no lucide components —
+ * they call useContext, which satori cannot run). Inlining keeps one
+ * definition that works in both worlds.
  *
  * Recolors by `colorScheme` with concrete hex (CSS custom properties don't
  * resolve in satori). The legacy parametric "dual-A" props are accepted for
- * API compatibility but ignored — the mark is now a single-stroke seedling.
+ * API compatibility but ignored — the mark is a single-stroke symbol.
  */
 const SCHEME_STROKE: Record<LogoColorScheme, string> = {
-  primary: "#C7F27D", // sprout-green (bright lime) — for dark surfaces
-  light: "#3E9F32", // growth-green — for light surfaces
-  "mono-cream": "#F2F2EC", // cream
-  "mono-void": "#00240D", // indica
-  "on-stigma": "#F2F2EC", // cream on terracotta
-  "on-growth": "#F2F2EC", // cream on growth
+  primary: "#F8F7F1", // paper ink — for dark surfaces
+  light: "#171613", // graphite ink — for light surfaces
+  "mono-paper": "#F8F7F1", // paper
+  "mono-void": "#171613", // ink
+  "on-rust": "#F8F7F1", // paper on rust
+  "on-success": "#F8F7F1", // paper on success
 };
 
 export function LogoIcon({
@@ -68,15 +70,20 @@ export function LogoIcon({
       strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
-      aria-label="Sprout"
+      aria-label="somewhatintelligent"
       className={className}
       style={style}
       {...svgProps}
     >
-      <path d="M7 20h10" />
-      <path d="M10 20c5.5-2.5.8-6.4 3-10" />
-      <path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z" />
-      <path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z" />
+      {/* Registration circle */}
+      <circle cx="12" cy="12" r="6.5" />
+      {/* Cardinal tick lines — crossing the circle's edge like plot marks */}
+      <path d="M12 2.5v4" />
+      <path d="M12 17.5v4" />
+      <path d="M2.5 12h4" />
+      <path d="M17.5 12h4" />
+      {/* Plotted center point */}
+      <circle cx="12" cy="12" r="0.9" fill={stroke} stroke="none" />
     </svg>
   );
 }

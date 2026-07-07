@@ -134,11 +134,11 @@ export function InviteMemberModal({
           </form>
         ) : (
           <div className="flex flex-col gap-4">
-            <Alert variant="growth">Invitation created. Send the link below to {email}.</Alert>
+            <Alert variant="success">Invitation created. Send the link below to {email}.</Alert>
             <Field>
               <Label>Accept URL</Label>
               <div className="rounded-sm bg-surface-sunken px-3 py-2">
-                <code className="type-code block break-all text-sprout">{acceptUrl}</code>
+                <code className="type-code block break-all text-ink">{acceptUrl}</code>
               </div>
               <FieldDescription>
                 Email delivery for operator-issued invitations is intentionally manual. The invitee

@@ -20,7 +20,7 @@ const meta = {
     detail: { control: "select", options: ["bare", "serifs", "crossbars", "brackets", "full"] },
     colorScheme: {
       control: "select",
-      options: ["primary", "light", "mono-cream", "mono-void", "on-stigma", "on-growth"],
+      options: ["primary", "light", "mono-paper", "mono-void", "on-rust", "on-success"],
     },
   },
   args: {
@@ -92,7 +92,7 @@ export const AllAnimations: Story = {
       <div className="flex flex-col gap-10">
         <button
           type="button"
-          className="self-start text-2xs uppercase tracking-caps text-text-tertiary bg-surface-raised border border-border px-4 py-2 rounded-sm hover:text-sprout hover:border-sprout transition-colors"
+          className="self-start text-2xs uppercase tracking-caps text-text-tertiary bg-surface-raised border border-border px-4 py-2 rounded-sm hover:text-ink hover:border-ink transition-colors"
           onClick={() => setKey((k) => k + 1)}
         >
           Replay all
@@ -154,7 +154,7 @@ export const LightScramble: Story = {
 
 export const BloodGlitch: Story = {
   name: "Color / Blood + Glitch",
-  args: { animation: "glitch", colorScheme: "on-stigma" },
+  args: { animation: "glitch", colorScheme: "on-rust" },
 };
 
 // ── Matrix: Animation × Layout ──
@@ -175,7 +175,7 @@ export const AnimationLayoutMatrix: Story = {
       <div className="flex flex-col gap-6">
         <button
           type="button"
-          className="self-start text-2xs uppercase tracking-caps text-text-tertiary bg-surface-raised border border-border px-4 py-2 rounded-sm hover:text-sprout hover:border-sprout transition-colors"
+          className="self-start text-2xs uppercase tracking-caps text-text-tertiary bg-surface-raised border border-border px-4 py-2 rounded-sm hover:text-ink hover:border-ink transition-colors"
           onClick={() => setKey((k) => k + 1)}
         >
           Replay all

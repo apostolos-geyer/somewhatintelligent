@@ -30,8 +30,8 @@ function ColorTokensPage() {
       <div>
         <h2 className="mb-2 font-heading text-2xl">Palette — Sprout</h2>
         <p className="text-sm text-muted-foreground">
-          Light-first. Rooted in nature. Warm cream paper, forest-green ink, sprout-green +
-          terracotta stigma accents.
+          Light-first. A technical drawing: warm drafting paper, graphite ink, and the rust red pen
+          for destructive actions.
         </p>
       </div>
 
@@ -39,7 +39,7 @@ function ColorTokensPage() {
       <section className="space-y-4">
         <h3 className="type-section-label text-text-secondary">Neutrals</h3>
         <p className="font-mono text-xs text-text-tertiary">
-          Forest canvas (dark mode) shown below · Light = cream paper, the brand's primary identity
+          Graphite board (dark mode) shown below · Light = drafting paper, the primary identity
         </p>
         <div className="grid grid-cols-4 gap-3 sm:grid-cols-4">
           <Swatch
@@ -100,64 +100,60 @@ function ColorTokensPage() {
           <div className="overflow-hidden rounded-sm border-2 border-border">
             <div
               className="h-16 border-b border-border"
-              style={{ background: "var(--color-sprout)" }}
+              style={{ background: "var(--color-ink)" }}
             />
             <div className="bg-surface-raised p-3">
               <div className="text-xs font-semibold">Sprout</div>
               <div className="type-mono-label text-text-tertiary">Primary · Brand green</div>
-              <div className="type-mono-label text-text-tertiary">
-                {accentColors.sprout.dark.hex}
-              </div>
+              <div className="type-mono-label text-text-tertiary">{accentColors.ink.dark.hex}</div>
             </div>
           </div>
           <div className="overflow-hidden rounded-sm border-2 border-border">
             <div
               className="h-16 border-b border-border"
-              style={{ background: "var(--color-haze)" }}
+              style={{ background: "var(--color-info)" }}
             />
             <div className="bg-surface-raised p-3">
               <div className="text-xs font-semibold">Haze</div>
-              <div className="type-mono-label text-text-tertiary">Info · Purple haze</div>
-              <div className="type-mono-label text-text-tertiary">{accentColors.haze.dark.hex}</div>
+              <div className="type-mono-label text-text-tertiary">Info · Dotted rule</div>
+              <div className="type-mono-label text-text-tertiary">{accentColors.info.dark.hex}</div>
             </div>
           </div>
           <div className="overflow-hidden rounded-sm border-2 border-border">
             <div
               className="h-16 border-b border-border"
-              style={{ background: "var(--color-growth)" }}
+              style={{ background: "var(--color-success)" }}
             />
             <div className="bg-surface-raised p-3">
               <div className="text-xs font-semibold">Growth</div>
               <div className="type-mono-label text-text-tertiary">Success · Growth green</div>
               <div className="type-mono-label text-text-tertiary">
-                {accentColors.growth.dark.hex}
+                {accentColors.success.dark.hex}
               </div>
             </div>
           </div>
           <div className="overflow-hidden rounded-sm border-2 border-border">
             <div
               className="h-16 border-b border-border"
-              style={{ background: "var(--color-pistil)" }}
+              style={{ background: "var(--color-warning)" }}
             />
             <div className="bg-surface-raised p-3">
               <div className="text-xs font-semibold">Pistil</div>
               <div className="type-mono-label text-text-tertiary">Warning · Amber</div>
               <div className="type-mono-label text-text-tertiary">
-                {accentColors.pistil.dark.hex}
+                {accentColors.warning.dark.hex}
               </div>
             </div>
           </div>
           <div className="overflow-hidden rounded-sm border-2 border-border">
             <div
               className="h-16 border-b border-border"
-              style={{ background: "var(--color-stigma)" }}
+              style={{ background: "var(--color-rust)" }}
             />
             <div className="bg-surface-raised p-3">
               <div className="text-xs font-semibold">Stigma</div>
               <div className="type-mono-label text-text-tertiary">Destructive · Terracotta</div>
-              <div className="type-mono-label text-text-tertiary">
-                {accentColors.stigma.dark.hex}
-              </div>
+              <div className="type-mono-label text-text-tertiary">{accentColors.rust.dark.hex}</div>
             </div>
           </div>
         </div>
@@ -166,7 +162,7 @@ function ColorTokensPage() {
       {/* Glass Effects */}
       <section className="space-y-4">
         <h3 className="type-section-label text-text-secondary">Glass Effects</h3>
-        <div className="relative h-48 overflow-hidden rounded-sm bg-gradient-to-br from-sprout/30 to-stigma/30 p-6">
+        <div className="relative h-48 overflow-hidden rounded-sm bg-gradient-to-br from-ink/30 to-rust/30 p-6">
           <div className="absolute inset-6 rounded-sm glass p-6">
             <p className="font-semibold">Glassmorphism</p>
             <p className="text-sm text-muted-foreground">glass-bg + glass-border + glass-blur</p>

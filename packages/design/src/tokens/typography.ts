@@ -1,34 +1,36 @@
 /**
- * Sprout Typography Tokens
+ * somewhatintelligent Typography Tokens — "DRAFT" (blueprint monochrome)
  *
  * Single source of truth for all type definitions.
  * Codegen reads these to produce CSS utilities and custom properties.
  *
- * Four brand typefaces (per the Sprout brand guidelines) + a mono workhorse:
- *   - Zerove           — rounded unicase display. Headlines, hero, page titles.
- *   - Switzer          — variable grotesque sans. The UI/body workhorse.
- *   - IBM Plex Serif   — light editorial serif. Long-form prose + big quotes.
- *   - Quadrillion      — supporting accent face. Tagline / "learn green" marks.
- *   - Iosevka          — monospace. Code, IDs, timestamps, technical metadata.
+ * One superfamily, two voices — the whole UI is set in Iosevka:
+ *   - Iosevka Aile — the quasi-proportional extension of Iosevka. Display,
+ *     body, editorial. Light weights for big drafting-title headings.
+ *   - Iosevka      — the monospace. Code, IDs, timestamps, uppercase
+ *     annotation labels — the "dimension text" of the drawing.
+ *
+ * The legacy brand faces were removed with the old identity — only the
+ * Iosevka families are vendored.
  */
 
 // Font stack definitions — CSS var names + actual font family values
 export const fontStacks = {
-  /** Zerove — rounded display face. Renders effectively unicase; use for
-   *  hero/section headers. `font-display` / `font-heading`. */
-  display: { cssName: "display", family: "'Zerove', 'Switzer', system-ui, sans-serif" },
-  /** Switzer — variable UI/body workhorse. `font-body` / `font-sans`. */
-  body: { cssName: "body", family: "'Switzer', system-ui, -apple-system, sans-serif" },
-  /** IBM Plex Serif Light — editorial long-form. `font-editorial`. */
-  editorial: { cssName: "editorial", family: "'IBM Plex Serif', Georgia, serif" },
-  /** Zerove again for headings inside editorial prose. `font-editorial-display`. */
+  /** Iosevka Aile Light — big drafting-title headings.
+   *  `font-display` / `font-heading`. */
+  display: { cssName: "display", family: "'Iosevka Aile', 'Iosevka', system-ui, sans-serif" },
+  /** Iosevka Aile — the UI/body workhorse. `font-body` / `font-sans`. */
+  body: { cssName: "body", family: "'Iosevka Aile', system-ui, -apple-system, sans-serif" },
+  /** Iosevka Aile Light — editorial long-form. `font-editorial`. */
+  editorial: { cssName: "editorial", family: "'Iosevka Aile', system-ui, sans-serif" },
+  /** Editorial headings — same drafting voice. `font-editorial-display`. */
   editorialDisplay: {
     cssName: "editorial-display",
-    family: "'Zerove', 'Switzer', system-ui, sans-serif",
+    family: "'Iosevka Aile', 'Iosevka', system-ui, sans-serif",
   },
-  /** Quadrillion — supporting accent face for taglines / playful marks.
+  /** Iosevka mono as the accent voice — annotation marks, taglines.
    *  `font-accent`. */
-  accent: { cssName: "accent", family: "'Quadrillion', 'Zerove', sans-serif" },
+  accent: { cssName: "accent", family: "'Iosevka', ui-monospace, monospace" },
   /** Iosevka — monospace. `font-mono`. */
   mono: { cssName: "mono", family: "'Iosevka', ui-monospace, 'SF Mono', monospace" },
 } as const;
@@ -50,12 +52,12 @@ export interface FluidTypeToken {
 }
 
 export const fluidType = {
-  /** Brand hero splash — Zerove, massive rounded display */
+  /** Brand hero splash — massive light drafting display */
   hero: {
     min: 80,
     preferred: "14vw",
     max: 200,
-    weight: 400,
+    weight: 300,
     leading: 0.95,
     tracking: 0.005,
     font: "display",
@@ -65,17 +67,17 @@ export const fluidType = {
     min: 32,
     preferred: "5vw",
     max: 56,
-    weight: 400,
+    weight: 300,
     leading: 1.0,
     tracking: 0.005,
     font: "display",
   },
-  /** Dashboard stat numbers — big Zerove numerals */
+  /** Dashboard stat numbers — big light numerals */
   stat: {
     min: 28,
     preferred: "4vw",
     max: 48,
-    weight: 400,
+    weight: 300,
     leading: 1.0,
     tracking: 0,
     font: "display",
@@ -85,42 +87,42 @@ export const fluidType = {
     min: 24,
     preferred: "3vw",
     max: 36,
-    weight: 400,
+    weight: 300,
     leading: 1.1,
     tracking: 0,
     font: "display",
   },
-  /** Blog post / article h1 — Zerove */
+  /** Blog post / article h1 */
   editorialH1: {
     min: 36,
     preferred: "7vw",
     max: 72,
-    weight: 400,
+    weight: 300,
     leading: 1.0,
     tracking: 0.005,
     font: "editorialDisplay",
   },
-  /** Blog post / article h2 — Zerove */
+  /** Blog post / article h2 */
   editorialH2: {
     min: 28,
     preferred: "4vw",
     max: 42,
-    weight: 400,
+    weight: 300,
     leading: 1.1,
     tracking: 0,
     font: "editorialDisplay",
   },
-  /** Blog post / article h3 — Zerove */
+  /** Blog post / article h3 */
   editorialH3: {
     min: 22,
     preferred: "3vw",
     max: 30,
-    weight: 400,
+    weight: 300,
     leading: 1.2,
     tracking: 0,
     font: "editorialDisplay",
   },
-  /** Long-form article body text — IBM Plex Serif Light */
+  /** Long-form article body text — Aile Light */
   editorialBody: {
     min: 16,
     preferred: "2vw",
@@ -130,7 +132,7 @@ export const fluidType = {
     tracking: 0,
     font: "editorial",
   },
-  /** Article opening paragraph — IBM Plex Serif italic */
+  /** Article opening paragraph — Aile Light italic */
   editorialLede: {
     min: 18,
     preferred: "2.5vw",
@@ -141,7 +143,7 @@ export const fluidType = {
     font: "editorial",
     style: "italic",
   },
-  /** Pull quote — IBM Plex Serif italic, sprout colored */
+  /** Pull quote — light italic, ink colored */
   pullquote: {
     min: 24,
     preferred: "4vw",

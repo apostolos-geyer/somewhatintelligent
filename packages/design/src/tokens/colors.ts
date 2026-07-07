@@ -1,23 +1,27 @@
 /**
- * Sprout Color Tokens
+ * somewhatintelligent Color Tokens — "DRAFT" (blueprint monochrome)
  *
- * Light-first. Rooted in nature, designed for connection.
- * Warm cream paper surfaces, forest-green ink. A warm espresso canvas
- * for dark mode. Accents named after the cannabis plant — fresh
- * sprout green, growth green, amber pistil, terracotta stigma, purple haze.
- *
- * Official names + hexes are from the Sprout brand guidelines
- * ("Colour Palette — Rooted in Nature. Designed for Connection.").
+ * The UI is a technical drawing: warm drafting-paper surfaces, near-black
+ * ink, and NO chromatic accents. Depth and state are communicated by ink
+ * weight and border treatment (solid / dashed / dotted), never by color or
+ * soft shadow. The single permitted functional color is `rust` — destructive
+ * actions only — because "delete" must never be ambiguous.
  *
  * Two layers live here:
- *   1. SEMANTIC tokens (bg/surface/text/border + the 5 accents) that the
- *      product surfaces and codegen consume. This is the source of truth.
- *   2. The RAW brand palette (greens, secondaries, neutrals) is exported
- *      separately so marketing surfaces can reach for a literal brand hex
- *      (e.g. the iconic sprout-lime) without re-deriving it.
+ *   1. SEMANTIC tokens (bg/surface/text/border + 5 accents) that product
+ *      surfaces and codegen consume. This is the source of truth.
+ *   2. RAW ink/paper ramps exported for illustration surfaces that need a
+ *      literal step (e.g. OG images, charts) without re-deriving it.
  *
- * Light mode is the brand's primary identity; dark mode is a warm espresso canvas.
- * Both are hand-authored first-class themes (no derivation).
+ * Accent slots (names are load-bearing — Tailwind utilities derive from them):
+ *   ink     — primary interactive: buttons, links, focus, active states
+ *   rust    — destructive / danger (the one functional color)
+ *   success — positive / confirmation (dark ink-gray; pair with solid border)
+ *   warning — attention / pending    (mid ink-gray; pair with dashed border)
+ *   info    — informational          (light ink-gray; pair with dotted border)
+ *
+ * Light mode is the primary identity (ink on paper); dark mode is the
+ * inverted drafting board (paper-ink lines on graphite). Both hand-authored.
  */
 
 export interface HSLColor {
@@ -47,255 +51,166 @@ function hslToHex(h: number, s: number, l: number): string {
 }
 
 // ============================================
-// RAW BRAND PALETTE — exact hex
+// RAW RAMPS — exact hex, theme-invariant
 //
-// Official Sprout brand colours, transcribed VERBATIM (exact hex) from the
-// brand guidelines ("Colour Palette — Rooted in Nature. Designed for
-// Connection."). This is the pixel-exact source for marketing / illustration
-// surfaces and for the codegen's raw `--color-*` utilities.
-//
-// We store hex DIRECTLY (not via hsl()) on purpose: an HSL round-trip drifts
-// 1–4 per channel (e.g. sproutGreen → #CBF17E instead of #C7F27D), which
-// breaks pixel parity on hero art, gradients and brand fills.
-//
-// The SEMANTIC layer below (lightColors/darkColors/accentColors) is a separate,
-// hand-authored, WCAG-audited set expressed in HSL. The two layers are
-// intentionally distinct: semantic `sprout` is a DEEP growth-green (legible as
-// text on cream), while raw `sproutGreen` is the BRIGHT lime hero accent.
-// "Sprout Green is too light to be text on white." — brand guidelines.
+// Ink = warm near-black graphite. Paper = warm drafting white.
+// These are the only raw ramps; there is no chromatic brand palette.
 // ============================================
 
-/** Named primary + secondary + neutral brand colours (exact hex). */
-export const brandPalette = {
-  // ── Primary — the identity lives in green ──
-  /** Fresh, energetic, optimistic — the hero accent, fills, highlights. */
-  sproutGreen: "#C7F27D",
-  /** Grounded, rich, natural — solid functional green, strong CTAs, links. */
-  growthGreen: "#3E9F32",
-  /** Calming, balanced, earthy — soft tints & illustration. */
-  sativaGreen: "#B2DF93",
-  /** Strong, stable, premium — primary ink AND the dark canvas. */
-  indicaGreen: "#00240D",
-
-  // ── Secondary — cannabis-derived accents, used sparingly ──
-  /** Mystical, premium, distinctive. */
-  purpleHaze: "#6D4C7D",
-  /** Deep, rich, luxurious. (PDF mislabeled #8B113F; sampled from artwork.) */
-  plumKush: "#2E233F",
-  /** Soft, uplifting, creative. (PDF mislabeled #8B113F; sampled from artwork.) */
-  lilacDiesel: "#AE92C3",
-  /** Warm, energetic — amber (also: warning). */
-  pistil: "#F4A300",
-  /** Warm, earthy, bold — terracotta (also: danger). */
-  stigma: "#B85C38",
-  /** Soft dusty rose — light accent. */
-  trichome: "#D7ADAD",
-
-  // ── Neutral — official 5-step Charcoal → Light ──
-  charcoal: "#121412",
-  tinder: "#2A2D2A",
-  stoned: "#525852",
-  kief: "#A9A493",
-  /** Warm off-white — the default surface. Alias: paperRamp[100]. */
-  light: "#F2F2EC",
-  /** Conventional alias of Light. */
-  cream: "#F2F2EC",
+/** Warm graphite ink ramp — text, lines, fills. */
+export const inkRamp = {
+  950: "#171613", // primary ink — the pen
+  900: "#23221E",
+  800: "#35342E",
+  700: "#4A4841",
+  600: "#5F5D54",
+  500: "#757268",
+  400: "#8E8B80",
+  300: "#A8A599",
+  200: "#C4C1B6",
 } as const;
 
-// ── Brand ramps (exact hex) ──
-// Tints/shades used across product surfaces (gamification bars, gradients,
-// forest-cast UI chrome). Per the guidelines, the `forest` ramp is a working
-// green-cast UI ramp (text/borders/surfaces) derived from Indica; it
-// COMPLEMENTS — and is separate from — the 5-step Neutral palette above.
-// Both are available.
-
-/** Sprout-green ramp — tints/shades of the hero lime. */
-export const limeRamp = {
-  50: "#F5FCE9",
-  100: "#EAF9CE",
-  200: "#DAF3A8",
-  300: "#C7F27D", // === Sprout Green
-  400: "#B2E659",
-  500: "#97CE3D",
-  600: "#79A82C",
-} as const;
-
-/** Growth-green ramp. */
-export const growthRamp = {
-  300: "#6FC15E",
-  400: "#4FAE40",
-  500: "#3E9F32", // === Growth Green
-  600: "#2F7E27",
-  700: "#235E1D",
-} as const;
-
-/** Forest neutrals — warm green-black ramp built from Indica. Faint green cast. */
-export const forestRamp = {
-  50: "#F4F8F5",
-  100: "#E9F0EB",
-  200: "#D7E3DC",
-  300: "#B6CCC0",
-  400: "#8AAA9A",
-  500: "#5E8770",
-  600: "#356B49",
-  700: "#1C5733",
-  800: "#0E4422",
-  900: "#053116",
-  950: "#00240D", // === Indica, darkest
-} as const;
-
-/** Warm paper neutrals — cream-based, for light UI chrome. */
+/** Warm drafting-paper ramp — surfaces. */
 export const paperRamp = {
   0: "#FFFFFF",
-  50: "#FBFBF7",
-  100: "#F2F2EC", // === cream / light
-  200: "#E7E7DD",
-  300: "#D6D6C8",
+  50: "#FCFBF7",
+  100: "#F8F7F1", // the paper itself
+  200: "#EFEDE4",
+  300: "#E2E0D4",
 } as const;
 
 /**
- * Functional status — mapped onto the official palette. No invented colours:
- * success = Growth, warning = Pistil, danger = Stigma, info = Purple Haze.
- * The `*Bg` tints and `*Ink` text colours are the guideline's status pairings.
+ * Functional status — monochrome by design. Success/warning/info are ink
+ * steps (state is carried by border treatment at the component layer);
+ * danger is the single functional color, a desaturated drafting-red.
  */
 export const statusColors = {
-  success: "#3E9F32",
-  successBg: "#E6F4E1",
-  warning: "#F4A300",
-  warningBg: "#FDEFD2",
-  warningInk: "#8A5C00",
-  danger: "#B85C38",
-  dangerBg: "#F6E5DC",
-  dangerInk: "#7E3A20",
-  info: "#6D4C7D",
-  infoBg: "#EAE3EF",
+  success: "#2F5C41", // approval-stamp green
+  successBg: "#E7EFE8",
+  warning: "#5F5D54", // ink-600 — process state, carried by DASHED border
+  warningBg: "#EFEDE4",
+  warningInk: "#35342E",
+  danger: "#96432B", // rust — red pen
+  dangerBg: "#F3E6E0",
+  dangerInk: "#6E2F1D",
+  info: "#757268", // ink-500 — carried by DOTTED border
+  infoBg: "#F3F1EA",
 } as const;
 
 // ============================================
 // LIGHT MODE — primary identity
-// Warm cream paper, forest-green ink.
+// Ink on warm drafting paper.
 // ============================================
 
 export const lightColors = {
-  // ── Warm paper surfaces ──
-  bg: hsl(60, 23, 94), // cream — the paper itself (#F2F2EC)
-  surface: hsl(0, 0, 100), // white card
-  surfaceRaised: hsl(60, 33, 98), // lifted cream-white
-  surfaceSunken: hsl(140, 22, 96), // forest-50 well — inset rows, code
+  // ── Paper surfaces ──
+  bg: hsl(45, 33, 96), // drafting paper (#F8F7F1)
+  surface: hsl(0, 0, 100), // white sheet
+  surfaceRaised: hsl(48, 45, 99), // fresh sheet on top
+  surfaceSunken: hsl(45, 20, 92), // recessed well — inset rows, code
 
-  // ── Forest borders ── (visible forest mid-tones — meet WCAG 1.4.11 3:1
-  //    on cream. The pale forest-200 hairline lives in brandPalette for
-  //    marketing surfaces that intentionally want a near-invisible edge.)
-  border: hsl(145, 18, 50), // forest line — 3.29:1 on cream
-  borderStrong: hsl(150, 22, 42), // input borders — deeper
+  // ── Ruled lines ── (drafting lines are PROMINENT — they are the design)
+  border: hsl(45, 6, 52), // standard rule — 3.4:1 on paper
+  borderStrong: hsl(45, 8, 30), // heavy rule — inputs, emphasis
 
-  // ── Forest ink ──
-  text: hsl(143, 100, 7), // indica — primary ink
-  textSecondary: hsl(150, 34, 31), // forest-600 — descriptions
-  textTertiary: hsl(150, 18, 45), // forest-500 — metadata, captions
-  textOnAccent: hsl(60, 23, 94), // cream — text ON deep accent fills
+  // ── Ink ──
+  text: hsl(45, 8, 8), // primary ink (#171613-ish)
+  textSecondary: hsl(45, 6, 29), // annotations
+  textTertiary: hsl(45, 4, 42), // faint pencil — metadata, captions
+  textOnAccent: hsl(45, 33, 96), // paper — text ON ink fills
 } as const;
 
 // ============================================
-// DARK MODE — warm espresso canvas
-// The dark inversion of the warm cream paper: a low-saturation warm
-// charcoal/espresso (same warm hue family as the cream, just dark), with
-// warm off-white ink. NOT a green canvas — green lives only in the accents,
-// which glow against the neutral dark.
+// DARK MODE — the inverted drafting board
+// Paper-ink lines on warm graphite.
 // ============================================
 
 export const darkColors = {
-  // ── Warm espresso surfaces ──
-  bg: hsl(40, 14, 8), // espresso — darkest warm neutral
-  surface: hsl(40, 11, 12), // raised card base
-  surfaceRaised: hsl(38, 10, 16), // lifted
-  surfaceSunken: hsl(40, 16, 6), // carved well
+  // ── Graphite surfaces ──
+  bg: hsl(45, 7, 8), // board
+  surface: hsl(45, 6, 11), // sheet
+  surfaceRaised: hsl(45, 7, 14), // lifted sheet
+  surfaceSunken: hsl(45, 9, 5), // carved well
 
-  // ── Warm hairlines ── (readable on the espresso canvas: ~3:1)
-  border: hsl(40, 8, 28), // warm line
-  borderStrong: hsl(40, 8, 38), // input borders — deeper
+  // ── Chalk lines ──
+  border: hsl(45, 5, 40), // standard rule — ~3:1 on board
+  borderStrong: hsl(45, 7, 58), // heavy rule
 
-  // ── Warm cream text ──
-  text: hsl(48, 28, 92), // warm off-white ink
-  textSecondary: hsl(44, 14, 72), // descriptions
-  textTertiary: hsl(42, 11, 56), // metadata, captions
-  textOnAccent: hsl(40, 16, 9), // dark warm — text ON bright accent fills
+  // ── Chalk ink ──
+  text: hsl(45, 22, 91), // paper-white ink
+  textSecondary: hsl(45, 11, 71),
+  textTertiary: hsl(45, 7, 55),
+  textOnAccent: hsl(45, 7, 9), // graphite — text ON chalk fills
 } as const;
 
 // ============================================
-// Accents — Sprout
+// Accents — ink weights + the red pen
 //
-// Renamed from the prior mineral set:
-//   glyph→sprout, blood→stigma, verdigris→growth, ochre→pistil, slate→haze
-//
-// Light-mode accents are DEEP (legible cream text reads on their fills);
-// dark-mode accents BRIGHTEN (so dark indica text reads, and they glow on
-// the forest canvas). This mirrors how the brand uses a deep functional
-// green for actions and the bright sprout-lime as a hero glow.
-//
-//   sprout  — the brand green: primary, interactive, links, focus, CTA
-//   stigma  — terracotta: destructive / danger
-//   growth  — growth green: success / positive / confirmation
-//   pistil  — amber: warning / attention / pending
-//   haze    — purple haze: info / neutral-secondary emphasis
+// Light-mode accents are DEEP (paper text reads on their fills); dark-mode
+// accents are CHALK-BRIGHT (graphite text reads on them). Success/warning/
+// info are deliberately monochrome — components MUST pair them with their
+// border treatment (solid/dashed/dotted) so state never depends on hue.
 // ============================================
 
 export const accentColors = {
-  /** Brand green. Primary interactive accent — links, CTAs, focus rings,
-   *  active states. Deep growth-green on cream; bright sprout-lime on forest. */
-  sprout: {
-    light: hsl(122, 55, 28), // deep growth green — 5.64:1 with cream text
-    lightHover: hsl(123, 58, 23),
-    dark: hsl(80, 81, 72), // sprout-lime glow on forest
-    darkHover: hsl(82, 85, 80),
+  /** Primary interactive — the pen itself. Links, CTAs, focus rings,
+   *  active states. Solid ink fill with paper text. */
+  ink: {
+    light: hsl(45, 9, 12),
+    lightHover: hsl(45, 10, 3),
+    dark: hsl(45, 20, 88),
+    darkHover: hsl(45, 24, 97),
   },
-  /** Terracotta. Destructive actions, critical alerts, errors. */
-  stigma: {
-    light: hsl(17, 56, 40), // deep terracotta — 5.27:1 with cream text
-    lightHover: hsl(16, 60, 33),
-    dark: hsl(14, 60, 62), // warm clay glow on forest
-    darkHover: hsl(13, 64, 70),
+  /** The red pen. Destructive actions, critical alerts, errors.
+   *  The ONLY functional color in the system. */
+  rust: {
+    light: hsl(14, 55, 38), // 5.0:1 with paper text
+    lightHover: hsl(14, 60, 31),
+    dark: hsl(14, 52, 63),
+    darkHover: hsl(13, 58, 71),
   },
-  /** Growth green. Success, confirmation, positive deltas, checkmarks. */
-  growth: {
-    light: hsl(116, 56, 29), // growth green — 5.28:1 with cream text
-    lightHover: hsl(117, 60, 24),
-    dark: hsl(100, 58, 64), // fresh green on forest
-    darkHover: hsl(98, 62, 72),
+  /** Positive / confirmation — the approval stamp. A muted drafting green
+   *  (functional color #2 by owner decree: outcomes may be colored; process
+   *  states stay ink). Pair with SOLID border. */
+  success: {
+    light: hsl(140, 32, 27),
+    lightHover: hsl(140, 36, 21),
+    dark: hsl(140, 28, 66),
+    darkHover: hsl(139, 32, 74),
   },
-  /** Amber pistil. Warning, attention-needed, pending.
-   *  Light mode is a deep bronze-amber so cream text reads (4.6:1); dark
-   *  mode is the bright brand amber with dark indica text. */
-  pistil: {
-    light: hsl(38, 72, 32), // deep bronze amber — 4.86:1 with cream text
-    lightHover: hsl(37, 76, 27),
-    dark: hsl(40, 95, 56), // bright amber on forest
-    darkHover: hsl(40, 98, 64),
+  /** Attention / pending. Mid ink — pair with DASHED border. */
+  warning: {
+    light: hsl(45, 6, 34),
+    lightHover: hsl(45, 7, 27),
+    dark: hsl(45, 10, 66),
+    darkHover: hsl(45, 12, 74),
   },
-  /** Purple haze. Info, secondary actions, neutral metadata emphasis. */
-  haze: {
-    light: hsl(283, 34, 37), // deep purple haze — 7.15:1 with cream text
-    lightHover: hsl(283, 38, 30),
-    dark: hsl(279, 38, 72), // lilac-diesel glow on forest
-    darkHover: hsl(279, 42, 80),
+  /** Informational. Light ink — pair with DOTTED border. */
+  info: {
+    light: hsl(45, 4, 40),
+    lightHover: hsl(45, 5, 33),
+    dark: hsl(45, 7, 58),
+    darkHover: hsl(45, 8, 66),
   },
 } as const;
 
 // ============================================
-// Effects
+// Effects — flat. No translucency, no blur.
+// The "glass" slot survives for API compatibility but renders as an
+// opaque sheet with a solid rule; blur is 0 (see shadows.ts + theme.css).
 // ============================================
 
 export const effectColors = {
   glass: {
     light: {
-      bg: "hsl(60 23% 96% / 0.72)", // frosted warm cream
-      border: "hsl(0 0% 100% / 0.6)", // bright glass edge
+      bg: "hsl(48 45% 99%)", // opaque fresh sheet
+      border: "hsl(45 6% 52%)", // standard rule
     },
     dark: {
-      bg: "hsl(146 82% 11% / 0.55)", // frosted forest
-      border: "hsl(80 81% 72% / 0.16)", // sprout-tinted edge
+      bg: "hsl(45 7% 14%)", // opaque lifted sheet
+      border: "hsl(45 5% 40%)",
     },
-    blur: "24px",
+    blur: "0px",
   },
 } as const;
 
@@ -304,9 +219,7 @@ export const effectColors = {
 // ============================================
 
 /**
- * Light derivation kept for tooling/back-compat. Sprout authors both modes
- * by hand, so this is no longer used to generate light from dark — it simply
- * provides a deterministic inversion for any ad-hoc needs.
+ * Deterministic light-from-dark inversion, kept for tooling/back-compat.
  */
 function invertForLight(color: HSLColor): HSLColor {
   const l = Math.min(97, Math.max(3, 100 - color.l));

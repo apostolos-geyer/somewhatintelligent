@@ -86,12 +86,12 @@ export function IdentityCard({ user }: { user: IdentityUser }) {
               <span className="flex flex-wrap items-center gap-2">
                 <span>{user.email}</span>
                 {user.emailVerified ? (
-                  <Badge variant="growth" size="sm">
+                  <Badge variant="success" size="sm">
                     <CheckIcon className="size-3" />
                     <span>Verified</span>
                   </Badge>
                 ) : (
-                  <Badge variant="pistil" size="sm">
+                  <Badge variant="warning" size="sm">
                     Unverified
                   </Badge>
                 )}
@@ -103,7 +103,7 @@ export function IdentityCard({ user }: { user: IdentityUser }) {
         </div>
 
         <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-border pt-4 text-xs text-text-tertiary">
-          <Badge variant={isAdminRole(user.role) ? "sprout" : "secondary"} size="sm">
+          <Badge variant={isAdminRole(user.role) ? "ink" : "secondary"} size="sm">
             {user.role ?? "user"}
           </Badge>
           {joined && <span>· joined {joined}</span>}

@@ -86,7 +86,7 @@ export function ChangePasswordDialog() {
           </form.AppField>
 
           {error && <Alert variant="destructive">{error}</Alert>}
-          {success && <Alert variant="growth">{success}</Alert>}
+          {success && <Alert variant="success">{success}</Alert>}
 
           <DialogFooter>
             <DialogClose className={cn(buttonVariants({ variant: "ghost" }))}>Cancel</DialogClose>

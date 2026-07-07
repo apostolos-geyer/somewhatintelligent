@@ -105,7 +105,7 @@ function RevokeButton({ consentId }: { consentId: string }) {
       <AlertDialogTrigger
         className={cn(
           buttonVariants({ variant: "ghost", size: "sm" }),
-          "text-stigma hover:text-stigma-hover",
+          "text-rust hover:text-rust-hover",
         )}
       >
         Revoke Access

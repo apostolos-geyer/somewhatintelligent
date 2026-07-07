@@ -99,7 +99,7 @@ function PasskeysPage() {
                       <ItemTitle>
                         <span className="flex items-center gap-2">
                           {pk.name ?? "Unnamed passkey"}
-                          <Badge variant="growth" size="sm">
+                          <Badge variant="success" size="sm">
                             Active
                           </Badge>
                         </span>

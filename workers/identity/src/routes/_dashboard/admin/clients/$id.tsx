@@ -40,11 +40,7 @@ function ClientDetailPage() {
       <div className="mb-grid flex items-center justify-between">
         <h1 className="type-page-title">{c.name ?? c.clientId}</h1>
         <div className="flex items-center gap-2">
-          {managed ? (
-            <Badge variant="pistil">Managed</Badge>
-          ) : (
-            <Badge variant="sprout">Custom</Badge>
-          )}
+          {managed ? <Badge variant="warning">Managed</Badge> : <Badge variant="ink">Custom</Badge>}
         </div>
       </div>
 
@@ -59,7 +55,7 @@ function ClientDetailPage() {
         />
 
         <div className="flex flex-col gap-grid">
-          {managed && <Alert variant="pistil">Managed by IaC. Identity is immutable.</Alert>}
+          {managed && <Alert variant="warning">Managed by IaC. Identity is immutable.</Alert>}
 
           <div className="rounded-sm bg-surface-sunken px-4 py-3">
             <div className="type-mono-label mb-1 text-text-tertiary">Client ID</div>
@@ -209,7 +205,7 @@ function EditClientForm({ client }: { client: ClientData }) {
           </form.AppField>
 
           {error && <Alert variant="destructive">{error}</Alert>}
-          {success && <Alert variant="growth">{success}</Alert>}
+          {success && <Alert variant="success">{success}</Alert>}
 
           <form.AppForm>
             <form.SubmitButton label="Save Changes" className="w-full justify-center py-3.5" />
@@ -244,7 +240,7 @@ function ClientSecretCard({ id }: { id: string }) {
       <CardContent>
         {rotatedSecret ? (
           <div className="rounded-sm bg-surface-sunken px-3 py-2">
-            <code className="type-code break-all text-sprout">{rotatedSecret}</code>
+            <code className="type-code break-all text-ink">{rotatedSecret}</code>
             <p className="mt-1.5 text-2xs text-text-tertiary">Will not be shown again.</p>
           </div>
         ) : (
@@ -286,7 +282,7 @@ function DeleteClientCard({ id }: { id: string }) {
   return (
     <Card size="sm">
       <CardHeader>
-        <CardTitle className="text-stigma">Danger Zone</CardTitle>
+        <CardTitle className="text-rust">Danger Zone</CardTitle>
         <CardDescription>Permanently delete this client and revoke all tokens.</CardDescription>
       </CardHeader>
       <CardContent>

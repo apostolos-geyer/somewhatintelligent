@@ -72,7 +72,7 @@ function AccountPage() {
                   <span className="flex items-center gap-2">
                     Two-Factor
                     {twoFactorEnabled ? (
-                      <Badge variant="growth" size="sm">
+                      <Badge variant="success" size="sm">
                         On
                       </Badge>
                     ) : (

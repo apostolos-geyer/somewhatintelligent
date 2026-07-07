@@ -12,7 +12,7 @@ function GlassPage() {
 
       <section className="space-y-4">
         <h3 className="text-lg font-semibold">Over Gradient</h3>
-        <div className="relative h-64 overflow-hidden rounded-sm bg-gradient-to-br from-sprout/40 via-stigma/20 to-growth/30 p-8">
+        <div className="relative h-64 overflow-hidden rounded-sm bg-gradient-to-br from-ink/40 via-rust/20 to-success/30 p-8">
           <div className="absolute inset-8 flex flex-col justify-between rounded-sm glass p-6">
             <div>
               <h4 className="text-lg font-semibold">Glass Card</h4>
@@ -31,7 +31,7 @@ function GlassPage() {
 
       <section className="space-y-4">
         <h3 className="text-lg font-semibold">Stacked Cards</h3>
-        <div className="relative h-72 overflow-hidden rounded-sm bg-gradient-to-tr from-pistil/30 via-sprout/20 to-haze/30 p-8">
+        <div className="relative h-72 overflow-hidden rounded-sm bg-gradient-to-tr from-warning/30 via-ink/20 to-info/30 p-8">
           <div className="absolute top-8 left-8 h-40 w-56 rounded-sm glass p-4">
             <p className="font-semibold">Layer 1</p>
             <p className="text-sm text-muted-foreground">Background glass</p>

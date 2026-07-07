@@ -107,7 +107,7 @@ function ProvidersPage() {
                           <ItemTitle>
                             <span className="flex items-center gap-2">
                               {providerLabels[account.providerId] ?? account.providerId}
-                              <Badge variant="growth" size="sm">
+                              <Badge variant="success" size="sm">
                                 Linked
                               </Badge>
                             </span>

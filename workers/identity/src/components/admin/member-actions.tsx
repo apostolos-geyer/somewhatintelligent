@@ -84,7 +84,7 @@ export function MemberActions({
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            className="text-text-stigma focus:text-text-stigma-hover"
+            className="text-text-rust focus:text-text-rust-hover"
             disabled={isOnlyOwner}
             onClick={() => setRemoveOpen(true)}
           >

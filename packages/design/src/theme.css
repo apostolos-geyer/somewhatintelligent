@@ -28,14 +28,14 @@
   --font-mono: var(--font-mono);
   --font-accent: var(--font-accent);
 
-  /* shadcn semantic colors -> Sprout tokens */
+  /* shadcn semantic colors -> blueprint tokens */
   --color-background: var(--color-bg);
   --color-foreground: var(--color-text);
   --color-card: var(--color-surface-raised);
   --color-card-foreground: var(--color-text);
   --color-popover: var(--color-surface-raised);
   --color-popover-foreground: var(--color-text);
-  --color-primary: var(--color-sprout);
+  --color-primary: var(--color-ink);
   --color-primary-foreground: var(--color-text-on-accent);
   --color-secondary: var(--color-surface);
   --color-secondary-foreground: var(--color-text);
@@ -43,43 +43,42 @@
   --color-muted-foreground: var(--color-text-secondary);
   --color-accent: var(--color-surface);
   --color-accent-foreground: var(--color-text);
-  --color-destructive: var(--color-stigma);
+  --color-destructive: var(--color-rust);
   --color-border: var(--color-border);
   --color-input: var(--color-border-strong);
-  --color-ring: var(--color-sprout);
+  --color-ring: var(--color-ink);
 
   /* Chart colors */
-  --color-chart-1: var(--color-sprout);
-  --color-chart-2: var(--color-stigma);
-  --color-chart-3: var(--color-growth);
-  --color-chart-4: var(--color-pistil);
-  --color-chart-5: var(--color-haze);
+  --color-chart-1: var(--color-ink);
+  --color-chart-2: var(--color-rust);
+  --color-chart-3: var(--color-success);
+  --color-chart-4: var(--color-warning);
+  --color-chart-5: var(--color-info);
 
   /* Sidebar */
   --color-sidebar: var(--color-surface);
   --color-sidebar-foreground: var(--color-text);
-  --color-sidebar-primary: var(--color-sprout);
+  --color-sidebar-primary: var(--color-ink);
   --color-sidebar-primary-foreground: var(--color-text-on-accent);
   --color-sidebar-accent: var(--color-surface-sunken);
   --color-sidebar-accent-foreground: var(--color-text);
   --color-sidebar-border: var(--color-border);
-  --color-sidebar-ring: var(--color-sprout);
+  --color-sidebar-ring: var(--color-ink);
 
-  /* Radius — the full Sprout scale (xs/sm/md/lg/xl/full) is generated in
+  /* Radius — the full scale (xs/sm/md/lg/xl/full) is generated in
      tailwind-theme.css as `--radius-*: var(--radius-*)` ALIASES bound to
      tokens.css, so every `rounded-*` utility resolves through a runtime
-     custom property and a tenant can retint it (docs/sprout/11 §1).
+     custom property and a tenant can retune it.
      DO NOT redefine sm/md/lg/xl here: a literal `@theme inline` entry parsed
      after the generated block re-bakes the utility to a fixed pixel value
      (last-wins), silently defeating per-brand radius theming. Only --radius-2xl
-     is genuinely absent from the Sprout scale — keep it for shadcn's internal
+     is genuinely absent from the scale — keep it for shadcn's internal
      --radius-2xl reference (not tenant-exposed, so a literal is fine). */
   --radius-2xl: 36px;
 
-  /* Brand glow — soft drop shadow for hero CTAs. Derived from --color-sprout
-     (the brand primary) via color-mix, so a tenant's primary retint carries
-     into the glow instead of a fixed Sprout-green literal. */
-  --shadow-brand: 0 10px 28px color-mix(in srgb, var(--color-sprout) 30%, transparent);
+  /* Brand emphasis — a hard drafted ink offset. NO glow, NO blur:
+     the blueprint system draws depth, it never diffuses it. */
+  --shadow-brand: var(--brutal-md);
 
   /* Shadows + Blur — generated in tailwind-theme.css, no need to duplicate here */
 }
@@ -97,16 +96,10 @@
    glass — frosted translucent surface
    ═══════════════════════════════════════ */
 @utility glass {
+  /* LEGACY NAME — renders as an opaque fresh sheet with a solid rule.
+     No translucency, no backdrop-filter: the blueprint system is flat. */
   background: var(--glass-bg);
-  box-shadow:
-    0 0 0 1px var(--glass-border),
-    var(--glass-shadow);
-  /* webkit-prefix first so modern engines land on the unprefixed form
-     last — Lightning CSS's prod dedupe otherwise strips the standard
-     property and leaves only -webkit-backdrop-filter, which Firefox
-     and Chrome both ignore. */
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  backdrop-filter: blur(var(--glass-blur));
+  box-shadow: 0 0 0 1px var(--glass-border);
 }
 
 /* ═══════════════════════════════════════
@@ -122,16 +115,16 @@
 @utility prose-platform {
   --tw-prose-body: var(--color-text-secondary);
   --tw-prose-headings: var(--color-text);
-  --tw-prose-lead: var(--color-pistil);
-  --tw-prose-links: var(--color-sprout);
+  --tw-prose-lead: var(--color-warning);
+  --tw-prose-links: var(--color-ink);
   --tw-prose-bold: var(--color-text);
   --tw-prose-counters: var(--color-text-tertiary);
   --tw-prose-bullets: var(--color-text-tertiary);
   --tw-prose-hr: var(--color-border);
-  --tw-prose-quotes: var(--color-sprout);
-  --tw-prose-quote-borders: var(--color-sprout);
+  --tw-prose-quotes: var(--color-ink);
+  --tw-prose-quote-borders: var(--color-ink);
   --tw-prose-captions: var(--color-text-tertiary);
-  --tw-prose-code: var(--color-sprout);
+  --tw-prose-code: var(--color-ink);
   --tw-prose-pre-code: var(--color-text);
   --tw-prose-pre-bg: var(--color-surface-sunken);
   --tw-prose-th-borders: var(--color-border-strong);
@@ -139,16 +132,16 @@
 
   --tw-prose-invert-body: var(--color-text-secondary);
   --tw-prose-invert-headings: var(--color-text);
-  --tw-prose-invert-lead: var(--color-sprout);
-  --tw-prose-invert-links: var(--color-sprout);
+  --tw-prose-invert-lead: var(--color-ink);
+  --tw-prose-invert-links: var(--color-ink);
   --tw-prose-invert-bold: var(--color-text);
   --tw-prose-invert-counters: var(--color-text-tertiary);
   --tw-prose-invert-bullets: var(--color-text-tertiary);
   --tw-prose-invert-hr: var(--color-border);
-  --tw-prose-invert-quotes: var(--color-sprout);
-  --tw-prose-invert-quote-borders: var(--color-sprout);
+  --tw-prose-invert-quotes: var(--color-ink);
+  --tw-prose-invert-quote-borders: var(--color-ink);
   --tw-prose-invert-captions: var(--color-text-tertiary);
-  --tw-prose-invert-code: var(--color-sprout);
+  --tw-prose-invert-code: var(--color-ink);
   --tw-prose-invert-pre-code: var(--color-text);
   --tw-prose-invert-pre-bg: var(--color-surface-sunken);
   --tw-prose-invert-th-borders: var(--color-border-strong);
@@ -195,16 +188,16 @@
     font-style: italic;
     font-size: var(--text-pullquote);
     line-height: var(--text-pullquote--line-height);
-    color: var(--color-sprout);
+    color: var(--color-ink);
     border-left-width: 4px;
-    border-left-color: var(--color-sprout);
+    border-left-color: var(--color-ink);
     padding-left: 1em;
   }
 
   & :is(code):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
     font-family: var(--font-mono);
     background-color: var(--color-surface-sunken);
-    color: var(--color-sprout);
+    color: var(--color-ink);
     padding: 0.15em 0.4em;
     border-radius: 2px;
     font-size: 0.85em;
@@ -235,12 +228,12 @@
   }
 
   & :is(a):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
-    color: var(--color-sprout);
+    color: var(--color-ink);
     text-decoration: none;
     font-weight: 600;
-    border-bottom: 1px solid color-mix(in oklch, var(--color-sprout) 40%, transparent);
+    border-bottom: 1px solid color-mix(in oklch, var(--color-ink) 40%, transparent);
     &:hover {
-      border-bottom-color: var(--color-sprout);
+      border-bottom-color: var(--color-ink);
     }
   }
 

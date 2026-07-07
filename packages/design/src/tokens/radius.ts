@@ -1,13 +1,9 @@
 /**
- * Sprout Radius Tokens
+ * somewhatintelligent Radius Tokens — "DRAFT" (blueprint monochrome)
  *
- * The system is soft and friendly. Generous rounding mirrors the rounded
- * geometry of the Sprout logo and the brand's "designed for connection"
- * warmth. `sm` (10px) is THE default for nearly every surface; larger
- * tokens are for bigger cards and hero panels.
- *
- * Values mirror the Sprout brand guidelines' radius scale
- * (--r-xs … --r-pill).
+ * Rounded AND ruled: generous corner radii soften the crisp ink rules —
+ * a drafted drawing with a warm hand. `sm` (10px) is THE default for
+ * nearly every surface; larger tokens are for bigger cards and panels.
  */
 
 export const radius = {

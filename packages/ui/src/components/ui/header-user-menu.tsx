@@ -30,7 +30,7 @@ export function HeaderUserMenu({ user, idpAccountUrl, onSignOut, children }: Hea
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-sprout">
+      <DropdownMenuTrigger className="rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ink">
         <Avatar className="size-8 rounded-sm">
           <AvatarImage src={user.image ?? undefined} />
           <AvatarFallback className="rounded-sm text-xs">

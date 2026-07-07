@@ -87,13 +87,13 @@ function PlatformNavAppSwitcher({
             aria-label="Platform app switcher"
             className={cn(
               triggerLayoutClasses,
-              "no-underline outline-none focus-visible:ring-2 focus-visible:ring-sprout",
+              "no-underline outline-none focus-visible:ring-2 focus-visible:ring-ink",
             )}
           >
             <LogoIcon colorScheme="light" size={22} />
             <b className="text-foreground font-sans text-[14px] uppercase tracking-[0.08em]">
               {current.label}
-              <span className="text-sprout">.</span>
+              <span className="text-ink">.</span>
             </b>
           </button>
         }
@@ -108,7 +108,7 @@ function PlatformNavAppSwitcher({
                 disabled
                 className="type-mono-label gap-2.5 py-2 opacity-80"
               >
-                <CheckIcon className="size-[13px] text-growth" aria-hidden />
+                <CheckIcon className="size-[13px] text-success" aria-hidden />
                 {app.label}
               </DropdownMenuItem>
             );
@@ -172,7 +172,7 @@ function PlatformNavTab({
       <span
         aria-hidden
         className="absolute inset-x-0 bottom-0 h-[3px]"
-        style={{ background: active ? "var(--color-sprout)" : "transparent" }}
+        style={{ background: active ? "var(--color-ink)" : "transparent" }}
       />
     </InternalLink>
   );

@@ -179,7 +179,7 @@ function Fader({
 
             {/* Fill indicator */}
             <div
-              className="absolute bottom-0 left-0 right-0 bg-sprout/50"
+              className="absolute bottom-0 left-0 right-0 bg-ink/50"
               style={{ height: `${percentage * 100}%` }}
             />
 
@@ -204,7 +204,7 @@ function Fader({
                 <div className="h-[1px] bg-gray-400" />
               </div>
               {/* Center indicator */}
-              <div className="absolute bottom-0 left-1/2 top-0 w-[2px] -translate-x-1/2 bg-sprout" />
+              <div className="absolute bottom-0 left-1/2 top-0 w-[2px] -translate-x-1/2 bg-ink" />
             </div>
           </div>
 

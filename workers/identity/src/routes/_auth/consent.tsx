@@ -84,7 +84,7 @@ function ConsentPage() {
                   key={s}
                   className="flex items-center gap-2.5 rounded-sm bg-surface-sunken px-4 py-3 text-sm"
                 >
-                  <span className="text-growth">✓</span>
+                  <span className="text-success">✓</span>
                   {getScopeLabel(s)}
                 </div>
               ))}

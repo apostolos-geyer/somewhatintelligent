@@ -89,7 +89,7 @@ function ApiKeysPage() {
             {createdKey && (
               <div className="rounded-sm bg-surface-sunken px-4 py-3">
                 <div className="type-mono-label mb-1 text-text-tertiary">New Key</div>
-                <code className="type-code break-all text-sprout">{createdKey}</code>
+                <code className="type-code break-all text-ink">{createdKey}</code>
                 <p className="mt-2 text-xs text-text-tertiary">This will not be shown again.</p>
               </div>
             )}
@@ -104,7 +104,7 @@ function ApiKeysPage() {
                       <ItemTitle>
                         <span className="flex items-center gap-2">
                           {k.name ?? "Unnamed"}
-                          <Badge variant={k.enabled ? "growth" : "secondary"} size="sm">
+                          <Badge variant={k.enabled ? "success" : "secondary"} size="sm">
                             {k.enabled ? "Active" : "Disabled"}
                           </Badge>
                         </span>

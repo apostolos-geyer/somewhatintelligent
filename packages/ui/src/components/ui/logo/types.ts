@@ -8,10 +8,10 @@ export type LogoDetail = "bare" | "serifs" | "crossbars" | "brackets" | "full";
 export type LogoColorScheme =
   | "primary"
   | "light"
-  | "mono-cream"
+  | "mono-paper"
   | "mono-void"
-  | "on-stigma"
-  | "on-growth";
+  | "on-rust"
+  | "on-success";
 export type LogoLayout = "icon" | "horizontal" | "stacked" | "compact";
 
 // ── Geometry data shape ──

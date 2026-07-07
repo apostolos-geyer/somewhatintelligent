@@ -13,21 +13,21 @@ const meta = {
         "secondary",
         "destructive",
         "outline",
-        "sprout",
-        "stigma",
-        "growth",
-        "pistil",
-        "haze",
-        "sprout-brutal",
-        "stigma-brutal",
-        "growth-brutal",
-        "pistil-brutal",
-        "haze-brutal",
-        "sprout-glass",
-        "stigma-glass",
-        "growth-glass",
-        "pistil-glass",
-        "haze-glass",
+        "ink",
+        "rust",
+        "success",
+        "warning",
+        "info",
+        "ink-brutal",
+        "rust-brutal",
+        "success-brutal",
+        "warning-brutal",
+        "info-brutal",
+        "ink-glass",
+        "rust-glass",
+        "success-glass",
+        "warning-glass",
+        "info-glass",
       ],
     },
     size: {
@@ -46,23 +46,23 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {};
 
 export const Glyph: Story = {
-  args: { variant: "sprout", children: "Active" },
+  args: { variant: "ink", children: "Active" },
 };
 
 export const Verdigris: Story = {
-  args: { variant: "growth", children: "Published" },
+  args: { variant: "success", children: "Published" },
 };
 
 export const Slate: Story = {
-  args: { variant: "haze", children: "Info" },
+  args: { variant: "info", children: "Info" },
 };
 
 export const Ochre: Story = {
-  args: { variant: "pistil", children: "Pending" },
+  args: { variant: "warning", children: "Pending" },
 };
 
 export const Blood: Story = {
-  args: { variant: "stigma", children: "Error" },
+  args: { variant: "rust", children: "Error" },
 };
 
 export const Outline: Story = {
@@ -80,13 +80,13 @@ export const Destructive: Story = {
 export const Sizes: Story = {
   render: () => (
     <div className="flex flex-wrap items-end gap-4">
-      <Badge size="sm" variant="sprout">
+      <Badge size="sm" variant="ink">
         Small
       </Badge>
-      <Badge size="default" variant="sprout">
+      <Badge size="default" variant="ink">
         Default
       </Badge>
-      <Badge size="lg" variant="sprout">
+      <Badge size="lg" variant="ink">
         Large
       </Badge>
     </div>
@@ -99,11 +99,11 @@ export const DesignDemoShowcase: Story = {
   name: "Design Demo Showcase",
   render: () => (
     <div className="flex flex-wrap items-center gap-3">
-      <Badge variant="sprout">Active</Badge>
-      <Badge variant="growth">Published</Badge>
-      <Badge variant="haze">Info</Badge>
-      <Badge variant="pistil">Pending</Badge>
-      <Badge variant="stigma">Error</Badge>
+      <Badge variant="ink">Active</Badge>
+      <Badge variant="success">Published</Badge>
+      <Badge variant="info">Info</Badge>
+      <Badge variant="warning">Pending</Badge>
+      <Badge variant="rust">Error</Badge>
       <Badge variant="outline">Draft</Badge>
     </div>
   ),
@@ -114,20 +114,20 @@ export const AllVariants: Story = {
   render: () => {
     const sizes = ["sm", "default", "lg"] as const;
     const baseVariants = ["default", "secondary", "destructive", "outline"] as const;
-    const solidVariants = ["sprout", "stigma", "growth", "pistil", "haze"] as const;
+    const solidVariants = ["ink", "rust", "success", "warning", "info"] as const;
     const brutalVariants = [
-      "sprout-brutal",
-      "stigma-brutal",
-      "growth-brutal",
-      "pistil-brutal",
-      "haze-brutal",
+      "ink-brutal",
+      "rust-brutal",
+      "success-brutal",
+      "warning-brutal",
+      "info-brutal",
     ] as const;
     const glassVariants = [
-      "sprout-glass",
-      "stigma-glass",
-      "growth-glass",
-      "pistil-glass",
-      "haze-glass",
+      "ink-glass",
+      "rust-glass",
+      "success-glass",
+      "warning-glass",
+      "info-glass",
     ] as const;
 
     const renderGroup = (label: string, variants: readonly string[]) => (

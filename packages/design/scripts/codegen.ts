@@ -17,10 +17,7 @@ import {
   darkColors,
   accentColors,
   effectColors,
-  brandPalette,
-  limeRamp,
-  growthRamp,
-  forestRamp,
+  inkRamp,
   paperRamp,
   statusColors,
   type HSLColor,
@@ -70,16 +67,14 @@ function camelToKebab(s: string): string {
 }
 
 // ============================================
-// Raw brand palette → flat [cssName, hex] pairs
+// Raw ink/paper ramps → flat [cssName, hex] pairs
 //
-// Exact-hex, theme-invariant brand colours (a lime is a lime in light or
-// dark), emitted as `--color-*` utilities for marketing / illustration
-// surfaces. Names are namespaced to NEVER collide with the semantic accents:
-//   semantic `--color-sprout` (deep, for text)  ≠  raw `--color-sprout-green`
-//   semantic `--color-growth` (accent)          ≠  raw `--color-growth-500`
-//   semantic `--color-haze`                      ≠  raw `--color-purple-haze`
-// The bright brand Pistil/Stigma live under their functional status names
-// (`--color-warning` #F4A300, `--color-danger` #B85C38).
+// Exact-hex, theme-invariant steps, emitted as `--color-*` utilities for
+// illustration surfaces (OG images, charts). Names are namespaced to NEVER
+// collide with the semantic accents: semantic `--color-ink` (theme-aware)
+// ≠ raw `--color-ink-900`. Status *_bg/*_ink pairings are namespaced
+// `status-*` so they can't shadow the semantic accent slots
+// (success/warning/info).
 // ============================================
 
 function rawPaletteEntries(): [string, string][] {
@@ -87,37 +82,20 @@ function rawPaletteEntries(): [string, string][] {
     Object.entries(r).map(([step, hex]) => [`${prefix}-${step}`, hex]);
 
   return [
-    // Named primaries + secondaries (kebab; collision-free names only)
-    ["sprout-green", brandPalette.sproutGreen],
-    ["growth-green", brandPalette.growthGreen],
-    ["sativa-green", brandPalette.sativaGreen],
-    ["indica-green", brandPalette.indicaGreen],
-    ["purple-haze", brandPalette.purpleHaze],
-    ["plum-kush", brandPalette.plumKush],
-    ["lilac-diesel", brandPalette.lilacDiesel],
-    ["trichome", brandPalette.trichome],
-    ["cream", brandPalette.cream],
-    // Official 5-step neutrals
-    ["charcoal", brandPalette.charcoal],
-    ["tinder", brandPalette.tinder],
-    ["stoned", brandPalette.stoned],
-    ["kief", brandPalette.kief],
     // Ramps
-    ...ramp("lime", limeRamp),
-    ...ramp("growth", growthRamp),
-    ...ramp("forest", forestRamp),
+    ...ramp("ink", inkRamp),
     ...ramp("paper", paperRamp),
-    // Functional status (incl. the bright brand Pistil/Stigma/Purple-Haze)
-    ["success", statusColors.success],
-    ["success-bg", statusColors.successBg],
-    ["warning", statusColors.warning],
-    ["warning-bg", statusColors.warningBg],
-    ["warning-ink", statusColors.warningInk],
-    ["danger", statusColors.danger],
-    ["danger-bg", statusColors.dangerBg],
-    ["danger-ink", statusColors.dangerInk],
-    ["info", statusColors.info],
-    ["info-bg", statusColors.infoBg],
+    // Functional status pairings (monochrome + the red pen)
+    ["status-success", statusColors.success],
+    ["status-success-bg", statusColors.successBg],
+    ["status-warning", statusColors.warning],
+    ["status-warning-bg", statusColors.warningBg],
+    ["status-warning-ink", statusColors.warningInk],
+    ["status-danger", statusColors.danger],
+    ["status-danger-bg", statusColors.dangerBg],
+    ["status-danger-ink", statusColors.dangerInk],
+    ["status-info", statusColors.info],
+    ["status-info-bg", statusColors.infoBg],
   ];
 }
 
@@ -382,7 +360,7 @@ function generateTailwindTheme(): string {
       (k) => `  --color-${shadowFamilies.glass}-${k}: var(--${shadowFamilies.glass}-${k});`,
     ),
     "",
-    "  /* Raw brand palette — exact-hex utilities (bg-sprout-green, text-forest-800, …) */",
+    "  /* Raw ink/paper ramps — exact-hex utilities (bg-ink-900, text-paper-100, …) */",
     ...rawPaletteEntries().map(([name]) => `  --color-${name}: var(--color-${name});`),
   ];
 

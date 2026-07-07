@@ -85,11 +85,11 @@ function CreateClientForm() {
         <CardContent className="space-y-4 p-0">
           <div className="rounded-sm bg-surface-sunken px-4 py-3">
             <div className="type-mono-label mb-1 text-text-tertiary">Client ID</div>
-            <code className="type-code break-all text-sprout">{created.clientId}</code>
+            <code className="type-code break-all text-ink">{created.clientId}</code>
           </div>
           <div className="rounded-sm bg-surface-sunken px-4 py-3">
             <div className="type-mono-label mb-1 text-text-tertiary">Client Secret</div>
-            <code className="type-code break-all text-sprout">{created.clientSecret}</code>
+            <code className="type-code break-all text-ink">{created.clientSecret}</code>
           </div>
           <Button
             variant="secondary"

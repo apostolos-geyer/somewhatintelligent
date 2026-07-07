@@ -36,7 +36,7 @@ const meta = {
     },
     colorScheme: {
       control: "select",
-      options: ["primary", "light", "mono-cream", "mono-void", "on-stigma", "on-growth"],
+      options: ["primary", "light", "mono-paper", "mono-void", "on-rust", "on-success"],
     },
     size: { control: { type: "range", min: 16, max: 256, step: 8 } },
   },
@@ -137,10 +137,10 @@ export const ColorLayoutMatrix: Story = {
   decorators: [],
   render: () => (
     <div className="flex flex-col gap-8">
-      {(["primary", "light", "mono-cream", "mono-void", "on-stigma", "on-growth"] as const).map(
+      {(["primary", "light", "mono-paper", "mono-void", "on-rust", "on-success"] as const).map(
         (cs) => (
           <div key={cs} className="flex flex-col gap-2">
-            <span className="text-mono-label text-sprout uppercase">{cs}</span>
+            <span className="text-mono-label text-ink uppercase">{cs}</span>
             <SchemeBg scheme={cs}>
               <div className="flex gap-8 items-center text-text">
                 <Logo layout="icon" size={48} colorScheme={cs} />
