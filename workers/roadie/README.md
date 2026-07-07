@@ -16,7 +16,6 @@ bindings; no public HTTP surface.
 ## Specs
 
 - Architecture reference: [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) §3.4
-- Shipping plan: [`workers/roadie/plan.md`](./plan.md)
 
 ## Local Development
 
@@ -39,8 +38,9 @@ S3_SECRET_ACCESS_KEY=test-secret-key
 ```
 
 Miniflare provides in-memory R2 for tests; SigV4 presigning against the
-in-memory R2 is not validated end-to-end (documented gap — see the spec
-§Testing requirements and `plan.md` for the manual-integration steps).
+in-memory R2 is not validated end-to-end — signed-header enforcement and
+presigned-URL round-trips need a manual integration pass against real R2
+(see the comment on the `cloudflareTest` config in `vite.config.ts`).
 
 ## Deploy
 
@@ -62,13 +62,11 @@ vp exec wrangler r2 bucket create roadie-staging-blobs
 vp exec wrangler r2 bucket create roadie-production-blobs
 
 # R2 bucket CORS (required for browser-direct uploads/downloads)
-# Allowed origins:  https://*.platform.example, https://*.platform.localhost
-# Allowed methods:  GET, PUT
-# Allowed headers:  Content-Type, Content-Length, x-amz-checksum-sha256, Authorization, Range
-# Exposed headers:  ETag, Content-Length, Content-Range, Accept-Ranges
-# Max age:          3600
-#
-# Configure via dashboard or `wrangler r2 bucket cors put <name> --file cors.json`.
+# The canonical policy lives in code, per env, and is applied with:
+vp run cors:setup -- --env <local|staging|production|all>
+# See workers/roadie/scripts/setup-cors.ts for the exact origins, methods,
+# and headers, and docs/runbooks/roadie-r2-provisioning.md for the full
+# provisioning walkthrough.
 
 # R2 bucket lifecycle (backstop for abandoned multipart uploads)
 # Rule: abort incomplete multipart uploads after 7 days.
@@ -136,7 +134,7 @@ is tamper-resistant:
 "services": [
   {
     "binding": "ROADIE",
-    "service": "roadie",
+    "service": "si-roadie-staging", // env.production uses -production
     "entrypoint": "Roadie",
     "props": { "callerApp": "<consumer-name>" }
   }
@@ -152,15 +150,16 @@ wrangler types -c ./wrangler.jsonc -c ../../workers/roadie/wrangler.jsonc
 The generated `env.ROADIE` is `Service<typeof import(".../workers/roadie/src/index").Roadie>` — every RPC method is callable with full IntelliSense including the result discriminated union.
 
 Integration patterns (single-part, multipart, server-side `put`, read,
-reference share) are specified in the service spec §Usage Patterns.
+reference share) are implemented in `src/methods/` and exposed through the
+typed client wrapper in `src/client/index.ts`.
 
 ## Runbook
 
 Roadie emits one canonical log line per RPC invocation with `service:
 "roadie"`, `event: "rpc"`, `operation`, `outcome`, `request_id`, `caller_app`,
-`actor_kind`, `actor_id`, `duration_ms`, and operation-specific fields. See
-spec §Observability and RFC §19 for the full schema and forbidden-field
-list.
+`actor_kind`, `actor_id`, `duration_ms`, and operation-specific fields. The
+schema and the forbidden-field list (never log `S3_*`/`R2_*` values) live in
+`packages/kit/src/log/core.ts`.
 
 **Likely failure modes:**
 
@@ -169,9 +168,9 @@ list.
   `S3_ACCESS_KEY_ID` is still valid in the dashboard. Signed URLs issued
   before the outage continue to work within their lifetime.
 - **Stuck rows in `deletion_queue`** — backend delete failed mid-call.
-  v1 records the failure but does not retry (see spec §Deferrals). Query
-  the table for `last_error` + `attempts`; clear manually after fixing
-  the upstream cause (usually a lingering access-scope issue).
+  v1 records the failure but does not retry. Query the table for
+  `last_error` + `attempts`; clear manually after fixing the upstream
+  cause (usually a lingering access-scope issue).
 - **Pending blob count climbing** — pending reaper failing or lagging.
   Check cron firings; manually invoke `adminTriggerTask({ task:
 "pending_reap" })` via a consumer admin surface.

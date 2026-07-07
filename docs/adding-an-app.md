@@ -37,6 +37,7 @@ workers/<myapp>/src/
 │   ├── session.functions.ts        # 5 lines — TSS compiler constraint
 │   ├── auth-context.ts             # ~10 lines — wraps createReactStartAuthProvider
 │   ├── guestlist.ts                # ~10 lines — wraps createGuestlistFactory
+│   ├── basepath.ts                 # mountRewrite pair for vmf-mounted client routing — see §2.3
 │   └── (your app-specific helpers)
 ├── routes/
 │   ├── api/$.ts                    # ~30 lines — apiProxyHandlers + request-context seeding
@@ -46,11 +47,12 @@ workers/<myapp>/src/
 └── wrangler.jsonc         # name, bindings
 ```
 
-**`src/worker.ts`** — hand-written. The kit deliberately does **not** ship a factory wrapper for the worker entry: wrapping it inside a workspace package breaks `@cloudflare/vite-plugin` HMR (the static import of `@tanstack/react-start/server-entry` from a kit module can't be roundtripped, so `createStartHandler` resolves to `undefined` after any route-file edit). Copy identity's `worker.ts` verbatim — including the comment block, which is load-bearing:
+**`src/worker.ts`** — hand-written. The kit deliberately does **not** ship a factory wrapper for the worker entry: wrapping it inside a workspace package breaks `@cloudflare/vite-plugin` HMR (the static import of `@tanstack/react-start/server-entry` from a kit module can't be roundtripped, so `createStartHandler` resolves to `undefined` after any route-file edit). Copy `workers/store/src/worker.ts` (the minimal shape; identity's adds an app-specific `/__version` endpoint) — including the comment block, which is load-bearing:
 
 ```ts
 import startEntry from "@tanstack/react-start/server-entry";
 import { extractPlatformStartContext } from "@si/kit/react-start";
+import { devEnvelopeStamper } from "./lib/platform";
 
 declare module "@tanstack/react-start" {
   interface Register {
@@ -60,7 +62,24 @@ declare module "@tanstack/react-start" {
 
 export default {
   async fetch(request: Request): Promise<Response> {
-    return startEntry.fetch(request, { context: extractPlatformStartContext(request) });
+    // Dev-direct stamper mints an attestation envelope from the session
+    // cookie so the principal resolves without a bouncer in front. Hard
+    // no-op outside dev — see ARCHITECTURE.md §4.5.
+    const { request: stamped, setCookies } = devEnvelopeStamper
+      ? await devEnvelopeStamper(request)
+      : { request, setCookies: [] as string[] };
+
+    const response = await startEntry.fetch(stamped, {
+      context: extractPlatformStartContext(stamped),
+    });
+    if (setCookies.length === 0) return response;
+    const headers = new Headers(response.headers);
+    for (const sc of setCookies) headers.append("set-cookie", sc);
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
   },
 } satisfies ExportedHandler<Env>;
 ```
@@ -70,7 +89,9 @@ export default {
 ```ts
 import { env } from "cloudflare:workers";
 import { createServerOnlyFn } from "@tanstack/react-start";
+import { parseRequestCookies } from "@si/auth";
 import { createPlatformStartApp } from "@si/kit/react-start";
+import { createGuestlistClient } from "@si/guestlist-service/client";
 import { getGuestlist, guestlistFetcher } from "@/lib/guestlist";
 
 export const platform = createPlatformStartApp({
@@ -79,18 +100,32 @@ export const platform = createPlatformStartApp({
   guestlistFetcher: guestlistFetcher as () => typeof fetch,
   getEnvironment: createServerOnlyFn(() => env.ENVIRONMENT),
   expectedHost: createServerOnlyFn(() => new URL(env.<MYAPP>_URL).hostname.toLowerCase()),
+  // Dev-direct topology has no bouncer to mint the attestation envelope, so
+  // the app stamps its own from the session cookie. Hard no-op outside dev.
+  devEnvelopeSigner: createServerOnlyFn(() => ({
+    privPem: (env as { BNC_ATT_PRIV?: string }).BNC_ATT_PRIV ?? "",
+    kid: (env as { BNC_ATT_KID?: string }).BNC_ATT_KID ?? "dev",
+  })),
+  devEnvelopeGuestlist: createServerOnlyFn((request: Request) => {
+    const cookies = parseRequestCookies(request);
+    return createGuestlistClient({
+      baseURL: env.<MYAPP>_URL ?? "https://guestlist-service.localhost",
+      fetchOptions: { customFetchImpl: env.GUESTLIST.fetch.bind(env.GUESTLIST) as typeof fetch },
+      cookies: { getAll: () => cookies, setAll: () => {} },
+    });
+  }),
 });
 
 export const {
   getSession,
-  getEnvelope,
   getActiveOrgId,
   envelopeMiddleware,
   apiProxyHandlers,
+  devEnvelopeStamper,
 } = platform;
 ```
 
-`platform` exposes `getSession`, `getEnvelope`, `getActiveOrgId`, `getGuestlist`, `envelopeMiddleware`, `apiProxyHandlers`, and `devEnvelopeStamper` (only fires if you pass `devEnvelopeSigner` + `devEnvelopeGuestlist` — see ARCHITECTURE.md §4.5). It also still exposes `makeAuthProvider` as a legacy export; new apps should use `envelopeMiddleware` and `createReactStartAuthProvider` instead. (`sessionMiddleware` has been removed from `@si/kit` entirely — it had zero real consumers.)
+`platform` also exposes `getEnvelope`, `getGuestlist`, and `makeAuthProvider`. `envelopeMiddleware` paired with `createReactStartAuthProvider` (`@si/kit/react-start/client`) is the current pattern for wiring `<AuthProvider>`; `makeAuthProvider` is a convenience wrapper around the same call. `devEnvelopeStamper` fires only when `devEnvelopeSigner` + `devEnvelopeGuestlist` are passed, as above — required for session resolution in the dev-direct topology (see ARCHITECTURE.md §4.5).
 
 **`src/lib/session.functions.ts`** — the TSS-compiler-required server-fn
 wrapper. Stays minimal:
@@ -130,7 +165,9 @@ export const APP_PRODUCT_NAME = "MyApp";
 Mirror `workers/identity/wrangler.jsonc` (a checked-in source file: the top level
 is staging, `env.production` is the production deploy). The app must have:
 
-- `"workers_dev": false` and `"preview_urls": false` at the top level.
+- `"workers_dev": false` at the top level; `"preview_urls": false` in
+  `env.production` (the top level commonly leaves `preview_urls: true` so PR
+  preview URLs work).
 - **No `routes` block** in any environment — only bouncer has Custom Domains.
 - A service binding to `GUESTLIST` in both the top level (staging) and
   `env.production`.
@@ -147,29 +184,63 @@ on `database_name`, so any placeholder id works there.
 
 ### 2.3 Bouncer wiring (this is what makes your app public)
 
-In `workers/bouncer/wrangler.jsonc`, add three things per env:
+Each env serves **one host** (`workers/bouncer/wrangler.jsonc` `vars.ROUTES.routes`
+— staging is `staging.somewhatintelligent.ca`, production is
+`somewhatintelligent.ca` + `www.somewhatintelligent.ca`). Apps don't get their
+own subdomain or Custom Domain; your app is reached through a **path mount**
+on that host, dispatched to your app's service binding in one of two modes —
+`passthrough` (forwarded unmodified, for APIs) or `vmf` (bouncer strips the
+mount prefix inbound and rewrites asset paths / redirect `Location` /
+`Set-Cookie` paths outbound, for a mounted app that serves HTML).
+
+In `workers/bouncer/wrangler.jsonc`, add per env:
 
 1. **`services`** — service binding to your app worker:
 
    ```jsonc
-   { "binding": "<MYAPP>", "service": "<myapp>-staging" }
+   { "binding": "<MYAPP>", "service": "si-<myapp>-staging" }
    ```
 
-   (and `<myapp>-production` in `env.production`).
+   (and `si-<myapp>-production` in `env.production`).
 
-2. **`vars.ROUTES.routes`** — dispatch rule mapping the host:
+2. **`vars.ROUTES.routes`** — a mount entry on the env's host(s):
 
    ```jsonc
-   { "binding": "<MYAPP>", "host": "<myapp>.somewhatintelligent.ca", "path": "/" }
+   {
+     "binding": "<MYAPP>",
+     "host": "staging.somewhatintelligent.ca",
+     "path": "/<myapp>",
+     "mode": "vmf",
+   }
    ```
 
-3. **`env.production.routes`** — Custom Domain entry:
+   `env.production` needs the matching entry on both `somewhatintelligent.ca`
+   and `www.somewhatintelligent.ca`. Mode is enforced per `(host, mount)`, and
+   a longer mount must sort ahead of the `/` redirect entry.
+
+3. **TSS apps mounted with `vmf` also need a server-fn passthrough**, since
+   the compiled server-fn base is called by the hydrated client at the apex,
+   outside the mount:
+
    ```jsonc
-   { "pattern": "<myapp>.somewhatintelligent.ca", "custom_domain": true }
+   {
+     "binding": "<MYAPP>",
+     "host": "staging.somewhatintelligent.ca",
+     "path": "/_sfn/<myapp>",
+     "mode": "passthrough",
+   }
    ```
-   (and the staging equivalent if you want a staging public URL).
 
-DNS is auto-provisioned by Cloudflare when the Custom Domain entry deploys.
+   paired with `tanstackStart({ serverFns: { base: "/_sfn/<myapp>" } })` in
+   the app's `vite.config.ts`, and a `mountRewrite("/<myapp>")` pair (copy
+   `workers/identity/src/lib/basepath.ts`) wired into the app's router — this
+   closes the one gap the HTTP-layer `vmf` rewrite can't reach: a hydrated
+   SPA's own history/link state. Full contract in `docs/ARCHITECTURE.md`
+   §4.3.3 / §4.5.
+
+Your app's own `wrangler.jsonc` gets no `routes` block — bouncer owns the
+only Custom Domain entries (the host itself), and DNS for that host is
+already provisioned.
 
 ### 2.4 portless (local dev)
 
@@ -200,21 +271,23 @@ Define tables in `src/db/schema.ts` using `drizzle-orm`. Reference
 timestamps, no auth tables — guestlist owns those).
 
 ```sh
-bun run db:generate         # drizzle-kit generate → migrations/
+bun run db:generate           # drizzle-kit generate → migrations/
 git add migrations/
-vp run db:migrate:local     # apply locally (vp task, defined in vite.config.ts)
-vp run db:migrate:staging
-vp run db:migrate:production
+vp run db:migrate:local       # apply locally (vp task, defined in vite.config.ts)
+bun run db:migrate:staging
+bun run db:migrate:production
 ```
 
-(`db:migrate:*` are per-worker **vp tasks** declared in the worker's
-`vite.config.ts`, not `package.json` scripts — run them with `vp run` from
-inside the worker directory.)
+(`db:generate` and the `staging`/`production` migrate commands are per-worker
+**`package.json` scripts**, run with `bun run`. Only `db:migrate:local` is a
+**vp task** — declared in the worker's `vite.config.ts` so it never
+cache-replays against live local state — run it with `vp run` from inside
+the worker directory.)
 
 ### 2.7 Deploy
 
 Deploy the app first (so the upstream worker exists), then redeploy bouncer
-to wire the binding + provision the Custom Domain:
+to wire the service binding + route mount:
 
 ```sh
 cd workers/<myapp> && bun run deploy:production
@@ -269,9 +342,9 @@ Every app reads platform-wide brand from `@si/config`:
 
 ```ts
 import { platformConfig } from "@si/config";
-// platformConfig.brand.name      → "Platform" by default
-// platformConfig.cookies.prefix  → "platform"
-// platformConfig.auth.providerId → "platform"
+// platformConfig.brand.name      → "somewhatintelligent"
+// platformConfig.cookies.prefix  → "si"
+// platformConfig.auth.providerId → "si"
 ```
 
 Per-app product name lives in `workers/<myapp>/src/app-brand.ts` as
@@ -283,7 +356,7 @@ rebranding is required.
 - [ ] App scaffolded under `workers/<myapp>/` mirroring `workers/identity/`
 - [ ] (TSS) `src/lib/platform.ts`, `src/lib/session.functions.ts`, `src/worker.ts`, `src/routes/api/$.ts` written per §2.1
 - [ ] (non-Start) entry wraps `withRequestContext` + `withRequestLog` + `verifyEnvelope` per §3
-- [ ] `wrangler.jsonc` top-level: `workers_dev: false`, `preview_urls: false`, no `routes` block in any env
+- [ ] `wrangler.jsonc` top-level: `workers_dev: false`; `env.production` sets `preview_urls: false`; no `routes` block in any env
 - [ ] Service bindings declared: `GUESTLIST` (always), `ROADIE` / `PROMOTER` (if used)
 - [ ] `workers/bouncer/wrangler.jsonc` updated per §2.3
 - [ ] `"portless"` key added to the app's `package.json` per §2.4

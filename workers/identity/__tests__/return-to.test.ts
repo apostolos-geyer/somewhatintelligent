@@ -37,7 +37,7 @@ describe("isPlatformHost", () => {
     ["evilsomewhatintelligent.ca", PROD],
     // lookalike that merely contains the apex as a substring
     ["somewhatintelligent.ca.evil.com", PROD],
-    // off-apex host (e.g. staging marketing on workers.dev) is no longer trusted
+    // off-apex host on a workers.dev subdomain is untrusted
     ["si-marketing-staging.example.workers.dev", PROD],
   ])("rejects untrusted host %s", (host, domain) => {
     expect(isPlatformHost(host, domain)).toBe(false);

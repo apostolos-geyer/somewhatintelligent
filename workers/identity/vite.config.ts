@@ -30,11 +30,10 @@ const vars: Record<string, string> = {
   ...(cfEnv ? (wrangler.env?.[cfEnv]?.vars ?? {}) : {}),
 };
 
-// docs/ops/02 flipped each wrangler.jsonc so its TOP LEVEL is now the STAGING
-// section: `vars` above carries staging IDENTITY_URL / AUTH_DOMAIN. Those
-// must never bake into a LOCAL DEV client bundle. Dev truth lives in
-// ./.dev.vars, which the wrangler-vars define path
-// above never reads — so overlay it here.
+// Each wrangler.jsonc's TOP LEVEL is the STAGING section: `vars` above
+// carries staging IDENTITY_URL / AUTH_DOMAIN. Those must never bake into a
+// LOCAL DEV client bundle. Dev truth lives in ./.dev.vars, which the
+// wrangler-vars define path above never reads — so overlay it here.
 //   • CLOUDFLARE_ENV set → a real staging/prod build: keep the wrangler vars.
 //   • SI_BUILD=1  → marks any real shipped build (see package.json
 //     deploy:staging) so CI's seeded .dev.vars can never leak into a shipped
@@ -74,9 +73,8 @@ const CLIENT_VARS = ["IDENTITY_URL", "AUTH_DOMAIN", "ENVIRONMENT"] as const;
 // Under vitest there is no build: leave `import.meta.env.*` unset. The only
 // __tests__ file (return-to.test.ts) exercises the env-free core
 // (isPlatformHost / resolveReturnTo take the apex as an explicit argument and
-// never read import.meta.env — verified: no `import.meta` references in the
-// test), so staging defines would only skew, never help. Real builds
-// (non-VITEST) still inject every allowlisted var.
+// never read import.meta.env), so staging defines would only skew, never
+// help. Real builds (non-VITEST) still inject every allowlisted var.
 const clientDefines = process.env.VITEST
   ? {}
   : Object.fromEntries(

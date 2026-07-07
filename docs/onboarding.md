@@ -43,6 +43,8 @@ wrangler d1 create guestlist-staging-db        # paste each ID into that
 wrangler d1 create guestlist-production-db      #   worker's wrangler.jsonc
 wrangler d1 create roadie-staging-db
 wrangler d1 create roadie-production-db
+wrangler d1 create store-staging-db
+wrangler d1 create store-production-db
 wrangler r2 bucket create roadie-staging-blobs
 wrangler r2 bucket create roadie-production-blobs
 ```
@@ -85,7 +87,7 @@ bun run dev
 
 This one command (`bun scripts/dev-stack.ts`) runs the cached prep (env:init +
 local D1 migrations), ensures the portless HTTPS proxy is up on `:443`, then
-boots **guestlist + identity + roadie**, each exactly as its own
+boots **guestlist + identity + roadie + store**, each exactly as its own
 `cd workers/<name> && bun run dev`. Pass a subset to boot only those workers:
 
 ```sh
@@ -100,17 +102,19 @@ cd workers/guestlist && bun run dev  # plain wrangler dev (:8787, reached via se
 ```
 
 guestlist and roadie are plain `wrangler dev` (reached over service bindings /
-the dev registry, not a portless URL); identity is portless-registered (its
-own `package.json` carries a `"portless"` key — there is no root
+the dev registry, not a portless URL); identity and store are portless-registered
+(each app's own `package.json` carries a `"portless"` key — there is no root
 `portless.json`). Local dev is dev-direct: no bouncer runs locally (see
-`docs/ARCHITECTURE.md` §4.5) — the `/account` vmf mount only exists on
-staging/production; identity serves at its own root here.
+`docs/ARCHITECTURE.md` §4.5) — the `/account` and `/shop` vmf mounts only
+exist on staging/production; identity and store each serve at their own root
+here.
 
 Local URLs:
 
 | Component           | URL                                                    |
 | ------------------- | ------------------------------------------------------ |
 | Identity (UI)       | `https://identity.somewhatintelligent.localhost`       |
+| Store (UI)          | `https://store.somewhatintelligent.localhost`          |
 | Guestlist (service) | `http://localhost:8787` (service binding, no portless) |
 | Roadie (R2)         | `http://localhost:8790` (service binding, no portless) |
 
@@ -123,8 +127,9 @@ bun run seed
 ```
 
 Seeded users are created **pre-verified** (`super@user.com` / `superuserdo`
-is the platform operator, plus `alice` / `bob` demo accounts) and can sign in
-immediately. Re-run any time — the seed is idempotent.
+is the platform operator, plus `alice` / `bob` / `dave` demo accounts — alice
+admins the `acme` org, dave admins the `beta` org, bob has no org membership)
+and can sign in immediately. Re-run any time — the seed is idempotent.
 
 ## Verify it works
 

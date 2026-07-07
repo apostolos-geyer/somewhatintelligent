@@ -1,19 +1,17 @@
 # RWX activation runbook
 
-**Status: the CI/CD in `.rwx/` is SCAFFOLDING-ONLY until every step below is
-done.** The lanes were re-homed from the greenroom template and sanity-checked
-structurally (YAML parses, scripts self-test, shared mechanics exercised
-locally), but none of them has run against the live RWX backend for
-`apostolos-geyer/somewhatintelligent` — no RWX app installation, no vaults, no
-tokens exist yet. Until then, pushes and PRs trigger nothing; treat every lane
-as unverified.
+This runbook stands up (or reconfigures) the RWX CI/CD backend for
+`apostolos-geyer/somewhatintelligent`: the RWX GitHub App installation, the
+Cloudflare deploy/preview tokens, and the two vaults the lanes read from. Use
+it end-to-end when provisioning a new RWX organization, or a single section
+when rotating a token or vault.
 
-The lane semantics themselves are unchanged from the template and documented
-in place: PR → verify gate (`.rwx/ci.yml`), push-to-main → gate then
-changed-subset staging promote (`.rwx/promote-staging.yml`), release-please →
-per-worker production deploys (`.rwx/release-please.yml`), manual single-worker
-reship (`.rwx/release.yml`), per-PR previews (`.rwx/preview.yml`), and the
-env-parameterized full-fleet reference (`.rwx/deploy.yml`).
+The lane semantics are documented in place: PR → verify gate (`.rwx/ci.yml`),
+push-to-main → gate then changed-subset staging promote
+(`.rwx/promote-staging.yml`), release-please → per-worker production deploys
+(`.rwx/release-please.yml`), manual single-worker reship (`.rwx/release.yml`),
+per-PR previews (`.rwx/preview.yml`), and the env-parameterized full-fleet
+reference (`.rwx/deploy.yml`).
 
 > **The vendored inbox app (`inbox/`) is deliberately outside all of this.**
 > It deploys manually — `cd inbox && bun run deploy` — outside RWX, has no
@@ -23,20 +21,13 @@ env-parameterized full-fleet reference (`.rwx/deploy.yml`).
 ## 1. Install the RWX GitHub App
 
 1. Sign in at <https://cloud.rwx.com> and create a **dedicated RWX
-   organization for this platform** (owner decision 2026-07-07: do NOT reuse
-   the `greenroom` org — vaults, GitHub App installations, and access tokens
-   are all org-scoped, so a shared org would put this fork's deploy secrets
-   inside the template org's blast radius). Every step below happens inside
-   the new org; the CLI needs a token minted under it (`rwx login`).
-
-   > **Interim state (2026-07-07):** the dedicated `somewhatintelligent` org
-   > was created but its trial-credit verification was broken on RWX's side,
-   > so the lanes currently run under **`greenroom`** — both vaults +
-   > secrets exist there (and, dormant, in the `somewhatintelligent` org),
-   > and the RWX GitHub App installation covers this repo. Nothing in
-   > `.rwx/*.yml` references an org name, so migrating later is purely
-   > account-side: reinstall the GitHub App under the new org, recreate the
-   > two vaults there (steps 2–3), re-attach the automation GitHub App.
+   organization for this platform** — vaults, GitHub App installations, and
+   access tokens are all org-scoped, so this fork's deploy secrets live in
+   their own org rather than a shared one. Every step below happens inside
+   that org; the CLI needs a token minted under it (`rwx login`). Nothing in
+   `.rwx/*.yml` references an org name, so moving to a different org later is
+   purely account-side: reinstall the GitHub App under the new org and
+   recreate the two vaults there (steps 2–3).
 
 2. Install the RWX GitHub App on **apostolos-geyer/somewhatintelligent**
    (Getting Started → GitHub integration). This is what makes `github.token`
@@ -114,11 +105,9 @@ Do these IN ORDER — each later lane assumes the earlier ones proved out.
    panel, and (with `issues: write`) the sticky PR comment. CLI rerun:
    `rwx run .rwx/preview.yml --init pr-number=<N>`.
 3. **Full-fleet staging reference (`.rwx/deploy.yml`)** — validate the deploy
-   path directly BEFORE trusting the embedded call from ci.yml (the embedded
-   `call:` + locked-vault interaction documented in deploy.yml's header is
-   still unverified on this fork):
+   path directly, independent of the embedded call from ci.yml:
    `rwx run .rwx/deploy.yml --init env=staging --init deploy=true --init commit-sha=<a real main sha>`
-   Expect: D1 migrations (guestlist, roadie) → canonical-order deploys
+   Expect: D1 migrations (guestlist, roadie, store) → canonical-order deploys
    (promoter roadie guestlist identity store bouncer) → smoke test against
    <https://staging.somewhatintelligent.ca> → GitHub Deployments: one fleet
    record (`staging`) + one per worker (`staging/<worker>`, each with the CF
@@ -138,14 +127,8 @@ Do these IN ORDER — each later lane assumes the earlier ones proved out.
    `rwx dispatch si-reship-worker --param worker=<name> --param tag=<worker>-v<x.y.z>`
    re-ships one worker at an already-cut tag.
 
-## Known scaffolding caveats (inherited, still unverified on this fork)
+## Known constraints
 
-- `.rwx/deploy.yml`'s two embedded-run assumptions (locked-vault resolution +
-  `github.token` inside an embedded run) — failure mode is loud, see its
-  header.
 - The workers.dev live-URL in per-worker deploy records is emitted for every
   service worker but only resolves where that worker's `wrangler.jsonc` has
   `workers_dev: true`.
-- `workers/store` entries (gate tasks, captain suite `si-store`, deploy
-  order, release-please component) reference the worker the storefront track
-  ships; until it exists on the merged branch those tasks fail loudly.

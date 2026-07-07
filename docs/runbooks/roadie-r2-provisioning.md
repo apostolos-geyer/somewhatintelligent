@@ -1,9 +1,8 @@
 # Roadie / R2 blob storage — provisioning & the binding gotcha
 
-Everything an agent needs to make Roadie-backed images (today: guestlist user
-avatars; any future consumer app follows the same pattern) actually render.
-Two independent things must both be true; getting images working the first
-time on staging required discovering both the hard way (2026-07-05).
+Everything an agent needs to make Roadie-backed images (guestlist user
+avatars, store brand/product images; any future consumer app follows the
+same pattern) actually render. Two independent things must both be true.
 
 ---
 
@@ -26,15 +25,11 @@ uploads alike_.
 }
 ```
 
-Canonical reference: `workers/guestlist/wrangler.jsonc`. A consumer worker
-shipped without this for months (`git log -S callerApp` was empty) — images
-_never_ rendered on staging/prod, and the failure was **invisible**: the worker
-recorded `outcome:"exception"` with empty `exceptions[]`/`logs[]` in `wrangler
-tail` (pretty format showed `undefined.getReadUrl`). The observability hole
-itself is now closed (`packages/kit/src/log/instrumented.ts` wraps
-`resolveContext` so the failure emits an actionable canonical line with
-`error_phase:"resolve_context"`), so a future missing-`callerApp` will show up
-in the tail as a real error.
+Canonical reference: `workers/guestlist/wrangler.jsonc` (also
+`workers/store/wrangler.jsonc`). A missing `props.callerApp` throws inside
+the `@instrumented` `resolveContext` step (`packages/kit/src/log/instrumented.ts`),
+which emits an actionable canonical log line with `error_phase:"resolve_context"` —
+visible in `wrangler tail` for the affected worker.
 
 The `meta.callerApp` fallback in `readCallerApp` only fires in the
 `@cloudflare/vite-plugin` **dev** path (which drops `props`). On real service

@@ -5,10 +5,8 @@
 #   - .rwx/deploy.yml            fleet -> staging (ci.yml embedded run)
 #   - .rwx/release-please.yml    released subset -> production (folded-in deploy)
 #   - .rwx/release.yml           single-worker re-ship / rollback -> production
-# Keeping the migrate-before-code invariant and the marketing-under-npm quirk in
-# ONE place is the whole point: a fix here lands in all three callers at once,
-# instead of having to be replicated by hand (the drift hazard .rwx/deploy.yml's
-# header was written to eliminate).
+# Keeping the migrate-before-code invariant in ONE place means a fix here
+# lands in all three callers at once.
 #
 # Usage — every subcommand takes <worker> <env>:
 #   deploy-worker.sh migrate <worker> <env>   run db:migrate:<env> if the worker
@@ -19,9 +17,9 @@
 #                                             atomic per-worker op the two
 #                                             production lanes use.
 #
-# The canonical fleet ORDER (bouncer LAST) and the error-10143 binding-existence
-# history that dictates it live in .rwx/deploy.yml's `deploy` task; the CALLERS
-# own the order, this script owns the per-worker mechanics.
+# The canonical fleet ORDER (bouncer LAST, required by binding-existence
+# constraints) lives in .rwx/deploy.yml's `deploy` task; the CALLERS own the
+# order, this script owns the per-worker mechanics.
 set -euo pipefail
 
 cmd="${1:?usage: deploy-worker.sh <migrate|deploy|ship> <worker> <env>}"

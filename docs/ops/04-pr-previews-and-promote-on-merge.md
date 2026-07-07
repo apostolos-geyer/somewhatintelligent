@@ -1,14 +1,17 @@
 # Spec 04 — Per-PR worker previews + build-once-promote-on-merge (RWX + wrangler versions)
 
-> **Status**: ✅ IMPLEMENTED 2026-07-06 (code complete; live activation gated on
-> ONE owner action — see the vault note in `.rwx/preview.yml`'s header).
-> Shipped: `.rwx/preview.yml` (PR trigger COMMENTED until the
-> `greenroom_preview` vault exists; CLI-testable), `.rwx/promote-staging.yml`
-> (LIVE — replaces the full-fleet staging lane in ci.yml; without uploaded
-> versions every affected worker falls back to full deploy, so the immediate
-> win is changed-subset deploys and promotion self-activates once previews
-> run), `scripts/changed-workers.sh` (self-tested ownership rules; rpc-worker
-> changes fan out like ci.yml's gate filter), `scripts/promote-staging.sh`
+> **Status**: ✅ IMPLEMENTED (code complete; live activation gated on ONE
+> owner action — creating the `si_preview` vault, see `docs/ops/rwx-setup.md`
+> and the vault note in `.rwx/preview.yml`'s header).
+> Shipped: `.rwx/preview.yml` (PR trigger active; the `generate-uploads`/upload
+> tasks fail at vault resolution until the `si_preview` vault exists;
+> CLI-testable), `.rwx/promote-staging.yml`
+> (embedded into ci.yml's `deploy-staging` task, replacing the full-fleet
+> staging lane; without uploaded versions every affected worker falls back to
+> full deploy, so the immediate win is changed-subset deploys and promotion
+> self-activates once previews run), `scripts/changed-workers.sh` (self-tested
+> ownership rules; rpc-worker changes fan out like ci.yml's gate filter),
+> `scripts/promote-staging.sh`
 > (PR-head-sha tag resolution — squash-merge safe; wrangler.jsonc-changed and
 > version-missing fallbacks), `scripts/generate-preview-tasks.sh` +
 > `scripts/pr-preview-comment.sh` (sticky comment, documented 403 degradation).
@@ -68,21 +71,21 @@ CI brain.
 ## 3. Preconditions
 
 **3.0** In every worker's `wrangler.jsonc` top level (staging): keep
-`"workers_dev": true` (staging already has it for bouncer/identity —
-extend to all 5 or at least all you want previewable) and set
+`"workers_dev": true` (staging already has it for bouncer/identity/store —
+extend to all 6 or at least all you want previewable) and set
 `"preview_urls": true` explicitly. `env.production`: `"workers_dev": false`,
 `"preview_urls": false`. **This amends Spec 02's target layout** — implement
 there if 02 hasn't landed yet.
 
-**3.1 A preview vault.** The main-locked `greenroom_deploy` vault cannot be
-read from PR branches by design. Create `greenroom_preview` (unlocked):
+**3.1 A preview vault.** The main-locked `si_deploy` vault cannot be
+read from PR branches by design. Create `si_preview` (unlocked):
 
 - `CLOUDFLARE_API_TOKEN_PREVIEW`: minted **from this fork's Cloudflare account** (else D1
   7403 — known incident), scoped to **Workers Scripts: Edit + Account
   Settings: Read only** — no D1 edit, no routes, no R2. Uploading a version
   puts 0 % traffic live; acceptable exposure for a private single-maintainer
   repo. Re-evaluate before adding outside collaborators.
-- A GitHub token able to comment on PRs: extend the `rwx-automation-greenroom`
+- A GitHub token able to comment on PRs: extend the `rwx-automation-si`
   GitHub App with `pull-requests: write` availability in this vault, or first
   test whether RWX's `${{ github.token }}` can post PR comments (unknown —
   verify; if yes, skip the app token here).
@@ -124,7 +127,7 @@ changed worker to `$RWX_DYNAMIC_TASKS` (RWX docs `/dynamic-tasks`), each:
   echo "$URL" | tee "$RWX_LINKS/preview: $W"      # visible in the RWX UI
   ```
 
-  Env: `CLOUDFLARE_API_TOKEN` from `greenroom_preview` with
+  Env: `CLOUDFLARE_API_TOKEN` from `si_preview` with
   `cache-key: excluded` (RWX docs `/environment-variables`) — irrelevant while
   `cache:false`, but correct hygiene if caching is ever enabled.
   Alias length check: `pr-123` + longest name `si-guestlist-staging` = fine
@@ -136,7 +139,7 @@ changed worker to `$RWX_DYNAMIC_TASKS` (RWX docs `/dynamic-tasks`), each:
 
 **4.3 Sticky PR comment.** A final task (after all uploads) renders a table —
 `worker | preview | version | notes` — and upserts ONE comment (marker
-`<!-- greenroom-previews -->`, find-and-edit via `gh api`) so pushes update in
+`<!-- si-previews -->`, find-and-edit via `gh api`) so pushes update in
 place. Workers not in the changed set are listed as "unchanged (staging)".
 
 **4.4 Scope honesty (include in the PR comment footer).** Preview URLs are bare
@@ -153,7 +156,7 @@ Rewire ci.yml's `deploy-staging` lane (keep the gate exactly as is):
    previous deployed state — simplest correct proxy: the commit's own diff via
    `github/compare` against the parent; a `packages/**` change ⇒ all workers).
 2. For each changed worker, in the canonical order (promoter, roadie →
-   guestlist → identity → bouncer LAST — the 10143
+   guestlist → identity, store → bouncer LAST — the 10143
    invariant):
    - **migrations first**: if `workers/<w>/migrations/**` changed, run its
      `db:migrate:staging` (D1 token needed ⇒ this task uses the LOCKED deploy
@@ -169,10 +172,9 @@ repos/:owner/:repo/commits/$SHA/pulls`), then
        if routes/cron changed too → follow with `wrangler triggers deploy`.
      - else (no version — direct push to main, >100 versions elapsed, DO
        migration, first deploy of a new worker) → full
-       `bun run deploy:staging` (build + `wrangler deploy`), exactly today's
-       path.
-   - unchanged workers: **skip entirely** (today's lane redeploys all 5 every
-     merge — this is the second big win).
+       `bun run deploy:staging` (build + `wrangler deploy`).
+   - unchanged workers: **skip entirely** — only workers `detect` marks
+     changed run a promote or fallback deploy.
 3. Keep the GitHub Deployment record + apex smoke test from `.rwx/deploy.yml`.
 4. Squash-merge nuance: the PR head sha (what previews were built from) is not
    the merge sha. Resolving via PR number + upload tag (2 above) handles this;

@@ -1,6 +1,6 @@
 # @si/ui
 
-Component library for the Platform platform, built on [Base UI](https://base-ui.com) primitives and styled with the **Glyph** design system.
+Component library for the platform, built on [Base UI](https://base-ui.com) primitives and styled per the design system in `packages/design/DESIGN_SYSTEM.md`.
 
 ## Quick start
 
@@ -32,23 +32,19 @@ import { TextField } from "@si/ui/components/form/text-field";
 
 ## Storybook
 
-Stories live next to their components (`*.stories.tsx`). The Storybook app is at `apps/storybook`:
-
-```bash
-cd apps/storybook && vp dev
-```
+Stories live next to their components (`*.stories.tsx`).
 
 ---
 
 ## Design system
 
-Every component follows the **Glyph** design language defined in `packages/design/DESIGN_SYSTEM.md`. The key principles:
+Every component follows the design system defined in `packages/design/DESIGN_SYSTEM.md`. The key principles:
 
-- **Dark-first** — designed in darkness, adapted to light
-- **Brutalist default** — `border-2 border-border-strong`, `shadow-brutal-*`, `rounded-sm`
-- **Four materials** — Brutalist (default), Soft, Neumorphic, Glass
-- **rounded-sm everywhere** — 2px chamfer, no circles, no rounded-lg
-- **Everything is BIG** — display type starts at 24px minimum
+- **Monochrome ink on paper** — one warm graphite ramp on warm drafting paper (inverted for dark mode); rust for destructive, muted green for success
+- **No soft shadows, no blur** — depth is drawn with border treatment and hard-offset lines, never a diffused shadow or `backdrop-filter`
+- **Depth is border treatment** — solid / dashed / dotted rules carry emphasis and state; `shadow-brutal-*` adds a hard ink offset
+- **Generous rounding** — `rounded-sm` (10px) is the control default, scaling up to `rounded-xl` (30px) for large surfaces
+- **Iosevka is the voice** — `Iosevka Aile` for display/body/editorial, `Iosevka` (mono) for code, IDs, and uppercase annotation labels
 
 ### Materials
 
@@ -58,12 +54,12 @@ Components accept material variants through their existing `variant` props. The 
 import { surfaceMaterials, interactiveMaterials } from "@si/ui/lib/materials";
 ```
 
-| Material | Surface use                                               | Interactive use                          |
-| -------- | --------------------------------------------------------- | ---------------------------------------- |
-| `brutal` | Cards, alerts — `ring-1 ring-foreground shadow-brutal-lg` | Buttons, badges — slam-down active state |
-| `soft`   | Secondary containers — `shadow-soft-lg`                   | Secondary buttons — press-in active      |
-| `neo`    | Neumorphic raised/inset                                   | Toggle-like — flips raised to inset      |
-| `glass`  | Floating overlays — backdrop blur                         | Glass buttons — brightness shift         |
+| Material | Surface use                                                          | Interactive use                                                  |
+| -------- | -------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `brutal` | Cards, alerts — solid rule + drafted ink offset (`shadow-brutal-sm`) | Buttons, badges — offset grows on hover, collapses on press      |
+| `soft`   | Secondary containers — dashed rule, flat                             | Secondary buttons/badges — dashed rule commits to solid on hover |
+| `neo`    | Neumorphic raised/inset                                              | Toggle-like — flips raised to inset                              |
+| `glass`  | Legacy name — opaque sheet + solid rule (no blur)                    | Legacy name — rule strengthens on hover                          |
 
 ---
 

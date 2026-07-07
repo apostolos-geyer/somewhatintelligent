@@ -3,10 +3,9 @@
 # Best-effort GitHub Deployments reporting for RWX deploys, shared by every
 # deploy lane (.rwx/deploy.yml, .rwx/promote-staging.yml,
 # .rwx/release-please.yml, .rwx/release.yml).
-# RWX only reports commit *statuses* (checks) to GitHub — it never creates
-# GitHub *Deployments*, so the Cloudflare deploy never showed up under the
-# repo's "Deployments" / Environments timeline. This is sourced by the lanes'
-# deploy tasks and provides two layers of visibility:
+# RWX reports commit *statuses* (checks) to GitHub, not GitHub *Deployments*;
+# this script adds the Deployments/Environments timeline on top. Sourced by
+# the lanes' deploy tasks, it provides two layers of visibility:
 #
 #   1. FLEET record (gh_deployment_create / gh_deployment_status): one
 #      Deployment per run in environment `staging`/`production`, moved through
@@ -18,11 +17,10 @@
 #      URL when one exists — plus a compact commit/PR comment
 #      (gh_deploy_summary_comment) that lists every worker shipped by the run
 #      with those same links, upserted by marker so pushes update rather than
-#      spam. Owner requirement: "deploys per worker with links to cf dashboard
-#      and to the url if any in gh, not just in releases."
+#      spam.
 #
-# The vendored inbox app (inbox/) is deliberately OUT of scope: it deploys
-# manually outside RWX (owner decision), so nothing here records it.
+# The vendored inbox app (inbox/) deploys manually outside RWX, so nothing
+# here records it.
 #
 # GH_DEPLOYMENT_ENV/GH_DEPLOYMENT_URL are set per-call by each lane's
 # `deploy-env` alias (from `init.gh-deployment-env`/`init.gh-deployment-url`),
@@ -183,8 +181,8 @@ gh_worker_deployment() {
   dash="$(_cf_dashboard_url "${worker}" "${env}")"
   live="$(_worker_live_url "${worker}" "${env}")"
 
-  # Summary line first (exact owner-requested shape) — even with no GH_TOKEN
-  # the run log carries it.
+  # Summary line first, in the fixed shape below — even with no GH_TOKEN the
+  # run log carries it.
   local line
   if [ -n "${live}" ]; then
     line="deployed ${worker}@${version} to ${env}: ${live} | ${dash}"

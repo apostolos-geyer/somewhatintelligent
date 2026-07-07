@@ -473,12 +473,9 @@ const app = new Elysia({
     async () => {
       // BA has no "list all orgs across the platform" surface — its
       // `listOrganizations` scopes to caller memberships. Direct join.
-      // memberCount via a correlated count; ownerName via a filtered join
-      // expressed as a sub-select on a separately-keyed `owner_member` CTE
-      // would be ergonomic in Drizzle, but the simpler shape is: two
-      // queries — one for the org/count aggregate, one to resolve owner
-      // names — then merge in JS. Keeps SQL legible and avoids GROUP BY
-      // gymnastics with the user-name correlated subquery.
+      // Two queries — one for the org/count aggregate, one to resolve owner
+      // names — merged in JS. Keeps the SQL free of GROUP BY gymnastics
+      // around the user-name correlated subquery.
       const orgs = await db
         .select({
           id: organization.id,
@@ -734,9 +731,8 @@ const app = new Elysia({
       // calling user's session to populate `inviterId`. Operator path: the
       // operator (resolved via the `admin: true` macro above) becomes the
       // inviter. Direct insert; the `sendInvitationEmail` callback is *not*
-      // invoked here (we'd need to spin up a synthetic auth context to call
-      // BA's adapter). The promoter wire-up will land for first-class
-      // member-issued invites; operator-issued ones surface the raw link
+      // invoked here (doing so requires a synthetic auth context to call
+      // BA's adapter) — operator-issued invitations surface the raw link
       // in the UI per O-6's design.
       const orgRows = await db
         .select({ id: organization.id })
@@ -745,9 +741,8 @@ const app = new Elysia({
         .limit(1);
       if (!orgRows[0]) return status(404, { error: "org_not_found" as const });
       const now = new Date();
-      // BA's default invitationExpiresIn is 48h; we mirror that here. (The
-      // task brief says 7 days; we follow the brief since this is an
-      // operator-issued invite and the desk is the only consumer for now.)
+      // Operator-issued invitations expire after 7 days, longer than BA's
+      // default 48h window.
       const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
       const id = ulid();
       await db.insert(invitation).values({

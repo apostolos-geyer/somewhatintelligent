@@ -5,8 +5,9 @@
 # instead of rebuilding — falling back to a full build+deploy whenever a
 # version can't or shouldn't be promoted. Unchanged workers are never touched.
 #
-# Per-worker decision, in canonical order (bouncer LAST — error-10143 history
-# in .rwx/deploy.yml):
+# Per-worker decision, in canonical order (bouncer LAST — it service-binds
+# guestlist, identity, and store, so they must already be deployed; see
+# .rwx/deploy.yml):
 #   1. migrations: ALWAYS `deploy-worker.sh migrate <w> staging` first for
 #      affected workers (wrangler's ledger makes it an idempotent no-op when
 #      nothing is pending; migrate-before-code is the invariant).

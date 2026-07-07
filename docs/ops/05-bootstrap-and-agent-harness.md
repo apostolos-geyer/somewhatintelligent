@@ -1,229 +1,154 @@
-# Spec 05 — Slim bootstrap; make the repo an agent-grade harness
+# Bootstrap and agent harness
 
-> **Status**: ✅ IMPLEMENTED 2026-07-06 (commit `5a427fc`; RWX gate green
-> `2e498dc9`; fresh-worktree clone contract verified end-to-end). Deviations:
-> `db:migrate:local` + `seed` became vp TASKS with `cache: false` and left
-> package.json scripts entirely — vp forbids task/script name collisions, and
-> a cache-replayed migration/seed would silently skip real work; `env:init`
-> stays a cached script because vp verifiably restores its tracked `.dev.vars`
-> output on replay (probe: deleting one invalidated exactly its task).
-> §3.2's per-worker input/output declarations proved unnecessary — root
-> `run.cache: true` auto-tracking passed the deletion probe.
-> **Depends on**: Spec 02 (no render step anywhere). Spec 01 F3-option-2 is a
-> subset of this spec — if 01 landed with option 1 (surgical), this spec
-> supersedes that task body.
-> **Design frame**: OpenAI's "harness engineering" write-up
-> (https://openai.com/index/harness-engineering/) — the repo is the harness;
-> agents are the workforce. Concretely borrowed here: repo as system of record;
-> fresh clone → working environment with zero tribal steps; boot-per-worktree;
-> fast, legible feedback loops; docs as a map ("AGENTS.md ~100 lines pointing
-> deeper"), not a manual.
+**Design frame**: OpenAI's "harness engineering" write-up
+(https://openai.com/index/harness-engineering/) — the repo is the harness;
+agents are the workforce. Concretely: the repo is the system of record; a
+fresh clone reaches a working environment with zero tribal steps; boot is
+per-worktree; feedback loops (typecheck/test/build) are fast and legible;
+docs are a map ("CLAUDE.md ~100 lines pointing deeper"), not a manual.
 
-## 1. Problem
+## 1. Per-worker bootstrap scripts
 
-`bun run bootstrap` today = render wrangler (dies with Spec 02) + for EVERY
-worker: seed `.dev.vars` + apply local D1 migrations + attempt live-stack demo
-seeding. Consequences:
+Each worker's `scripts/env-init.ts` seeds that worker's `.dev.vars` file
+(deterministic, offline, sub-second). Two workers additionally seed demo
+data. D1 workers apply local migrations via a `db:migrate:local` vp task:
 
-- CI pays for migrations/seeding it never uses (tests self-apply migrations via
-  `cloudflare:test` — see Spec 01 §3/RC3) and the sqlite output poisons caches.
-- A fresh clone can't typecheck or test until bootstrap has run
-  (worker-configuration.d.ts, wrangler.jsonc — the latter fixed by Spec 02).
-- Working on ONE worker still means booting/bootstrapping the fleet, because
-  service bindings resolve against locally-running siblings.
-- The env-var story is scattered: `scripts/dev-config.ts` constants, six
-  seeded `.dev.vars`, CI vault secrets, `wrangler secret` pushes — with no
-  single contract saying who needs what.
+| worker    | env:init | db:migrate:local | seed                                                                                                                   |
+| --------- | -------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| bouncer   | ✅       | —                | —                                                                                                                      |
+| promoter  | ✅       | —                | —                                                                                                                      |
+| identity  | ✅       | —                | —                                                                                                                      |
+| roadie    | ✅       | ✅               | —                                                                                                                      |
+| guestlist | ✅       | ✅               | ✅ `scripts/seed.ts` — users/orgs; probes identity's `/api/auth/ok` and `[defer]`s cleanly when the dev stack isn't up |
+| store     | ✅       | ✅               | ✅ `scripts/seed.ts`                                                                                                   |
 
-## 2. Current state (verified)
+Shared constants + helpers live in `scripts/dev-config.ts` (`LOCAL_*`
+constants, `writeDevVarsIfMissing`, `applyD1MigrationsLocal`, `d1Exec`/
+`d1Query`, and the portless-CA `DEV_SPAWN_ENV` used by subprocess spawns).
 
-Per-worker `scripts/bootstrap.ts` decomposes into exactly three concerns:
-
-| worker                                                   | .dev.vars seed         | local D1 migrate | demo seed                                                                            |
-| -------------------------------------------------------- | ---------------------- | ---------------- | ------------------------------------------------------------------------------------ |
-| identity (`apps/identity/scripts/bootstrap.ts`, 8 lines) | ✅ (PLATFORM_DEV_VARS) | —                | —                                                                                    |
-| promoter (12) / bouncer (25)                             | ✅                     | —                | —                                                                                    |
-| roadie (15)                                              | ✅                     | ✅               | —                                                                                    |
-| sprout (36)                                              | ✅ (+BNC_ATT dev key)  | ✅               | ✅ `seed.ts` (local D1; `--target staging` for remote)                               |
-| guestlist (159)                                          | ✅ (+auth secrets)     | ✅               | ✅ users/orgs — needs LIVE stack; probes identity and `[defer]`s cleanly when absent |
-
-Shared constants + helpers: `scripts/dev-config.ts` (LOCAL\_\* constants,
-`writeDevVarsIfMissing`, `applyD1MigrationsLocal`, d1Exec/d1Query).
-Root orchestration: `package.json` scripts chain bash (`render && vp run -r
-bootstrap` etc.). `db:migrate:local` already exists per D1 worker.
-
-vp task facts (viteplus.dev/guide/run + /guide/cache): tasks declared in
-`vite.config.ts` under `run.tasks` are **cached** (auto-tracked inputs, plus
-explicit `input`/`output`/`env`); bare `package.json` scripts are not cached
-by default, **but this repo's root `vite.config.ts` sets `run: { cache: true }`**
-(and a live `cache.db` confirms it) — so script-level caching is already on;
-what §3.2 adds is _precise_ inputs via explicit task definitions so cache
-correctness doesn't ride on auto-tracking a `wrangler` subprocess.
-`dependsOn` supports same-package, `pkg#task`, and `{ task, from:
-"dependencies" }` forms. Cache lives in `node_modules/.vite/task-cache` (NOT
-`~/.vite-plus` — see repo memory: CI cache was "dead" until this path was
-persisted). `vp run -r dev` does not fire the portless-wrapped dev scripts
-(documented in CLAUDE.md) — the dev entrypoint is portless, not vp.
-
-## 3. Target design
-
-### 3.1 Split the per-worker scripts (mechanical)
-
-Per worker, replace the single `bootstrap` with three idempotent scripts —
-same names everywhere:
-
-- `env:init` — `.dev.vars` seeding only (today's `writeDevVarsIfMissing` block).
-  Deterministic, offline, < 1 s.
-- `db:migrate:local` — already exists (guestlist/roadie/sprout only).
-- `seed` — demo data (sprout `seed.ts`; guestlist users/orgs incl. the
-  live-stack probe). Only these two workers have it.
-
-Root scripts become:
+Root scripts:
 
 ```jsonc
-"bootstrap": "vp run -r env:init",                  // cheap, always safe
+"bootstrap": "vp run -r env:init",        // cheap, always safe
 "migrate":   "vp run -r db:migrate:local",
-"seed":      "vp run -r seed",                      // needs dev stack up (guestlist part)
-"dev":       "bun scripts/predev.ts && portless …"  // see 3.2
+"seed":      "vp run -r seed",            // needs the dev stack up (guestlist's identity probe)
+"dev":       "bun scripts/dev-stack.ts",  // see §3
 ```
 
-Delete the per-worker `bootstrap` script key (grep for consumers first:
-`.rwx/ci.yml`, docs, README) **and delete root `scripts/apply-migrations.ts`**
-— it duplicates the per-package `db:migrate:local` path (same
-`applyD1MigrationsLocal` on the same three workers) and its hardcoded
-`D1_PACKAGES` list is one more thing to forget when a worker gains a D1.
-`vp run -r db:migrate:local` replaces it exactly (only D1 workers define the
-script, so `-r` naturally selects them).
+## 2. Task caching
 
-### 3.2 Lazy, cached pre-dev via vp tasks
-
-Move the boot chain into cached vp tasks so it reruns only when inputs change.
-In each D1 worker's `vite.config.ts`:
+`db:migrate:local` and `seed` are declared as vp tasks in each D1 worker's
+`vite.config.ts` under `run.tasks`, both with `cache: false` — they mutate
+live local state (D1 schema, demo rows), and a cache-replayed "success" would
+silently skip real work:
 
 ```ts
 run: {
   tasks: {
-    "env:init": { command: "bun scripts/env-init.ts",
-                  input: ["scripts/env-init.ts", "../../scripts/dev-config.ts"],
-                  output: [] },            // .dev.vars is gitignored; verify vp
-                                           // allows untracked outputs — else leave
-                                           // output undeclared and rely on the
-                                           // script's own existsSync idempotence
-    "db:prepare": { command: "bun run db:migrate:local",
-                    dependsOn: ["env:init"],
-                    input: ["migrations/**", "wrangler.jsonc"] },
+    "db:migrate:local": {
+      command: "wrangler d1 migrations apply DB --local",
+      cache: false,
+    },
+    seed: {
+      command: "bun scripts/seed.ts",
+      cache: false,
+    },
   },
 }
 ```
 
-and the root `dev` entry runs `vp run -r db:prepare` before starting portless.
-Result: first `bun run dev` after clone migrates everything; subsequent runs
-are cache hits; a new migration file re-runs exactly that worker's task.
-(Exact vp config syntax: verify against viteplus.dev/guide/run at
-implementation time — the `input`/`output`/`dependsOn` shapes above are from
-the docs as of 2026-07; don't trust field names blindly.)
+`env:init` runs as a plain `package.json` script, not a vp task — it's cached
+anyway because the root `vite.config.ts` sets `run: { cache: true }`, which
+auto-tracks script inputs. The task-cache lives at
+`node_modules/.vite/task-cache`. `.rwx/ci.yml`'s `bootstrap` step runs
+`bun run bootstrap` (`env:init` only, no migrations, no D1 state); tests
+self-apply their own migrations via `TEST_MIGRATIONS` instead.
 
-### 3.3 The fresh-clone contract (the harness's front door)
+## 3. The fresh-clone contract
 
-After this spec, these are the ONLY commands an agent (or human) needs, in
-order, from a fresh clone — enforce and document exactly this in README +
-CLAUDE.md:
+From a fresh clone, in order:
 
 ```sh
-bun install            # → typecheck + unit/pool tests work immediately
-bun run types          # → worker-configuration.d.ts (needed once, and after
-                       #   wrangler.jsonc changes)
-bun run dev            # → full local stack; lazily seeds .dev.vars + migrates
-bun run seed           # → demo users/brands (needs dev stack up)
-bun run test / test:pool / test:e2e
+bun install             # → typecheck + per-worker tests work immediately
+bun run types           # → worker-configuration.d.ts (also after wrangler.jsonc changes)
+bun run dev              # → bun scripts/dev-stack.ts: cached env:init + local D1
+                         #   migrations, then guestlist+identity+roadie+store,
+                         #   each exactly its own per-directory `bun run dev`,
+                         #   with portless ensured and prefixed logs
+bun run seed             # → demo users/orgs (needs the dev stack up)
+bun run test             # → packages/* unit tier (root)
+cd workers/<name> && bun run test   # → that worker's own suite
+bun run test:e2e         # → Playwright specs in e2e/
 ```
 
-Nothing may require: render steps, manual .dev.vars authoring, remembering
-which worker needs migrations, or a live Cloudflare login — **except** the
-documented remote-dependent features (AI/Vectorize/Browser remote proxy,
-solo-mode below), which degrade cleanly when absent.
+`bun run dev` also accepts an explicit subset: `bun run dev guestlist
+identity`. Any child process exiting tears the whole stack down. Nothing in
+this sequence requires a live Cloudflare login — except solo-mode (§4 below)
+and any remote-dependent feature, which degrades cleanly when absent.
 
-CI (`.rwx/ci.yml`) consumes the same scripts: its bootstrap task becomes
-`bun run bootstrap` (= `env:init` only — no migrations, no sqlite; this is
-Spec 01 F3-option-2 landing for real).
+## 4. Solo-mode: one worker locally, staging fleet remotely
 
-### 3.4 Solo-mode: one worker locally, staging fleet remotely
+Booting the whole fleet to touch one worker is friction most edits don't
+need. Cloudflare's **remote bindings** let a locally-running worker's
+service/D1/queue/R2 bindings target deployed workers: `"remote": true` on a
+binding is honored by `wrangler dev` and the Vite plugin.
 
-Rationale (owner-stated): you almost never edit two workers at once. Booting
-six workers to touch one is harness friction. Cloudflare's **remote bindings**
-let a locally-running worker's service bindings/D1/queues target deployed
-workers: `"remote": true` on a binding in wrangler config is honored by
-`wrangler dev` / the Vite plugin (verify the current key name and coverage per
-binding type against developers.cloudflare.com — this went GA during 2025;
-older `experimental_remote` spellings may appear in docs).
+The checked-in `wrangler.jsonc` files never set `remote: true` — that would
+change every developer's default and mixes dev-only semantics into deploy
+config. Instead, each worker has a `dev:solo` script
+(`bun ../../scripts/dev-solo.ts`) that reads the worker's `wrangler.jsonc`,
+stamps `"remote": true` onto its top-level service/D1/queue/R2 bindings,
+writes the result to a gitignored `wrangler.solo.jsonc` beside it, and execs
+`wrangler dev -c` against that file. Because each `wrangler.jsonc`'s
+top-level config is the staging section, remote bindings resolve to the
+staging fleet with zero extra mapping.
 
-Design: do NOT put `remote: true` in the checked-in configs (it would change
-every developer's default and is dev-only semantics mixed into deploy config).
-Instead add per-worker `dev:solo` script that runs wrangler dev/vite with a
-dev-only config overlay:
+`dev:solo` requires `CLOUDFLARE_API_TOKEN` (or `wrangler login`) — remote
+bindings proxy through the Cloudflare account. The all-local fleet
+(`bun run dev`) remains the canonical path for cross-worker work and schema
+changes; solo-mode is additive DX, not the default.
 
-- a sibling `wrangler.solo.jsonc` extending `wrangler.jsonc` via wrangler's
-  config-extending mechanism if available, or generated on the fly by a tiny
-  script that reads `wrangler.jsonc`, stamps `"remote": true` onto
-  service/D1/queue bindings, writes `.wrangler/solo-config.jsonc` (gitignored),
-  and execs `wrangler dev -c` it. Keep it ≤ 50 lines, no templating creep —
-  this is a dev overlay, not the Spec-02 renderer reborn.
-- requires `CLOUDFLARE_API_TOKEN` (or `wrangler login`) in the environment —
-  exactly what cloud/agent containers already carry per the deploy runbooks.
-  Since top-level config IS staging (Spec 02), remote bindings resolve to the
-  staging fleet with zero extra mapping.
+## 5. The env-var contract
 
-Scope guard: solo-mode is additive DX. The all-local stack (portless + dev
-registry) remains the canonical path for cross-worker work and schema changes,
-and stays what `bun run dev` does.
+[`docs/ops/env-vars.md`](env-vars.md) is the single contract for every
+environment variable and secret the platform consumes: name, consumer, dev
+source, CI source, staging/production source. It's seeded from
+`scripts/dev-config.ts`, the per-worker `env-init.ts` seeders, every
+`workers/*/wrangler.jsonc`, `packages/secrets/src/manifest.ts`,
+`.rwx/deploy.yml` + `.rwx/release-please.yml`, `docs/secrets.md`, and
+`docs/runbooks/SECRETS.md`. A new env var is not done until it has a row
+there.
 
-### 3.5 One env-var contract table
-
-Write `docs/ops/env-vars.md` (and link from CLAUDE.md): one table, every
-variable: name · consumed by · dev source (.dev.vars seeder / dev-config
-constant) · CI source (RWX vault) · staging/prod source (wrangler `vars` vs
-`wrangler secret` vs binding). Seed it from: `scripts/dev-config.ts`, the six
-seeders, `.rwx/deploy.yml` `deploy-env` alias, `packages/secrets`,
-`docs/secrets.md`, `docs/runbooks/SECRETS.md`. Rule going forward (add to
-CLAUDE.md): a new env var is not done until it has a row.
-
-## 4. What NOT to do
+## 6. Guardrails
 
 - No `.env`-at-root loader shared across workers — wrangler's `.dev.vars`
-  per-worker model is the platform convention; the _seeders_ are the sharing
-  mechanism.
-- No new bash chains in root package.json — orchestration moves toward vp
-  tasks, not away.
-- Don't cache `seed` (it talks to live local state) — `cache: false`.
-- Don't make solo-mode the default dev path (schema changes + cross-worker
-  flows need the local fleet).
+  per-worker model is the platform convention; the per-worker seeders are the
+  sharing mechanism.
+- Root orchestration goes through `vp run -r <task>`, not ad-hoc bash chains.
+- `seed` is never cached (`cache: false`) — it talks to live local/dev-stack
+  state.
+- Solo-mode is not the default dev path — schema changes and cross-worker
+  flows need the local fleet (`bun run dev`).
 
-## 5. Verification
+## 7. Operational checks
 
-1. Fresh clone in a container (or `git clean -xfd` a worktree + reinstall):
-   run the §3.3 sequence top to bottom; each command succeeds with no manual
-   intervention. Time `bun install` → first green `bun run test`.
-2. `bun run dev` twice: second run's db:prepare tasks are vp cache hits
-   (`vp run -r db:prepare --last-details` or `-v` shows HIT/MISS per task).
-   Add a no-op migration file to sprout → only sprout's task re-runs.
-3. Walk the portal journey per `docs/sprout/10-local-stack-and-testing-runbook.md`
-   after `bun run seed` (alice/acme demo intact — do not regress the demo
-   fixtures; see repo memory).
-4. Solo-mode: with only guestlist running via `dev:solo` + a valid
-   CLOUDFLARE*API_TOKEN, a request that crosses its PROMOTER/ROADIE bindings
-   reaches the \_staging* workers (verify via staging logs / responses).
-5. CI: `.rwx/ci.yml` run shows bootstrap task < 5 s, no `.wrangler` state in
-   any layer (Spec 01's §7 probes stay green).
+- `vp run -r db:migrate:local --last-details` (or `-v`) shows HIT/MISS per
+  task; adding a migration file to one worker re-runs only that worker's
+  task.
+- The portal journey (per the `interactive-test` skill,
+  `.agents/skills/interactive-test/SKILL.md`) works after `bun run seed`:
+  `alice`/`bob`/`dave` demo users and the `acme`/`beta` demo orgs are intact.
+- Solo-mode: with only guestlist running via `dev:solo` and a valid
+  `CLOUDFLARE_API_TOKEN`, a request that crosses its promoter/roadie bindings
+  reaches the staging workers (verify via staging logs/responses).
+- CI: `.rwx/ci.yml`'s `bootstrap` step stays fast and carries no `.wrangler`
+  state into later layers.
 
-## 6. References
+## 8. References
 
-- Harness engineering: https://openai.com/index/harness-engineering/ (mirror
-  summaries if 403: xiaow.dev claude_notes 2026-03-25 entry).
-- vp tasks/caching: https://viteplus.dev/guide/run, https://viteplus.dev/guide/cache.
-- Files: `scripts/dev-config.ts`, `scripts/apply-migrations.ts`,
-  `{apps,services}/*/scripts/bootstrap.ts`, root `package.json`, `.rwx/ci.yml`,
-  `portless.json`, `docs/sprout/10-local-stack-and-testing-runbook.md`.
-- Repo memory anchors: vp task-cache real path (`node_modules/.vite/task-cache`);
-  dev-direct stamper per app; preserve alice/bob/carol demo fixtures.
+- Harness engineering: https://openai.com/index/harness-engineering/
+- vp tasks/caching: https://viteplus.dev/guide/run, https://viteplus.dev/guide/cache
+- Files: `scripts/dev-config.ts`, `scripts/dev-stack.ts`, `scripts/dev-solo.ts`,
+  `workers/*/scripts/env-init.ts`, `workers/{guestlist,store}/scripts/seed.ts`,
+  root `package.json`, `.rwx/ci.yml`, `docs/ops/env-vars.md`.
 - Remote bindings: developers.cloudflare.com/workers/development-testing/
-  (verify exact config key + per-binding coverage at implementation time).

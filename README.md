@@ -1,183 +1,85 @@
-# Platform Template
+# somewhatintelligent
 
-An identity-first platform spine — ingress bouncer, central auth service,
-R2-backed storage broker, deferred-work runner, sign-in/account UI, and the
-cross-cutting packages they share. The spine is designed to be **forked per
-client**: rebranding is editing three TypeScript files and running one
-script.
+A personal platform monorepo on Cloudflare Workers. Six deployable workers
+share one identity layer and one config surface:
 
-> **Activation status (2026-07-07):** staging is live
-> (`staging.somewhatintelligent.ca`, Access-gated); production is **not
-> deployed yet** ([`docs/runbooks/PRODUCTION-DEPLOY.md`](docs/runbooks/PRODUCTION-DEPLOY.md));
-> CI/CD in `.rwx/` is **scaffolding-only** until the operator executes
-> [`docs/ops/rwx-setup.md`](docs/ops/rwx-setup.md) (RWX org + GitHub App +
-> vaults) — pushes and PRs trigger nothing until then.
+- **bouncer** — single public ingress; owns every hostname, refreshes
+  sessions, mints a signed attestation envelope, and dispatches to the other
+  workers via service binding.
+- **guestlist** — central auth service (Elysia + Better Auth + D1); the sole
+  session authority.
+- **identity** — sign-in / account UI (TanStack Start), mounted under
+  `/account`.
+- **store** — storefront app (TanStack Start), mounted under `/shop`.
+- **roadie** — R2-backed blob/media storage broker (Workers RPC + cron).
+- **promoter** — outbound comms and deferred work: queue consumer for email
+  (Resend today), plus cron jobs.
 
-## Layout
+Everything is TypeScript, built on Bun + Vite+ (`vp`), deployed with
+wrangler.
 
-```
-platform-template/
-├── workers/
-│   ├── bouncer      # Single ingress Worker — owns public hostnames,
-│   │                # refreshes session, dispatches to apps via service binding
-│   ├── guestlist      # Central auth service (Elysia + Better Auth + D1)
-│   ├── roadie       # R2-backed blob storage broker (Workers RPC + cron)
-│   ├── promoter     # Outbound comms + deferred work — queue consumer for
-│   │                # email via Resend today (SMS later), plus cron jobs
-│   └── identity      # Sign-in / account UI (TanStack Start, CF Workers)
-├── packages/
-│   ├── audio         # WebAudio primitives (consumed by ui's file-preview)
-│   ├── auth          # Shared Better Auth client config
-│   ├── config        # Central platform config — single source of truth
-│   ├── design        # Design tokens (CSS vars)
-│   ├── email         # Transactional email templates (React Email)
-│   ├── kit           # canonical-log, request-context ALS, ULID factory,
-│   │                 # TanStack Start auth provider, service-client factories
-│   ├── og            # Build-time OG image pipeline (satori + resvg)
-│   ├── ui            # React component library (Base UI + Tailwind)
-│   └── typescript-config
-└── scripts/
-    ├── dev-config.ts        # local-dev defaults consumed by worker env-init.ts seeders
-    └── dev-solo.ts          # one worker local, staging fleet via remote bindings
-```
+## Live
 
-Not part of the bun workspace above: `marketing-videos/` (Remotion) and
-`inbox/` (a vendored, standalone Agentic Inbox instance — its own
-package.json/lockfile/wrangler.jsonc, deployed separately as Worker
-`agentic-inbox-si`) are self-contained sibling projects with their own
-tooling; root scripts don't reach into them.
-
-## Architecture
-
-```
-                    ┌─────────────────────────────────────────────┐
-                    │  bouncer (CF Worker, single public ingress) │
-   User ───────────►│  - resolves session via guestlist             │
-                    │  - mints signed attestation envelope        │
-                    │  - dispatches to apps via service binding   │
-                    └────┬────────────────────────────────┬───────┘
-                         │ service binding                │ service binding
-                         ▼  (+ x-platform-att envelope)   ▼
-                    ┌──────────┐                     ┌──────────────────────┐
-                    │  Any App │  ──── service ─────►│  guestlist (Better     │
-                    │ (own DB) │       binding       │  Auth + D1, IDP)     │
-                    └──────────┘    (fallback +      └──────────────────────┘
-                                     admin RPC)         │           │
-                                                        ▼           ▼
-                                                  ┌──────────┐  ┌──────────┐
-                                                  │  roadie  │  │ promoter │
-                                                  │ (R2)     │  │ (email)  │
-                                                  └──────────┘  └──────────┘
-```
-
-- **Bouncer** owns every public hostname; app workers have `workers_dev: false`
-  and no Custom Domains. Reached only via bouncer.
-- **Guestlist** is the single session authority and sole holder of
-  `BETTER_AUTH_SECRET`. Apps call it over service binding; user-facing auth
-  flows route to `workers/identity` (sign-in, account, admin) and come back via
-  `?returnTo=…`.
-- **Apps trust bouncer's Ed25519-signed attestation envelope** for session
-  identity (id, role, name, email, image). The verifier is in
-  `@si/auth`; rejection of missing/invalid envelopes is mandatory in
-  production and falls back to guestlist in development for the dev-direct
-  topology (running an app alone without bouncer in front).
-
-The full architecture reference, including diagrams, lives in
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) ([PDF](docs/ARCHITECTURE.pdf)).
-
-## Rebranding for a new fork
-
-Three files own the entire surface:
-
-| File                                | What lives here                                                                                                                                                                    |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/config/src/brand.ts`      | Brand name, short wordmark, support email, cookie prefix, auth `providerId`, passkey RP name, 2FA issuer                                                                           |
-| `packages/config/src/deploy.ts`     | Base domain, dev domain, worker-name prefix, Cloudflare account ID (code-consumed values; per-env D1 IDs, routes, and domains now live directly in each worker's `wrangler.jsonc`) |
-| `workers/identity/src/app-brand.ts` | This app's product name (each app declares its own — they're different products)                                                                                                   |
-
-The `wrangler.jsonc` files are checked-in source (top level = staging,
-`env.production` = production) — edit them directly to change per-env deploy
-resources; there is no render step. After editing `deploy.ts`, regenerate the
-worker types that read it:
-
-```sh
-cd workers/guestlist && bun run types    # regenerate worker-configuration.d.ts
-cd workers/bouncer && bun run types
-cd workers/roadie && bun run types
-cd workers/promoter && bun run types
-cd workers/identity && bun run types
-```
-
-### Cloudflare resources you need to provision per fork
-
-- D1 databases — `wrangler d1 create guestlist-<env>-db`, `wrangler d1 create roadie-<env>-db`,
-  paste the returned IDs into the `database_id` fields of each worker's `wrangler.jsonc`.
-- R2 bucket — `wrangler r2 bucket create roadie-<env>-blobs`. Paste your CF
-  account ID into `packages/config/src/deploy.ts` and each `wrangler.jsonc`.
-- `wrangler login` once per machine.
+- Production: [https://somewhatintelligent.ca](https://somewhatintelligent.ca)
+  (+ `www.somewhatintelligent.ca`)
+- Staging: [https://staging.somewhatintelligent.ca](https://staging.somewhatintelligent.ca)
 
 ## Quick start
 
 ```sh
 bun install
-bun run dev               # one command: cached prep (env:init + local D1 migrations),
-                          # then guestlist + identity + roadie
-bun run seed              # demo users/orgs — run once dev is up;
-                          # logins incl. super@user.com / superuserdo (pre-verified)
+bun run dev     # one command: cached prep (env:init + local D1 migrations),
+                # then guestlist + identity + roadie
+bun run seed    # first boot: demo users/orgs, pre-verified logins
 ```
 
 Subsets and single workers work the same way:
 
 ```sh
-bun run dev guestlist identity       # any subset of the fleet
-cd workers/<name> && bun run dev     # one worker from its own directory
-cd workers/<name> && bun run dev:solo  # one worker, bindings → deployed STAGING fleet
+bun run dev guestlist identity         # any subset of the fleet
+cd workers/<name> && bun run dev       # one worker from its own directory
+cd workers/<name> && bun run dev:solo  # one worker, bindings -> staging fleet
 ```
 
-Local dev URLs (dev-direct — no bouncer locally; `docs/ARCHITECTURE.md` §4.5):
-
-| Surface                    | URL                                              |
-| -------------------------- | ------------------------------------------------ |
-| Identity (sign-in/account) | `https://identity.somewhatintelligent.localhost` |
-
-## Email verification in local dev
-
-All `bun run seed` users are created pre-verified — sign in with them
-directly. Email verification only gates **brand-new sign-ups**, and only in
-production (`requireEmailVerification: env.ENVIRONMENT === "production"` in
-`workers/guestlist/src/auth-config.ts`); real verification emails go through
-`workers/promoter` → [Resend](https://resend.com) and need a `RESEND_API_KEY`
-in `workers/promoter/.dev.vars`.
-
-## Toolchain
-
-This template uses [Vite+](https://github.com/voidzero-dev/vite-plus) (`vp`)
-on top of Bun, Cloudflare Workers + D1 + R2 (via wrangler + miniflare locally),
-and [portless](https://github.com/portless/portless) for wildcard local HTTPS.
+Tests:
 
 ```sh
-bun run check          # workspace-wide lint + format + typecheck
-bun run test           # workspace-wide vitest
+bun run test       # workspace-wide vitest
+bun run test:e2e   # Playwright e2e
 ```
 
-Note: `vp check` reports many pre-existing typecheck warnings inside `__tests__/`
-(vitest globals not visible to the per-file checker). These are an inherited
-vp tooling quirk shared with the source repo, not regressions. The `src/`
-tree is clean; runtime is verified e2e.
+See `.agents/skills/interactive-test/SKILL.md` for the local-dev operating
+manual (boot, agent-browser sign-in recipe, test tiers) and
+`.agents/skills/write-tests/SKILL.md` for which tier a new test belongs in.
 
-## What's deliberately not here
+## CI/CD
 
-- SCIM, SAML. Multi-tenancy IS wired (better-auth `organization` plugin,
-  org/member/invitation tables, identity admin UI); SCIM would build on its
-  hooks as a separate guestlist plugin when an enterprise customer needs it.
-- Anything not consumed by the shipped apps (guestlist, identity).
+CI/CD runs on RWX (`.rwx/`): `ci.yml` gates every PR and, on push to `main`,
+promotes the changed workers straight to staging; `preview.yml` builds a
+preview per PR; `release-please.yml` maintains a per-worker release PR, and
+merging it tags and deploys the affected workers to production; `release.yml`
+is a manual per-worker re-ship dispatch; `deploy.yml` is the shared,
+env-parameterized fleet deploy the other workflows call into.
+
+## Rebranding
+
+Rebranding is editing three files:
+
+| File                                | What lives here                                                                                         |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `packages/config/src/brand.ts`      | brand `{name, short, supportEmail}`; cookie prefix; auth `{providerId, passkeyRpName, twoFactorIssuer}` |
+| `packages/config/src/deploy.ts`     | base domain, dev domain, worker-name prefix, Cloudflare account ID                                      |
+| `workers/identity/src/app-brand.ts` | per-app product name (each app is a different product)                                                  |
+
+Per-env D1 IDs, routes, domains, and resource names live directly in each
+worker's checked-in `wrangler.jsonc` (top level = staging, `env.production` =
+production). After editing a `wrangler.jsonc` or `deploy.ts`, regenerate that
+worker's types with `bun run types` from its directory.
 
 ## Where to read next
 
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) ([PDF](docs/ARCHITECTURE.pdf))
-  — C4-style reference: context, containers, components, shared patterns
-  (security, sessions, cross-worker comms, dev/prod parity, WebSockets,
-  logging), config + secrets.
-- [`docs/adding-an-app.md`](docs/adding-an-app.md) — step-by-step for adding
-  a new TSS or non-Start app.
-- [`docs/secrets.md`](docs/secrets.md) — secret rotation runbooks.
+- [`docs/README.md`](docs/README.md) — full documentation index.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — C4-style architecture
+  reference: context, containers, components, shared patterns.
+- [`docs/runbooks/`](docs/runbooks) — operational runbooks (production
+  deploys, secrets, roadie R2 provisioning).

@@ -72,24 +72,10 @@ export async function handlePassthrough(request: Request, upstream: Fetcher): Pr
 /**
  * Upstream-app proxy + URL/cookie/redirect rewriting machinery.
  *
- * Lifted verbatim from the Cloudflare microfrontend template
- * (`microfrontend-template/index.ts`). The host-aware
- * `RouteConfig`/`compileRoutes` surface lives in `./routes.ts`; the entry
- * `fetch` handler + dispatch lives in `./index.ts`. This file owns only
- * `handleMountedApp` and its supporting utilities.
- *
- * Edits from upstream:
- *  - Removed `import { env } from "cloudflare:workers"` — env is threaded
- *    explicitly through `buildAssetPrefixes(envObj)` from the entry handler.
- *  - Removed the route-compile + dispatch surface (RouteConfig, RoutesConfig,
- *    CompiledRoute, compilePathExpr, segmentToRegex, computeBaseSpecificity,
- *    escapeRegexLiteral, unescapePathLiterals, buildRoutes, default fetch).
- *    Those live in `./routes.ts` (host-extended) and `./index.ts`.
- *  - Re-exported `normalizePath` and `buildAssetPrefixes` for the entry handler.
- *  - Decomposed `handleMountedApp` into per-concern helpers (mount stripping,
- *    upstream logging, redirect / HTML / CSS transforms). Semantics are
- *    unchanged from upstream, but the section is no longer byte-for-byte —
- *    apply future template updates by diffing behavior, not text.
+ * The host-aware `RouteConfig`/`compileRoutes` surface lives in `./routes.ts`;
+ * the entry `fetch` handler + dispatch lives in `./index.ts`. This file owns
+ * only `handleMountedApp` and its supporting utilities. `env` is threaded
+ * explicitly through `buildAssetPrefixes(envObj)` from the entry handler.
  */
 
 /**
@@ -457,17 +443,10 @@ function rewriteLocation(location: string, mount: string, requestUrl: URL): stri
   try {
     const url = new URL(location, requestUrl.origin);
 
-    // Same-origin redirects: prepend mount prefix (when not root mount) and
-    // emit as a *relative* URL — `pathname + search + hash`. The browser
-    // resolves the relative Location against the page URL it came from,
-    // which is the public origin in both prod (the CD hostname) and dev
-    // (whatever portless put in front). Returning `url.toString()` would
-    // serialize with `requestUrl.origin`, which in `wrangler dev` is
-    // workerd's bind address (e.g. `http://127.0.0.1:4307`) — that
-    // address would leak to the browser as a Location and bypass the dev
-    // proxy entirely, creating a loop. Relative form sidesteps the dev/
-    // prod origin divergence without threading a "public origin"
-    // concept through this file.
+    // Same-origin redirects: prepend the mount prefix (unless root) and emit
+    // a *relative* Location (`pathname + search + hash`) so the browser
+    // resolves it against the public origin it navigated from, rather than
+    // `requestUrl.origin` (workerd's local bind address under `wrangler dev`).
     if (url.origin === requestUrl.origin && url.pathname.startsWith("/")) {
       const newPath = mount === "/" ? url.pathname : mount + url.pathname;
       return newPath + url.search + url.hash;

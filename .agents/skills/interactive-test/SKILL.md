@@ -12,10 +12,7 @@ description: >-
 
 # Interactive testing (local stack + agent-browser)
 
-Verified 2026-07-07 (updated after the sprout/marketing prune — the previous
-extended runbook this skill pointed at, `docs/sprout/10-local-stack-and-testing-runbook.md`,
-was removed with the sprout product). Deviate only if a step fails, then
-update this skill.
+Verified 2026-07-07. Deviate only if a step fails, then update this skill.
 
 ## 1. Boot + seed (skip what's already running)
 

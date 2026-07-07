@@ -8,21 +8,17 @@
 # deploy. The caller's EXIT trap then reports the deploy as `failure`.
 #
 # NOTE (leaf-only releases): this only exercises the public apex router
-# (bouncer). A release that ships ONLY a leaf worker (e.g. promoter or roadie,
-# with bouncer unchanged) is smoke-tested via the UN-redeployed router,
-# so this proves the router still answers <500 but gives near-zero signal on the
-# freshly-shipped leaf itself. That is a conscious acceptance per Spec 03 §B.3.2
-# ("simplest: always run the existing apex smoke test; it exercises the router
-# path end-to-end"), not an oversight — a per-worker health surface would be the
-# richer check if leaf-only releases ever need real post-deploy coverage.
+# (bouncer). A release that ships only a leaf worker (e.g. promoter or roadie,
+# with bouncer unchanged) is smoke-tested via the unredeployed router, so this
+# confirms the router still answers <500 but gives near-zero signal on the
+# freshly-shipped leaf itself.
 set -euo pipefail
 
 url="${1:?usage: smoke-test.sh <url>}"
 echo "Smoke-testing ${url} ..."
 for attempt in 1 2 3 4 5; do
-  # curl prints its -w '%{http_code}' output ("000") even when the transfer
-  # fails, so a `|| echo 000` fallback CONCATENATES ("000000") — numerically 0,
-  # slipping past `-lt 500`. Only a real 1xx-4xx status may pass.
+  # curl already emits "000" via -w on failure, so `|| true` preserves that
+  # value intact for the 1xx-4xx match below.
   code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${url}/" || true)"
   if [[ "$code" =~ ^[1-4][0-9]{2}$ ]]; then
     echo "smoke OK (HTTP ${code})"

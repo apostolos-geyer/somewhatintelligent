@@ -1,8 +1,6 @@
-// Roadie data model — v2 (post owner-drop refactor). The owner-scoped logical
-// `blob` layer has been collapsed: `physical_blob` is now the sole blob record
-// and `blob_reference` attaches consumer handles directly to it. `hash` is
-// globally UNIQUE, making cross-consumer dedup automatic. Backstop quota was
-// retired with the owner model — consumer apps enforce real quotas.
+// Roadie data model. `physical_blob` is the sole blob record; `blob_reference`
+// attaches consumer handles directly to it. `hash` is globally UNIQUE, making
+// cross-consumer dedup automatic. Consumer apps enforce their own quotas.
 //
 // State is derived from the timestamp triple on `physical_blob`: pending while
 // `finalized_at IS NULL`, ready while `deleted_at IS NULL`, deleted thereafter.
@@ -95,7 +93,7 @@ export const blobMultipartPart = sqliteTable(
   (t) => [unique("u_part").on(t.physicalBlobId, t.partNumber)],
 );
 
-// Backend deletion failures. v1 records failures for operator visibility; no
+// Backend deletion failures. Records failures for operator visibility; no
 // retry drainer (see spec §Deferrals — backend-deletion-failure retry).
 export const deletionQueue = sqliteTable(
   "deletion_queue",
@@ -129,7 +127,7 @@ export const signedUrlCache = sqliteTable(
 );
 
 // Singleton row (id = "default"). Pre-positioned for the reference-consistency
-// reconciler; the reconciler itself is deferred in v1 (see spec §Deferrals).
+// reconciler; the reconciler itself is not yet implemented (see spec §Deferrals).
 export const reconcileCursor = sqliteTable("reconcile_cursor", {
   id: text("id").primaryKey(),
   cursor: text("cursor"),

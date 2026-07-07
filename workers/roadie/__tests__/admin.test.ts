@@ -85,7 +85,7 @@ describe("administrative operations", () => {
     const usage = await admin.adminUsage(roadie, {}, makeMeta());
     expect(usage.ok).toBe(true);
     if (!usage.ok) return;
-    // The force-deleted blob no longer counts toward live usage.
+    // A force-deleted blob does not count toward live usage.
     expect(usage.value.blobCount).toBeGreaterThanOrEqual(0);
   });
 

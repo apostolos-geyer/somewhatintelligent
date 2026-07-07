@@ -16,7 +16,7 @@ if (files.length === 0) process.exit(0);
 
 const QUIRK = /((^|\/)(__tests__|test|scripts)\/|\.test\.tsx?$)/;
 // Only source files vp's checker actually handles go to `vp check` — a commit
-// of nothing but yml/sh/md/json (e.g. a CI-config change) used to make
+// of nothing but yml/sh/md/json (e.g. a CI-config change) would otherwise make
 // `vp check` fail with "Expected at least one target file", vetoing the
 // commit outright. Everything else is format-only.
 const CHECKABLE = /\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$/;

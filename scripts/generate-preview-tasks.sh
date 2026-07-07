@@ -34,13 +34,9 @@ keys=()
 for w in ${CHANGED}; do
   keys+=("upload-${w}")
   # Build-step apps mirror the build half of their deploy:staging script:
-  # `SI_BUILD=1 vp run build` — build is a VP TASK, not a package.json
-  # script (plain `bun run build`/`npm run build` fail with "Script not
-  # found"; the first live preview run proved it). SI_BUILD=1 keeps
-  # CI-seeded .dev.vars out of the bundle (docs/ops/02).
+  # `SI_BUILD=1 vp run build`, run via the vp task (no package.json build
+  # script exists). SI_BUILD=1 keeps CI-seeded .dev.vars out of the bundle.
   case "$w" in
-    # Build-step apps mirror the build half of their deploy:staging script
-    # (SI_BUILD=1 vp run build && wrangler ...).
     identity|store) build="(cd workers/${w} && SI_BUILD=1 bunx vp run build)" ;;
     # guestlist bundles @si/stripe -> src/generated.ts (gitignored codegen);
     # vp's task graph produces it (build dependsOn @si/stripe#codegen) before
@@ -69,8 +65,8 @@ for w in ${CHANGED}; do
     WVER="\$(jq -r '.version // "0.0.0"' package.json)"
     bunx wrangler versions upload --tag "pr-${PR}-${SHA}" --preview-alias "pr-${PR}" --message "PR #${PR}" --var "WORKER_VERSION:\${WVER}" --var "WORKER_COMMIT:${SHA}" | tee /tmp/upload-${w}.log
     VID="\$(jq -r 'select(.type == "version-upload") | .version_id // empty' /tmp/wr-${w}.ndjson | tail -1)"
-    # Stable per-PR alias first, per-version URL as fallback (fields verified
-    # against a real upload's ndjson: version_id / preview_url / preview_alias_url).
+    # Prefers the per-PR alias URL, falls back to the per-version URL
+    # (ndjson fields: version_id / preview_url / preview_alias_url).
     URL="\$(jq -r 'select(.type == "version-upload") | .preview_alias_url // .preview_url // empty' /tmp/wr-${w}.ndjson | tail -1)"
     if [ -z "\${VID}" ]; then
       echo "FATAL: no version id in wrangler output for ${w} — upload failed (see log above)" >&2
@@ -81,11 +77,9 @@ for w in ${CHANGED}; do
       printf '%s\n' "\${URL}" > "\$RWX_VALUES/preview-url"
       printf '%s\n' "\${URL}" | tee "\$RWX_LINKS/preview: ${w}"
     else
-      # Cloudflare never issues preview URLs for Durable Object workers
-      # (documented limitation — no worker in this fork currently uses DOs,
-      # but the branch stays for whenever one does). The version still
-      # uploads and is promotable on merge; the PR comment says so instead
-      # of a link.
+      # Cloudflare does not issue preview URLs for Durable Object workers.
+      # The version still uploads and is promotable on merge; the PR
+      # comment reports that instead of a link.
       printf 'none — DO worker; version promotable on merge\n' > "\$RWX_VALUES/preview-url"
       echo "${w}: version \${VID} uploaded; no preview URL (Durable Object worker)"
     fi

@@ -15,7 +15,7 @@ Pick the LOWEST tier that can catch the bug. The pyramid, not e2e-everything.
 
 | Tier | Files | Runner | Use for |
 | ---- | ----- | ------ | ------- |
-| Per-package (unit + pool) | `<pkg>/__tests__/*.test.ts` | `cd <pkg> && bun run test` (vp test) | Everything below the browser: pure logic, and for D1-backed workers (guestlist, roadie) real D1 constraints too — those workers wire `@cloudflare/vitest-pool-workers` against their actual `wrangler.jsonc` in the SAME `*.test.ts` suite (no separate integration-only file suffix or `test:pool` script in this fork — that was a sprout-specific convention, removed with it). |
+| Per-package (unit + pool) | `<pkg>/__tests__/*.test.ts` | `cd <pkg> && bun run test` (vp test) | Everything below the browser: pure logic, and for D1-backed workers (guestlist, roadie) real D1 constraints too — those workers wire `@cloudflare/vitest-pool-workers` against their actual `wrangler.jsonc` in the SAME `*.test.ts` suite (no separate integration-only file suffix or `test:pool` script). |
 | E2E (browser) | `e2e/**/*.spec.ts` | `bun run test:e2e` (root; stack must be up — see `/interactive-test`) | web→server→db round trips, auth journeys |
 
 ## Rules that keep the runners honest

@@ -2,8 +2,8 @@
 
 Idempotent Stripe IaC for the platform's subscription billing: `src/config.ts`
 declares products/prices as plain TS objects, and three scripts keep a real
-Stripe account in sync with that config. Ported from HiPat.app's
-`packages/stripe`, trimmed to a single subscription tier for this fork.
+Stripe account in sync with that config. Ships a single subscription tier
+(`member`).
 
 ## Layout
 
@@ -44,8 +44,8 @@ config key (e.g. `member_monthly_v2`) and switching consumers to it.
 
 Without `STRIPE_SECRET_KEY` set, `bun run fetch` never imports the `stripe`
 SDK or touches the network — it writes `src/generated.ts` as a stub with
-every configured product/price id set to `""`. This is wired into
-`typecheck` (`"typecheck": "bun run fetch && tsgo --noEmit"`), so:
+every configured product/price id set to `""`. This package's `typecheck`
+task (`vite.config.ts`) runs `bun run fetch` before `tsgo --noEmit`, so:
 
 - A fresh clone (no secrets anywhere) typechecks cleanly — `stripeProducts` /
   `stripePrices` exist with the right key set and type shape, just empty ids.

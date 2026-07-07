@@ -98,8 +98,8 @@ export async function createWebAudioEngine(): Promise<AudioEngine> {
       player?.dispose();
 
       // Create new player
-      // Note: We don't use onstop because we manually emit 'pause' in pause()/stop()
-      // Using onstop would cause double emissions since player.stop() triggers it
+      // onstop is unused: pause()/stop() already emit 'pause' manually, and
+      // player.stop() triggers onstop, which would double-emit it.
       player = new Tone.Player({
         url,
         onload: () => {

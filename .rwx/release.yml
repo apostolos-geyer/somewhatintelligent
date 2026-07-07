@@ -1,14 +1,14 @@
 # somewhatintelligent — manual per-worker re-ship / rollback (production, on RWX).
 #
-# Spec 03 (§B.3) moved the AUTOMATIC production deploy INTO the release-please
-# run (.rwx/release-please.yml): a Release-PR merge cuts per-worker component
+# The automatic production deploy lives in the release-please run
+# (.rwx/release-please.yml): a Release-PR merge cuts per-worker component
 # tags (`<worker>-v<x.y.z>`) and, in the same run, ships exactly the released
-# workers in canonical order. This file no longer auto-fires on a tag push —
-# per-worker component tags don't match the old `refs/tags/v*` pattern, and one
-# deploy-per-tag is precisely what we want to avoid (N tags from one merge would
-# race N deploys and break the bouncer-LAST ordering).
+# workers in canonical order. This file does not fire on a tag push: per-worker
+# component tags don't match a single `refs/tags/v*` trigger pattern, and one
+# deploy-per-tag would race N deploys against each other and break the
+# bouncer-LAST ordering.
 #
-# What's left here is the human escape hatch: re-ship (or roll back) ONE worker
+# This is the human escape hatch: re-ship (or roll back) ONE worker
 # at ONE already-cut tag, on demand. Dispatch it:
 #
 #   rwx dispatch si-reship-worker --param worker=guestlist --param tag=guestlist-v1.2.0
@@ -22,10 +22,9 @@
 # ---- WHY CLONE AT THE TAG BUT UNLOCK THE VAULT ON main ----------------------
 # The clone ref is the `tag` PARAM (the tag's commit), but the dispatch itself
 # is invoked WITHOUT `--ref`, so RWX uses the default `main` ref to unlock
-# vaults. That makes the main-locked `si_deploy` vault resolve normally —
-# it sidesteps the old tag-ref vault-access caveat entirely (a tag push did NOT
-# unlock a main-locked vault by default). Tradeoff, acceptable for a
-# single-maintainer repo and documented per RWX's dispatch-ref security note
+# vaults. That makes the main-locked `si_deploy` vault resolve normally, since
+# a tag ref does not unlock a main-locked vault by default. Tradeoff,
+# acceptable for a single-maintainer repo and documented per RWX's dispatch-ref security note
 # (/docs/dispatch-triggers#dispatch-refs): because the clone ref comes from a
 # param rather than the trusted `event.git` context, an org member could in
 # principle dispatch an arbitrary ref while the main-locked vault unlocks. The
@@ -33,8 +32,8 @@
 # collaborators, switch to dispatching `--ref <tag>` + cloning `event.git.sha`.
 #
 # ---- DEPLOY MECHANICS live in .rwx/deploy.yml -------------------------------
-# The canonical worker dependency order (bouncer LAST) and the error-10143
-# binding-existence history that dictates it are documented in .rwx/deploy.yml's
+# The canonical worker dependency order (bouncer LAST) and the binding-existence
+# constraint that requires it are documented in .rwx/deploy.yml's
 # `deploy` task. This file only ever ships ONE worker, so ordering is moot here;
 # it still runs that worker's D1 migration first (schema before code) and the
 # same public apex smoke test as the fleet deploy.
@@ -125,9 +124,8 @@ tasks:
 
   # Real node, NOT optional: wrangler's bin is `#!/usr/bin/env node`, and with
   # no node in the container `bun run` substitutes bun — under which
-  # `wrangler deploy` prints its banner and exits 0 WITHOUT uploading. Three
-  # re-ships (identity/store/bouncer v0.3.0) "succeeded" that way while
-  # deploying nothing. Every lane that runs wrangler must `use` node.
+  # `wrangler deploy` prints its banner and exits 0 WITHOUT uploading. Every
+  # lane that runs wrangler must `use` node.
   - key: node
     call: nodejs/install 1.1.14
     if: *reship-gate
@@ -136,8 +134,7 @@ tasks:
 
   # UNFILTERED install, same shape as deploy.yml's — this lane BUILDS the app
   # workers, and the ci.yml-style outputs filter (node_modules/** only) drops
-  # workspace bin links builds need (identity's `platform-og` from packages/og;
-  # the class already bit promote-staging and preview before this lane).
+  # workspace bin links builds need (identity's `platform-og` from packages/og).
   # The gate keeps its filtered install — it never builds.
   - key: install
     use: [code, bun]

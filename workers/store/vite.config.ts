@@ -81,8 +81,8 @@ const clientDefines = process.env.VITEST
     );
 
 // Build-time version stamp, rendered subtly in the footer (src/lib/version.ts).
-// Safe fallbacks when package.json is unreadable or git is unavailable (source
-// archive with no .git). Mirrors inbox/vite.config.ts.
+// Falls back safely when package.json is unreadable or git is unavailable
+// (source archive with no .git).
 function readAppVersion(): string {
   try {
     const pkg = JSON.parse(readFileSync(`${__dirname}/package.json`, "utf8"));

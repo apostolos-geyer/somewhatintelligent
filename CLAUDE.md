@@ -1,17 +1,17 @@
 # Notes for Claude Code
 
 This is a **template fork** of a personal platform monorepo. The platform
-spine — bouncer, guestlist, roadie, promoter, identity, and supporting
+spine — bouncer, guestlist, roadie, promoter, identity, store, and supporting
 packages — runs locally. Per-client rebranding is centralized into three
 files.
 
 ## Where to edit when rebranding
 
-| File                                | What lives here                                                                                                                                                                               |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/config/src/brand.ts`      | brand.{name, short, supportEmail}; cookies.prefix; auth.{providerId, passkeyRpName, twoFactorIssuer}                                                                                          |
-| `packages/config/src/deploy.ts`     | baseDomain, devDomain, workerPrefix, cloudflareAccountId (code-consumed values only; per-env D1 ids, routes, domains, and resource names now live directly in each worker's `wrangler.jsonc`) |
-| `workers/identity/src/app-brand.ts` | per-app `APP_PRODUCT_NAME` (each app is a different product)                                                                                                                                  |
+| File                                | What lives here                                                                                                                                                                           |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/config/src/brand.ts`      | brand.{name, short, supportEmail}; cookies.prefix; auth.{providerId, passkeyRpName, twoFactorIssuer}                                                                                      |
+| `packages/config/src/deploy.ts`     | baseDomain, devDomain, workerPrefix, cloudflareAccountId (code-consumed values only; per-env D1 ids, routes, domains, and resource names live directly in each worker's `wrangler.jsonc`) |
+| `workers/identity/src/app-brand.ts` | per-app `APP_PRODUCT_NAME` (each app is a different product)                                                                                                                              |
 
 **Do not** scatter brand/domain/cookie literals through code. Anything new
 that needs branding reads from `@si/config` (or from the app's local
@@ -29,7 +29,7 @@ observability, …).
 
 Local dev runs against the staging top level with **`.dev.vars` overrides**
 (`ENVIRONMENT=development`, local URLs, dev secrets) seeded by each worker's
-`scripts/bootstrap.ts`; the D1/queue/DO/AE local sims key on names, not remote
+`scripts/env-init.ts`; the D1/queue/DO/AE local sims key on names, not remote
 ids. After editing a `wrangler.jsonc` or `packages/config/src/deploy.ts`,
 regenerate per-service worker types: `cd <service> && bun run types`.
 
@@ -44,7 +44,6 @@ import from `@si/config` rather than introducing a literal:
 - `workers/bouncer/src/session.ts` — session_token cookie name
 - `packages/auth/src/server.ts` — allowedHosts, cookiePrefix per-app, providerId;
   `*.{apex}` trustedOrigins (cross-subdomain callbackURL trust)
-- `packages/auth/src/components/sign-in-card.tsx` — providerId + button label
 - `workers/identity/src/lib/return-to.ts` — post-auth `returnTo` open-redirect guard.
   Trusts the apex + every subdomain of `AUTH_DOMAIN` (a `.{baseDomain}` /
   `.{devDomain}` var rendered into identity's wrangler vars, allowlisted into the
@@ -106,8 +105,8 @@ one worktree at a time (machine-global proxy + hostnames).
   server-fn base (`tanstackStart({ serverFns: { base: "/_sfn/<app>" } })` in
   its vite.config.ts) because Start's client calls server fns at the APEX,
   outside the mount — bouncer passes those paths through unstripped to the
-  owning worker. Full history in the P1 decision log in
-  `docs/exec-plans/active/0001-greenfield-bootstrap.md`.
+  owning worker. Full detail in the P1 decision log in
+  `docs/exec-plans/completed/0001-greenfield-bootstrap.md`.
 - **Browser automation is set up** (`docs/browser-automation.md`):
   **agent-browser** runs standalone locally (manages its own Chrome; one
   command at a time — concurrent/backgrounded calls wedge its daemon) or
@@ -118,9 +117,9 @@ one worktree at a time (machine-global proxy + hostnames).
   CI — manual only.
 - **`vp check`** has a per-file vs workspace inconsistency that surfaces
   ~50–250 phantom errors inside `__tests__/` (vitest globals not visible to
-  the per-file checker). This is identical in the source repo — `vp check`
-  inside `workers/guestlist` returns 251 errors there too. Treat workspace-wide
-  `bun run check` from root as the reference signal; the `src/` tree is clean.
+  the per-file checker) — `vp check` inside `workers/guestlist` returns 251
+  errors, for example. Treat workspace-wide `bun run check` from root as the
+  reference signal; the `src/` tree is clean.
 - **`worker-configuration.d.ts`** is generated by `wrangler types`. After
   editing a `wrangler.jsonc` or `packages/config/src/deploy.ts`, run
   `bun run types` per service to refresh the typed Env shape.
@@ -167,7 +166,7 @@ ships the admin UI for managing orgs/members/invitations. SCIM is not wired —
 build it as a separate guestlist plugin reading the org plugin's hooks once an
 enterprise customer needs it.
 
-## Skill loading (carried over)
+## Skill loading
 
 <!-- intent-skills:start -->
 

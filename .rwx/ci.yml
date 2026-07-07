@@ -7,9 +7,8 @@
 # GATE = one task PER PACKAGE, each with a `filter`, so RWX caches them
 # independently (content-based caching keys off the filtered input filesystem):
 #   - typecheck-<pkg>: `cd <pkg> && bun run typecheck` (its own `tsgo --noEmit`).
-#     Splitting per-package is also what FIXES the old OOM hang — `vp run -r
-#     typecheck` fanned ~15 tsgo processes onto ONE box and
-#     deadlocked; one tsgo per agent doesn't.
+#     Splitting per-package keeps each tsgo process on its own agent, so no
+#     single box runs all ~15 processes at once.
 #   - test-<pkg>: `captain run si-<pkg>` (suite in .captain/config.yml).
 #     One `vp test` process per machine sidesteps the workerd dev-registry
 #     contention; Captain emits rwx-v1-json into `outputs.test-results` for inline
@@ -37,12 +36,11 @@ on:
       pr-title: ""
   github:
     # Push only triggers CI on main: post-merge verification + the deploy. Feature
-    # branches are verified through the pull_request trigger below. This is what
-    # kills the duplicate runs: previously a push to a branch with an open PR fired
-    # BOTH a push run and a PR `synchronize` run for the same SHA, and the branch
-    # concurrency pool (`cancel-running`) then killed the in-flight push run ~1m in.
-    # One commit is now verified once. (Trade-off: a branch with no open PR gets no
-    # CI until a PR exists; open a draft PR if you want CI sooner.)
+    # branches are verified through the pull_request trigger below. Restricting
+    # push-triggered CI to main avoids duplicate runs on one SHA: a push to a
+    # branch with an open PR would otherwise also fire the PR's `synchronize`
+    # run, racing in the same concurrency pool. Trade-off: a branch with no
+    # open PR gets no CI until a PR exists; open a draft PR for earlier CI.
     push:
       if: ${{ event.git.branch == 'main' }}
       title: "CI: ${{ event.github.push.head_commit.message }}"
@@ -136,8 +134,7 @@ aliases:
 
 tasks:
   # Squash-merging makes the PR TITLE the main-branch commit message, and
-  # release-please silently DROPS commits it cannot parse (the ops-pass squash
-  # "Ops maintenance pass: …" contributed nothing to versioning). Enforce
+  # release-please silently drops commits it cannot parse. Enforce
   # conventional-commit PR titles here so every merged commit is
   # release-please-parseable. Skipped outside PRs (pr-title is "" there).
   - key: pr-title-lint
@@ -201,9 +198,9 @@ tasks:
   - key: node
     call: nodejs/install 1.1.14
     with:
-      # 24.x: native TS type-stripping is ON by default, so the workers tests can
-      # import .ts deps (e.g. @si/config → deploy.ts) at startup. node 22.12
-      # can't load .ts natively → ERR_UNKNOWN_FILE_EXTENSION (bouncer/guestlist).
+      # 24.x: native TS type-stripping is ON by default, required for the
+      # workers tests to import .ts deps (e.g. @si/config → deploy.ts) at
+      # startup.
       node-version: 24.16.0
 
   # --ignore-scripts skips the root `prepare` (vp config + git hook wiring) — it's
@@ -211,14 +208,14 @@ tasks:
   # here anyway (no `trustedDependencies`), so this only drops that dev prepare,
   # and it means CI needs no `.git` dir.
   #
-  # `filter`: install's result depends ONLY on the dependency manifests — without
-  # this, the full clone (incl. .git, which changes every commit) is in the cache
-  # key and install re-executes on every push (docs/ops/01, RC1).
+  # `filter`: install's result depends ONLY on the dependency manifests — the
+  # full clone (incl. .git, which changes every commit) must stay out of the
+  # cache key, or install re-executes on every push.
   # `outputs.filesystem`: only node_modules is the product. bun's global cache
-  # under /home/ubuntu/.bun (registry manifests, tmp) is NOT byte-reproducible,
-  # lives OUTSIDE the workspace where downstream `filter`s can't exclude it, and
-  # poisoned every gate task's cache key whenever install re-ran (docs/ops/01,
-  # RC2). $HOME confirmed as /home/ubuntu via probe run a5856c34.
+  # under /home/ubuntu/.bun (registry manifests, tmp) is NOT byte-reproducible
+  # and lives OUTSIDE the workspace where downstream `filter`s can't exclude
+  # it, so it is scrubbed to keep gate task cache keys stable. $HOME is
+  # /home/ubuntu.
   - key: install
     use: [code, bun]
     run: bun install --frozen-lockfile --ignore-scripts
@@ -236,12 +233,12 @@ tasks:
     timeout: 8m
 
   # Fresh-clone setup the gate depends on: seed .dev.vars ONLY (`bun run
-  # bootstrap` = `vp run -r env:init` post docs/ops/05 — no migrations, no
-  # sqlite; tests self-apply migrations via TEST_MIGRATIONS). Now filterable:
-  # env:init reads only dev-config + each worker's seeder + the vp/workspace
-  # plumbing, so it cache-hits on any commit that doesn't touch those. Output
-  # scrub kept as belt-and-suspenders (vp's task-cache sqlite is still written;
-  # the .wrangler negation guards against a future task reintroducing state).
+  # bootstrap` = `vp run -r env:init` — no migrations, no sqlite; tests
+  # self-apply migrations via TEST_MIGRATIONS). Filterable: env:init reads
+  # only dev-config + each worker's seeder + the vp/workspace plumbing, so it
+  # cache-hits on any commit that doesn't touch those. Output scrub is a
+  # safety net: vp's task-cache sqlite is still written; the .wrangler
+  # negation guards against a future task reintroducing state.
   - key: bootstrap
     use: install
     run: bun run bootstrap
@@ -254,12 +251,12 @@ tasks:
       - packages/*/package.json
       # vp resolves the whole task graph up front: package vite configs
       # define tasks that worker tasks dependsOn (@si/stripe#codegen from
-      # guestlist's build) — without them in the layer, `vp run -r env:init`
-      # dies with "Task 'codegen' not found in package @si/stripe".
+      # guestlist's build), so they must be in the filter for
+      # `vp run -r env:init` to resolve.
       - packages/*/vite.config.ts
       # @si/stripe's env:init regenerates the gitignored src/generated.ts
-      # stub (fetch.ts + the product/price config it reads) — without these
-      # in the layer, bootstrap dies with "Module not found scripts/fetch.ts"
+      # stub (fetch.ts + the product/price config it reads), so these must
+      # be in the filter for bootstrap to find them.
       - packages/stripe/scripts/**
       - packages/stripe/src/config.ts
       - package.json
@@ -292,8 +289,8 @@ tasks:
       - workers/*/package.json
       - packages/*/package.json
       - "**/wrangler.jsonc"
-      # wrangler types validates the config's `main` entry exists on disk
-      # (verified: run 1 failed with `The entry-point file at "src/index.ts"
+      # wrangler types validates that the config's `main` entry exists on
+      # disk, so worker.ts/index.ts must be in the filter.
       - workers/*/src/worker.ts
       - workers/*/src/index.ts
     outputs:

@@ -1,8 +1,7 @@
 # somewhatintelligent — staging deploy lane: changed-subset, promote-over-rebuild
-# (docs/ops/04 §5). Called as an embedded run from .rwx/ci.yml after the gate
-# (replaces the old full-fleet .rwx/deploy.yml call for STAGING; deploy.yml
-# remains the env-parameterized full-fleet reference used by force-full
-# recovery guidance and manual runs).
+# (docs/ops/04 §5). Called as an embedded run from .rwx/ci.yml after the gate.
+# deploy.yml is the env-parameterized full-fleet reference used by force-full
+# recovery guidance and manual runs.
 #
 # Per push to main: affected workers only (scripts/changed-workers.sh — a
 # packages/* or rpc-worker change still fans out to the whole platform fleet;
@@ -29,7 +28,7 @@ on:
       gh-deployment-env: staging
       gh-deployment-url: https://staging.somewhatintelligent.ca
 
-# Same pool as the old staging lane: deploys to staging never race.
+# Concurrency pool: deploys to staging never race.
 concurrency-pools:
   - id: somewhatintelligent/somewhatintelligent:deploy-staging
     capacity: 1
@@ -73,12 +72,10 @@ tasks:
     with:
       node-version: 24.16.0
 
-  # UNFILTERED install, same shape as deploy.yml's — deploy/preview lanes
-  # BUILD the workers, and the ci.yml-style outputs filter (node_modules/**
-  # only) drops workspace bin links builds need (first live run: identity's
-  # `platform-og` bin from packages/og was missing → "cannot find binary
-  # path"). The gate never builds, so its filtered install stays as-is;
-  # here correctness beats sharing cache entries with it.
+  # Unfiltered install (same shape as deploy.yml's): this lane builds the
+  # workers, and a filtered install (ci.yml's node_modules/**-only outputs)
+  # drops workspace bin links the build needs. The gate never builds, so its
+  # filtered install stays as-is.
   - key: install
     use: [code, bun]
     run: bun install --frozen-lockfile --ignore-scripts
@@ -92,8 +89,7 @@ tasks:
     if: ${{ init.deploy }}
     cache: false
     env:
-      # The RWX github context is not provided to this public repo's runs
-      # (greenroom, private, gets it; this repo demonstrably does not), so
+      # The RWX github context is not provided to this public repo's runs, so
       # detect reads via the same automation-app token the deploy task uses —
       # fine here because detect is deploy-gated (main-only, vault-unlocked).
       GH_TOKEN:

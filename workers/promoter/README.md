@@ -1,6 +1,6 @@
 # promoter
 
-Queue consumer for outbound email (Resend) and scheduled jobs.
+Outbound transactional email, exposed to other workers as a typed RPC surface over a service binding. Sends via Resend in staging and Cloudflare Email Service in production.
 
 ## Releases
 

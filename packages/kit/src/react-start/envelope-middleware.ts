@@ -4,9 +4,9 @@
  * the TSS request context as `ctx.principal`. The single trust source for
  * downstream handlers — see `docs/REQUEST-FLOW.md` §4 + §8.
  *
- * This is the zero-hop replacement for the old `sessionMiddleware → RPC
- * guestlist on every request` path. Mutations that need plugin-extended BA
- * fields still call `getSession` explicitly at the callsite (§9.0.1).
+ * Verification is zero-hop: no per-request guestlist RPC. Mutations that
+ * need plugin-extended BA fields still call `getSession` explicitly at the
+ * callsite (§9.0.1).
  */
 import { createMiddleware } from "@tanstack/react-start";
 import {

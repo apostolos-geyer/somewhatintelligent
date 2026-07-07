@@ -9,9 +9,9 @@ import { getActorId, getActorKind, getCallerApp, getRequestId } from "@si/kit/re
 // need `${origin}/api/...` URLs. Guestlist is never reached cross-origin
 // from this app.
 //
-// Sits at `/api/$` (one level up from the old `/api/auth/$`) so the same
-// passthrough covers `/api/auth/*`, `/api/avatar/*`, and any future
-// guestlist-native API surfaces without per-prefix duplication.
+// Sits at `/api/$` so the same passthrough covers `/api/auth/*`,
+// `/api/avatar/*`, and any future guestlist-native API surfaces without
+// per-prefix duplication.
 async function proxy(request: Request): Promise<Response> {
   const url = new URL(request.url);
   url.protocol = "http:";

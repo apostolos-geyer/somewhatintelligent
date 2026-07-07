@@ -1,21 +1,16 @@
 import { SELF, env } from "cloudflare:test";
 
-// REGRESSION — multi-host envelope stamping.
+// Multi-host envelope stamping.
 //
-// getStamper (src/envelope.ts) memoizes the stamper per isolate, so the
-// `resolveHost` it captures is the one from the FIRST request the isolate
-// serves. The old call site passed `() => host` — a closure over that first
-// request's hostname — which froze it into every envelope the isolate ever
-// minted. Harmless while a bouncer fronted exactly ONE envelope-verified host,
-// it breaks the moment one isolate serves multiple hosts: an isolate warmed on
-// host A stamps `host: A` into envelopes for host B's requests, and the apps'
-// verifiers (which pin expectedHost to their own URL) reject with host_mismatch
-// — flip-flopping as isolates recycle.
+// getStamper (src/envelope.ts) memoizes the stamper per isolate. The stamper
+// derives the host from the request argument passed to resolveHost on every
+// stamp, so each envelope carries the host of the request it was minted for
+// even when one isolate serves multiple hosts (the apps' verifiers pin
+// expectedHost to their own URL and reject a mismatched host).
 //
-// The fix derives the host from the request ARGUMENT the stamper passes to
-// resolveHost on every stamp. This test drives TWO hosts through ONE isolate
-// and decodes the envelope each upstream stub received (echoed via
-// `x-stub-echo-att` — see mocks/app-stub.js): each must carry its own host.
+// This test drives TWO hosts through ONE isolate and decodes the envelope
+// each upstream stub received (echoed via `x-stub-echo-att` — see
+// mocks/app-stub.js): each must carry its own host.
 //
 // Own file = fresh isolate (module-level stamper cache + configCache).
 
@@ -47,8 +42,8 @@ describe("envelope host stamping across hosts in one isolate", () => {
     expect(firstAtt).toBeTruthy();
     expect(decodeEnvelopeHost(firstAtt!)).toBe("first.test");
 
-    // … then hit a DIFFERENT host in the same isolate. Pre-fix this envelope
-    // said "first.test" (the frozen warming host) → downstream host_mismatch.
+    // … then hit a DIFFERENT host in the same isolate: its envelope must
+    // carry its own host, not the warming host.
     const second = await SELF.fetch("https://second.test/");
     expect(second.status).toBe(200);
     const secondAtt = second.headers.get("x-stub-echo-att");

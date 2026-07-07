@@ -113,10 +113,10 @@ bun scripts/provision/all.ts --env staging --write-secrets
 
 # 6. Deploy the fleet (staging = top-level wrangler.jsonc, no --env flag).
 #    Canonical order (bouncer LAST — see scripts/deploy-worker.sh):
-for w in promoter roadie guestlist identity bouncer; do
+for w in promoter roadie guestlist identity store bouncer; do
   bash scripts/deploy-worker.sh ship "$w" staging
 done
-cd inbox && bun run deploy   # once inbox/ lands from the parallel rebrand
+cd inbox && bun run deploy   # vendored inbox app deploys manually, outside RWX
 
 # 7. Seed idempotent smoke-test users + verify Access.
 bun scripts/provision/seed-users.ts --dry-run

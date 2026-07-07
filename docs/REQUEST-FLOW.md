@@ -1,6 +1,6 @@
 ---
 title: Request Flow & Trust Architecture
-subtitle: How identity, attestation, and session state move through Greenroom
+subtitle: How identity, attestation, and session state move through the platform
 ---
 
 # Request Flow & Trust Architecture
@@ -138,7 +138,7 @@ Deliberately excluded — apps that need these must opt into a guestlist RPC at 
 
 ### 3.5 Payload archetypes — active set
 
-Today there are exactly two active archetypes. The discriminated `actor` union exists so additional kinds can be added without breaking consumers; non-user variants are documented in §6.8 as forward-compatibility, not as immediate work.
+Today there are exactly two active archetypes. The discriminated `actor` union exists so additional kinds can be added without breaking consumers; non-user variants are documented in §6.6 as forward-compatibility, not as immediate work.
 
 | Archetype          | `actor`             | `session`             | `activeOrgId`      | When                                  |
 | ------------------ | ------------------- | --------------------- | ------------------ | ------------------------------------- |
@@ -298,7 +298,7 @@ sequenceDiagram
   A-->>B: created room
 ```
 
-The opt-in RPC happens **at the authz decision point inside the handler**, not in middleware. This is rule 4 from the live conversation: global middleware reads envelope only; mutations that need extra data RPC explicitly.
+The opt-in RPC happens **at the authz decision point inside the handler**, not in middleware. Global middleware reads the envelope only; mutations that need extra data RPC explicitly.
 
 ### 6.4 WebSocket upgrade, authenticated user
 
@@ -482,28 +482,26 @@ The phases are sequenced so each lands as a self-contained PR with no regression
 - **New** `createEnvelopeMiddleware(opts)` in `@si/kit/react-start`. Request-type middleware. Local Ed25519 verify. Projects to `ctx.principal` (the §8 discriminated union). Zero RPC.
 - **New** `createPrincipalGate({ envelope, predicate, onReject })` factory. Composes by reference on the singleton envelope middleware. TSS dedupes by reference — verified against `flattenMiddlewares` in `@tanstack/start-client-core/dist/esm/createServerFn.js:147` — so attaching a gate to a server fn does not double-run envelope verification.
 - **(Optional, defer if not needed)** `createFullSessionMiddleware({ envelope, getGuestlist })` — function-type middleware that composes on envelope and adds `ctx.fullSession` for the rare handler that wants plugin-extended BA fields. Not used by anything today; ship only when there's a caller.
-- **`platform.getSession`, `platform.getActiveOrgId` dev fallback both stay** — they back the client-side `loadSession` path (§9). (`createSessionMiddleware`/`createGateMiddleware`, once slated to stay alongside them, have since been removed from `@si/kit` entirely — they had zero real consumers.)
+- **`platform.getSession`, `platform.getActiveOrgId` dev fallback both stay** — they back the client-side `loadSession` path (§9). `@si/kit` has no `createSessionMiddleware`/`createGateMiddleware`; `createEnvelopeMiddleware`/`createPrincipalGate` (this phase) are the only request-scoped auth middleware factories it exports.
 
 #### Phase 4 — Identity server-side migration
 
-Identity's `workers/identity/src/start.ts` already uses the singleton `envelopeMiddleware`, the same migration pattern established in Phases 1–3. `sessionMiddleware` itself has since been removed from `@si/kit` entirely (zero real consumers), so there's no longer a legacy global path to swap away from.
+Identity's `workers/identity/src/start.ts` uses the singleton `envelopeMiddleware`, the pattern established in Phases 1–3. `@si/kit` has no `sessionMiddleware`; `envelopeMiddleware` is the only global request-scoped auth surface an app wires into `start.ts`.
 
 #### Phase 5 — Production key registry
 
-Required before this fork is shippable to prod. Independent of phases 1–4 (could land first, last, or in parallel).
-
-- **`packages/config/src/bouncer-attestation.ts`**: add the real per-fork production `kid` + base64-SPKI public key. The `dev` kid stays in the map for local-dev verification.
-- **Bouncer secrets**: `wrangler secret put BNC_ATT_PRIV` with the corresponding Ed25519 private key. `BNC_ATT_KID` var set to the new kid.
-- **Runbook**: update `docs/secrets.md` if the rotation steps need clarification. The file already documents the pattern (see `bouncer-attestation.ts:18-24`).
-- Without this phase, a prod deploy either accepts forgeable envelopes (`BNC_ATT_KID=dev`) or 403s everything (real kid, public half not registered).
+- **`packages/config/src/bouncer-attestation.ts`** maps the `production` kid to the real production Ed25519 public key (base64-SPKI); the `dev` kid stays in the map for local-dev verification only.
+- **Bouncer** sets `BNC_ATT_KID: "production"` in `env.production` (`workers/bouncer/wrangler.jsonc`); the paired `BNC_ATT_PRIV` is a wrangler secret, provisioned via `bun run secrets production` (`docs/secrets.md`).
+- **Runbook**: `docs/secrets.md` (`Rotating BNC_ATT_PRIV`) documents the rotation sequence (see `bouncer-attestation.ts:18-24`).
+- Staging signs with the well-known `dev` kid; production signs with `production`. Each env accepts only kids registered in `BOUNCER_ATTESTATION_KEYS`, so a deploy can't silently fall back to a forgeable key.
 
 ### 9.3 What is explicitly deferred
 
 These were considered and ruled out for this refactor. Re-open only with a concrete driver.
 
 - **Implementing service/webhook actor kinds.** Shape is open (§6.6.3); no implementation. Defer until a real non-browser caller exists.
-- **`SessionReaderEntrypoint` on guestlist** (the "RPC reader returning getCookieCache result" pattern proposed and rejected mid-conversation). Redundant with what `auth.api.getSession` already does internally per §5. Adds complexity, no perf win.
-- **Pushing `BETTER_AUTH_SECRET` to bouncer or apps for local cookie verification.** Violates INV-3. We migrated away from this posture and we're not going back.
+- **`SessionReaderEntrypoint` on guestlist** — a dedicated RPC entrypoint returning `getCookieCache`'s result. Redundant with what `auth.api.getSession` already does internally per §5. Adds complexity, no perf win.
+- **Pushing `BETTER_AUTH_SECRET` to bouncer or apps for local cookie verification.** Violates INV-3 — guestlist alone holds the secret; this is a deliberate posture, not an oversight.
 - **Client-side migration to `Principal`.** Out of scope per §9. Server-side `ctx.principal` lives alongside client-side `PlatformSession` indefinitely; revisit only if/when client-side `loadSession` becomes a perf concern (it isn't today — it's called once per navigation, not once per request).
 - **WS-message-level envelope re-verification.** The upgrade carries the envelope; the connection is trusted for its lifetime. Stale-principal handling for long WS sessions is a separate concern (§10.2).
 
@@ -514,7 +512,7 @@ These were considered and ruled out for this refactor. Re-open only with a concr
 ### 10.1 Explicitly out of scope
 
 - **No local cookie verification in apps.** INV-3. We don't ship `BETTER_AUTH_SECRET` to bouncer or apps. Apps verify envelopes (asymmetric, public key only), not cookies.
-- **No "session reader entrypoint" on guestlist.** Earlier proposal; rejected. `auth.api.getSession` already does the cache-hit fast path (§5). A separate entrypoint would be redundant complexity.
+- **No "session reader entrypoint" on guestlist.** `auth.api.getSession` already does the cache-hit fast path (§5). A separate entrypoint would be redundant complexity.
 - **No per-request envelope re-mint.** Envelope lives for the request's lifetime. Long-lived connections (WebSockets, SSE) hold the principal captured at handshake.
 - **No envelope on the response.** Bouncer strips `x-platform-att` from upstream responses defensively. The envelope is internal-only.
 - **No client-side `Principal` migration.** Client-side auth surface stays on `PlatformSession` via `loadSession` + `AuthProvider`. Server-side gets `ctx.principal`. They coexist.

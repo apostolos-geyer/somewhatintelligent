@@ -1,7 +1,7 @@
-// Administrative methods. Authorization is the caller's responsibility: v1's
+// Administrative methods. Authorization is the caller's responsibility: the
 // trust boundary is the service binding, so whichever consumer Worker holds
-// an admin surface must check the admin role before invoking. With the owner
-// model retired, the usage/list surface no longer partitions by any key —
+// an admin surface must check the admin role before invoking. The usage/list
+// surface reports service-wide totals only, not partitioned by owner or app —
 // consumer apps track user-level quotas in their own databases.
 import { count, desc, eq, gt, isNull, sum } from "drizzle-orm";
 import { ADMIN_LIST_DEFAULT_LIMIT, ADMIN_LIST_MAX_LIMIT } from "../config";
@@ -17,9 +17,9 @@ import { blobReference, deletionQueue, physicalBlob } from "../schema";
 
 export type AdminUsageValue = { bytes: number; blobCount: number };
 
-// Aggregate byte usage + blob count across the entire service. Used by
-// operator dashboards; per-user or per-app accounting is retired along with
-// the owner model (consumer apps enforce their own quotas).
+// Aggregate byte usage + blob count across the entire service, for operator
+// dashboards. Not partitioned by user or app — consumer apps enforce their
+// own quotas.
 export async function adminUsage(
   roadie: RoadieInstance,
   _input: Record<string, never>,
@@ -180,15 +180,12 @@ export type AdminTriggerTaskValue = {
   status?: "deferred";
 };
 
-// Isolate-local concurrency guard. This prevents a single Worker isolate from
-// running the same scheduled task twice in parallel (e.g. an operator trigger
-// landing on the same isolate as a cron firing). It does NOT coordinate
-// across isolates — if two isolates both receive a trigger for the same task
-// concurrently, both will run. At v1 scale this is acceptable because the
-// scheduled tasks are themselves idempotent (bounded-batch selects the next
-// N rows, processes them, exits); at worst two firings split a batch. If
-// cross-isolate coordination becomes necessary, this moves to a durable
-// object or a D1-backed lease.
+// Isolate-local concurrency guard: prevents this Worker isolate from running
+// the same scheduled task twice in parallel (e.g. an operator trigger landing
+// on the same isolate as a cron firing). Does not coordinate across isolates —
+// two isolates can each run the same task concurrently; the scheduled tasks
+// are idempotent (bounded-batch selects the next N rows, processes them,
+// exits), so at worst two firings split a batch.
 const running = new Set<ScheduledTaskName>();
 
 export async function adminTriggerTask(

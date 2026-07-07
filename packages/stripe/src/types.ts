@@ -1,6 +1,6 @@
 /**
- * Product tier identifier. This fork ships a single paid tier — add more
- * union members here (and a matching entry in `./config`'s `products`) when
+ * Product tier identifier. Ships a single paid tier — add more union
+ * members here (and a matching entry in `./config`'s `products`) when
  * the business needs more than one.
  */
 export type ProductTier = "member";

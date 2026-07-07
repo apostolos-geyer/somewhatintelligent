@@ -10,8 +10,7 @@
  *   - Iosevka      — the monospace. Code, IDs, timestamps, uppercase
  *     annotation labels — the "dimension text" of the drawing.
  *
- * The legacy brand faces were removed with the old identity — only the
- * Iosevka families are vendored.
+ * Only the Iosevka families are vendored.
  */
 
 // Font stack definitions — CSS var names + actual font family values

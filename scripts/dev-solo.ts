@@ -19,8 +19,8 @@
  * bindings proxy through your account. The all-local fleet (`bun run dev` at
  * root) remains the canonical path for cross-worker work and schema changes.
  *
- * Scope guard: keep this ≤ ~60 lines and dev-only — it must never grow into a
- * second render-wrangler (docs/ops/02 §4 deleted that on purpose).
+ * Scope guard: keep this ≤ ~60 lines and dev-only — wrangler configs are
+ * checked-in source, never generated.
  */
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { homedir } from "node:os";

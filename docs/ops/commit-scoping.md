@@ -79,6 +79,5 @@ follows verification without delay.
 5. Rollback / re-ship: `rwx dispatch si-reship-worker --param worker=store
 --param tag=store-v0.1.0` (`.rwx/release.yml`).
 
-See [`docs/ops/rwx-setup.md`](rwx-setup.md) for activation status (the lanes
-are scaffolding-only until the RWX app + vaults exist) and
+See [`docs/ops/rwx-setup.md`](rwx-setup.md) for activation status and
 `.agents/skills/release/SKILL.md` for the operational levers.

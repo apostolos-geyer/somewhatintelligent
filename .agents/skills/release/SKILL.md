@@ -18,7 +18,7 @@ CI/CD is entirely RWX (no GitHub Actions). Monitor any lane with
 
 `.rwx/ci.yml` gates, then calls `.rwx/promote-staging.yml`: affected workers
 only (`scripts/changed-workers.sh`; packages/* or an RPC-worker change fans
-out to all 7), migrate-before-code per worker, promote the PR-built version
+out to all 6), migrate-before-code per worker, promote the PR-built version
 when one exists, otherwise full build+deploy, then smoke test
 (`scripts/smoke-test.sh`). Nothing to do manually.
 
@@ -34,13 +34,13 @@ release-please (manifest mode, per-worker components) maintains a release PR
 on main. Merging it creates per-worker tags `<worker>-v<x.y.z>`;
 `.rwx/release-please.yml` then deploys ONLY the released workers, in canonical
 order (bouncer last), migrate-before-code, smoke test after. Versions are
-per-worker (all currently ≥0.2.1); `release-please-config.json` is the
-component map.
+per-worker (all currently `0.0.0`, pre-first-release); `release-please-config.json`
+is the component map.
 
 ## Re-ship a single worker (rollback / re-deploy)
 
 ```sh
-rwx dispatch reship-worker --param worker=<name> --param tag=<worker>-v<x.y.z>
+rwx dispatch si-reship-worker --param worker=<name> --param tag=<worker>-v<x.y.z>
 ```
 
 One worker per dispatch (`.rwx/release.yml`). Tags are the deployable ledger —
@@ -61,5 +61,7 @@ token scope). CLI test: `rwx run .rwx/preview.yml --init pr-number=<open PR#>`.
   token throws D1 7403s.
 - Migrations always run before code, per worker (`scripts/deploy-worker.sh`
   is the shared mechanic all lanes call).
-- Deploy order is canonical with bouncer LAST (error-10143 history —
-  `docs/runbooks/PRODUCTION-DEPLOY.md` §deploy-order).
+- Deploy order is canonical with bouncer LAST: a worker's service binding
+  requires the Worker it points to already exist, or `wrangler deploy` fails
+  with Cloudflare API error 10143 (`docs/runbooks/PRODUCTION-DEPLOY.md`
+  §3 "Deploy order").

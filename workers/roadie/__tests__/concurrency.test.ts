@@ -15,12 +15,10 @@ import {
   sha256Hex,
 } from "./helpers";
 
-// Same-blob concurrency tests. These exercise the race fixes on the refcount
-// math and the ARC-at-zero guards. Before the fixes these scenarios would
-// variously lose refcount increments, double-count, or GC a blob with a live
-// reference. Each test drives the interleavings by issuing multiple calls
-// concurrently via Promise.all — D1 serializes their atomic SQL fragments,
-// and the assertions pin down the expected outcome.
+// Same-blob concurrency tests exercising the refcount math and the
+// ARC-at-zero guards. Each test drives interleavings by issuing multiple
+// calls concurrently via Promise.all — D1 serializes their atomic SQL
+// fragments — and the assertions pin down the expected outcome.
 
 describe("refcount concurrency", () => {
   async function setupReadyBlob(
@@ -48,8 +46,8 @@ describe("refcount concurrency", () => {
 
   test("parallel dedup-hit registerUpload calls increment refcount atomically", async () => {
     // Start with a ready blob (refcount = 1), then issue N parallel dedup
-    // registrations. Final refcount must be 1 + N. Pre-fix, read-then-set
-    // would collapse some increments.
+    // registrations. Final refcount must be 1 + N — increments must be
+    // atomic across concurrent registrations.
     const roadie = makeRoadie();
     const { blobId, hash, payload } = await setupReadyBlob(roadie);
 

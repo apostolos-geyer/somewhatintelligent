@@ -7,14 +7,13 @@
  *    that's roadie's `BLOBS` bucket; `inbox`'s bucket joins automatically
  *    once that worker lands, no script change needed.
  * 2. Apply the canonical CORS policy to each bucket found (mirrors
- *    `workers/roadie/scripts/setup-cors.ts` from the source template):
- *    presigned browser-direct PUT/GET/HEAD from the environment's portal
- *    origin(s).
+ *    `workers/roadie/scripts/setup-cors.ts`): presigned browser-direct
+ *    PUT/GET/HEAD from the environment's portal origin(s).
  * 3. For the roadie worker specifically: mint (or reuse) an account-owned R2
  *    read+write token and derive the S3-compatible keypair roadie's
  *    `sign.ts` needs — Access Key ID = token id, Secret Access Key =
  *    SHA-256 hex of the token value (Cloudflare's documented derivation;
- *    see docs/runbooks/roadie-r2-provisioning.md in the source template).
+ *    see docs/runbooks/roadie-r2-provisioning.md).
  *    Prints `wrangler secret put` instructions by default; pass
  *    `--write-secrets` to run them (env-stripped, so wrangler's own OAuth
  *    login is used, never this suite's API token).

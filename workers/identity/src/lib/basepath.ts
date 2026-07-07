@@ -61,17 +61,14 @@ export function readMountMeta(): string | null {
  * The mount expressed as a TanStack Router `rewrite` pair (browser URL ↔
  * router-internal URL): strip the mount on input, prepend it on output.
  *
- * Why `rewrite` and NOT the `basepath` router option: TanStack Start owns
- * `basepath` — both its server handler (start-server-core
- * createStartHandler) and its client bootstrap (start-client-core
- * hydrateStart) call `router.update({ basepath: process.env.TSS_ROUTER_BASEPATH })`,
- * clobbering any basepath set in createRouter. With no plugin-level basepath
- * configured that define is "", which drops the mount, unmatches every
- * route, and unmounts the tree on the SPA-mode hydration invariant (the
- * "page renders then vanishes when the view transition ends" failure).
- * `rewrite` is the documented channel for exactly this asymmetric-mount
- * case: router.update() re-composes `options.rewrite` after the basepath
- * rewrite on every update, and Start never touches it.
+ * Uses `rewrite`, not the `basepath` router option: TanStack Start's server
+ * handler (start-server-core createStartHandler) and client bootstrap
+ * (start-client-core hydrateStart) both call
+ * `router.update({ basepath: process.env.TSS_ROUTER_BASEPATH })`, overriding
+ * any basepath set in createRouter with that build-time define. `rewrite` is
+ * the documented channel for an asymmetric mount: router.update()
+ * re-composes `options.rewrite` after the basepath rewrite on every update,
+ * and Start never touches it.
  * https://tanstack.com/router/latest/docs/guide/url-rewrites#interaction-with-basepath
  */
 export function mountRewrite(mount: string):

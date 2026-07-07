@@ -1,6 +1,6 @@
 ---
 title: Multi-Tenancy & White-Label
-subtitle: Organizations, brand-scoped data, theme/asset overrides, and SCIM for the greenroom platform
+subtitle: Organizations, org-scoped data, theme/asset overrides, and SCIM for the platform
 date: 2026-05-17
 ---
 
@@ -10,52 +10,44 @@ date: 2026-05-17
 > O-13 onward (theming, org logo, theme editor, OG, path-per-org bouncer,
 > SCIM) is still target spec.
 
-> **Amendment 2026-05-18** — implementation drifted from the original O-2
-> and O-10 designs during the dedupe pass (commit `d030349`). Two surfaces
-> were deleted as redundant with BA's native org plugin:
+> Org-role checks (§5, §6) resolve through BA's native
+> `auth.organization.getActiveMemberRole({ query: { organizationId } })`,
+> exposed via the wired `organizationClient()` plugin in
+> `workers/guestlist/src/client/plugins.ts`. The envelope carries only
+> `activeOrgId: string | null` — bouncer reads `session.activeOrganizationId`
+> directly from BA's getSession response (the org plugin enriches it), with
+> no extra RPC. Slug + role are fetched on demand at the point of use —
+> server-fn authz via `getActiveMemberRole`, UI display (e.g. identity's
+> org switcher) via direct `authClient.organization.*` calls from the
+> component.
 >
-> - **O-2 `getOrgRole` guestlist sugar**: replaced by BA's native
->   `auth.organization.getActiveMemberRole({ query: { organizationId } })`,
->   exposed via the wired `organizationClient()` plugin in
->   `workers/guestlist/src/client/plugins.ts`.
-> - **O-10 envelope shape**: originally `activeOrg: { id, slug, role } | null`
->   with a custom `/internal/active-org` route bouncer called on every
->   request. Cut to `activeOrgId: string | null` only. Bouncer reads
->   `session.activeOrganizationId` directly from BA's getSession response
->   (the org plugin enriches it). Slug + role are fetched on demand at the
->   point of use — server-fn authz via `getActiveMemberRole`, UI display
->   via an app-level `loadActiveOrgInfo` server fn called once per page
->   mount. Bouncer hot path no longer makes a second RPC.
->
-> The sections below describe the **shipped** shape (post-cleanup).
+> The sections below describe the **shipped** shape.
 
-The greenroom platform is **B2B2C**: cannabis brands pay for a presence
-on the platform; budtenders (retail-store staff at dispensaries) are the
-audience the brands are paying to reach. Cannabis advertising is heavily
-regulated, so brands engage budtenders through SaaS-mediated relationships
-rather than traditional ads.
+The platform is **B2B2C**: paying customer organizations get a presence
+on the platform; ordinary platform users are the audience those
+organizations reach. Organizations engage users through SaaS-mediated
+surfaces (org-published content, org-scoped resources) rather than
+owning their own separate deployment.
 
-- **Brand** = paying enterprise customer = an **organization**. Has its
-  own admins, its own theme, eventually its own subdomain. A brand's
-  staff are members of the brand's org.
-- **Budtender** = ordinary platform user. Authenticates against guestlist
+- **Org** = paying customer = an **organization**. Has its own admins,
+  its own theme, eventually its own subdomain. An org's staff are
+  members of that org.
+- **Solo user** = ordinary platform user. Authenticates against guestlist
   the same way anyone else does, but **does not belong to any org**.
-  Budtenders use the platform's public surfaces (DMs, account settings)
-  and interact with brand-owned surfaces (brand-published content)
-  without ever holding an org membership.
+  Solo users use the platform's public surfaces (DMs, account settings)
+  and interact with org-owned surfaces (org-published content) without
+  ever holding an org membership.
 - A user can belong to **zero, one, or many** orgs. The dominant case is
-  zero (budtenders are the majority); the paying case is one or many
-  (brand staff). The platform operator runs the spine.
+  zero (solo users are the majority); the paying case is one or many
+  (org staff). The platform operator runs the spine.
 
-Retailers (dispensaries themselves, as opposed to the brands selling in
-them) may become a second org type later — likely as a separate
-`organizationType` discriminator on the same `organization` table, with a
-different role set and a different relationship to budtenders (who work
-for retailers). Out of scope for v1; pencilled in §14 as an open
-question.
+A second org type (e.g. a distinct customer category with its own role
+set and its own relationship to solo users) may be added later — likely
+as a separate `organizationType` discriminator on the same `organization`
+table. Out of scope for v1; pencilled in §14 as an open question.
 
 > **v1 scope.** Operator-driven onboarding, no custom RBAC. The platform
-> admin (a single greenroom-staff user with `user.role === "admin"`)
+> admin (a single platform-staff user with `user.role === "admin"`)
 > creates orgs and invites/adds the first members from identity's existing
 > `/admin/*` surface. Org admins (`member.role === "admin" | "owner"`)
 > can only configure their org's theme + members. Three BA built-in roles
@@ -73,13 +65,13 @@ This doc covers four entangled concerns:
    request: cookie → guestlist → envelope → app. What the bouncer attestation
    carries, what apps trust, what apps re-verify.
 3. **Org-scoped data in apps** — app-owned rows tagged with `ownerOrgId`
-   (future transfers/inventory/etc. apps following the same pattern). How
-   an app asks "is this user an admin of this org?" without trusting the
+   (store and future org-scoped apps following the same pattern). How an
+   app asks "is this user an admin of this org?" without trusting the
    client.
 4. **White-label** — per-org theme tokens, logo/wordmark, OG images,
    eventually per-org domains. The override layer lives over
    `packages/design/`'s token system; no per-fork code edits needed for a
-   new brand.
+   new org.
 
 SCIM is a fifth concern (enterprise identity sync from Okta/Entra). It's
 out of scope for the first cut and pencilled in §11 as a follow-on plugin.
@@ -90,11 +82,11 @@ out of scope for the first cut and pencilled in §11 as a follow-on plugin.
 
 ```mermaid
 flowchart LR
-  brandAdmin(["Brand Admin<br/>(Acme Cannabis — org member)"]):::person
-  budtender(["Budtender<br/>(retail-store staff — no org)"]):::person
-  operator(["Platform Operator<br/>(greenroom staff)"]):::person
+  orgAdmin(["Org Admin<br/>(Acme — org member)"]):::person
+  soloUser(["Solo user<br/>(no org membership)"]):::person
+  operator(["Platform Operator<br/>(platform staff)"]):::person
 
-  subgraph greenroom["greenroom Platform"]
+  subgraph plat["Platform"]
     spine["Platform Spine<br/><i>bouncer · guestlist · identity · ...</i><br/>+ Better Auth organization plugin"]:::system
     themes[("Tenant Themes<br/><i>guestlist D1: org row + theme blob</i>")]:::store
   end
@@ -102,8 +94,8 @@ flowchart LR
   identitysub["Identity<br/><i>sign-in · org switcher (admins only)</i>"]:::ext
   scim["Okta / Entra ID<br/><i>future: SCIM provisioning</i>"]:::ext
 
-  brandAdmin -->|"manages own org · invites staff · sets theme"| identitysub
-  budtender -->|"authenticates · uses public + brand-owned surfaces"| spine
+  orgAdmin -->|"manages own org · invites staff · sets theme"| identitysub
+  soloUser -->|"authenticates · uses public + org-owned surfaces"| spine
   operator -->|"provisions orgs · global admin"| spine
   identitysub --> spine
   spine --> themes
@@ -122,9 +114,8 @@ as session authority, app→guestlist service binding — remain unchanged. This
 spec **layers on top**:
 
 - Guestlist gains the BA `organization` plugin tables and routes.
-- The bouncer envelope grows two optional fields: `activeOrgId` and
-  `activeOrgRole`.
-- Apps gain a `platform.getActiveOrg()` accessor analogous to
+- The bouncer envelope grows one optional field: `activeOrgId`.
+- Apps gain a `platform.getActiveOrgId()` accessor analogous to
   `platform.getEnvelope()`.
 - A new guestlist endpoint `/u/theme/:orgId` serves per-org theme overrides,
   consumed by every app's root layout the way `/u/avatar/:refId` is consumed
@@ -151,9 +142,9 @@ correlation — is unchanged.
 
 ## §2.1 Organization
 
-A platform-level entity owned by a brand. Created either by a platform
-operator (provisioning a new customer) or — once we trust the funnel — by
-self-signup. Each org has:
+A platform-level entity owned by a paying customer. Created either by a
+platform operator (provisioning a new customer) or — once we trust the
+funnel — by self-signup. Each org has:
 
 | Field       | Meaning                                                                                                |
 | ----------- | ------------------------------------------------------------------------------------------------------ |
@@ -176,48 +167,48 @@ A user can belong to zero, one, or many orgs. Membership is a join row:
 dynamic AC — see §6.3 for the future story).
 
 Importantly: **org membership ≠ app-internal role**. Org members are
-exclusively brand staff. Budtenders are not org members — they interact
-with brand-owned surfaces (e.g. an org-owned resource in some app) the
+exclusively org staff. Solo users are not org members — they interact
+with org-owned surfaces (e.g. an org-owned resource in some app) the
 same way any authenticated user does, subject to that app's own
-resource-level role table. Org membership only authorizes **brand-side
-admin** operations on the brand's own org — configuring that brand's
-theme, managing that brand's staff roster.
+resource-level role table. Org membership only authorizes **org-side
+admin** operations on that org's own data — configuring the org's theme,
+managing the org's staff roster.
 
 ### §2.2.1 Users without orgs (the majority case)
 
 A user with **zero memberships** is the _default_ user, not an edge case.
 The platform is the union of three populations:
 
-- **Budtenders** (zero memberships, `user.role === "user"`). The B2C
-  audience. Sign up and use the platform's public and brand-owned
+- **Solo users** (zero memberships, `user.role === "user"`). The B2C
+  audience. Sign up and use the platform's public and org-owned
   surfaces. Quantitatively the majority of users; product gravity
   centers here.
-- **Brand staff** (one or more memberships, `user.role === "user"`).
+- **Org staff** (one or more memberships, `user.role === "user"`).
   The B2B revenue side. Members of one or more org rows. May hold
   `owner / admin / member` roles in their orgs.
 - **Operators** (typically zero memberships, `user.role === "admin"`).
-  Greenroom staff. Authority is platform-wide; orgs are resources they
+  Platform staff. Authority is platform-wide; orgs are resources they
   manage, not surfaces they belong to.
 
 A user can transition between these populations:
 
-- A budtender invited as brand staff gains a membership and becomes
-  brand staff for that org (still also a budtender; the categories
-  aren't exclusive).
-- A brand admin removed from their org loses that membership and reverts
-  to budtender for that brand's surfaces.
+- A solo user invited as org staff gains a membership and becomes org
+  staff for that org (still also usable as a solo user elsewhere; the
+  categories aren't exclusive).
+- An org admin removed from their org loses that membership and reverts
+  to a solo user for that org's surfaces.
 
 What this means in practice:
 
-- `envelope.activeOrg` is `null` for zero-membership users; that's the
-  signed claim, not an error. **The hot path is `activeOrg === null`** —
+- `envelope.activeOrgId` is `null` for zero-membership users; that's the
+  signed claim, not an error. **The hot path is `activeOrgId === null`** —
   apps must render correctly for that case first.
 - Identity's UI gracefully degrades: the org switcher only appears when
-  the user has memberships or pending invitations. For budtenders the
+  the user has memberships or pending invitations. For solo users the
   header looks identical to a single-tenant app.
 - App shells work fully without an active org. Only surfaces that are
-  _inherently brand-scoped_ (creating an org-scoped resource, editing a
-  brand's theme, the brand's admin surfaces) require one.
+  _inherently org-scoped_ (creating an org-scoped resource, editing an
+  org's theme, an org's admin surfaces) require one.
 - Public surfaces (account settings, DMs) treat all authenticated users
   the same regardless of org status.
 
@@ -254,12 +245,11 @@ see §8.1.3 for the full allowlist). Lives at `org.metadata.theme` in the
 BA org table; cached in front by guestlist; served to apps as a CSS rule
 at page render time.
 
-Tenants do **not** override greenroom's internal palette names
-(`--color-sprout`, `--color-stigma`, etc.) — those are an implementation
-detail of greenroom's own default theme and may change between releases.
-Tenants only ever speak shadcn's standardized semantic token surface,
-which `packages/design/src/theme.css` already maps onto the internal
-palette (§8.1.2).
+Tenants do **not** override the platform's internal palette names — those
+are an implementation detail of the platform's own default theme and may
+change between releases. Tenants only ever speak shadcn's standardized
+semantic token surface, which `packages/design/src/theme.css` already
+maps onto the internal palette (§8.1.2).
 
 A tenant theme has three pieces:
 
@@ -269,7 +259,7 @@ A tenant theme has three pieces:
    parallel light/dark sub-maps. Keys validated against the
    shadcn allowlist.
 2. **Logo asset** — roadie reference to an SVG/PNG logo. Replaces the
-   greenroom wordmark in app chrome when an org is active and the
+   platform wordmark in app chrome when an org is active and the
    surface is org-scoped (e.g. identity's org-settings page).
 3. **Wordmark text** — short string (1-3 words). Replaces
    `platformConfig.brand.name` in the same places.
@@ -279,10 +269,10 @@ A tenant theme has three pieces:
 Two viable options, picked at deploy time per fork. The platform supports
 both shapes; only routing config differs.
 
-| Strategy              | Public URL                      | Pros                                                                                                  | Cons                                                                                                                                                        |
-| --------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Subdomain per org** | `acme.greenroom.app`            | Cleanest brand feel. Each org gets a "site". Custom domains (e.g. `app.acme.com`) layer in naturally. | Bouncer ROUTES grows per-org. CF Custom Domains have a per-zone limit (~100 in standard plans; 1000+ for enterprise). DNS automation needed for self-serve. |
-| **Path per org**      | `greenroom.app/o/acme/identity` | One CF Custom Domain. No DNS automation. Org switching is just a route change.                        | Cookies span all orgs (already the case, this is fine), but URLs look less branded. Custom domains require an extra layer.                                  |
+| Strategy              | Public URL                               | Pros                                                                                                  | Cons                                                                                                                                                        |
+| --------------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Subdomain per org** | `acme.somewhatintelligent.ca`            | Cleanest brand feel. Each org gets a "site". Custom domains (e.g. `app.acme.com`) layer in naturally. | Bouncer ROUTES grows per-org. CF Custom Domains have a per-zone limit (~100 in standard plans; 1000+ for enterprise). DNS automation needed for self-serve. |
+| **Path per org**      | `somewhatintelligent.ca/o/acme/identity` | One CF Custom Domain. No DNS automation. Org switching is just a route change.                        | Cookies span all orgs (already the case, this is fine), but URLs look less branded. Custom domains require an extra layer.                                  |
 
 **Recommendation: start with path-per-org for v1, design data and APIs to
 be subdomain-ready.** Cutover to subdomain-per-org happens by changing
@@ -291,7 +281,7 @@ because nothing in app code parses the host for org identity (that role
 belongs to the envelope's `activeOrgId`).
 
 > Custom domain support (e.g. `app.acme.com` → bouncer → the target app,
-> with Acme as activeOrg) is a separate concern handled in §10.3.
+> with Acme as the active org) is a separate concern handled in §10.3.
 
 ---
 
@@ -482,7 +472,7 @@ import {
 
 const orgStatement = {
   ...defaultStatements,
-  // Brand-platform-specific resources. Apps reference these on their
+  // Org-scoped platform-specific resources. Apps reference these on their
   // server side as `await platform.getGuestlist().hasOrgPermission({
   //   permissions: { theme: ["update"] }
   // })`.
@@ -708,7 +698,7 @@ Two flows fall out of this:
    form. New org is created with that user as `owner`. Operator can also
    be `admin` if desired (separate `addMember` call, same operator route).
 2. **Operator creates org without a designated owner yet.** Operator
-   passes their own `userId` as `ownerUserId`. Brand admin is added as
+   passes their own `userId` as `ownerUserId`. The org admin is added as
    `admin` once they sign up (via `addMember`), then promoted to `owner`
    when ready (via `updateMemberRole`). This is the path for "I have a
    new customer; they haven't created an account yet but I want to set
@@ -743,117 +733,92 @@ The envelope (`docs/ARCHITECTURE.md` §4.1.2) is the spine's signed identity
 claim. Adding org context to it lets apps gate behavior without an
 extra guestlist hop on the read path.
 
-## §5.1 New envelope fields
+## §5.1 Envelope field
 
 ```ts
-// packages/auth/src/envelope/types.ts (target — added to EnvelopePayload)
-export type EnvelopePayload = {
+// packages/auth/src/envelope/types.ts (EnvelopePayload)
+export interface EnvelopePayload {
   v: 1;
   iss: "bouncer";
   iat: number;
   exp: number; // iat + 30s
   host: string;
-  actor: EnvelopeActorUser | null;
+  actor: EnvelopeActor | null;
   session: EnvelopeSessionData | null;
   /**
-   * Active org for this session, as resolved at envelope-mint time.
-   * Null when:
-   *   - the user has no memberships, or
-   *   - the user has multiple memberships and hasn't picked one yet, or
-   *   - actor is null (no session).
-   * Invariant: `actor === null ⟹ activeOrg === null`.
+   * Active organization id from session.activeOrganizationId at envelope
+   * mint time. Optional so envelopes minted before this field existed still
+   * verify; absent ↔ no active org.
    */
-  activeOrg: EnvelopeActiveOrg | null;
-};
-
-export type EnvelopeActiveOrg = {
-  id: string;
-  slug: string;
-  /** The user's role in this org, as BA computed it at envelope-mint time. */
-  role: "owner" | "admin" | "member" | (string & {});
-};
+  activeOrgId?: string | null;
+}
 ```
 
-The minter (`workers/bouncer/src/envelope.ts`) fills these from the
-session data returned by `guestlist.getSession()`. Guestlist's `getSession`
-return shape already carries `activeOrganizationId` once the plugin lands;
-projection into the envelope is a few extra lines in
-`workers/bouncer/src/session.ts:toEnvelopeSession`.
+Only the id is denormalized into the envelope — no role, no slug. The
+minter (`packages/auth/src/envelope/mint.ts`, driven from
+`workers/bouncer/src/envelope.ts` / `session.ts`) fills `activeOrgId`
+straight from `session.activeOrganizationId` on guestlist's `getSession`
+response; no extra DB query per mint.
 
-Why role-in-envelope (not just id):
-
-- Apps that need only "is this user an admin of their active org?" can
-  short-circuit on the envelope. No guestlist RPC.
-- The role is point-in-time. Like the rest of the envelope it has a 30s
-  TTL; if the user is demoted mid-session, the envelope's claim becomes
-  stale for up to 30 seconds, after which the refresh picks up the new
-  role. Acceptable for read paths; write paths re-verify (§5.4).
+Role isn't denormalized because it would go stale the moment a member is
+demoted, and the write path has to re-verify through guestlist anyway
+(§5.4). Apps that need role — for reads or writes — call
+`authClient.organization.getActiveMemberRole({ query: { organizationId } })`
+at the point of use.
 
 ## §5.2 Verifier output
 
 ```ts
-// packages/auth/src/envelope/verify.ts (target — extended verifier return)
+// packages/auth/src/envelope/types.ts (EnvelopeResult)
 type EnvelopeResult =
   | {
       kind: "valid";
-      actor: EnvelopeActorUser | null;
+      actor: EnvelopeActor | null;
       session: EnvelopeSessionData | null;
-      activeOrg: EnvelopeActiveOrg | null;
+      activeOrgId: string | null;
     }
   | { kind: "missing" }
   | { kind: "invalid"; reason: string };
 ```
 
-The verifier enforces an additional cross-field invariant:
-`actor === null ⟹ activeOrg === null` (rejected as
-`invalid: "actor_org_mismatch"`).
-
 ## §5.3 App-side accessors
 
-`createPlatformStartApp` (in `@si/kit/react-start`) gains a third
-accessor:
+`createPlatformStartApp` (`@si/kit/react-start`) exposes:
 
 ```ts
-// Existing
-platform.getEnvelope(headers): EnvelopeData | null
-platform.getSession(headers): PlatformSession | null
-// New
-platform.getActiveOrg(headers): EnvelopeActiveOrg | null
+platform.getEnvelope(headers): Promise<EnvelopeData | null>
+platform.getSession(headers): Promise<PlatformSession | null>
+platform.getActiveOrgId(headers): Promise<string | null>
 ```
 
-`getActiveOrg` is equivalent to
-`(await platform.getEnvelope(headers))?.activeOrg ?? null`; it's exposed
-as its own method so route loaders and server functions can write
-`const org = await platform.getActiveOrg(headers); if (!org) ...` without
-unwrapping `null` actor.
+`getActiveOrgId` reads the verified envelope's `activeOrgId`. In
+development (dev-direct topology, no bouncer in front), when the verifier
+returns `missing`/`invalid` it falls back to calling
+`getGuestlist().getSession()` and reading
+`session.activeOrganizationId` directly — apps never branch on
+`ENVIRONMENT` themselves.
 
 ## §5.4 Write-path verification
 
-Reads trust the envelope. Writes that mutate org-scoped data (creating an
-org-scoped resource, updating theme, inviting a member) **re-verify**
-through guestlist:
+Reads trust the envelope's `activeOrgId`. Writes that mutate org-scoped
+data (creating an org-scoped resource, updating theme, inviting a member)
+**re-verify** role through guestlist, since role is never carried in the
+envelope:
 
 ```ts
 async function createOrgResource({ orgId, title }, ctx) {
   const env = await platform.getEnvelope(ctx.headers);
   if (!env?.actor) throw new Error("unauthenticated");
-  if (env.activeOrg?.id !== orgId) {
-    // User is acting on an org that isn't their active one. Allowed —
-    // we just don't trust the envelope's role for this org. Re-verify.
-  }
-  const role = await platform.getGuestlist().getOrgRole({
-    userId: env.actor.id,
-    orgId,
+
+  const { data } = await authClient.organization.getActiveMemberRole({
+    query: { organizationId: orgId },
   });
-  if (role !== "admin" && role !== "owner") throw new Error("forbidden");
+  if (data?.role !== "admin" && data?.role !== "owner") {
+    throw new Error("forbidden");
+  }
   // ... proceed
 }
 ```
-
-In the common case (user is acting on their active org), the envelope's
-`activeOrg.role` is enough and the guestlist call is skipped. For
-admin-on-behalf-of and operator paths, the explicit `getOrgRole` check
-holds.
 
 ## §5.5 Updated request lifecycle
 
@@ -870,13 +835,13 @@ sequenceDiagram
   CF->>GW: forwards
   GW->>B: getSession(cookies)
   B-->>GW: { user, session, activeOrganizationId }
-  GW->>GW: mintEnvelope(...,<br/>activeOrg: { id, slug, role })
+  GW->>GW: mintEnvelope(...,<br/>activeOrgId)
   GW->>A: forwarded request + x-platform-att
-  A->>A: verifyEnvelope(headers) → { actor, session, activeOrg }
-  alt route only needs activeOrg.role check
-    A->>A: platform.getActiveOrg() = signed claim
-  else write path / cross-org operation
-    A->>B: platform.getGuestlist().getOrgRole({ userId, orgId })
+  A->>A: verifyEnvelope(headers) → { actor, session, activeOrgId }
+  alt route only needs the active org id
+    A->>A: platform.getActiveOrgId() = signed claim
+  else route needs role, or a non-active org
+    A->>B: authClient.organization.getActiveMemberRole({ organizationId })
     B-->>A: "admin" | "member" | null
   end
   A-->>GW: response
@@ -884,9 +849,9 @@ sequenceDiagram
   CF-->>U: response
 ```
 
-The only new wire hop is guestlist computing `activeOrganizationId` on
-`getSession`, which is already in BA's session row — zero extra DB queries
-per envelope mint.
+The only wire hop this adds is guestlist computing `activeOrganizationId`
+on `getSession`, which is already a column on BA's session row — zero
+extra DB queries per envelope mint.
 
 ---
 
@@ -960,8 +925,7 @@ explicitly).
 
 > **Implementation honesty — empirically verified.** Reading
 > `node_modules/better-auth/dist/plugins/organization/routes/*.mjs` and
-> exercising each endpoint from the operator routes (landed in commit
-> `139ca18`):
+> exercising each endpoint from the operator routes:
 >
 > - **No-headers + `userId` works** for `createOrganization` and
 >   `addMember`. BA's handlers call `getSessionFromCtx(ctx).catch(() => null)`
@@ -979,7 +943,7 @@ explicitly).
 > - `beforeUpdateMemberRole` / `afterUpdateMemberRole` /
 >   `beforeRemoveMember` / `afterRemoveMember` / `beforeCreateInvitation` /
 >   `afterCreateInvitation` hooks defined on the org plugin config **do
->   not fire** on operator paths. Brand-admin (Surface A) flows still
+>   not fire** on operator paths. Org-admin (Surface A) flows still
 >   hit BA's handler so hooks fire there as normal.
 > - The operator-issued invitation route does **not** trigger
 >   `sendInvitationEmail` (which only fires from BA's handler). The v1
@@ -1012,13 +976,13 @@ flowchart TD
   classDef deny fill:#e57373,stroke:#a04444,color:#fff
 ```
 
-**The two surfaces never overlap.** A brand admin configuring their own
+**The two surfaces never overlap.** An org admin configuring their own
 org always goes through Surface A. An operator configuring a customer's
 org always goes through Surface B. The same operation (e.g. "add a
 member") has two distinct call sites depending on which side the caller
 is on:
 
-- Brand admin alice (Acme owner) adds bob to Acme →
+- Org admin alice (Acme owner) adds bob to Acme →
   `authClient.organization.addMember({ userId: bob, role: "member" })`
   → BA route → BA checks alice is owner → done. (Surface A.)
 - Operator carol adds bob to Acme without being an Acme member →
@@ -1028,8 +992,12 @@ is on:
 
 ## §6.4 Sugar helpers on `createGuestlistClient`
 
-App server functions need `getOrgRole` as a typed wrapper. We add a small
-helper set on the client returned by `createGuestlistClient`:
+Role checks go straight through
+`authClient.organization.getActiveMemberRole({ query: { organizationId } })`
+(§5.4) — no `getOrgRole` wrapper needed. `getOrgTheme` and
+`hasOrgPermission` are still a small helper set worth adding to the
+client returned by `createGuestlistClient` once the theme feature (§8)
+ships:
 
 ```ts
 // workers/guestlist/src/client/guestlist.ts (target — added to the returned object)
@@ -1038,26 +1006,6 @@ return {
   auth,
   async getSession(): Promise<PlatformSession | null> {
     /* existing */
-  },
-
-  /**
-   * Returns the caller's role in the given org, or `null` if they're not
-   * a member. Authoritative: hits guestlist, never trusts envelope claim.
-   * Used by app write-paths that need to verify admin authority before
-   * mutating org-scoped data.
-   */
-  async getOrgRole(args: {
-    userId: string;
-    orgId: string;
-  }): Promise<"owner" | "admin" | "member" | null> {
-    const res = await auth.organization.listMembers({
-      organizationId: args.orgId,
-      filterField: "userId",
-      filterOperator: "eq",
-      filterValue: args.userId,
-      limit: 1,
-    });
-    return res.data?.members[0]?.role ?? null;
   },
 
   /**
@@ -1104,8 +1052,8 @@ The plugin's teams sub-feature is **off** in v1. Adding teams later is the
 same drill as dynamic AC: flag flip + migration (`team` + `teamMember`
 tables + `activeTeamId` on session). No design decisions blocked by waiting.
 
-The use case for teams in our context is brand sub-orgs (Acme retail vs
-Acme wholesale). When that comes up, we enable teams and update §2.1's
+The use case for teams in our context is org sub-teams (e.g. Acme retail
+vs Acme wholesale). When that comes up, we enable teams and update §2.1's
 domain model.
 
 ---
@@ -1127,7 +1075,7 @@ flowchart LR
   end
 
   p_user -->|"operator powers"| platform_ops["create org, ban user, view all stats"]:::action
-  o_role -->|"brand admin powers"| org_ops["create org-scoped resource, set theme, invite staff, manage billing"]:::action
+  o_role -->|"org admin powers"| org_ops["create org-scoped resource, set theme, invite staff, manage billing"]:::action
   a_role -->|"in-resource powers"| room_ops["pin, delete-any, kick, transfer"]:::action
 
   classDef role fill:#85bbf0,stroke:#5d82a8,color:#000
@@ -1137,7 +1085,7 @@ flowchart LR
 ## §7.1 Platform role
 
 Stored on `user.role` (`admin | user`). Driven by BA's `admin` plugin,
-which is already wired. Platform admins (`role: "admin"`) are greenroom
+which is already wired. Platform admins (`role: "admin"`) are platform
 staff. They can do anything an org admin can do, on any org, plus
 operator-only things (create orgs, see all stats, ban users globally).
 
@@ -1159,16 +1107,17 @@ values: `owner`, `admin`, `member`. Custom statements:
 | `billing:update`                                  | owner                   |
 | `scim:read`, `scim:configure`                     | owner                   |
 
-App code checks org role via `platform.getActiveOrg()` (envelope claim) for
-reads and `platform.getGuestlist().getOrgRole()` for writes (§5.4).
+App code checks the active org id via `platform.getActiveOrgId()` (envelope
+claim) for reads, and role via `authClient.organization.getActiveMemberRole()`
+for writes (§5.4).
 
 ## §7.3 App-internal role
 
 App-specific. An app's own resource-level roles (e.g. `owner / admin /
 mod / member / guest` for a room- or resource-based app) live in that
 app's own D1 and are managed by app code — they don't propagate back to
-guestlist. Apps (transfers, inventory, etc.) define their own internal
-role models this way.
+guestlist. Apps (store, and future org-scoped apps) define their own
+internal role models this way.
 
 The bridge between org role and app role is **bootstrap on first use**:
 when a user with org-admin role connects to an org-owned resource, the
@@ -1178,18 +1127,19 @@ persisted in the app's own DB.
 
 ## §7.4 The trust boundary table
 
-| Question                                              | Where to ask                                              | Trust level                               |
-| ----------------------------------------------------- | --------------------------------------------------------- | ----------------------------------------- |
-| Who is the user?                                      | envelope `actor.id`                                       | Signed, 30s TTL, sufficient               |
-| Is the user a platform admin?                         | envelope `actor.role === "admin"`                         | Signed, 30s TTL, sufficient               |
-| What's the active org id?                             | envelope `activeOrg.id`                                   | Signed, 30s TTL, sufficient               |
-| Is the user an admin **of their active org**?         | envelope `activeOrg.role === "admin"`                     | Signed, 30s TTL, **sufficient for reads** |
-| Is the user an admin of org **X** (not their active)? | guestlist `getOrgRole({ userId, orgId: X })`              | Authoritative, required for writes        |
-| Can the user perform action Y on org X?               | guestlist `hasOrgPermission({ permissions: ..., orgId })` | Authoritative, required for writes        |
+| Question                                              | Where to ask                                                                     | Trust level                        |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------- |
+| Who is the user?                                      | envelope `actor.id`                                                              | Signed, 30s TTL, sufficient        |
+| Is the user a platform admin?                         | envelope `actor.role === "admin"`                                                | Signed, 30s TTL, sufficient        |
+| What's the active org id?                             | envelope `activeOrgId`                                                           | Signed, 30s TTL, sufficient        |
+| Is the user an admin **of their active org**?         | `authClient.organization.getActiveMemberRole()` === `"admin"`                    | Authoritative, always re-checked   |
+| Is the user an admin of org **X** (not their active)? | `authClient.organization.getActiveMemberRole({ organizationId: X })`             | Authoritative, required for writes |
+| Can the user perform action Y on org X?               | `authClient.organization.hasPermission({ permissions: ..., organizationId: X })` | Authoritative, required for writes |
 
-Apps follow this rule: **envelope for reads, guestlist for
-writes**. The envelope's 30s window is acceptable for "show the admin
-menu" but not for "delete this resource".
+Apps follow this rule: **envelope for the active org id, guestlist for
+role and permission checks**. The envelope's 30s window is acceptable for
+"is there an active org at all" but role is never denormalized into it —
+write paths always re-verify.
 
 ---
 
@@ -1209,13 +1159,12 @@ touch one of them.
 ### §8.1.1 Internal palette (NOT tenant-overridable)
 
 `packages/design/src/tokens/colors.ts` defines a private palette with
-project-specific names (`--color-sprout`, `--color-stigma`, `--color-growth`,
-`--color-pistil`, `--color-haze`, plus structural tokens like
-`--color-bg`, `--color-surface`, `--color-text`). These names were
-inherited from the platform-template's prior design system ("sprout") and
-are an **implementation detail of greenroom's own default theme**. They
-can be renamed, replaced, or thrown out wholesale in a future redesign;
-no tenant code or theme override should reference them.
+project-specific names (`--color-ink`, `--color-rust`, `--color-success`,
+`--color-warning`, `--color-info`, plus structural tokens like
+`--color-bg`, `--color-surface`, `--color-text`). These names are an
+**implementation detail of the platform's own default theme**. They can
+be renamed, replaced, or thrown out wholesale in a future redesign; no
+tenant code or theme override should reference them.
 
 The platform's own components don't reference these directly either —
 they consume the shadcn semantic layer below.
@@ -1234,7 +1183,7 @@ RHS can change):
   --color-card-foreground:    var(--color-text);
   --color-popover:            var(--color-surface-raised);
   --color-popover-foreground: var(--color-text);
-  --color-primary:            var(--color-sprout);
+  --color-primary:            var(--color-ink);
   --color-primary-foreground: var(--color-text-on-accent);
   --color-secondary:          var(--color-surface);
   --color-secondary-foreground: var(--color-text);
@@ -1242,10 +1191,10 @@ RHS can change):
   --color-muted-foreground:   var(--color-text-secondary);
   --color-accent:             var(--color-surface);
   --color-accent-foreground:  var(--color-text);
-  --color-destructive:        var(--color-stigma);
+  --color-destructive:        var(--color-rust);
   --color-border:             var(--color-border);
   --color-input:              var(--color-border-strong);
-  --color-ring:               var(--color-sprout);
+  --color-ring:               var(--color-ink);
   --color-chart-{1..5}:       /* mapped to internal palette */
   --color-sidebar-*:          /* mapped to internal palette */
 }
@@ -1255,7 +1204,7 @@ These shadcn token names are the **stable, universal contract** that
 multi-tenant surfaces use. Every shadcn-generated component in
 `packages/ui` already consumes them. A tenant theme overrides the
 shadcn tokens — not the internal palette — and the override propagates
-through every component without touching greenroom's own theme code.
+through every component without touching the platform's own theme code.
 
 ### §8.1.3 The tenant-overridable allowlist
 
@@ -1300,11 +1249,11 @@ import { OrgThemeStyle } from "@si/ui/components/org-theme-style";
 
 export const Route = createRootRouteWithContext()({
   beforeLoad: async ({ context }) => {
-    const activeOrg = await context.platform.getActiveOrg(getRequestHeaders());
-    const theme = activeOrg
-      ? await context.platform.getGuestlist().getOrgTheme({ orgId: activeOrg.id })
+    const activeOrgId = await context.platform.getActiveOrgId(getRequestHeaders());
+    const theme = activeOrgId
+      ? await context.platform.getGuestlist().getOrgTheme({ orgId: activeOrgId })
       : null;
-    return { activeOrg, theme };
+    return { activeOrgId, theme };
   },
   component: ({ context }) => (
     <RootDocument>
@@ -1483,7 +1432,8 @@ await db.insert(organization).values([
 // Plus a default member row tying any seeded user to org_dev_acme as owner.
 ```
 
-The seed runs as part of `bun run bootstrap`, gated on `ENVIRONMENT === "development"`.
+The seed runs via `bun run seed` (fans out to each worker's own seed
+script), gated on `ENVIRONMENT === "development"`.
 
 ## §9.2 Multi-org dev flow
 
@@ -1493,7 +1443,7 @@ the other org demonstrates the live re-theme.
 
 Apps running standalone (no bouncer, no envelope — the dev-direct topology
 from `docs/ARCHITECTURE.md` §4.5) get their active org from `getSession()`
-instead of the envelope. The kit's `getActiveOrg(headers)` already
+instead of the envelope. The kit's `getActiveOrgId(headers)` already
 encapsulates this fallback: in dev it calls `getSession()`, in prod it
 reads from the envelope. Apps never branch on `ENVIRONMENT`.
 
@@ -1513,8 +1463,8 @@ each is wired.
 ## §10.1 Path-per-org (v1 default)
 
 ```
-greenroom.app/o/acme/identity     → bouncer → identity app
-greenroom.app/o/acme/orgs/theme   → bouncer → identity app (theme editor)
+somewhatintelligent.ca/o/acme/identity     → bouncer → identity app
+somewhatintelligent.ca/o/acme/orgs/theme   → bouncer → identity app (theme editor)
 ```
 
 Bouncer's `ROUTES` config has one rule per app, parameterized by the
@@ -1532,14 +1482,16 @@ Bouncer's `ROUTES` config has one rule per app, parameterized by the
 
 Bouncer **does not parse the slug for routing decisions** beyond picking
 the binding. The slug → orgId resolution happens inside guestlist when the
-app asks `getActiveOrg`. Bouncer just forwards the path; the app reads it.
+app asks for the active org. Bouncer just forwards the path; the app
+reads it.
 
 The active-org resolution path:
 
 1. User signs in. Default `activeOrganizationId` is set per §4.2.
-2. User visits `greenroom.app/o/acme/identity`. App's root loader sees the
-   URL slug.
-3. App reconciles: if `envelope.activeOrg.slug !== "acme"`, app calls
+2. User visits `somewhatintelligent.ca/o/acme/identity`. App's root loader
+   sees the URL slug.
+3. App reconciles: if the active org's slug (looked up from
+   `envelope.activeOrgId`) isn't `"acme"`, app calls
    `auth.organization.setActive({ organizationSlug: "acme" })` (only if
    user is a member), which updates the session row. Next request's
    envelope reflects the new active org.
@@ -1552,8 +1504,8 @@ session row, signed forward via the envelope.
 ## §10.2 Subdomain-per-org
 
 ```
-acme.greenroom.app                → bouncer → identity
-acme.greenroom.app/settings/theme → bouncer → identity
+acme.somewhatintelligent.ca                → bouncer → identity
+acme.somewhatintelligent.ca/settings/theme → bouncer → identity
 ```
 
 Bouncer `ROUTES` use host-match instead of path-prefix-match. The host's
@@ -1561,13 +1513,15 @@ first label is the slug; bouncer doesn't care, it just routes to the right
 binding. App-side, the same `setActive` reconciliation happens against the
 host instead of the path.
 
-Cookies must scope to `*.greenroom.app` (already the case via
+Cookies must scope to `*.somewhatintelligent.ca` (already the case via
 `AUTH_DOMAIN`'s leading-dot convention) so the session shares across
-`acme.greenroom.app` and `beta.greenroom.app` without re-auth.
+`acme.somewhatintelligent.ca` and `beta.somewhatintelligent.ca` without
+re-auth.
 
 ## §10.3 Custom domains
 
-`app.acme.com` → bouncer → the target app (with activeOrg = Acme). Wiring:
+`app.acme.com` → bouncer → the target app (with Acme as the active org).
+Wiring:
 
 1. Tenant adds a CNAME from `app.acme.com` to the platform's CF Custom
    Domain hostname.
@@ -1576,15 +1530,15 @@ Cookies must scope to `*.greenroom.app` (already the case via
 3. Operator (or self-serve UI) creates a `tenant_domain` row mapping
    `app.acme.com → orgId=acme`.
 4. Bouncer's session-refresh stage, when minting the envelope, looks up the
-   host in the `tenant_domain` table and stamps `activeOrg` from there
+   host in the `tenant_domain` table and stamps `activeOrgId` from there
    instead of from the session row. (The cookie still authenticates the
    user; the domain pins the active org.)
 
 This is the cleanest UX (no `/o/<slug>` in the URL, no
-`acme.greenroom.app` "platform-y" feel) and the way enterprise customers
-will want to deploy. Build the table and lookup in v1 even if we don't ship
-the operator UI immediately — the bouncer code is small and isolation
-matters once it's live.
+`acme.somewhatintelligent.ca` "platform-y" feel) and the way enterprise
+customers will want to deploy. Build the table and lookup in v1 even if
+we don't ship the operator UI immediately — the bouncer code is small and
+isolation matters once it's live.
 
 ---
 
@@ -1630,15 +1584,15 @@ sequenceDiagram
 ```
 
 SCIM provisioning **does not invite via email**. It auto-creates the user
-(no password — they'll sign in via the brand's IdP through guestlist's
+(no password — they'll sign in via the org's IdP through guestlist's
 `oauthProvider` or OIDC plugin), creates the member row directly, and
 returns the SCIM-canonical user representation.
 
 ## §11.3 Identity binding
 
-The provisioned user's email is the bridge. When the user signs in via the
-brand's SSO, BA's account-linking (already enabled,
-`packages/auth/src/server.ts:103`) attaches the SSO account to the existing
+The provisioned user's email is the bridge. When the user signs in via
+the org's SSO, BA's account-linking (already enabled,
+`packages/auth/src/server.ts`) attaches the SSO account to the existing
 user row. The org membership pre-exists; the user is "ready to go" the
 moment they sign in.
 
@@ -1667,36 +1621,34 @@ Small, demoable steps. Each step is one PR-sized chunk. Each one ends in
 a **Verify** instruction the operator can actually run.
 
 The first twelve checkpoints (O-0 … O-11) are the manual-onboarding MVP.
-At O-9 the operator can sign in, provision a new org, invite a brand
+At O-9 the operator can sign in, provision a new org, invite an org
 admin by email, and have them accept. At O-11 the invited admin can see
 their active org in the header switcher across all apps — no theme yet,
 but the spine is real. O-13 onward adds theme, logo, and routing polish.
 The far-future items (subdomain, custom domains, SCIM, dynamic AC, teams,
 self-signup) live in Phase 7 §Deferred.
 
-> ### Implementation status — 2026-05-17
+> ### Implementation status
 >
-> **✅ Landed on `worktree-organizations`** (manual-onboarding MVP):
-> O-0, O-1, O-3, O-4, O-5, O-6, O-7, O-8, O-9. Full demo path works in
-> local dev — sign in as admin, provision an org, add/invite members,
-> have invitees accept. Backend has 24/24 guestlist org tests passing;
-> all four migrations apply cleanly from a fresh D1.
+> **✅ Shipped** (manual-onboarding MVP + envelope): O-0, O-1, O-3
+> through O-11. The full demo path works in local dev — sign in as
+> operator, provision an org, add/invite members, have invitees accept,
+> see the active org in the header switcher across apps.
 >
-> **🟡 Deferred** (not blocking the demo):
+> **🟡 Known gaps** (not blocking the demo):
 >
-> - **O-4 owner-role radio** — the spec mentioned an initial-role picker
->   so the operator could create an org and assign the new user as
->   `admin` rather than `owner`. v1 always assigns `owner`; the operator
->   workaround is "create with my own userId, add the brand admin as
->   admin, optionally promote/transfer later" (still one extra click).
-> - **Slug-availability live-check** in `/admin/orgs/new` — would need
->   the BA `organizationClient()` plugin registered in
->   `workers/guestlist/src/client/plugins.ts`. Currently the form
->   surfaces a server-side 409 on submit as an inline field error,
->   which is fine.
+> - **O-4 owner-role radio** — the operator-driven `/admin/orgs/new` form
+>   always assigns the new org's owner as `owner`. To make someone else
+>   `admin` instead, the operator creates the org with their own
+>   `userId`, adds the intended admin as `admin`, then optionally
+>   promotes/transfers ownership separately.
+> - **Slug-availability live-check** in `/admin/orgs/new` — not wired yet
+>   even though the BA `organizationClient()` plugin is registered
+>   (`workers/guestlist/src/client/plugins.ts`) and exposes
+>   `checkSlug`. The form surfaces a server-side 409 on submit as an
+>   inline field error instead, which is fine.
 >
 > **⬜ Pending** (next demo would unblock):
-> O-10 (envelope `activeOrg`), O-11 (kit accessor + switcher),
 > O-13..O-16 (theme + logo + editor),
 > O-17 (OG), O-18 (path-per-org bouncer routes).
 >
@@ -1763,7 +1715,7 @@ On screen:
 - Pagination: 50/page, server-side via BA's `listOrganizations` (or a
   direct admin Elysia route on guestlist returning the join with member
   count if BA's pagination isn't ergonomic enough).
-- Empty state: "No organizations yet. Onboard your first brand →"
+- Empty state: "No organizations yet. Onboard your first org →"
   pointing at `/admin/orgs/new`.
 
 🔧 **Files**: `workers/identity/src/routes/admin.orgs.tsx`,
@@ -1980,58 +1932,50 @@ for now).
 `member` row appears with `role` matching what operator chose;
 `session.active_organization_id` is set to the new org's id.
 
-> At this point the operator can manually onboard a new brand admin
+> At this point the operator can manually onboard a new org admin
 > end-to-end. They still see no per-org chrome, no theme, no scoping —
 > just a `/orgs/:slug` placeholder. The next phase makes the active org
 > visible across apps.
 
 ## Phase 3 — Active org visible to all apps via the envelope
 
-### O-10 ✅ (amended) — Envelope carries `activeOrgId`
+### O-10 ✅ — Envelope carries `activeOrgId`
 
-**Shipped, then simplified in cleanup `d030349`.** Final envelope field is `activeOrgId: string | null` — just the id from `session.activeOrganizationId`. Bouncer projects it directly from BA's getSession response (the org plugin enriches the session row at the DB level); no second RPC, no `/internal/active-org` route. Slug + role are fetched on demand at the point of use, not denormalized.
-
-Below is the original O-10 spec for historical reference.
-
-Extend `EnvelopePayload` with `activeOrg: { id, slug, role } | null`.
-Bouncer's `toEnvelopeSession` projection in `workers/bouncer/src/session.ts`
-reads `session.activeOrganizationId` from the BA getSession response,
-joins to `organization.slug` and the user's `member.role`. Verifier's
-result type updates. **Existing apps don't have to consume it yet** —
-the field is optional and missing on old envelopes is fine.
+`EnvelopePayload` carries `activeOrgId: string | null` — just the id from
+`session.activeOrganizationId`. Bouncer projects it directly from BA's
+`getSession` response (the org plugin enriches the session row at the DB
+level); no second RPC. Slug and role are fetched on demand at the point
+of use, not denormalized into the envelope.
 
 For dev: when `ENVIRONMENT === "development"` and no bouncer is in front
-(dev-direct topology), the kit's `getActiveOrg()` falls back to calling
-`getSession()` and reading the active org from there, same as
-`getSession()` itself does in dev.
+(dev-direct topology), the kit's `getActiveOrgId()` falls back to calling
+`getSession()` and reading `session.activeOrganizationId` directly, same
+as `getSession()` itself does in dev.
 
 🔧 **Files**: `packages/auth/src/envelope/types.ts`,
+`packages/auth/src/envelope/mint.ts`,
 `packages/auth/src/envelope/verify.ts`,
 `workers/bouncer/src/session.ts`, `workers/bouncer/src/envelope.ts`.
 👀 **Verify**: bouncer's canonical log line for a signed-in request shows
-`active_org_id` and `active_org_role`. Decode the envelope's payload
-manually (paste base64url chunks into `jq`); fields are present.
+`active_org_id`. Decode the envelope's payload manually (paste base64url
+chunks into `jq`); the field is present.
 
-### O-11 ✅ (amended) — Kit accessor `platform.getActiveOrgId()` + identity org switcher
+### O-11 ✅ — Kit accessor `platform.getActiveOrgId()` + identity org switcher
 
-**Shipped, renamed in cleanup `d030349`.** Method is now `getActiveOrgId(headers): Promise<string | null>` (returns just the id, not the nested object). UI surfaces that need display info call an app-level `loadActiveOrgInfo` server fn on mount instead.
+`createPlatformStartApp` exposes `getActiveOrgId(headers): Promise<string
+| null>`. Identity's header gains a **minimal org switcher**
+(`workers/identity/src/components/header/org-switcher.tsx`): a dropdown
+listing the user's memberships + pending invitations (fetched directly
+via `authClient.organization.list()` / `listUserInvitations()`), with a
+"Manage orgs" link to `/admin/orgs` for operators. Hidden entirely for
+solo users (zero memberships, no pending invites).
 
-Below is the original O-11 spec for historical reference.
-
-Surface the envelope's activeOrg as a first-class accessor on the object
-returned by `createPlatformStartApp`. Identity's header gains a
-**minimal org switcher**: a dropdown listing the user's memberships +
-pending invitations, with a "Manage orgs" link to `/admin/orgs` for
-operators. Hidden entirely for solo users (zero memberships, no pending
-invites).
-
-🔧 **Files**: `packages/kit/src/react-start/...` (the createPlatformStartApp
-factory), `workers/identity/src/components/header/org-switcher.tsx`,
-`workers/identity/src/components/header/site-header.tsx`.
-👀 **Verify**: as a brand admin who is a member of two orgs (seed the
+🔧 **Files**: `packages/kit/src/react-start/platform-start-app.ts`,
+`workers/identity/src/components/header/org-switcher.tsx`.
+👀 **Verify**: as an org admin who is a member of two orgs (seed the
 second via `/admin/orgs/new` as operator first), the switcher shows
 both, picking one calls `setActive` and the header updates to reflect.
-As a solo user (operator-only, no memberships), the switcher is hidden.
+As a solo user (no memberships), the switcher is hidden.
 
 > **You can demo from here.** Sign in as operator; create org Acme with
 > alice@acme.com as owner; invite bob@acme.com as member; alice and bob
@@ -2070,7 +2014,7 @@ Wordmark/logo override stays for O-15; this checkpoint is colors only.
 👀 **Verify**: hand-edit a `--color-primary` override into Acme's
 metadata via `UPDATE organization ...`; sign in as alice; primary-colored
 elements (buttons, focus rings) flip to the new color in both light and
-dark mode; sign out and back in as a budtender with no Acme membership —
+dark mode; sign out and back in as a solo user with no Acme membership —
 platform default returns.
 
 ### O-15 — Org logo via roadie
@@ -2087,7 +2031,7 @@ routes), `packages/ui/src/components/ui/logo/logo.tsx` (consume
 provider), `packages/ui/src/tenant-brand.tsx`, identity's root layout.
 👀 **Verify**: hand-edit `organization.metadata.theme.logoRefId` to a
 real roadie reference (upload one out-of-band first); the header logo
-swaps; users without an active org still see the greenroom default.
+swaps; users without an active org still see the platform default.
 
 ### O-16 — Theme editor UI in identity `/orgs/:slug/theme`
 
@@ -2113,14 +2057,15 @@ guestlist via service binding (no cookies; per MT9).
 🔧 **Files**: `workers/identity/og/_brand.tsx`,
 `workers/identity/og/opengraph.og.tsx` (and analogous for twitter, icon).
 👀 **Verify**: paste an Acme invite URL into Slack; unfurl shows Acme's
-wordmark and colors, not greenroom defaults.
+wordmark and colors, not the platform defaults.
 
 ### O-18 — Path-per-org bouncer routes
 
 `workers/bouncer/wrangler.jsonc` `ROUTES` gains `/o/:slug/...`
-rules. Apps' root layouts reconcile the URL slug against
-`envelope.activeOrg.slug`; on mismatch, call `setActive` (only if user
-is a member of the URL's org; otherwise show a 403 page).
+rules. Apps' root layouts resolve the active org's slug from
+`envelope.activeOrgId` and reconcile it against the URL slug; on
+mismatch, call `setActive` (only if user is a member of the URL's org;
+otherwise show a 403 page).
 
 🔧 **Files**: `workers/bouncer/wrangler.jsonc`, identity's
 `src/routes/__root.tsx`.
@@ -2178,9 +2123,9 @@ test names and code comments can reference them stably.
 
 | #        | Invariant                                                                                                                                                           | Enforced at                                                                   |
 | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| **MT1**  | `envelope.actor === null ⟹ envelope.activeOrg === null`                                                                                                             | bouncer minter; envelope verifier                                             |
-| **MT2**  | `envelope.activeOrg.id`, when present, refers to an org the actor is a member of                                                                                    | bouncer minter (sources from session row, which BA's plugin keeps consistent) |
-| **MT3**  | Org-admin writes re-verify role via guestlist `getOrgRole`; envelope role claim is **never** trusted for writes                                                     | every server fn that mutates org-scoped data                                  |
+| **MT1**  | `envelope.actor === null ⟹ envelope.activeOrgId === null`                                                                                                           | bouncer minter; envelope verifier                                             |
+| **MT2**  | `envelope.activeOrgId`, when present, refers to an org the actor is a member of                                                                                     | bouncer minter (sources from session row, which BA's plugin keeps consistent) |
+| **MT3**  | Org-admin writes re-verify role via `authClient.organization.getActiveMemberRole`; the envelope never carries a role claim to trust                                 | every server fn that mutates org-scoped data                                  |
 | **MT4**  | `member.role` ⟂ app-internal roles. An org admin has no implicit app-resource admin (must be bootstrapped per-app)                                                  | each app's authz model                                                        |
 | **MT5**  | Theme overrides cannot reach raw HTML (XSS via CSS-value injection). All values pass through a CSS-safe encoder before serializing into `<style>` blocks            | `OrgThemeStyle` component; theme editor server fn                             |
 | **MT6**  | A user can only set `activeOrganizationId` to an org they are a member of                                                                                           | BA org plugin's built-in check; double-checked by identity's switcher route   |
@@ -2197,16 +2142,16 @@ test names and code comments can reference them stably.
 
 Decisions to make before the corresponding checkpoint:
 
-| Q                                                                                              | Where it surfaces                     | Default to assume until resolved                                                                                                                                                                                                                                                                                                                                                   |
-| ---------------------------------------------------------------------------------------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Self-signup for orgs, or operator-only?                                                        | O-1 (`allowUserToCreateOrganization`) | Operator-only in v1. Self-signup behind a feature flag later.                                                                                                                                                                                                                                                                                                                      |
-| One org per user vs many? Cap on memberships?                                                  | O-1 / O-2                             | Many. No cap. Org switcher always present.                                                                                                                                                                                                                                                                                                                                         |
-| Theme overrides validated against a strict allowlist or accept any CSS token?                  | O-14                                  | Strict allowlist = shadcn semantic token surface only (§8.1.3). Reject unknown keys. Reject values that aren't valid CSS color/length tokens. Greenroom's internal palette names are intentionally **not** on the allowlist.                                                                                                                                                       |
-| Theme version pinning (so a shadcn token rename breaks gracefully)?                            | O-13                                  | `organization.metadata.theme.schemaVersion: 1` (required field on `TenantTheme`). Migrations on bump rewrite stored blobs.                                                                                                                                                                                                                                                         |
-| Cross-org notifications (an org admin gets an event in another org)?                           | O-4                                   | Not in v1. Each app's notification surface is org-scoped.                                                                                                                                                                                                                                                                                                                          |
-| Custom domain → org binding stored where? Separate table or `organization.metadata.domains[]`? | O-20                                  | Separate `tenant_domain` table with FK to org. Easier to index and enforce uniqueness.                                                                                                                                                                                                                                                                                             |
-| Operator audit log (who created which org, who flipped which theme)?                           | O-1+                                  | Reuse the existing canonical-log infrastructure with structured events; promote to a dedicated `audit_log` table when retention requirements appear.                                                                                                                                                                                                                               |
-| Retailers as a second org type? Same `organization` table or separate?                         | Future (post-v1)                      | Same table, add `organizationType: "brand" \| "retailer"` discriminator on `organization`. Retailers get a different role set (retailer-owner, store-manager, budtender-staff?) and a different relationship to org-scoped app resources (e.g. retailer-owned resources scoped to a store's staff). v1 ignores this entirely; the schema choice is so additive it won't constrain. |
+| Q                                                                                              | Where it surfaces                     | Default to assume until resolved                                                                                                                                                                                                                       |
+| ---------------------------------------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Self-signup for orgs, or operator-only?                                                        | O-1 (`allowUserToCreateOrganization`) | Operator-only in v1. Self-signup behind a feature flag later.                                                                                                                                                                                          |
+| One org per user vs many? Cap on memberships?                                                  | O-1 / O-2                             | Many. No cap. Org switcher always present.                                                                                                                                                                                                             |
+| Theme overrides validated against a strict allowlist or accept any CSS token?                  | O-14                                  | Strict allowlist = shadcn semantic token surface only (§8.1.3). Reject unknown keys. Reject values that aren't valid CSS color/length tokens. The platform's internal palette names are intentionally **not** on the allowlist.                        |
+| Theme version pinning (so a shadcn token rename breaks gracefully)?                            | O-13                                  | `organization.metadata.theme.schemaVersion: 1` (required field on `TenantTheme`). Migrations on bump rewrite stored blobs.                                                                                                                             |
+| Cross-org notifications (an org admin gets an event in another org)?                           | O-4                                   | Not in v1. Each app's notification surface is org-scoped.                                                                                                                                                                                              |
+| Custom domain → org binding stored where? Separate table or `organization.metadata.domains[]`? | O-20                                  | Separate `tenant_domain` table with FK to org. Easier to index and enforce uniqueness.                                                                                                                                                                 |
+| Operator audit log (who created which org, who flipped which theme)?                           | O-1+                                  | Reuse the existing canonical-log infrastructure with structured events; promote to a dedicated `audit_log` table when retention requirements appear.                                                                                                   |
+| A second org type? Same `organization` table or separate?                                      | Future (post-v1)                      | Same table, add an `organizationType` discriminator on `organization`. The second type would get its own role set and its own relationship to org-scoped app resources. v1 ignores this entirely; the schema choice is so additive it won't constrain. |
 
 ---
 
@@ -2216,10 +2161,10 @@ Higher-fidelity threat modeling is per-feature (the SCIM rollout will get
 its own STRIDE pass); this is the cross-cutting set every contributor
 should keep in mind.
 
-1. **Cross-org data leak via envelope misuse** — apps that trust
-   `envelope.activeOrg.role` for writes give a user 30s of stale-admin
-   power on demotion. Mitigation: MT3. Apps that mutate **always**
-   re-verify.
+1. **Cross-org data leak via envelope misuse** — apps that skip the
+   `getActiveMemberRole` re-check for writes and trust a cached role
+   instead give a user stale-admin power on demotion. Mitigation: MT3.
+   Apps that mutate **always** re-verify.
 
 2. **Theme XSS** — tenant supplies `--color-primary: red; } body {
 display: none; --: ` in the metadata. `OrgThemeStyle` must encode
@@ -2257,9 +2202,9 @@ Going from "single-tenant" to "org-aware" is small if done in order.
 1. **PR 1** — Add org plugin and migration. No app consumes it yet. Plugin
    tables exist in D1; the bouncer envelope is unchanged. Safe to ship
    independently.
-2. **PR 2** — Add bouncer envelope's `activeOrg` field. Verifier accepts
-   both shapes (old envelopes have no `activeOrg`; verifier defaults to
-   `null`). Bouncer mints with `activeOrg: null` until guestlist returns a
+2. **PR 2** — Add bouncer envelope's `activeOrgId` field. Verifier accepts
+   both shapes (old envelopes have no `activeOrgId`; verifier defaults to
+   `null`). Bouncer mints with `activeOrgId: null` until guestlist returns a
    session with `activeOrganizationId` — which only happens once the
    plugin is querying live data.
 3. **PR 3** — Identity's org switcher + admin UI. Seeded orgs for dev.
@@ -2278,25 +2223,25 @@ next.
 
 - **Active organization** — the org currently in scope for a session.
   Stored on the BA `session.activeOrganizationId` column; mirrored into
-  the bouncer envelope as `activeOrg`. Per-session, not per-user.
+  the bouncer envelope as `activeOrgId`. Per-session, not per-user.
 - **Member** — the BA org plugin's join row tying a user to an org with a
   role. Distinct from app-internal membership (e.g. a resource-level
   membership inside a specific app).
 - **OrgMetadata** — typed shape of `organization.metadata` in our schema.
   Carries `theme`, `plan`, `flags`, `operatorNotes`. Extension point.
-- **Operator** — greenroom platform staff. Identified by
-  `user.role === "admin"`. Has powers over all orgs; orgs have no power
-  over operators.
-- **Path-per-org** — URL strategy `greenroom.app/o/<slug>/...`. v1 default.
+- **Operator** — platform staff. Identified by `user.role === "admin"`.
+  Has powers over all orgs; orgs have no power over operators.
+- **Path-per-org** — URL strategy `somewhatintelligent.ca/o/<slug>/...`. v1
+  default.
 - **SCIM** — System for Cross-domain Identity Management. The protocol
   enterprise IdPs (Okta, Entra) use to provision and deprovision users on
   third-party SaaS.
-- **Subdomain-per-org** — URL strategy `<slug>.greenroom.app/...`.
+- **Subdomain-per-org** — URL strategy `<slug>.somewhatintelligent.ca/...`.
   Designed-for but not v1 default.
 - **TenantTheme** — typed shape of `organization.metadata.theme`. Light/dark
   CSS variable overrides + logo ref + wordmark.
 - **`tenant_domain`** — (future) table mapping custom domain → orgId.
   Powers per-org custom-domain deployments (e.g. `app.acme.com`).
-- **White-label** — the ability for a brand to present greenroom as their
-  own product to their staff: their colors, their logo, their wordmark,
-  optionally their domain.
+- **White-label** — the ability for an org to present the platform as
+  their own product to their staff: their colors, their logo, their
+  wordmark, optionally their domain.

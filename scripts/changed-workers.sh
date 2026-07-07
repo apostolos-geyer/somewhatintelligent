@@ -30,8 +30,8 @@
 # Self-test: scripts/changed-workers.sh --self-test
 set -euo pipefail
 
-# Canonical platform deploy order (bouncer LAST — error-10143 binding history
-# in .rwx/deploy.yml).
+# Canonical platform deploy order (bouncer LAST — it binds guestlist,
+# identity, and store, which must already exist; see .rwx/deploy.yml).
 ORDER=(promoter roadie guestlist identity store bouncer)
 
 classify() {

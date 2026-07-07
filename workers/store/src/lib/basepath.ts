@@ -65,13 +65,11 @@ export function readMountMeta(): string | null {
  * `basepath` — both its server handler (start-server-core
  * createStartHandler) and its client bootstrap (start-client-core
  * hydrateStart) call `router.update({ basepath: process.env.TSS_ROUTER_BASEPATH })`,
- * clobbering any basepath set in createRouter. With no plugin-level basepath
- * configured that define is "", which drops the mount, unmatches every
- * route, and unmounts the tree on the SPA-mode hydration invariant (the
- * "page renders then vanishes when the view transition ends" failure).
- * `rewrite` is the documented channel for exactly this asymmetric-mount
- * case: router.update() re-composes `options.rewrite` after the basepath
- * rewrite on every update, and Start never touches it.
+ * overriding any basepath set in createRouter. With no plugin-level basepath
+ * configured that define is "", which breaks route matching for the mount.
+ * `rewrite` is the documented channel for asymmetric-mount cases:
+ * router.update() re-composes `options.rewrite` after the basepath rewrite
+ * on every update, and Start does not touch it.
  * https://tanstack.com/router/latest/docs/guide/url-rewrites#interaction-with-basepath
  */
 export function mountRewrite(mount: string):

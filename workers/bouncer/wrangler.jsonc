@@ -25,8 +25,8 @@
     // env.BNC_ATT_KID + the BNC_ATT_PRIV secret) — unlike identity,
     // where BNC_ATT_KID is a dev-only self-mint fallback kept out of this
     // file, bouncer NEEDS a kid in every environment. Staging signs with the
-    // well-known dev keypair (same as the pre-flip config);
-    // packages/config/src/bouncer-attestation.ts maps kid → public key.
+    // well-known dev keypair; packages/config/src/bouncer-attestation.ts maps
+    // kid → public key.
     "BNC_ATT_KID": "dev",
     "ROUTES": {
       "routes": [

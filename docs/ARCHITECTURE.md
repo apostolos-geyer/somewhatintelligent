@@ -35,7 +35,7 @@ flowchart LR
   d1[("Cloudflare D1<br/><i>guestlist + roadie</i>")]:::ext
   r2[("Cloudflare R2 / S3<br/><i>roadie blobs</i>")]:::ext
   resend["Resend<br/><i>outbound email</i>"]:::ext
-  idp["OAuth providers<br/><i>Google · Microsoft · GitHub</i>"]:::ext
+  idp["OAuth providers<br/><i>Google · Microsoft · Facebook · LinkedIn</i>"]:::ext
 
   user -->|HTTPS| cf
   cf -->|service binding to bouncer| spine
@@ -52,16 +52,16 @@ flowchart LR
 
 **Actors.**
 
-- **End User** — a browser. Uses one or more apps under the platform's `baseDomain` (e.g., `identity.platform.example`, `thoughts.platform.example`). One Better Auth cookie scoped to the apex domain authenticates all apps.
+- **End User** — a browser. Uses one or more apps mounted under the platform's single host per environment (e.g., `platform.example/account` for identity, `platform.example/shop` for a storefront app). One Better Auth cookie scoped to the apex domain authenticates all apps.
 - **Developer / Operator** — the person running the monorepo. Runs `bun run dev` locally or `wrangler deploy` to ship. Operates the platform; not an end user of the apps it hosts.
 
 **External dependencies.**
 
 - **Cloudflare Edge** — TLS termination + DDoS + request routing. Every public host in the platform is a CF Custom Domain pointing at the bouncer Worker.
-- **Cloudflare D1** — relational store. Guestlist owns the auth schema (users, sessions, accounts, two-factor, organizations once enabled). Roadie owns the blob index. No app directly accesses any D1.
+- **Cloudflare D1** — relational store. Guestlist owns the auth schema (users, sessions, accounts, two-factor, organizations). Roadie owns the blob index. No app directly accesses any D1.
 - **Cloudflare R2 / S3-compatible storage** — roadie's blob backend. App workers never touch R2 directly; they request signed PUT/GET URLs from roadie.
 - **Resend** — promoter's email backend. App workers never call Resend directly.
-- **OAuth providers** — Google, Microsoft, GitHub, LinkedIn, Facebook. Optional. Wired in guestlist's `auth-config.ts` when client ids/secrets are present in env.
+- **OAuth providers** — Google, Microsoft, Facebook, LinkedIn. Optional. Wired in guestlist's `auth-config.ts` when client ids/secrets are present in env.
 
 ---
 
@@ -80,7 +80,7 @@ flowchart LR
     subgraph apps["Apps — TSS or any CF framework"]
       direction LR
       identity["<b>identity</b><br/><i>TSS app</i><br/>sign-in · account · admin"]:::ctr
-      other["<b>other apps</b><br/><i>thoughts · transfers · ...</i>"]:::ctr
+      other["<b>other apps</b><br/><i>store · ...</i>"]:::ctr
     end
 
     guestlist["<b>guestlist</b><br/><i>TS Worker — Elysia + BA</i><br/>auth API · session authority"]:::ctr
@@ -93,7 +93,7 @@ flowchart LR
   r2[("R2<br/><i>object storage</i>")]:::ext
   resend["Resend<br/><i>email</i>"]:::ext
 
-  user -->|"HTTPS *.baseDomain"| bouncer
+  user -->|"HTTPS baseDomain (path-mounted)"| bouncer
   bouncer -->|"session resolve · /api proxy"| guestlist
   bouncer -->|"stamped request + envelope"| identity
   bouncer -->|"stamped request + envelope"| other
@@ -116,14 +116,14 @@ flowchart LR
 
 ## §2.1 Containers in detail
 
-| Container          | Role                                                                                                                                                                                                                                                                                                                                                                                                  | Public host?                                                                                                                                   | Holds secrets?                                                                                   |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| **bouncer**        | Single public ingress. Resolves session via guestlist. Mints + stamps bouncer attestation envelope. Dispatches to apps (passthrough or mounted-microfrontend mode). Strips privileged headers from inbound and outbound traffic.                                                                                                                                                                      | Yes — every public hostname is a bouncer Custom Domain.                                                                                        | `BNC_ATT_PRIV` (Ed25519 private key for envelope signing). No `BETTER_AUTH_SECRET`.              |
-| **guestlist**      | Sole authority on session validity. Owns Better Auth wiring, the user database, plugin set (passkey, twoFactor, oauthProvider, admin). Exposes `/api/auth/*` (BA handler), `/api/avatar/*` (presigned-upload flow via roadie), `/admin/*` (sessions, stats, API keys, OAuth clients), `/user/connections`, `/u/avatar/:refId` (public avatar read broker), `/providers`, `/.well-known/*`, `/health`. | No public Custom Domain in the target topology. Reached only via service bindings (from bouncer for `/api`/`/u`, from apps for session/admin). | `BETTER_AUTH_SECRET`, OAuth client secrets, internal API tokens.                                 |
-| **roadie**         | Blob storage and signed-URL minting for app-uploaded files. Apps request "give me a PUT URL for blob X for user Y"; roadie validates and returns a presigned R2 URL.                                                                                                                                                                                                                                  | No public Custom Domain.                                                                                                                       | `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, signed-meta secret.                                  |
-| **promoter**       | Outbound transactional email. Wraps Resend behind a typed RPC surface (`sendVerificationEmail`, `sendMagicLinkEmail`, etc.). Apps don't speak to Resend; they speak to promoter over a service binding.                                                                                                                                                                                               | No public Custom Domain.                                                                                                                       | `RESEND_API_KEY`, signed-meta secret.                                                            |
-| **identity** (app) | Sign-in, sign-up, account settings, admin sessions surface. The reference TanStack Start app.                                                                                                                                                                                                                                                                                                         | No direct host. Routes `identity.<baseDomain>` are bouncer → identity.                                                                         | None at the app level. `BOUNCER_ATTESTATION_KEYS` is committed code (public keys), not a secret. |
-| **other apps**     | Product-specific. Each app reaches the same primitives via the same kit factories. May be TSS or any other CF-deployable framework.                                                                                                                                                                                                                                                                   | Each gets a host under `<app>.<baseDomain>`, owned by bouncer.                                                                                 | None.                                                                                            |
+| Container          | Role                                                                                                                                                                                                                                                                                                                                                                                                                | Public host?                                                                                                                                   | Holds secrets?                                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| **bouncer**        | Single public ingress. Resolves session via guestlist. Mints + stamps bouncer attestation envelope. Dispatches to apps (passthrough or mounted-microfrontend mode). Strips privileged headers from inbound and outbound traffic.                                                                                                                                                                                    | Yes — every public hostname is a bouncer Custom Domain.                                                                                        | `BNC_ATT_PRIV` (Ed25519 private key for envelope signing). No `BETTER_AUTH_SECRET`.              |
+| **guestlist**      | Sole authority on session validity. Owns Better Auth wiring, the user database, plugin set (passkey, twoFactor, oauthProvider, admin, organization). Exposes `/api/auth/*` (BA handler), `/api/avatar/*` (presigned-upload flow via roadie), `/admin/*` (sessions, stats, API keys, OAuth clients), `/user/connections`, `/u/avatar/:refId` (public avatar read broker), `/providers`, `/.well-known/*`, `/health`. | No public Custom Domain in the target topology. Reached only via service bindings (from bouncer for `/api`/`/u`, from apps for session/admin). | `BETTER_AUTH_SECRET`, OAuth client secrets, internal API tokens.                                 |
+| **roadie**         | Blob storage and signed-URL minting for app-uploaded files. Apps request "give me a PUT URL for blob X for user Y"; roadie validates and returns a presigned R2 URL.                                                                                                                                                                                                                                                | No public Custom Domain.                                                                                                                       | `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, signed-meta secret.                                  |
+| **promoter**       | Outbound transactional email. Wraps Resend behind a typed RPC surface (`sendVerificationEmail`, `sendMagicLinkEmail`, etc.). Apps don't speak to Resend; they speak to promoter over a service binding.                                                                                                                                                                                                             | No public Custom Domain.                                                                                                                       | `RESEND_API_KEY`, signed-meta secret.                                                            |
+| **identity** (app) | Sign-in, sign-up, account settings, admin sessions surface. The reference TanStack Start app.                                                                                                                                                                                                                                                                                                                       | No direct host. `<baseDomain>/account` is bouncer → identity (vmf-mounted).                                                                    | None at the app level. `BOUNCER_ATTESTATION_KEYS` is committed code (public keys), not a secret. |
+| **other apps**     | Product-specific. Each app reaches the same primitives via the same kit factories. May be TSS or any other CF-deployable framework.                                                                                                                                                                                                                                                                                 | Each gets a path mount under the shared host, owned by bouncer (passthrough or vmf) — e.g. `store` at `<baseDomain>/shop`.                     | None.                                                                                            |
 
 ## §2.2 Service binding graph
 
@@ -232,7 +232,7 @@ sequenceDiagram
 - Browser cookies flow through bouncer to the app unchanged — bouncer's strip-and-stamp only touches `x-platform-*` headers (see §4.1.3). That's what lets `platform.getSession()` authenticate at guestlist without any envelope-to-session synthesis: the cookie is the source of truth, the envelope is the signed origin assertion.
 - Step 6's strip is the hygiene rule: never let a client-supplied `x-platform-*` header survive into upstream.
 - If step 4's `guestlist.getSession()` returns `null` (no session, or expired), the envelope carries `actor: null` and `session: null`. The envelope is still stamped — every bouncer-forwarded request gets one, so the prod enforcement check is uniform. The verifier enforces the cross-field invariant `actor === null ⟺ session === null`.
-- For `auth.require: "user"` routes (per `ROUTES` config), if `actor === null` bouncer short-circuits with a 302 to `identity.<baseDomain>/sign-in?returnTo=<original-url>` before reaching dispatch. The redirect response itself carries no envelope; it's a bouncer-owned response, not an upstream response.
+- Bouncer's `ROUTES` config carries no auth-requirement flag — it dispatches every matched route the same way regardless of `actor`. Redirecting anonymous users to sign-in is the app's responsibility (route guards built on `createPrincipalGate` / `requireUserMiddleware`), not bouncer's.
 
 ## §3.2 guestlist
 
@@ -261,14 +261,14 @@ flowchart LR
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | entry + ALS    | wraps fetch in `executionContext` + `withRequestContext`; reads `x-platform-*` as log correlation only                                |
 | Elysia routes  | mounts `/api/auth/*`, `/api/avatar/*`, `/admin/*`, `/user/connections`, `/u/avatar/:refId`, `/health`, `/providers`, `/.well-known/*` |
-| Better Auth    | BA instance with plugin set (passkey, twoFactor, oauthProvider, admin, organization once enabled)                                     |
+| Better Auth    | BA instance with plugin set (passkey, twoFactor, oauthProvider, admin, organization)                                                  |
 | schema         | Drizzle schema: user, session, account, twoFactor, organization tables                                                                |
 | client factory | `createGuestlistClient(...)` — apps consume this to call guestlist over their service binding                                         |
 
 **Invariants.**
 
 1. **Guestlist is the sole holder of `BETTER_AUTH_SECRET`.** No other Worker. Cookie validation lives where the secret lives.
-2. **Guestlist is reached only via service binding in the target topology.** It has no public Custom Domain. The bouncer proxies `/api/auth/*` and `/u/*` from `identity.<baseDomain>` to guestlist; that proxy is the only public path to guestlist.
+2. **Guestlist is reached only via service binding in the target topology.** It has no public Custom Domain. The bouncer proxies `/api/auth/*` and `/u/*` under the shared host to guestlist; that proxy is the only public path to guestlist.
 3. **`x-platform-actor-*` headers at guestlist's boundary are log-correlation only.** They never feed authz. Authoritative actor identity at guestlist always derives from the cookie. (Comment that pins this lives at `workers/guestlist/src/index.ts` boundary; see §4.1.4.)
 
 ## §3.3 apps (identity)
@@ -455,7 +455,7 @@ joseHeader = { "alg": "EdDSA", "kid": "gw-2026-05" }
 
 **Anti-replay properties.**
 
-- `host` field binds the envelope to a specific destination. A stolen envelope for `thoughts.<baseDomain>` is rejected by `transfers.<baseDomain>`.
+- `host` field binds the envelope to the routed hostname. A stolen envelope minted for `staging.<baseDomain>` is rejected on `<baseDomain>` (production), and vice versa. Apps sharing one host via path mounts (e.g. `/account`, `/shop`) share that host's envelope trust — the mount boundary between them is enforced by bouncer's routing, not by the envelope.
 - `exp = iat + 30s`. Replay window is 30 seconds, matching the standard JWT compromise — no server-side nonce store required.
 - `alg` is hardcoded `"EdDSA"` in the verifier; `alg: "none"` and algorithm-confusion attacks are rejected.
 - Unknown `kid` is rejected (no fall-open behavior).
@@ -535,10 +535,10 @@ The verifier factory itself **asserts at construction time that `keys` is non-em
 
 Two layers always hold:
 
-1. **Bouncer's envelope check** enforces UX policy at the ingress boundary (redirect unauthenticated traffic, attach actor for downstream).
-2. **The app's verifier runs as a precondition** on every `platform.getEnvelope()` and `platform.getSession()` call inside loaders/middleware. In prod the verifier throws `403 — bouncer_required` / `envelope_invalid` on missing/tampered envelopes — that's the per-route enforcement; in dev/staging it returns `kind: "missing"` and identity-only consumers see `null` (apps that need full session still cookie-authenticate against guestlist the same way).
+1. **The app's own route guards** (`createPrincipalGate` / `requireUserMiddleware` and friends) enforce UX policy — redirecting anonymous users to sign-in, gating admin routes. Bouncer dispatches every matched route uniformly and attaches the actor for downstream to read; it does not gate on auth itself.
+2. **The app's verifier runs as a precondition** on every `platform.getEnvelope()` and `platform.getSession()` call inside loaders/middleware. In prod the verifier throws `403 — bouncer_required` / `envelope_invalid` on missing/tampered envelopes — that's the security backstop; in dev/staging it returns `kind: "missing"` and identity-only consumers see `null` (apps that need full session still cookie-authenticate against guestlist the same way).
 
-A bouncer misconfiguration that forgot to mark a route as `auth.require: "user"` is caught by the app's own session check. A missing envelope in prod is caught by the verifier (403). Both must hold; neither replaces the other.
+A route guard that forgets to gate a page is a UX bug, not a security hole — a missing or tampered envelope in prod is still caught by the verifier (403). Both must hold; neither replaces the other.
 
 ## §4.2 User identity & session access
 
@@ -575,7 +575,7 @@ All three run the envelope verifier as a precondition, so production's "every re
 
 - `envelopeMiddleware` — TSS middleware that runs the verifier once and exposes `ctx.principal` (`{ kind: "user", actor, session, activeOrgId }` or `{ kind: "anonymous" }`). Used by `createPrincipalGate(...)` to build per-app `requireUserMiddleware` / `requireAdminMiddleware`.
 - `apiProxyHandlers` — handlers object for `/api/$.ts` that proxies `/api/auth/*` and `/api/avatar/*` to guestlist over the service binding, seeding the platform header contract.
-- `makeAuthProvider` — session-driven `AuthProvider` factory for client-side auth state; not used by `identity` today (which uses `envelopeMiddleware` and `createReactStartAuthProvider` directly). `sessionMiddleware`/`createSessionMiddleware`, the legacy session-middleware path this used to pair with, have been removed from `@si/kit` entirely — they had zero real consumers.
+- `makeAuthProvider` — session-driven `AuthProvider` factory for client-side auth state; not used by `identity` today (which uses `envelopeMiddleware` and `createReactStartAuthProvider` directly). `@si/kit` has no `sessionMiddleware`/`createSessionMiddleware` export — `makeAuthProvider` is the kit's only session-driven client-auth factory.
 - `devEnvelopeStamper` — per-app opt-in for dev-direct topology; see §4.5.
 
 **Type relationship.** `PlatformSession` is a strict superset of `EnvelopeData`'s relevant fields — same `user.id`, same `user.email`, etc. Anywhere envelope data is enough, the full session also works; anywhere the full session is required, the envelope can't substitute (it doesn't carry the BA-plugin extras). Apps don't have to choose one model — they pick per call site:
@@ -588,7 +588,7 @@ All three run the envelope verifier as a precondition, so production's "every re
 
 **Cookies still flow through.** Bouncer's strip-and-stamp doesn't touch the `Cookie` header. Apps' guestlist client (`getCookies()` from `@tanstack/react-start/server` → service-binding RPC) authenticates against the same session the browser sent. The envelope is the signed bouncer-origin assertion; the cookie remains the actual auth credential.
 
-**`createSessionReader` is no longer the path.** The legacy fast-path that distributed `BETTER_AUTH_SECRET` to every app for local cookie verification is superseded by the envelope. It had zero in-repo callers and has been removed from `@si/auth` entirely. No app needs `BETTER_AUTH_SECRET` — that secret lives in guestlist alone (§3.2 invariant #1).
+**Apps authenticate via the envelope, not a local cookie reader.** `@si/auth` exposes no entrypoint for apps to verify the session cookie directly. No app needs `BETTER_AUTH_SECRET` — that secret lives in guestlist alone (§3.2 invariant #1).
 
 ## §4.3 Cross-worker communication
 
@@ -823,7 +823,7 @@ flowchart LR
 5. `workers/<new>/src/lib/auth-context.ts` + `lib/guestlist.ts` — thin wrappers around `createReactStartAuthProvider` and `createGuestlistFactory` respectively. ~10 lines each; copy from identity.
 6. `workers/<new>/src/app-brand.ts` — set `APP_PRODUCT_NAME`.
 7. `workers/<new>/wrangler.jsonc` — name, service bindings to `GUESTLIST` (+ `ROADIE`, `PROMOTER` if used). Apps must have `workers_dev: false` and no `routes`/`custom_domain` — bouncer owns the public hostname.
-8. `workers/bouncer/wrangler.jsonc` — add a `services` binding entry for the new app and a `ROUTES` entry mapping `<new>.somewhatintelligent.ca` to the new binding.
+8. `workers/bouncer/wrangler.jsonc` — add a `services` binding entry for the new app and a `ROUTES` entry mapping a path mount on the shared host (e.g. `/<new>`) to the new binding, in `passthrough` or `vmf` mode as appropriate.
 
 Apps that need an envelope on the inbound `Request` itself in dev (see §4.5) additionally pass `devEnvelopeSigner` + `devEnvelopeGuestlist` to `createPlatformStartApp` and call the returned `devEnvelopeStamper` from their worker `fetch` before TSS runs.
 
@@ -899,11 +899,11 @@ There is no render step. `wrangler deploy` (no `--env`) ships staging; `wrangler
 
 | Secret                                      | Per env | Holder             | Purpose                                                                         |
 | ------------------------------------------- | ------- | ------------------ | ------------------------------------------------------------------------------- |
-| `BETTER_AUTH_SECRET`                        | yes     | **guestlist only** | Better Auth cookie signing. Single holder by design — apps no longer hold it.   |
+| `BETTER_AUTH_SECRET`                        | yes     | **guestlist only** | Better Auth cookie signing. Single holder by design — no app holds it.          |
 | `BNC_ATT_PRIV`                              | yes     | **bouncer only**   | Ed25519 private key for envelope signing. Single secret, single rotation point. |
 | `RESEND_API_KEY`                            | yes     | promoter           | Outbound email.                                                                 |
 | `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | yes     | roadie             | R2 SigV4 credentials.                                                           |
-| OAuth client id/secret pairs                | yes     | guestlist          | Google, Microsoft, GitHub, etc. — wired conditionally.                          |
+| OAuth client id/secret pairs                | yes     | guestlist          | Google, Microsoft, Facebook, LinkedIn — wired conditionally.                    |
 
 Things that are **not secrets** (public values, committed to repo or `vars`):
 
@@ -942,13 +942,13 @@ No flag day. The overlap window is bounded by the envelope's `exp` (30s), not by
 
 When the platform is running, one of these topologies is in effect.
 
-| Topology                                   | Where                                                                     | What's in front of apps | Envelope present                            | Identity resolution                                                                                                                                          |
-| ------------------------------------------ | ------------------------------------------------------------------------- | ----------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Production**                             | `<host>.<baseDomain>` via CF Custom Domain                                | bouncer                 | always                                      | `getEnvelope()` = signed payload, no I/O. `getSession()` = guestlist service-binding RPC (cookies passed through bouncer). Verifier enforces.                |
-| **Staging**                                | `<host>-staging.<baseDomain>` via CF Custom Domain (`workers_dev: false`) | bouncer                 | always                                      | same as prod (or dev fallback, see §4.1.4)                                                                                                                   |
-| **Dev (full)**                             | `<host>.<devDomain>` via portless                                         | bouncer (run locally)   | always                                      | same as prod                                                                                                                                                 |
-| **Dev-direct, no stamper** (e.g. identity) | `<host>.<devDomain>` via portless, or `127.0.0.1:<port>` via wrangler dev | nothing                 | never                                       | `getEnvelope()` returns `null` (verifier kind `missing` in dev). `getSession()` still hits guestlist over service binding via inbound cookies.               |
-| **Dev-direct, with stamper**               | `<host>.<devDomain>` via portless                                         | nothing                 | always (app self-mints at `fetch` boundary) | `createDevEnvelopeStamper` reads cookie → guestlist → signs with `LOCAL_BNC_ATT_PRIV`. Verifier accepts the dev-kid envelope just like prod; same code path. |
+| Topology                                   | Where                                                                                     | What's in front of apps | Envelope present                            | Identity resolution                                                                                                                                          |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Production**                             | `<baseDomain>` (+ `www`) via CF Custom Domain, apps path-mounted (`/account`, `/shop`, …) | bouncer                 | always                                      | `getEnvelope()` = signed payload, no I/O. `getSession()` = guestlist service-binding RPC (cookies passed through bouncer). Verifier enforces.                |
+| **Staging**                                | `staging.<baseDomain>` via CF Custom Domain (`workers_dev: false`), same path mounts      | bouncer                 | always                                      | same as prod (or dev fallback, see §4.1.4)                                                                                                                   |
+| **Dev (full)**                             | `<devDomain>` via portless, same path mounts                                              | bouncer (run locally)   | always                                      | same as prod                                                                                                                                                 |
+| **Dev-direct, no stamper** (e.g. identity) | `<host>.<devDomain>` via portless, or `127.0.0.1:<port>` via wrangler dev                 | nothing                 | never                                       | `getEnvelope()` returns `null` (verifier kind `missing` in dev). `getSession()` still hits guestlist over service binding via inbound cookies.               |
+| **Dev-direct, with stamper**               | `<host>.<devDomain>` via portless                                                         | nothing                 | always (app self-mints at `fetch` boundary) | `createDevEnvelopeStamper` reads cookie → guestlist → signs with `LOCAL_BNC_ATT_PRIV`. Verifier accepts the dev-kid envelope just like prod; same code path. |
 
 The `getEnvelope()` fast path costs nothing — JWS verify is sub-millisecond. The `getSession()` path costs one service-binding RPC, same in every topology that has a guestlist binding. The dev-stamper itself adds one guestlist RPC at the worker `fetch` boundary in dev only (no-op outside dev).
 
@@ -965,4 +965,4 @@ The `getEnvelope()` fast path costs nothing — JWS verify is sub-millisecond. T
 - **Platform contract** — the `x-platform-*` header family. The only privileged header set apps and services read.
 - **Promoter** — the Worker that owns outbound email. Wraps Resend.
 - **Roadie** — the Worker that owns blob storage. Wraps R2 with signed-URL minting.
-- **VMF** — virtual microfrontend; bouncer's `mode: "vmf"` rewrites HTML/CSS/Location/cookies when mounting an upstream app under a path prefix. Default mode is `"passthrough"` (no rewriting), used for full-subdomain apps. **Status:** implemented in `workers/bouncer/src/proxy.ts` and covered by `__tests__/routing.test.ts` + `__tests__/template-parity.test.ts`, but no current `wrangler.jsonc` route uses `mode: "vmf"` — every production route is `passthrough`. Kept warm in code for the path-mounted-app use case.
+- **VMF** — virtual microfrontend; bouncer's `mode: "vmf"` rewrites HTML/CSS/Location/cookies when mounting an upstream app under a path prefix. `"passthrough"` (no rewriting) is used for mounts where the upstream is already prefix-aware, such as `/api` → guestlist. **Status:** implemented in `workers/bouncer/src/proxy.ts` and covered by `__tests__/routing.test.ts` + `__tests__/template-parity.test.ts`; the production route table uses `mode: "vmf"` for the `/account` (identity) and `/shop` (store) mounts.

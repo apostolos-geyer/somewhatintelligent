@@ -13,13 +13,13 @@
   "preview_urls": true,
   "vars": {
     "ENVIRONMENT": "staging",
-    // Identity's own PUBLIC address, now that bouncer vmf-mounts it at
-    // `/account` of the single-host apex (workers/bouncer/wrangler.jsonc) —
-    // used for cross-app links this app renders itself (sidebar "identity"
-    // nav item, admin invite-link base). `src/lib/auth-client.ts`'s SSR
-    // fallback derives the bare origin from this via `new URL(...).origin`
-    // rather than using it directly, since the same-host `/api` guestlist
-    // route lives at the origin ROOT, not under `/account`.
+    // Identity's own PUBLIC address; bouncer vmf-mounts it at `/account` of
+    // the single-host apex (workers/bouncer/wrangler.jsonc) — used for
+    // cross-app links this app renders itself (sidebar "identity" nav item,
+    // admin invite-link base). `src/lib/auth-client.ts`'s SSR fallback
+    // derives the bare origin from this via `new URL(...).origin` rather
+    // than using it directly, since the same-host `/api` guestlist route
+    // lives at the origin ROOT, not under `/account`.
     "IDENTITY_URL": "https://staging.somewhatintelligent.ca/account",
     // Controlled apex (leading dot, mirrors guestlist AUTH_DOMAIN + the auth
     // server's `*.{apex}` trustedOrigins). The post-auth redirect guard
@@ -35,7 +35,7 @@
   "env": {
     "production": {
       // Explicit — without this wrangler would derive
-      // "sprout-identity-staging-production" (top-level name + "-production"),
+      // "si-identity-staging-production" (top-level name + "-production"),
       // a brand-new worker, instead of updating this one.
       "name": "si-identity-production",
       // Staging turns this on for workers.dev preview access; production must

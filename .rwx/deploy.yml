@@ -16,36 +16,8 @@
 # `call: ${{ run.dir }}/deploy.yml` from:
 #   - .rwx/ci.yml      (env=staging,    after the gate, on push to main)
 #   - .rwx/release.yml (env=production, on a v* tag)
-# Before this file existed, staging and production each carried their own
-# ~50-line copy of this task graph — a fix to one (e.g. PR #14's `use:`
-# ordering fix) had no structural guarantee of landing in the other. Now
-# there's exactly one copy; both callers pass only `init.env` + the
-# GitHub-Deployment target for their environment.
-#
-# ---- UNVALIDATED AT THE TIME THIS WAS WRITTEN -------------------------------
-# The author environment had no `rwx login` (no RWX CLI auth), so none of this
-# — including the embedded-run composition itself — could be `rwx lint`ed or
-# dry-run tested against the real RWX backend. Two specific assumptions are
-# unverified by RWX's own docs (which don't address embedded-run inheritance
-# either way):
-#   1. Does a LOCKED vault's branch/ref access-control still resolve correctly
-#      from inside an embedded run (as opposed to a directly GitHub-triggered
-#      one)? If not, `vaults.si_deploy.secrets.*` below resolve empty
-#      and `migrate`/`deploy` fail loudly on a Cloudflare auth error — that
-#      failure IS the signal, not silent data loss.
-#   2. Does `github.token` resolve inside an embedded run's `code` task? If
-#      not, the `code` task fails immediately and loudly (clone/checkout
-#      error) — also an obvious, fail-fast signal, not a silent skip.
-# Both failure modes are loud (a red task in the RWX UI), unlike the
-# concurrency-pool bug `.rwx/release-please.yml` documents (which failed
-# *silently*) — so the cost of being wrong here is "an obvious red deploy run
-# to investigate," not "a deploy that silently never happened." Validate before
-# trusting this for a real release: `rwx lint .rwx/deploy.yml .rwx/ci.yml
-# .rwx/release.yml`, then `rwx run .rwx/deploy.yml --init env=staging --init
-# deploy=true --init commit-sha=<a real main sha>` (needs deploy-vault access).
-# If either assumption is wrong, the fix is to revert this file and restore the
-# previous per-file inline task bodies (see git history before this commit) —
-# isolated to this one file, nothing else in this PR depends on it working.
+# Exactly one copy of this task graph serves both environments; both callers
+# pass only `init.env` + the GitHub-Deployment target for their environment.
 
 on:
   # Manual / validation only: `rwx run .rwx/deploy.yml --init env=staging
@@ -61,10 +33,8 @@ on:
       deploy: false
 
 # Serialize per environment: never run two staging deploys or two production
-# deploys concurrently (a git-push race against the same workers). cancel-waiting
-# (not queue) is intentional here — this IS the deploy step, so "skip a queued,
-# now-stale deploy in favor of the most recent one" is correct (unlike
-# release-please, where every trigger might be the one that flips state).
+# deploys concurrently. cancel-waiting is correct here — this IS the deploy
+# step, so a queued, now-stale deploy should yield to the most recent one.
 concurrency-pools:
   - id: somewhatintelligent/somewhatintelligent:deploy-${{ init.env }}
     capacity: 1
@@ -122,9 +92,8 @@ tasks:
 
   # Real node, NOT optional: wrangler's bin is `#!/usr/bin/env node`; with no
   # node in the container `bun run` substitutes bun, under which
-  # `wrangler deploy` prints its banner and exits 0 WITHOUT uploading (the
-  # silent no-op that hit release.yml's re-ships). Every task that runs
-  # wrangler must have this in its `use` chain.
+  # `wrangler deploy` prints its banner and exits 0 WITHOUT uploading. Every
+  # task that runs wrangler must have this in its `use` chain.
   - key: node
     call: nodejs/install 1.1.14
     with:
@@ -173,20 +142,18 @@ tasks:
       # trap reports the terminal deployment state (success/failure) to GitHub
       # with the environment URL + a link back to this RWX run.
       source scripts/rwx-github-deployment.sh
-      # Fresh summary scratch for THIS task (gh_deployment_create ran in the
-      # `migrate` task, i.e. a different agent — its truncation didn't happen
-      # here, and an agent reused across runs could hold stale lines).
+      # Fresh summary scratch for THIS task: gh_deployment_create runs in the
+      # `migrate` task, a different agent — an agent reused across runs
+      # could otherwise hold stale lines.
       : > "${GH_DEPLOY_SUMMARY_FILE}"
       trap 'rc=$?; if [ "$rc" -eq 0 ]; then gh_deployment_status success "deployed to ${{ init.env }}"; else gh_deployment_status failure "${{ init.env }} deploy failed"; fi; exit $rc' EXIT
       # True dependency order, not just "leaf services then apps": guestlist has
       # service bindings to promoter + roadie, so wrangler's binding-existence
-      # check fails if guestlist deploys before they exist (hit for real on the
-      # first production deploy: promoter/roadie didn't exist yet, and wrangler
-      # refused to deploy guestlist with a binding to a nonexistent Worker —
-      # error 10143). promoter + roadie are true leaves (no bindings) and go
-      # first; guestlist next (needs both); then identity + store (bind
-      # guestlist); bouncer (binds guestlist, identity, store) goes LAST, so
-      # the public router only ever points at already-deployed upstreams.
+      # check fails if guestlist deploys before they exist. promoter + roadie
+      # are true leaves (no bindings) and go first; guestlist next (needs
+      # both); then identity + store (bind guestlist); bouncer (binds
+      # guestlist, identity, store) goes LAST, so the public router only ever
+      # points at already-deployed upstreams.
       # Per-worker deploy mechanics live in scripts/deploy-worker.sh, shared
       # with .rwx/release-please.yml and .rwx/release.yml so a fix can't land
       # in one lane and miss the others.

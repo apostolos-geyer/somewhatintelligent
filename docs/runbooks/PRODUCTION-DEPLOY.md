@@ -20,13 +20,13 @@ it just tagged.
 
 ---
 
-## 1. How a production release works today
+## 1. How a production release works
 
 release-please runs in **manifest mode**: one component per worker
 (`release-please-config.json`), so a single Release PR groups version bumps for
 every changed worker and, on merge, cuts **per-worker tags**
-`<worker>-v<x.y.z>` (e.g. `guestlist-v0.2.2`). All seven workers currently sit
-at `0.2.1` in `.release-please-manifest.json`.
+`<worker>-v<x.y.z>` (e.g. `guestlist-v0.2.2`). All six workers version
+independently in `.release-please-manifest.json`.
 
 ```
 conventional commits on main
@@ -83,8 +83,8 @@ already-cut component tag. Dispatch it from the RWX UI or CLI:
 rwx dispatch si-reship-worker --param worker=guestlist --param tag=guestlist-v0.2.1
 ```
 
-- `worker` is a dropdown of the seven deployable workers (`promoter`, `roadie`,
-  `guestlist`, `identity`, `marketing`, `sprout`, `bouncer`).
+- `worker` is a dropdown of the six deployable workers (`promoter`, `roadie`,
+  `guestlist`, `identity`, `store`, `bouncer`).
 - `tag` is the **component** tag to deploy — `<worker>-v<x.y.z>`, e.g.
   `guestlist-v0.2.1`. The run clones that tag's commit. (Plain `v0.2.1` won't
   resolve; tags are per-worker now.)
@@ -108,27 +108,24 @@ service/app's `services` (binding) block in its `wrangler.jsonc` — not just
 "leaf services then apps":
 
 ```
-promoter, roadie → guestlist → identity → marketing → sprout → bouncer
+promoter, roadie → guestlist → identity, store → bouncer
 ```
 
 - **promoter, roadie** — no service bindings (true leaves), go first.
 - **guestlist** — binds `promoter` + `roadie`, so it must come **after** both.
 - **identity** — binds only `guestlist`.
-- **sprout** — binds `guestlist` + `roadie` + `promoter`.
-- **bouncer** — the public router, binds `guestlist` + `identity` + `sprout`, so
+- **store** — binds `guestlist` + `roadie`.
+- **bouncer** — the public router, binds `guestlist` + `identity` + `store`, so
   it ships **last**, only ever pointing at already-deployed upstreams.
-- **marketing** — no bindings; position doesn't matter.
 
 **Why the order is load-bearing (not cosmetic):** `wrangler deploy` fails with
 Cloudflare API code **`10143`** — `Service binding 'X' references Worker 'Y'
-which was not found` — if a worker deploys before a Worker it binds exists. This
-bit the first production deploy for real: the order deployed `guestlist` before
-`promoter`/`roadie` existed on the account, and wrangler refused. The order
-above is the fix and is a permanent constraint — any new binding must respect
-it.
+which was not found` — if a worker deploys before a Worker it binds exists. The
+order above satisfies that constraint for every current binding and is a
+permanent constraint — any new binding must respect it.
 
 D1 migrations run **before** code (schema before a worker can read it). The
-three D1-backed workers are `guestlist`, `roadie`, `sprout`. In the per-worker
+three D1-backed workers are `guestlist`, `roadie`, `store`. In the per-worker
 lanes (`release-please.yml`, `release.yml`) each worker migrates-then-deploys
 atomically via `scripts/deploy-worker.sh ship`; in the full-fleet `deploy.yml`,
 all migrations run first, then all deploys. Either way a migration failure is
@@ -157,9 +154,9 @@ Edit**, account-scoped to this fork's account.
 
 Per-environment resources that must exist on the account:
 
-| Resource                                                 | For        | Provision                                                                                                       |
-| -------------------------------------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------- |
-| `roadie-production-db`, `guestlist-production-db` D1 dbs | migrations | `wrangler d1 create <name>` → paste UUID into that worker's `wrangler.jsonc` `env.production` → `bun run types` |
+| Resource                                                                        | For        | Provision                                                                                                       |
+| ------------------------------------------------------------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------- |
+| `roadie-production-db`, `guestlist-production-db`, `store-production-db` D1 dbs | migrations | `wrangler d1 create <name>` → paste UUID into that worker's `wrangler.jsonc` `env.production` → `bun run types` |
 
 **Production secrets** land on **deployed** workers, so provision them **after**
 the first `deploy-production`:
@@ -173,12 +170,12 @@ CLOUDFLARE_ACCOUNT_ID=c735c5a53d864bee37400befb7f4c7f4 bun run secrets productio
   is an Ed25519 keypair: its public half is written into
   `packages/config/src/bouncer-attestation.ts` (kid `production`) — **review,
   commit that pubkey, and redeploy guestlist** so verifiers carry it.
-- `RTK_API_TOKEN` (sprout), `S3_ACCESS_KEY_ID`/`S3_SECRET_ACCESS_KEY` (roadie),
-  and the OAuth `*_CLIENT_*` (guestlist) are **provided** — pasted into
+- `S3_ACCESS_KEY_ID`/`S3_SECRET_ACCESS_KEY` (roadie) and the OAuth
+  `*_CLIENT_*` (guestlist) are **provided** — pasted into
   `.secrets/production.env`, never committed. They're optional: the deploy
-  succeeds without them, but the paired feature (in-platform calls / blob
-  storage / that OAuth provider) stays inert until set. `RESEND_API_KEY` is not
-  needed in production — email goes through the Cloudflare Email binding.
+  succeeds without them, but the paired feature (roadie blob storage / that
+  OAuth provider) stays inert until set. `RESEND_API_KEY` is not needed in
+  production — email goes through the Cloudflare Email binding.
 
 See `docs/runbooks/SECRETS.md` and `docs/ops/env-vars.md` for the full contract.
 

@@ -43,14 +43,16 @@ workers/guestlist/.dev.vars      # BETTER_AUTH_SECRET (local placeholder)
 workers/bouncer/.dev.vars      # BNC_ATT_PRIV (local placeholder)
 workers/roadie/.dev.vars       # S3_* (blank — fill if remote: true)
 workers/promoter/.dev.vars     # RESEND_API_KEY (blank — fill to send)
-workers/identity/.dev.vars         # only non-secret env vars
+workers/identity/.dev.vars         # BNC_ATT_PRIV (local placeholder — dev-direct attestation signing)
 ```
 
 Local placeholders are declared in `scripts/dev-config.ts`:
 
 - `LOCAL_BETTER_AUTH_SECRET` — guestlist's local cookie-signing key. Only
   signs cookies on `.somewhatintelligent.localhost`; safe to hand-distribute.
-- `LOCAL_BNC_ATT_PRIV` — bouncer's local Ed25519 private key. Paired with
+- `LOCAL_BNC_ATT_PRIV` — the local dev-direct Ed25519 attestation signing key,
+  shared by bouncer and identity (each stamps its own envelope locally, since
+  bouncer doesn't front the other workers in dev-direct topology). Paired with
   the public key under `kid: "dev"` in `packages/config/src/bouncer-attestation.ts`.
   Local-only; safe to hand-distribute.
 
@@ -58,11 +60,11 @@ Local placeholders are declared in `scripts/dev-config.ts`:
 
 Secrets bootstrap leaves blank (you must fill in):
 
-| Secret                                                 | Where                         | Used for                                                                                                                                                                            |
-| ------------------------------------------------------ | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `RESEND_API_KEY`                                       | `workers/promoter/.dev.vars`  | Outbound transactional email (sign-up verification, magic links, password reset). Without it, sign-in is blocked by email verification; see README for the D1 bypass.               |
-| `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY`            | `workers/roadie/.dev.vars`    | Required only if you flip the R2 binding to `remote: true` in `workers/roadie/wrangler.jsonc`. Local miniflare R2 emulation needs no keys.                                          |
-| OAuth client id/secret pairs (Google, Microsoft, etc.) | `workers/guestlist/.dev.vars` | Required only if you keep the social-provider plugins wired. The wiring in `auth-config.ts` is gated on the env-var pairs being non-empty, so empty values = social login disabled. |
+| Secret                                                 | Where                         | Used for                                                                                                                                                                                                                                                                                 |
+| ------------------------------------------------------ | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `RESEND_API_KEY`                                       | `workers/promoter/.dev.vars`  | Outbound transactional email (sign-up verification, magic links, password reset) in local dev. Seeded demo users are pre-verified and sign in without it; it only matters for testing a real (non-seeded) sign-up's verification email — see README's "Email verification in local dev". |
+| `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY`            | `workers/roadie/.dev.vars`    | Required only if you flip the R2 binding to `remote: true` in `workers/roadie/wrangler.jsonc`. Local miniflare R2 emulation needs no keys.                                                                                                                                               |
+| OAuth client id/secret pairs (Google, Microsoft, etc.) | `workers/guestlist/.dev.vars` | Required only if you keep the social-provider plugins wired. The wiring in `auth-config.ts` is gated on the env-var pairs being non-empty, so empty values = social login disabled.                                                                                                      |
 
 ## Staging / production
 
@@ -87,10 +89,10 @@ Required secrets per env:
 
 | Service              | Secret                                                                                                            | Notes                                                                                                                                                                                                                                                               |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| guestlist            | `BETTER_AUTH_SECRET`                                                                                              | 32-byte base64. **Sole holder** — apps no longer hold this in the target topology. Rotate per env. Invalidates every session on rotation.                                                                                                                           |
+| guestlist            | `BETTER_AUTH_SECRET`                                                                                              | 32-byte base64. **Sole holder** — no app holds a copy of this secret. Rotate per env. Invalidates every session on rotation.                                                                                                                                        |
 | bouncer              | `BNC_ATT_PRIV`                                                                                                    | Ed25519 private key (PEM). Sole holder. Apps verify with the public key set committed in `packages/config/src/bouncer-attestation.ts`.                                                                                                                              |
 | roadie               | `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`                                                                        | R2 S3 keypair, per-env. Full programmatic mint + bucket CORS + the `ROADIE` binding requirement: [`runbooks/roadie-r2-provisioning.md`](runbooks/roadie-r2-provisioning.md). Images stay blank without ALL of: keypair, CORS, and `props.callerApp` on the binding. |
-| promoter             | `RESEND_API_KEY`                                                                                                  | From [resend.com/api-keys](https://resend.com/api-keys). Per-env if you separate sending domains.                                                                                                                                                                   |
+| promoter             | `RESEND_API_KEY`                                                                                                  | From [resend.com/api-keys](https://resend.com/api-keys). Staging (and local) only — production sends through the Cloudflare Email Service `send_email` binding instead (`EMAIL_PROVIDER=cloudflare`), so no key is needed there.                                    |
 | guestlist (optional) | `GOOGLE_CLIENT_ID/SECRET`, `MICROSOFT_CLIENT_ID/SECRET`, `FACEBOOK_CLIENT_ID/SECRET`, `LINKEDIN_CLIENT_ID/SECRET` | Social-provider OAuth credentials. Wired conditionally — the plugin only loads when both id+secret are present.                                                                                                                                                     |
 
 ## What `wrangler.jsonc` carries vs what's a secret
@@ -164,7 +166,7 @@ by deploy timing.
 
 When you need to push a single secret outside the codified CLI, `wrangler secret
 put <NAME> --env <staging|production>` (per service) still works. For syncing
-many secrets from an encrypted file there's an older helper at
+many secrets from an encrypted file there's a helper at
 `workers/guestlist/scripts/sync-secrets.sh` — it decrypts via
 [dotenvx](https://dotenvx.com) and pipes each value into `wrangler secret put`.
 You bring the `.env.<env>` file and `.env.keys`; this template ships no
