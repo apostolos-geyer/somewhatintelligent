@@ -64,6 +64,15 @@ export default defineConfig({
         command: "bun scripts/seed.ts",
         cache: false,
       },
+      // Any bundling of this worker resolves @si/stripe -> src/generated.ts
+      // (gitignored codegen); the task graph — not ad-hoc bootstrap glue —
+      // guarantees it exists first. `vp run build` is the bundle-validity
+      // gate (wrangler dry-run); deploy paths that bundle should run it.
+      build: {
+        command: "wrangler deploy --dry-run",
+        dependsOn: ["@si/stripe#codegen"],
+        cache: false,
+      },
     },
   },
 });

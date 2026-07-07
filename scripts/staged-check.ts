@@ -20,7 +20,12 @@ const QUIRK = /((^|\/)(__tests__|test|scripts)\/|\.test\.tsx?$)/;
 // `vp check` fail with "Expected at least one target file", vetoing the
 // commit outright. Everything else is format-only.
 const CHECKABLE = /\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$/;
-const fmtOnly = files.filter((f) => QUIRK.test(f) || !CHECKABLE.test(f));
+// …and `vp fmt` has the SAME failure mode for types it can't format: a
+// staged .sh (etc.) makes `vp fmt --write` die with "Expected at least one
+// target file", vetoing the commit. Anything not formattable is skipped
+// outright — shellcheck-style hygiene for scripts lives in CI, not here.
+const FORMATTABLE = /\.(ts|tsx|js|jsx|mts|cts|mjs|cjs|json|jsonc|ya?ml|md|css|html)$/;
+const fmtOnly = files.filter((f) => (QUIRK.test(f) || !CHECKABLE.test(f)) && FORMATTABLE.test(f));
 const full = files.filter((f) => !QUIRK.test(f) && CHECKABLE.test(f));
 
 function run(cmd: string[], targets: string[]): number {

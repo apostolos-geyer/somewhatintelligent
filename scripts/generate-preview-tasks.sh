@@ -39,10 +39,13 @@ for w in ${CHANGED}; do
   # found"; the first live preview run proved it). SI_BUILD=1 keeps
   # CI-seeded .dev.vars out of the bundle (docs/ops/02).
   case "$w" in
-    # Build-step apps mirror the build half of their deploy:staging script.
-    # store: if the storefront track ships a build-step deploy script, add its
-    # build here to mirror it (same rule as identity).
-    identity) build="(cd workers/${w} && SI_BUILD=1 bunx vp run build)" ;;
+    # Build-step apps mirror the build half of their deploy:staging script
+    # (SI_BUILD=1 vp run build && wrangler ...).
+    identity|store) build="(cd workers/${w} && SI_BUILD=1 bunx vp run build)" ;;
+    # guestlist bundles @si/stripe -> src/generated.ts (gitignored codegen);
+    # vp's task graph produces it (build dependsOn @si/stripe#codegen) before
+    # wrangler bundles here.
+    guestlist) build="(cd workers/${w} && bunx vp run build)" ;;
     *) build=":" ;;
   esac
   cat >> "${file}" <<TASK
