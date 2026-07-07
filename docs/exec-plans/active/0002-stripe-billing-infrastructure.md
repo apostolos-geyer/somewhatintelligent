@@ -34,6 +34,26 @@ throwaway test-mode data):**
 Deciding those changes nothing about the infrastructure below, which is why it
 comes first.
 
+## Current-state assessment
+
+What exists today and the concrete gap each phase closes. Everything below is
+verifiable in the tree now.
+
+| #   | Area                | Today                                                                               | Gap → fix (track/phase)                                                                                      | Anchor                                                                                   |
+| --- | ------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| 1   | Store checkout      | manual pending→paid stub, no card capture                                           | Checkout Session (Elements) [B, P2]                                                                          | `workers/store/src/routes/_app/checkout.tsx:164`, `src/lib/orders.functions.ts:54`       |
+| 2   | Store Stripe wiring | none                                                                                | add `stripe` dep + `STRIPE_*` secrets + `/hooks/store` route [A2, P1]                                        | `workers/store/package.json`, `wrangler.jsonc`, `src/routes/api/` (only `img.$refId.ts`) |
+| 3   | Order schema        | no Stripe columns / no idempotency ledger                                           | migration: `stripeCustomerId`/`stripeCheckoutSessionId`/`paymentStatus` + `processed_stripe_events` [D3, P2] | `workers/store/src/db/schema.ts` (`customer_order`)                                      |
+| 4   | Customer mapping    | `user.stripeCustomerId` created only at signup; no get-or-create for existing users | `ensureStripeCustomer()` RPC [D2, P2]                                                                        | `packages/auth/src/server.ts`, guestlist                                                 |
+| 5   | Secrets manifest    | `ServiceName` union lacks `store`                                                   | add `store` [G4, P0]                                                                                         | `packages/secrets/src/manifest.ts:16`                                                    |
+| 6   | CD drift-guard      | `validate.ts` orphan detection is **non-fatal** (warns, exit 0)                     | make fatal + `archived` escape hatch [G1, P0]                                                                | `packages/stripe/scripts/validate.ts:81,140`                                             |
+| 7   | `@si/stripe` CI     | not in the gate (no typecheck/test task, unregistered)                              | wire in [G3, P0]                                                                                             | `.rwx/ci.yml`, `.captain/config.yml`                                                     |
+| 8   | Deploy secret       | no `STRIPE_SECRET_KEY` in any RWX vault                                             | add to `si_deploy` [G2, P0]                                                                                  | `.rwx/deploy.yml`                                                                        |
+| 9   | Async processing    | **no Cloudflare Queues anywhere**                                                   | `STRIPE_EVENTS` queue + DLQ [A2, P1]                                                                         | net-new                                                                                  |
+| 10  | Subscription plugin | dormant, hardcoded single `member` plan                                             | plans derived from config (a later plan defines them)                                                        | `workers/guestlist/src/auth-config.ts:75`                                                |
+| 11  | Bouncer routing     | `/api`→guestlist, `/shop`→store (vmf); no webhook mount                             | `/hooks/store` passthrough [E3, P1]                                                                          | `workers/bouncer/wrangler.jsonc` `vars.ROUTES`                                           |
+| 12  | Staging Access      | host-wide Access app gates everything; machine auth via service-token headers       | path-scoped **bypass** app (Stripe can't send those headers) [E2, P1]                                        | `scripts/provision/access.ts`                                                            |
+
 ## Target state
 
 - **Payment surface = Checkout Sessions API**, not low-level PaymentIntents.
@@ -284,6 +304,31 @@ idempotency ledger.
 
 ---
 
+## Webhook event registry
+
+Every event either listener subscribes to, the handler action, and the
+idempotency key. The two Stripe endpoints subscribe to **disjoint** sets;
+`checkout.session.completed` fires for _both_ modes, so each handler additionally
+guards on mode/metadata so it never touches the other's sessions [A3].
+
+| Event                                                             | Listener                                          | Action                                                 | Idempotency                             |
+| ----------------------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------ | --------------------------------------- |
+| `checkout.session.completed` (`mode=payment`, `metadata.orderId`) | store `/hooks/store` (queued)                     | mark order paid, decrement stock, receipt via promoter | `event.id` in `processed_stripe_events` |
+| `checkout.session.async_payment_succeeded`                        | store (queued)                                    | fulfil (delayed methods)                               | `event.id`                              |
+| `checkout.session.async_payment_failed`                           | store (queued)                                    | mark order failed, notify buyer                        | `event.id`                              |
+| `checkout.session.expired`                                        | store (queued)                                    | release the pending order                              | `event.id`                              |
+| `checkout.session.completed` (`mode=subscription`)                | guestlist `/api/auth/stripe/webhook` (in-request) | better-auth activates the subscription                 | plugin-internal                         |
+| `customer.subscription.created` / `.updated` / `.deleted`         | guestlist (in-request)                            | better-auth subscription-row transitions               | plugin-internal                         |
+| `invoice.paid` / `invoice.payment_failed`                         | guestlist (in-request)                            | subscription status / dunning signal                   | plugin-internal                         |
+| `charge.dispute.created` / `.closed`                              | store (queued) — **future**                       | flag order, admin evidence path                        | `event.id`                              |
+| `charge.refund.updated` / `refund.*`                              | store (queued) — **future**                       | reflect refund on the order                            | `event.id`                              |
+
+The store consumer acts only on sessions with `mode === "payment"` **and** an
+`metadata.orderId`; the guestlist plugin owns everything subscription-shaped. A
+Stripe endpoint's `enabled_events` list is set by the provisioner [F1], so the
+two never overlap on the wire even though both are subscribed to
+`checkout.session.completed`.
+
 ## Environment topologies
 
 The one hard problem is **webhook ingress**: Stripe must reach an HTTPS endpoint,
@@ -403,6 +448,147 @@ flowchart LR
   staging top-level **and** `env.production` apex + www sets.
 
 ---
+
+## Reference implementation — core seams
+
+The load-bearing code, so the build is unambiguous. All of it is `[offline]`
+(mock the Stripe client; the queue consumer runs on a synthetic `MessageBatch`;
+signatures come from `generateTestHeaderString`).
+
+**The single gate** (every surface branches on this — INV-4, INV-8):
+
+```ts
+export const stripeConfigured = (env: Env): boolean =>
+  !!env.STRIPE_SECRET_KEY && !!env.STRIPE_WEBHOOK_SIGNING_SECRET;
+```
+
+**Commerce webhook — producer** (`store /hooks/store`): verify, enqueue, 200 fast.
+
+```ts
+async fetch(req: Request, env: Env): Promise<Response> {
+  if (!stripeConfigured(env)) return new Response("stripe disabled", { status: 503 });
+  const sig = req.headers.get("stripe-signature");
+  const raw = await req.text();                      // RAW body — never .json()
+  let event: Stripe.Event;
+  try {
+    event = await stripe(env).webhooks.constructEventAsync(  // async == Workers Web Crypto
+      raw, sig!, env.STRIPE_WEBHOOK_SIGNING_SECRET);
+  } catch (e) {
+    return new Response(`bad signature: ${(e as Error).message}`, { status: 400 });
+  }
+  try { await env.STRIPE_EVENTS.send(raw); }
+  catch { return new Response("queue unavailable", { status: 500 }); } // 500 → Stripe retries
+  return Response.json({ received: true });           // 200 immediately, before heavy work
+}
+```
+
+**Commerce webhook — consumer** (`store queue()`): idempotent, per-message
+ack/retry, DLQ on exhaustion.
+
+```ts
+async queue(batch: MessageBatch<string>, env: Env, ctx: ExecutionContext) {
+  const s = stripe(env);
+  for (const msg of batch.messages) {
+    try {
+      const event = JSON.parse(msg.body) as Stripe.Event;
+      const first = await env.DB.prepare(              // dedup on event.id (Stripe + Queues both at-least-once)
+        "INSERT OR IGNORE INTO processed_stripe_events (event_id, type, received_at) VALUES (?,?,?)",
+      ).bind(event.id, event.type, Date.now()).run();
+      if (first.meta.changes === 0) { msg.ack(); continue; }        // duplicate → no-op
+      if (event.type === "checkout.session.completed") {
+        const sess = await s.checkout.sessions.retrieve(            // re-fetch fresh, don't trust payload
+          (event.data.object as Stripe.Checkout.Session).id, { expand: ["line_items"] });
+        if (sess.mode === "payment" && sess.payment_status === "paid" && sess.metadata?.orderId)
+          await fulfilOrder(env, sess);                             // paid + stock + receipt, one D1 batch
+      }
+      msg.ack();
+    } catch (e) {
+      ctx.waitUntil(logError(env, msg, e));
+      msg.retry({ delaySeconds: 30 });                              // after max_retries → DLQ (wrangler)
+    }
+  }
+}
+```
+
+**Customer get-or-create** (guestlist RPC — the store never reads customer state
+from the envelope):
+
+```ts
+async ensureStripeCustomer(userId: string): Promise<string> {
+  const user = await this.getUser(userId);
+  if (user.stripeCustomerId) return user.stripeCustomerId;
+  const customer = await stripe(this.env).customers.create(
+    { email: user.email, metadata: { userId } },
+    { idempotencyKey: `cust:${userId}` });            // safe on retry
+  await this.setStripeCustomerId(userId, customer.id);
+  return customer.id;
+}
+```
+
+**Checkout session** (store server fn): re-price server-side, ad-hoc `price_data`
+from D1, attach the customer, graceful stub fallback.
+
+```ts
+export const createCheckoutSession = createServerFn({ method: "POST" }).handler(
+  async ({ data: { cart }, context }) => {
+    const env = getEnv();
+    if (!stripeConfigured(env)) return { mode: "stub" as const }; // → manual pending/paid path
+    const priced = await computeOrderTotals(env, cart); // server truth, never client amounts
+    const order = await createPendingOrder(env, priced, context.actor?.id);
+    const customer = context.actor ? await getGuestlist().ensureStripeCustomer() : undefined;
+    const session = await stripe(env).checkout.sessions.create(
+      {
+        ui_mode: "elements",
+        mode: "payment",
+        customer, // guests: customer_email instead
+        line_items: priced.items.map((i) => ({
+          quantity: i.quantity,
+          price_data: {
+            currency: "cad",
+            unit_amount: i.unitPriceCents, // catalog stays in D1
+            product_data: { name: i.title },
+          },
+        })),
+        metadata: { orderId: order.id },
+        return_url: `${env.STORE_URL}/checkout/return?session_id={CHECKOUT_SESSION_ID}`,
+      },
+      { idempotencyKey: `order:${order.id}` },
+    );
+    return { mode: "elements" as const, clientSecret: session.client_secret };
+  },
+);
+```
+
+**CD drift-guard** (`validate.ts`): the orphan branch (today `hasWarnings` →
+exit 0 at lines 81/140) becomes fatal unless the key is `archived`.
+
+```ts
+if (managedKey && !(managedKey in products)) {
+  if (archivedKeys.has(managedKey)) console.warn(`… ${managedKey} archived (ok)`);
+  else {
+    console.error(`✗ ${managedKey} live in Stripe but absent from config`);
+    hasErrors = true;
+  }
+}
+// hasErrors → process.exit(1)   ← the guardrail (was exit 0)
+```
+
+**Offline signature test** (no account, no CLI):
+
+```ts
+const payload = JSON.stringify({
+  id: "evt_1",
+  type: "checkout.session.completed",
+  data: { object: { id: "cs_1", mode: "payment", payment_status: "paid", metadata: { orderId } } },
+});
+const header = stripe.webhooks.generateTestHeaderString({ payload, secret: TEST_WHSEC });
+const res = await SELF.fetch("https://x/hooks/store", {
+  method: "POST",
+  headers: { "stripe-signature": header },
+  body: payload,
+});
+expect(res.status).toBe(200); // verified + enqueued, zero live Stripe
+```
 
 ## Subscription lifecycle (`/account`)
 
@@ -597,6 +783,65 @@ points; neither runs in the ordinary PR gate (they need account credentials).
 
 ---
 
+## Compliance — PCI, SCA, tax, disputes, data handling
+
+Payments carry obligations analytics don't. Each item is grounded in Stripe docs
+and states the obligation + what this plan commits to.
+
+**PCI-DSS — stay SAQ-A.** Checkout + the Payment Element are SAQ-A-eligible: card
+data enters Stripe-hosted iframes, is tokenized, and **never reaches our
+Worker** [stripe-pci]. Obligations we hold: serve the checkout page over TLS
+1.2+; load Stripe.js **only** from `js.stripe.com` (never bundle or self-host —
+that breaks SAQ-A eligibility) [stripe-pci]; never proxy, log, or store the PAN.
+We store only `stripeCustomerId`, Session/PaymentIntent ids, `paymentStatus`,
+order data, and optionally `last4`/brand/exp (non-sensitive). Enforced by INV-9.
+
+**SCA / 3-D Secure (EU/UK).** Checkout + the Payment Element trigger dynamic 3DS
+and handle the `requires_action` challenge automatically [stripe-sca][stripe-3ds].
+We must not fall back to the legacy Charges API or suppress the 3DS step.
+Consequence — already baked into [A2]/[B3]: **fulfil only on the webhook
+payment-success event, gated on `payment_status !== "unpaid"`**; the redirect
+page is a "processing" state, never the source of truth, because SCA and async
+methods can defer completion [stripe-fulfillment].
+
+**Stripe Tax — an owner decision, not a flag.** `automatic_tax: { enabled: true }`
+collects nothing without active tax **registrations** + origin address + product
+tax codes configured in the Dashboard, and it's a paid product [stripe-tax]. The
+Session must collect a billing address (`billing_address_collection: "auto"`) so
+calculation has an address. **Ship-day default: tax off**; flip on only after the
+owner registers. → Open decision.
+
+**Refunds & disputes — webhook-driven, admin action (future scope).** Refunds are
+async and can fail after creation, so status comes from `refund.*` /
+`charge.refunded` webhooks, not the create response [stripe-refunds]. Disputes
+reverse funds immediately and have a fixed lifecycle
+(`charge.dispute.created` → `funds_withdrawn` → `updated` → `closed` /
+`funds_reinstated`) [stripe-disputes]. Future: the store consumer subscribes to
+these (registry rows), maps each to an order-state transition
+(`refunded` / `disputed` / `chargeback_debited`), and an admin surface (alongside
+identity's `/admin/*`) triggers refunds + surfaces disputes needing evidence
+(evidence submission itself deferrable to the Stripe Dashboard for v1). Don't
+trust event ordering — re-fetch the object on update.
+
+**GDPR/CCPA data handling — two-system, retention-aware.** PII lives in Stripe
+(email/name/address/payment methods); we hold only ids + order data, no PAN.
+"Delete user" is **not** an immediate `customers.delete`: finalize open Stripe
+objects → **redact** (not raw-delete) the Customer, subject to Stripe's retention
+(transactions can only be redacted after **90 days**; Stripe keeps what's legally
+required, and as our processor won't delete on our behalf — we own the legal
+analysis) [stripe-privacy]. We keep minimal order/tax records as legally required
+and record the consent/disclosure that Stripe processes payment data (Elements
+collects IP/cookies for fraud). Data residency (Stripe processes in the US +
+region-specific rules) → confirm via Stripe's DPA before any EU-residency claim.
+→ Open decision.
+
+**Idempotency keys (write-side).** Distinct from webhook dedup (INV-3): set an
+`Idempotency-Key` header on **every** mutating Stripe create — Session, Customer,
+Refund — derived from a stable per-attempt id (`order:<id>` / `cust:<id>`), so a
+Worker retry after a network blip re-sends the same key and Stripe returns the
+original object instead of double-charging (v1 replay window: 24h)
+[stripe-idempotency]. Enforced by INV-10; the reference code already stamps these.
+
 ## Invariants
 
 - **INV-1** — Server-authoritative: no client-reported amount or client-reported
@@ -624,6 +869,12 @@ points; neither runs in the ordinary PR gate (they need account credentials).
   the `dev-stack` listener child is teardown-exempt; every Stripe surface
   degrades to a documented no-Stripe fallback (see Decoupling). Enforced in CI,
   which has no Stripe.
+- **INV-9** — PCI SAQ-A: no card PAN ever reaches a Worker, is logged, or is
+  stored; Stripe.js is loaded only from `js.stripe.com`; the checkout page is
+  served over TLS. (See Compliance.)
+- **INV-10** — Write-side idempotency: every mutating Stripe create (Session,
+  Customer, Refund) carries an `Idempotency-Key` derived from a stable
+  per-attempt id, so a retried write never double-charges or double-creates.
 
 ## Build split — offline vs live-wiring
 
@@ -739,6 +990,10 @@ trigger` `[needs-cli]`.
   `bun run dev` runs the full fleet (stub mode), the storefront checks out via
   the manual stub, and `vp check|test|build` are green — asserted in CI, which
   has no Stripe.
+- **Compliance** (INV-9/10): fulfilment is gated on `payment_status !== "unpaid"`
+  (never on the client redirect); no logged request body carries card fields;
+  every mocked Stripe create asserts an `Idempotency-Key` is set; a retried
+  create with the same key is a no-op, not a second charge.
 
 ## Scope — acceptable vs blocking reductions
 
@@ -781,6 +1036,13 @@ requires `type(scope): description`.
 4. **Staging bypass breadth** — bypass `Everyone` (signature-only) vs bypass
    scoped to Stripe's published webhook IP ranges (defense-in-depth, needs a
    refresh mechanism for the IP list).
+5. **Stripe Tax** — register in the relevant jurisdictions and enable
+   `automatic_tax` (a legal + Dashboard setup + paid product), or ship tax-off
+   for v1? Must be decided before real sales. (See Compliance.)
+6. **Erasure + data residency policy** — the redaction-based deletion workflow
+   (finalize → redact, 90-day transaction window, legal retention) and whether
+   any EU-residency claim is needed → confirm against Stripe's DPA. (See
+   Compliance.)
 
 ---
 
@@ -794,6 +1056,14 @@ requires `type(scope): description`.
 - [stripe-thin] https://docs.stripe.com/webhooks/migrate-snapshot-to-thin-events
 - [stripe-entitlements] https://docs.stripe.com/billing/entitlements
 - [stripe-prorations] https://docs.stripe.com/billing/subscriptions/prorations
+- [stripe-pci] https://docs.stripe.com/security/guide
+- [stripe-sca] https://docs.stripe.com/strong-customer-authentication
+- [stripe-3ds] https://docs.stripe.com/payments/3d-secure
+- [stripe-tax] https://docs.stripe.com/tax/checkout/elements
+- [stripe-refunds] https://docs.stripe.com/refunds
+- [stripe-disputes] https://docs.stripe.com/disputes
+- [stripe-privacy] https://docs.stripe.com/privacy/deletion-requests
+- [stripe-idempotency] https://docs.stripe.com/api/idempotent_requests
 - [stripe-cli] https://docs.stripe.com/cli/listen · https://docs.stripe.com/cli/trigger
 - [stripe-ips] https://docs.stripe.com/ips
 - [stripe-webhook-obj] https://docs.stripe.com/api/webhook_endpoints/object — secret create-only.
