@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { MinusIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { useCapture } from "@si/analytics/client";
 import { Button } from "@si/ui/components/button";
 import { Card } from "@si/ui/components/card";
 import { ProductImage } from "@/components/product-image";
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/_public/cart")({
 
 function CartPage() {
   const { lines, setQty, remove, subtotalCents, count } = useCart();
+  const capture = useCapture();
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 md:px-6 md:py-12">
@@ -47,7 +49,9 @@ function CartPage() {
                   <Button
                     variant="outline"
                     size="icon-sm"
-                    onClick={() => setQty(l.variantId, l.quantity - 1)}
+                    onClick={() => {
+                      setQty(l.variantId, l.quantity - 1);
+                    }}
                     aria-label="Decrease"
                   >
                     <MinusIcon className="size-3.5" />
@@ -56,7 +60,9 @@ function CartPage() {
                   <Button
                     variant="outline"
                     size="icon-sm"
-                    onClick={() => setQty(l.variantId, l.quantity + 1)}
+                    onClick={() => {
+                      setQty(l.variantId, l.quantity + 1);
+                    }}
                     aria-label="Increase"
                   >
                     <PlusIcon className="size-3.5" />
@@ -68,7 +74,16 @@ function CartPage() {
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  onClick={() => remove(l.variantId)}
+                  onClick={() => {
+                    capture("cart_item_removed", {
+                      variant_id: l.variantId,
+                      product_name: l.title,
+                      size: l.size,
+                      price_cents: l.priceCents,
+                      quantity: l.quantity,
+                    });
+                    remove(l.variantId);
+                  }}
                   aria-label="Remove"
                 >
                   <Trash2Icon className="size-3.5" />

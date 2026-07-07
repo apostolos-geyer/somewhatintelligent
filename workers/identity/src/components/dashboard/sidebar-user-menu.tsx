@@ -1,4 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
+import { useCapture } from "@si/analytics/client";
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@si/ui/components/sidebar";
 import {
   DropdownMenu,
@@ -24,8 +25,10 @@ type User = {
 
 export function SidebarUserMenu({ user }: { user: User }) {
   const navigate = useNavigate();
+  const capture = useCapture();
 
   async function handleSignOut() {
+    capture("signed_out", {});
     const result = await authClient.signOut();
     if (result.error) {
       toast.error(result.error.message ?? "Failed to sign out");
