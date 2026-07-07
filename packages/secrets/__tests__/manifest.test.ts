@@ -51,24 +51,9 @@ describe("dev defaults stay in lockstep with scripts/dev-config", () => {
   });
 });
 
-describe("RealtimeKit (sprout call rooms) secret", () => {
-  const apiToken = byName("RTK_API_TOKEN");
-
-  test("RTK_API_TOKEN is provided (operator-supplied, never generated)", () => {
-    expect(apiToken.kind).toEqual({ type: "provided" });
-    expect(sourceFor(apiToken, "production")).toBe("provided");
-  });
-
-  test("scoped to sprout for staging + production only — never local (RealtimeKit has no offline mode)", () => {
-    expect(apiToken.perEnv.local).toBeUndefined();
-    expect(apiToken.perEnv.staging).toEqual(["sprout"]);
-    expect(apiToken.perEnv.production).toEqual(["sprout"]);
-    // Optional in every targeted env so the seam degrades to { available:false }
-    // rather than hard-failing provisioning when absent.
-    expect(apiToken.required).toBe(false);
-  });
-
-  test("RTK_APP_ID is NOT a secret — it's a non-secret wrangler var (deploy.ts → rtk)", () => {
+describe("pruned product secrets stay gone", () => {
+  test("RTK_API_TOKEN (RealtimeKit) left with the sprout product", () => {
+    expect(SECRETS.find((s) => s.name === "RTK_API_TOKEN")).toBeUndefined();
     expect(SECRETS.find((s) => s.name === "RTK_APP_ID")).toBeUndefined();
   });
 });

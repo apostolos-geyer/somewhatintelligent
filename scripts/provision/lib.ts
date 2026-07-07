@@ -726,7 +726,7 @@ export function findZoneForHost(host: string, zones: ZoneLike[]): ZoneLike | nul
  * The portal origins that need R2 CORS access, mirroring
  * `workers/roadie/scripts/setup-cors.ts` in the source template: production
  * gets the real hosts, staging additionally gets a localhost wildcard for
- * local dev against the staging bucket (`dev:solo`, docs/sprout runbook).
+ * local dev against the staging bucket (`dev:solo`).
  */
 export function corsOriginsForEnv(env: Env, zone: string = zoneName()): string[] {
   if (env === "production") {

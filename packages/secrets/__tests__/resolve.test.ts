@@ -20,9 +20,9 @@ describe("buildPlan — local", () => {
       .filter((e) => e.secret === "BNC_ATT_PRIV")
       .map((e) => e.service)
       .sort();
-    // bouncer signs; identity + sprout stamp their own dev envelope (no
-    // gateway in dev-direct topology), so they need the dev signing key too.
-    expect(services).toEqual(["bouncer", "identity", "sprout"]);
+    // bouncer signs; identity stamps its own dev envelope (no gateway in
+    // dev-direct topology), so it needs the dev signing key too.
+    expect(services).toEqual(["bouncer", "identity"]);
   });
   test("a provided secret with no value is missing + optional", () => {
     const google = find(plan, "GOOGLE_CLIENT_ID");

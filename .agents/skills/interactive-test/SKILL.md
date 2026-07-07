@@ -51,13 +51,22 @@ first re-`open`).
 AB=node_modules/.bin/agent-browser
 $AB --session dev open https://identity.somewhatintelligent.localhost/sign-in
 $AB --session dev snapshot -i          # @refs; RE-RUN after any reload/navigation
-$AB --session dev fill @e7 "alice@example.com"
-$AB --session dev fill @e8 "alicepwd123"
+$AB --session dev click @e9            # focus Email
+$AB --session dev keyboard type "alice@example.com"
+$AB --session dev click @e11           # focus Password
+$AB --session dev keyboard type "alicepwd123"
 $AB --session dev press Tab            # blur — TanStack Form validates onBlur
-$AB --session dev click @e3            # Sign In
+$AB --session dev press Enter          # submit (or click the Sign In @ref)
 $AB --session dev wait 3000
 $AB --session dev open https://identity.somewhatintelligent.localhost/account
 $AB --session dev screenshot proof.png # then Read the png to verify visually
+
+> **Do NOT use `fill` on the auth forms** (verified 2026-07-07): `fill`
+> sets the DOM value without the keystroke events TanStack Form's field
+> state listens to, so `handleSubmit` validates an EMPTY form and silently
+> does nothing — no POST, no error toast. Use `click` + `keyboard type`
+> per field, blur (Tab) after the password, then Enter. The API itself is
+> healthy either way (curl POST to /api/auth/sign-in/email returns 200).
 ```
 
 Debugging: `$AB --session dev errors` / `console`; server side, grep the

@@ -13,14 +13,7 @@ export type Env = "local" | "staging" | "production";
 export const ENVS = ["local", "staging", "production"] as const satisfies readonly Env[];
 export type RemoteEnv = Exclude<Env, "local">;
 
-export type ServiceName =
-  | "guestlist"
-  | "bouncer"
-  | "promoter"
-  | "roadie"
-  | "identity"
-  | "marketing"
-  | "sprout";
+export type ServiceName = "guestlist" | "bouncer" | "promoter" | "roadie" | "identity";
 
 /** Repo-relative directory holding each service's `.dev.vars` (the local target). */
 export const SERVICE_DIR: Record<ServiceName, string> = {
@@ -29,8 +22,6 @@ export const SERVICE_DIR: Record<ServiceName, string> = {
   promoter: "workers/promoter",
   roadie: "workers/roadie",
   identity: "workers/identity",
-  marketing: "workers/marketing",
-  sprout: "workers/sprout",
 };
 
 /**
@@ -93,11 +84,11 @@ export const SECRETS: SecretSpec[] = [
       "published in packages/config/src/bouncer-attestation.ts. local + staging " +
       "use the well-known dev key (BNC_ATT_KID=dev); production uses a unique keypair.",
     // local: every app that stamps its own dev envelope (no bouncer in
-    // dev-direct topology) needs the dev signing key — identity + sprout.
-    // staging/production: only bouncer signs (apps verify with the published
-    // public key).
+    // dev-direct topology) needs the dev signing key — identity (and store
+    // once it lands). staging/production: only bouncer signs (apps verify
+    // with the published public key).
     perEnv: {
-      local: ["bouncer", "identity", "sprout"],
+      local: ["bouncer", "identity"],
       staging: ["bouncer"],
       production: ["bouncer"],
     },
@@ -124,19 +115,6 @@ export const SECRETS: SecretSpec[] = [
     required: false,
     description: "R2 S3-API secret access key (roadie blob SigV4).",
     perEnv: { local: ["roadie"], staging: ["roadie"], production: ["roadie"] },
-  },
-  {
-    name: "RTK_API_TOKEN",
-    kind: { type: "provided" },
-    required: false,
-    description:
-      "Cloudflare API token with 'Realtime / Realtime Admin' permission — the " +
-      "Bearer credential sprout's realtime seam uses for the RealtimeKit REST API. " +
-      "Scope it to Realtime only, not a full-access token. Paired with the " +
-      "non-secret RTK_APP_ID + CF_ACCOUNT_ID wrangler vars (deploy.ts). Provision " +
-      "the values via `bun scripts/provision-realtimekit.ts`; this secret pushes " +
-      "to the deployed sprout worker via `bun run secrets <env>`.",
-    perEnv: { staging: ["sprout"], production: ["sprout"] },
   },
   ...oauth("GOOGLE"),
   ...oauth("MICROSOFT"),
