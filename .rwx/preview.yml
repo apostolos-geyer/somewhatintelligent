@@ -102,13 +102,19 @@ tasks:
 
   # PR-changed files -> affected workers (scripts/changed-workers.sh rules).
   # cache: false — the gh compare read must reflect THIS push, never a replay.
-  # No token: this repo is PUBLIC and RWX does not provide the github context
-  # to its runs (works on private greenroom; demonstrably absent here), so the
-  # PR/compare reads go through the anonymous GitHub API via curl — previews
-  # run on any branch and must not touch the locked deploy vault either.
+  # Token comes from si_deploy's attached automation app (rwx-automation-si)
+  # — NOT the RWX github context, which this public repo's runs never
+  # receive. Owner call: one vault for all GitHub-authenticated work; this
+  # requires si_deploy's Access Control to admit PR branches (not just
+  # main), accepted for this single-maintainer repo because fork runs need
+  # manual approval in RWX before any vault resolution.
   - key: detect
     use: [code, system-packages]
     cache: false
+    env:
+      GH_TOKEN:
+        value: ${{ vaults.si_deploy.github-apps.rwx-automation-si.token }}
+        cache-key: excluded
     run: |
       set -euo pipefail
       PR="${{ init.pr-number }}"
@@ -119,17 +125,10 @@ tasks:
       fi
       BASE="${{ init.base-sha }}"
       if [ -z "${BASE}" ]; then
-        BASE="$(curl -fsSL "https://api.github.com/repos/apostolos-geyer/somewhatintelligent/pulls/${PR}" | python3 -c 'import json,sys; print(json.load(sys.stdin)["base"]["sha"])')"
+        BASE="$(gh api "repos/apostolos-geyer/somewhatintelligent/pulls/${PR}" --jq '.base.sha')"
       fi
-      : > /tmp/changed-files
-      page=1
-      while :; do
-        files="$(curl -fsSL "https://api.github.com/repos/apostolos-geyer/somewhatintelligent/compare/${BASE}...${{ init.commit-sha }}?per_page=100&page=${page}" \
-          | python3 -c 'import json,sys; [print(f["filename"]) for f in json.load(sys.stdin).get("files") or []]')"
-        [ -z "$files" ] && break
-        printf '%s\n' "$files" >> /tmp/changed-files
-        page=$((page+1))
-      done
+      gh api "repos/apostolos-geyer/somewhatintelligent/compare/${BASE}...${{ init.commit-sha }}" \
+        --paginate --jq '.files[].filename' > /tmp/changed-files
       echo "-- changed files --"; cat /tmp/changed-files
       bash scripts/changed-workers.sh < /tmp/changed-files | tr '\n' ' ' | sed 's/ $//' > "$RWX_VALUES/changed"
       echo "affected workers: [$(cat "$RWX_VALUES/changed")]"

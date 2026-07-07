@@ -98,7 +98,7 @@ done
   printf '  cache: false\n'
   printf '  env:\n'
   printf '    GH_TOKEN:\n'
-  printf '      value: ${{ github.token }}\n'
+  printf '      value: ${{ vaults.si_deploy.github-apps.rwx-automation-si.token }}\n'
   printf '      cache-key: excluded\n'
   printf '  run: |\n'
   printf '    set -euo pipefail\n'
