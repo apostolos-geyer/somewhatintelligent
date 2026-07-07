@@ -27,8 +27,8 @@ throwaway test-mode data):**
   prematurely bind it to anything permanent. [C]
 - No checkout UI _polish_ and no in-page subscription **Elements** (hosted
   Checkout is fine for the card step). The subscription **management** mechanics
-  (upgrade / downgrade / cancel / trial) are specced below, but plan definitions
-  - visual design are deferred.
+  (upgrade / downgrade / cancel / trial) are specced below, but plan
+  definitions and visual design are deferred.
 - No org-level billing (user-level only for v1).
 
 Deciding those changes nothing about the infrastructure below, which is why it
