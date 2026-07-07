@@ -72,7 +72,7 @@
           "database_name": "store-production-db",
           "migrations_dir": "migrations",
           // TODO(provision): real D1 database_id from this fork's Cloudflare account.
-          "database_id": "00000000-0000-0000-0000-000000000000",
+          "database_id": "39ab2bc9-8491-4ee8-8b77-56a8996abfd9",
         },
       ],
       "services": [

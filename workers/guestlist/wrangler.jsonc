@@ -67,7 +67,7 @@
           "database_name": "guestlist-production-db",
           "migrations_dir": "migrations",
           // TODO(provision): real D1 database_id from this fork's Cloudflare account.
-          "database_id": "00000000-0000-0000-0000-000000000000",
+          "database_id": "2a7c2bcd-90a7-410f-a17c-895397f1e40a",
         },
       ],
       "services": [

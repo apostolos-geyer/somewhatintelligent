@@ -49,7 +49,7 @@
           "binding": "DB",
           "database_name": "roadie-production-db",
           // TODO(provision): real D1 database_id from this fork's Cloudflare account.
-          "database_id": "00000000-0000-0000-0000-000000000000",
+          "database_id": "3c1fce35-a202-409d-9d3a-efd56298eae1",
           "migrations_dir": "migrations",
         },
       ],
