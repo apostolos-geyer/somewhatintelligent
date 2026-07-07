@@ -15,7 +15,8 @@ platform-template/
 │   │                # refreshes session, dispatches to apps via service binding
 │   ├── guestlist      # Central auth service (Elysia + Better Auth + D1)
 │   ├── roadie       # R2-backed blob storage broker (Workers RPC + cron)
-│   ├── promoter     # Deferred-work runner (Workers RPC + cron)
+│   ├── promoter     # Outbound comms + deferred work — queue consumer for
+│   │                # email via Resend today (SMS later), plus cron jobs
 │   └── identity      # Sign-in / account UI (TanStack Start, CF Workers)
 ├── packages/
 │   ├── audio         # WebAudio primitives (consumed by ui's file-preview)

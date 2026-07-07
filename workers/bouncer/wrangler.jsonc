@@ -55,6 +55,26 @@
           "path": "/shop",
           "mode": "vmf",
         },
+        // Server-function callbacks. TanStack Start compiles a single
+        // root-relative server-fn base (TSS_SERVER_FN_BASE) into BOTH the
+        // server handler and the client bundle, so a vmf-mounted app's
+        // hydrated client fetches its loaders/server fns at the APEX, not
+        // under the mount. Each app therefore gets a unique base
+        // (vite.config.ts `tanstackStart({ serverFns: { base } })`) that
+        // bouncer passes through UNSTRIPPED to the owning worker — the
+        // longest-mount rule keeps these ahead of the `/` redirect.
+        {
+          "binding": "STORE",
+          "host": "staging.somewhatintelligent.ca",
+          "path": "/_sfn/store",
+          "mode": "passthrough",
+        },
+        {
+          "binding": "IDENTITY",
+          "host": "staging.somewhatintelligent.ca",
+          "path": "/_sfn/account",
+          "mode": "passthrough",
+        },
         {
           "host": "staging.somewhatintelligent.ca",
           "path": "/",
@@ -103,6 +123,20 @@
               "path": "/shop",
               "mode": "vmf",
             },
+            // Per-app server-fn bases, passed through unstripped — see the
+            // staging ROUTES comment for the full rationale.
+            {
+              "binding": "STORE",
+              "host": "somewhatintelligent.ca",
+              "path": "/_sfn/store",
+              "mode": "passthrough",
+            },
+            {
+              "binding": "IDENTITY",
+              "host": "somewhatintelligent.ca",
+              "path": "/_sfn/account",
+              "mode": "passthrough",
+            },
             {
               "host": "somewhatintelligent.ca",
               "path": "/",
@@ -110,7 +144,7 @@
               "to": "/shop",
               "status": 308,
             },
-            // www mirrors the apex exactly (same four mounts).
+            // www mirrors the apex exactly (same six mounts).
             {
               "binding": "GUESTLIST",
               "host": "www.somewhatintelligent.ca",
@@ -128,6 +162,18 @@
               "host": "www.somewhatintelligent.ca",
               "path": "/shop",
               "mode": "vmf",
+            },
+            {
+              "binding": "STORE",
+              "host": "www.somewhatintelligent.ca",
+              "path": "/_sfn/store",
+              "mode": "passthrough",
+            },
+            {
+              "binding": "IDENTITY",
+              "host": "www.somewhatintelligent.ca",
+              "path": "/_sfn/account",
+              "mode": "passthrough",
             },
             {
               "host": "www.somewhatintelligent.ca",

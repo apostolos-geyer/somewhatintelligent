@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { normalizeBasepath, resolveBasepath } from "@/lib/basepath";
+import { mountRewrite, normalizeBasepath, resolveBasepath } from "@/lib/basepath";
 
 describe("normalizeBasepath", () => {
   test("empty / null / undefined → '/'", () => {
@@ -61,5 +61,55 @@ describe("resolveBasepath — runtime si-mount meta", () => {
     expect(resolveBasepath({ isServer: false, publicBase: null, mountMeta: "shop/" })).toBe(
       "/shop",
     );
+  });
+});
+
+describe("mountRewrite", () => {
+  // The mount rides the router `rewrite` option, not `basepath`: TanStack
+  // Start's server handler AND client bootstrap both call
+  // router.update({ basepath: process.env.TSS_ROUTER_BASEPATH }), clobbering
+  // any createRouter-level basepath — the regression that unmounted the
+  // whole tree on staging the moment hydration finished. `rewrite` survives
+  // those updates, so these tests pin the strip/prepend contract.
+  const url = (path: string) => new URL(`https://example.com${path}`);
+
+  test("root mount → no rewrite at all (dev-direct, server)", () => {
+    expect(mountRewrite("/")).toBeUndefined();
+    expect(mountRewrite("")).toBeUndefined();
+    expect(mountRewrite("  ")).toBeUndefined();
+  });
+
+  test("input strips the mount (browser URL → router URL)", () => {
+    const rw = mountRewrite("/shop");
+    expect(rw).toBeDefined();
+    expect(rw?.input({ url: url("/shop") }).pathname).toBe("/");
+    expect(rw?.input({ url: url("/shop/") }).pathname).toBe("/");
+    expect(rw?.input({ url: url("/shop/products/tee") }).pathname).toBe("/products/tee");
+  });
+
+  test("input leaves non-mount paths alone", () => {
+    const rw = mountRewrite("/shop");
+    expect(rw?.input({ url: url("/shopping") }).pathname).toBe("/shopping");
+    expect(rw?.input({ url: url("/other") }).pathname).toBe("/other");
+  });
+
+  test("output prepends the mount (router URL → browser URL)", () => {
+    const rw = mountRewrite("/shop");
+    expect(rw?.output({ url: url("/") }).pathname).toBe("/shop");
+    expect(rw?.output({ url: url("/products/tee") }).pathname).toBe("/shop/products/tee");
+  });
+
+  test("input and output round-trip", () => {
+    const rw = mountRewrite("/shop");
+    for (const p of ["/", "/cart", "/products/tee"]) {
+      const out = rw?.output({ url: url(p) });
+      expect(rw?.input({ url: out as URL }).pathname).toBe(p);
+    }
+  });
+
+  test("mount is normalized before use", () => {
+    const rw = mountRewrite("shop/");
+    expect(rw?.input({ url: url("/shop/cart") }).pathname).toBe("/cart");
+    expect(rw?.output({ url: url("/cart") }).pathname).toBe("/shop/cart");
   });
 });
