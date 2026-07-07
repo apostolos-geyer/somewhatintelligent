@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vite-plus/test";
 
-vi.mock("cloudflare:workers", () => ({ env: { ENVIRONMENT: "staging" } }));
-
+// No cloudflare:workers mock — the package is platform-agnostic; `environment`
+// is passed in as a plain argument by the caller (the worker).
 vi.mock("posthog-node", () => {
   const captureImmediate = vi.fn().mockResolvedValue(undefined);
   return {
@@ -42,6 +42,7 @@ describe("delivery", () => {
         shipping_cents: 0,
         total_cents: 100,
       },
+      "staging",
       { organization: "org-1" },
     );
 
@@ -77,6 +78,7 @@ describe("delivery", () => {
         shipping_cents: 0,
         total_cents: 50,
       },
+      "staging",
       { organization: "org-1" },
     );
 
@@ -103,6 +105,7 @@ describe("delivery", () => {
         shipping_cents: 0,
         total_cents: 50,
       },
+      "staging",
       { organization: "org-1" },
     );
 
@@ -113,13 +116,18 @@ describe("delivery", () => {
   it("deliverAnonymous stamps $process_person_profile:false and a ulid distinctId", async () => {
     (executionContext.getStore as any).mockReturnValue(undefined);
 
-    await deliverAnonymous("store", "order_placed", {
-      order_number: "SI-4",
-      item_count: 3,
-      subtotal_cents: 200,
-      shipping_cents: 10,
-      total_cents: 210,
-    });
+    await deliverAnonymous(
+      "store",
+      "order_placed",
+      {
+        order_number: "SI-4",
+        item_count: 3,
+        subtotal_cents: 200,
+        shipping_cents: 10,
+        total_cents: 210,
+      },
+      "staging",
+    );
 
     expect(captureImmediate).toHaveBeenCalledTimes(1);
     const payload = captureImmediate.mock.calls[0][0];

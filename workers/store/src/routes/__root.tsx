@@ -44,7 +44,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body className="bg-background text-foreground min-h-screen font-sans antialiased">
-        <AnalyticsProvider app="store" session={session}>
+        <AnalyticsProvider app="store" environment={import.meta.env.ENVIRONMENT} session={session}>
           <AuthProvider initialSession={session}>
             <StorefrontHeader />
             {children}

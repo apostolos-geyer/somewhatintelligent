@@ -7,14 +7,18 @@ import type { PlatformSession } from "@si/auth";
 
 export function AnalyticsProvider({
   app,
+  environment,
   session,
   children,
 }: {
   app: AppName;
+  // The deploy env, passed in by the worker (e.g. `import.meta.env.ENVIRONMENT`)
+  // so this package never reads the build env itself.
+  environment: string | undefined;
   session: PlatformSession | null;
   children: ReactNode;
 }) {
-  if (import.meta.env.ENVIRONMENT === "development") return <>{children}</>; // dev kill-switch
+  if (environment === "development") return <>{children}</>; // dev kill-switch
   return (
     <PostHogProvider
       apiKey={platformAnalyticsConfig.token}
@@ -27,9 +31,7 @@ export function AnalyticsProvider({
         disable_session_recording: true, // biggest silent quota sink — off explicitly
         cross_subdomain_cookie: true, // www↔apex keep one distinct_id
         persistence: "localStorage+cookie",
-        before_send: (e) =>
-          e &&
-          ((e.properties = { ...e.properties, app, environment: import.meta.env.ENVIRONMENT }), e), // app+env on EVERY event, race-free
+        before_send: (e) => e && ((e.properties = { ...e.properties, app, environment }), e), // app+env on EVERY event, race-free
       }}
     >
       <AnalyticsIdentityBridge app={app} session={session} />

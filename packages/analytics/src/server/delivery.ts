@@ -1,21 +1,20 @@
 // packages/analytics/src/server/delivery.ts   —  INTERNAL to @si/analytics (NOT in "exports")
 // The only place in the platform that supplies a PostHog distinctId.
+//
+// Platform-agnostic by design: this package knows NOTHING about Cloudflare or
+// the build env. The deploy `environment` is passed in by the worker, and the
+// waitUntil context is read from the structurally-typed @si/kit/execution-context
+// ALS the worker seeds. `posthog-node` is only ever reached via a dynamic
+// import from analytics-event.ts, so it never enters a client bundle.
 import { PostHog } from "posthog-node";
-import { env } from "cloudflare:workers";
 import { executionContext } from "@si/kit/execution-context";
 import { platformAnalyticsConfig } from "@si/config";
 import { ulid } from "@si/kit/ids";
 import type { AppName, ServerEvent, ServerEventProps } from "../events";
 
-// `env` is typed as the loose ambient module here but as the strict `Env` when
-// this source is bundled into a worker — go through `unknown` so the cast holds
-// in both. POSTHOG_KEY is an optional per-env override (§6); ENVIRONMENT stamps
-// every event.
-const runtimeEnv = env as unknown as Record<string, string | undefined>;
-
 let client: PostHog | null = null;
 const analytics = () =>
-  (client ??= new PostHog(runtimeEnv.POSTHOG_KEY ?? platformAnalyticsConfig.token, {
+  (client ??= new PostHog(platformAnalyticsConfig.token, {
     host: platformAnalyticsConfig.host,
     flushAt: 1,
     flushInterval: 0, // no background timer; captureImmediate sends inline
@@ -33,18 +32,20 @@ async function send(payload: Parameters<PostHog["captureImmediate"]>[0]): Promis
 }
 
 /** Person-scoped. `distinctId` is REQUIRED and — by construction of its only
- *  caller, `analyticsEvent` — is always `session.user.id`. */
+ *  caller, `analyticsEvent` — is always `session.user.id`. `environment` is the
+ *  deploy env the worker threads through; it is stamped on every event. */
 export function deliverIdentified<E extends ServerEvent>(
   app: AppName,
   distinctId: string,
   event: E,
   properties: ServerEventProps[E],
+  environment: string | undefined,
   groups?: { organization: string },
 ): Promise<void> {
   return send({
     distinctId,
     event,
-    properties: { ...properties, app, environment: runtimeEnv.ENVIRONMENT },
+    properties: { ...properties, app, environment },
     groups,
   });
 }
@@ -55,6 +56,7 @@ export function deliverAnonymous<E extends ServerEvent>(
   app: AppName,
   event: E,
   properties: ServerEventProps[E],
+  environment: string | undefined,
 ): Promise<void> {
   return send({
     distinctId: ulid(),
@@ -62,7 +64,7 @@ export function deliverAnonymous<E extends ServerEvent>(
     properties: {
       ...properties,
       app,
-      environment: runtimeEnv.ENVIRONMENT,
+      environment,
       $process_person_profile: false,
     },
   });

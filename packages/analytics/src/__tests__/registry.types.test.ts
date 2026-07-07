@@ -4,21 +4,14 @@
 // registry structurally prevents the bug class it exists to close: stringly
 // -typed event names, mismatched props, and client-only events leaking into
 // the server seam.
-import { describe, it, expect, expectTypeOf, vi } from "vite-plus/test";
+import { describe, it, expect, expectTypeOf } from "vite-plus/test";
 import { createMiddleware } from "@tanstack/react-start";
 import type { useCapture } from "../client";
 import type { CheckoutFailureReason } from "../events";
 
-// `../server/analytics-event` (transitively `./delivery`) reaches for
-// `cloudflare:workers` / posthog-node / the execution-context store at module
-// load — none of which exist in this plain node type-test. This is a pure
-// type-safety test (nothing below is ever invoked), so stub those out just
-// enough for the module graph to resolve; see delivery.test.ts for the same
-// pattern used to exercise the runtime behavior.
-vi.mock("cloudflare:workers", () => ({ env: { ENVIRONMENT: "test" } }));
-vi.mock("posthog-node", () => ({ PostHog: vi.fn(() => ({ captureImmediate: vi.fn() })) }));
-vi.mock("@si/kit/execution-context", () => ({ executionContext: { getStore: vi.fn() } }));
-
+// `../server/analytics-event` no longer statically pulls `./delivery` (posthog-node
+// is a lazy import inside the server-only leg), so this pure type test resolves
+// with no vendor/platform mocks. Nothing below is ever invoked.
 import { makeAnalyticsEvent } from "../server/analytics-event";
 
 type Capture = ReturnType<typeof useCapture>;
@@ -77,6 +70,7 @@ function _typeOnly() {
   const analyticsEvent = makeAnalyticsEvent({
     app: "store",
     requireAuth: createMiddleware({ type: "function" }),
+    environment: "test",
   });
 
   analyticsEvent("order_placed", () => ({

@@ -67,7 +67,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
-        <AnalyticsProvider app="identity" session={session}>
+        <AnalyticsProvider
+          app="identity"
+          environment={import.meta.env.ENVIRONMENT}
+          session={session}
+        >
           <AuthProvider initialSession={session}>
             {children}
             <TanStackDevtools

@@ -3,7 +3,6 @@ import { createMiddleware } from "@tanstack/react-start";
 import type { AnyFunctionMiddleware } from "@tanstack/react-start"; // verified export (1.168.18)
 import type { PlatformSession } from "@si/auth";
 import type { AppName, ServerEvent, ServerEventProps } from "../events";
-import { deliverIdentified } from "./delivery";
 
 export type Derived<E extends ServerEvent> = {
   properties: ServerEventProps[E];
@@ -16,7 +15,13 @@ export type Derived<E extends ServerEvent> = {
  * Fires ONLY when the handler resolves; `distinctId` is derived from
  * `context.session.user.id` and can never be supplied by a call site.
  */
-export function makeAnalyticsEvent(config: { app: AppName; requireAuth: AnyFunctionMiddleware }) {
+export function makeAnalyticsEvent(config: {
+  app: AppName;
+  requireAuth: AnyFunctionMiddleware;
+  // The deploy env, stamped on every event. The worker passes it in (e.g.
+  // `import.meta.env.ENVIRONMENT`) so this package never reads the build/runtime env.
+  environment: string | undefined;
+}) {
   return function analyticsEvent<E extends ServerEvent>(
     event: E,
     // Optional: a property-less business event drops on bare — `analyticsEvent("some_event")`.
@@ -32,12 +37,16 @@ export function makeAnalyticsEvent(config: { app: AppName; requireAuth: AnyFunct
           ? derive({ session, data, result: (res as unknown as { result: unknown }).result })
           : ({ properties: {} as ServerEventProps[E] } as Derived<E>);
         if (derived) {
+          // Load posthog-node lazily and server-side only — it must never be
+          // pulled into a client bundle through this middleware reference.
+          const { deliverIdentified } = await import("./delivery");
           const orgId = session.session.activeOrganizationId;
           await deliverIdentified(
             config.app,
             session.user.id, // the engineer literally cannot provide or mistype this
             event,
             derived.properties,
+            config.environment,
             derived.group && orgId ? { organization: orgId } : undefined,
           );
         }
