@@ -353,7 +353,7 @@ tasks:
       repository: https://github.com/apostolos-geyer/somewhatintelligent.git
       # Deploy EXACTLY the commit whose tags we read in phase 3.
       ref: ${{ tasks.released-components.values.sha }}
-      github-token: ${{ github.token }}
+      github-token: ${{ github['apostolos-geyer'].token }}
 
   - key: bun
     use: system-packages

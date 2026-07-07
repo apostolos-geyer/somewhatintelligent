@@ -166,7 +166,7 @@ tasks:
     with:
       repository: https://github.com/apostolos-geyer/somewhatintelligent.git
       ref: ${{ init.commit-sha }}
-      github-token: ${{ github.token }}
+      github-token: ${{ github['apostolos-geyer'].token }}
 
   # Captain runs the test suites: parses vitest results, renders them inline in the
   # RWX UI, retries only failed tests. RWX auto-provides Captain's access token and

@@ -100,7 +100,7 @@ tasks:
     with:
       repository: https://github.com/apostolos-geyer/somewhatintelligent.git
       ref: ${{ init.commit-sha }}
-      github-token: ${{ github.token }}
+      github-token: ${{ github['apostolos-geyer'].token }}
 
   - key: system-packages
     run: |

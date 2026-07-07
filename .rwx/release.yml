@@ -113,7 +113,7 @@ tasks:
       # Clone the tag's commit (the thing being re-shipped). See the header for
       # why the ref comes from the param while the vault unlocks on main.
       ref: ${{ init.tag }}
-      github-token: ${{ github.token }}
+      github-token: ${{ github['apostolos-geyer'].token }}
 
   - key: bun
     use: system-packages

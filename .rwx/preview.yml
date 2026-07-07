@@ -69,7 +69,7 @@ tasks:
     with:
       repository: https://github.com/apostolos-geyer/somewhatintelligent.git
       ref: ${{ init.commit-sha }}
-      github-token: ${{ github.token }}
+      github-token: ${{ github['apostolos-geyer'].token }}
 
   - key: system-packages
     run: |
@@ -107,7 +107,7 @@ tasks:
     cache: false
     env:
       GH_TOKEN:
-        value: ${{ github.token }}
+        value: ${{ github['apostolos-geyer'].token }}
         cache-key: excluded
     run: |
       set -euo pipefail
