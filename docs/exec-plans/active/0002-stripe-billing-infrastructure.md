@@ -625,37 +625,98 @@ points; neither runs in the ordinary PR gate (they need account credentials).
   degrades to a documented no-Stripe fallback (see Decoupling). Enforced in CI,
   which has no Stripe.
 
+## Build split — offline vs live-wiring
+
+The plan is cut so a **remote Claude Code session with no CLI and no keys** can
+implement the bulk and stop at a clean line. Tags:
+
+- **`[offline]`** — code + automated tests; needs no CLI, key, account, or
+  deploy. Ships from a keyless box with `vp check|test|build` + `bun run dev`
+  green.
+- **`[needs-cli]`** — needs the Stripe CLI logged in (`stripe listen` / `stripe
+trigger`).
+- **`[needs-keys]`** — needs a Stripe API key + account (sandbox, then live):
+  `sync`, real provisioning, real Checkout / webhook / subscription behavior.
+- **`[needs-deploy]`** — needs the Cloudflare deploy vault / account: the
+  `si_deploy` secret, `stripe-validate` against a real account, staging Access
+  bypass, prod cutover.
+
+The `[offline]` test fidelity is real, not faked:
+`stripe.webhooks.generateTestHeaderString(payload, secret)` produces valid
+signatures for `constructEventAsync` with a throwaway secret; the Stripe SDK is
+plain HTTP, so a mock client covers `sessions.create` / `customers.create` /
+`webhookEndpoints.*` / entitlements; the `queue()` consumer runs against a
+synthetic `MessageBatch` + D1; and `@si/stripe`'s offline stub already makes a
+keyless typecheck/build pass.
+
+| Work item                                                                                   | Tag                             | Offline proof                                                    |
+| ------------------------------------------------------------------------------------------- | ------------------------------- | ---------------------------------------------------------------- |
+| `stripeConfigured` gate + stub fallbacks (all surfaces)                                     | `[offline]`                     | keyless boot/check/test/build green (INV-8)                      |
+| Best-effort `env:init` seed · teardown-exempt `dev-stack` child · `dev-doctor` status       | `[offline]`                     | run with no CLI → exit 0, fleet stays up                         |
+| `store` → secrets manifest + `ServiceName`                                                  | `[offline]`                     | unit                                                             |
+| `validate.ts` orphan→fatal + `archived`                                                     | `[offline]`                     | unit vs a mocked resource list                                   |
+| `@si/stripe` CI wiring (typecheck + test)                                                   | `[offline]`                     | CI                                                               |
+| Provisioner logic — `ensureWebhookEndpoint`, Access-app shape (+ dry-run)                   | `[offline]`                     | unit vs mock client (absent→create / drift→update / clean→no-op) |
+| `/hooks/store` verify + enqueue + 200                                                       | `[offline]`                     | `generateTestHeaderString` sig test + mock queue                 |
+| `STRIPE_EVENTS` queue + DLQ · `processed_stripe_events` · consumer idempotency + fulfilment | `[offline]`                     | synthetic `MessageBatch` + D1/pool                               |
+| bouncer `/hooks/store` passthrough mount                                                    | `[offline]`                     | bouncer route test                                               |
+| `ensureStripeCustomer` RPC                                                                  | `[offline]`                     | mock `customers.create` + D1                                     |
+| `create-checkout-session` param builder (re-price from D1)                                  | `[offline]`                     | mock `sessions.create`                                           |
+| order schema migration (customerId / sessionId / paymentStatus)                             | `[offline]`                     | D1/pool                                                          |
+| Elements checkout UI scaffold + disabled/stub state                                         | `[offline]`                     | component test (live render is `[needs-keys]`)                   |
+| `/account` management UI + wiring + "billing unavailable" state                             | `[offline]`                     | component test (real flows are `[needs-keys]`)                   |
+| better-auth plugin gating logic                                                             | `[offline]`                     | plugin-absent-without-secrets test                               |
+| `STRIPE_SECRET_KEY` → `si_deploy` vault                                                     | `[needs-deploy]`                | —                                                                |
+| `@si/stripe sync` (create products / prices / features)                                     | `[needs-keys]`                  | —                                                                |
+| Run provisioners vs real Stripe (create endpoints, capture `whsec`)                         | `[needs-keys]`                  | —                                                                |
+| Access bypass apps vs Cloudflare                                                            | `[needs-deploy]`                | curl the path → worker 200, no Access redirect                   |
+| `stripe-validate` gate against a real account                                               | `[needs-deploy]`                | CD                                                               |
+| Local e2e — `stripe listen` + `stripe trigger` full pipeline                                | `[needs-cli]`                   | live local walk                                                  |
+| Real Checkout/Elements + webhook e2e (test card buys a shirt)                               | `[needs-keys]` `[needs-cli]`    | staging/sandbox                                                  |
+| Subscription upgrade / downgrade / cancel / trial real behavior                             | `[needs-keys]`                  | staging/sandbox                                                  |
+| Prod cutover (live account, live sync, live endpoints, real card)                           | `[needs-keys]` `[needs-deploy]` | prod smoke                                                       |
+
+**Handoff line.** A remote session builds every `[offline]` row and stops — that
+is ~85% of the effort, landing green on a keyless box. You return with keys / CLI
+/ vault for the `[needs-*]` rows: `sync`, run the two provisioners against real
+accounts, the CLI-driven local e2e, the `si_deploy` secret + staging Access
+bypass, and the prod cutover. **No `[offline]` row depends on a `[needs-*]` row**
+(INV-8), so the cut is clean — the returning session wires live infra onto
+already-green code, it does not refactor it.
+
 ## Phases
 
-- **P0** — Foundations (no Stripe traffic yet): add `store` to the secrets
-  manifest + `ServiceName`; add `STRIPE_SECRET_KEY` to `si_deploy`; flip
-  `validate.ts` orphans fatal + `archived`; wire `@si/stripe` into CI; write
-  the two provisioners (dry-run against sandbox); land the `stripeConfigured`
-  gate + stub fallbacks + the best-effort `env:init` seed + teardown-exempt
-  `dev-stack` child. (done when: a scratch config-drop fails `stripe-validate`,
-  **and** `bun run check|test|build` + `bun run dev` are all green on a box with
-  zero Stripe config — no key, no CLI)
-- **P1** — Ingestion skeleton on staging/sandbox: store `/hooks/store` (verify +
-  enqueue + 200), `STRIPE_EVENTS` queue + DLQ + `processed_stripe_events`; new
-  bouncer `/hooks/store` passthrough; staging Access bypass apps; provision the
-  two sandbox endpoints. Prove delivery with `stripe trigger` + a no-op
-  consumer. (done when: a triggered event traverses edge→bouncer→queue→consumer
-  and acks, idempotently)
-- **P2** — Customer + commerce path: `ensureStripeCustomer` RPC; store
-  `create-checkout-session` server fn + Elements checkout; order schema
-  migration; consumer fulfils orders (paid + stock + receipt). (done when: a
-  test card buys a shirt on staging and the order flips paid via the webhook)
-- **P3** — Subscription path: better-auth plugin enabled on guestlist (both
-  secrets present); a custom `/account` surface driving upgrade / downgrade /
-  restore / read + trial on a test plan; billing portal wired for cancel +
-  payment-method/invoice management (see Subscription lifecycle). Subscription
-  **state** is observable end-to-end; the gating _mechanism_ on top of it is out
-  of scope here (deferred — see [C]). (done when: a sandbox subscription is
-  created, upgraded, and cancellable via the portal, all reflected in
-  `subscription`)
-- **P4** — Production cutover: live account, live secrets, live endpoints via
-  the provisioners, guardrail against live, deploy. (done when: a real card
-  buys a shirt and a subscription in prod)
+Each phase is split into an offline **Build** part and a live **Wire** part; the
+remote session does the Build parts across P0–P3 and stops.
+
+- **P0 — Foundations** (`[offline]`, + one `[needs-deploy]`). **Build:**
+  `stripeConfigured` gate + stub fallbacks on every surface; best-effort
+  `env:init` seed + teardown-exempt `dev-stack` child + `dev-doctor` status;
+  `store` → secrets manifest + `ServiceName`; `validate.ts` orphan→fatal +
+  `archived`; `@si/stripe` CI wiring; the two provisioners' logic + dry-run.
+  **Wire `[needs-deploy]`:** `STRIPE_SECRET_KEY` → `si_deploy` vault. (offline
+  done when: a scratch config-drop fails `stripe-validate` in a unit test, and
+  `bun run check|test|build` + `bun run dev` are green on a zero-Stripe box)
+- **P1 — Ingestion.** **Build `[offline]`:** `/hooks/store` verify + enqueue +
+  200; `STRIPE_EVENTS` queue + DLQ + `processed_stripe_events`; bouncer
+  `/hooks/store` passthrough; the idempotent consumer — tested via
+  `generateTestHeaderString` signatures, a synthetic `MessageBatch`, and
+  D1/pool. **Wire:** provision the two sandbox endpoints `[needs-keys]`; staging
+  Access bypass `[needs-deploy]`; prove end-to-end delivery with `stripe
+trigger` `[needs-cli]`.
+- **P2 — Commerce.** **Build `[offline]`:** `ensureStripeCustomer` RPC;
+  `create-checkout-session` param builder (re-price from D1); order schema
+  migration; consumer fulfilment (paid + stock + receipt) — mock client +
+  D1/pool. **Wire `[needs-keys]` `[needs-cli]`:** a real test card buys a shirt
+  on sandbox; Elements live render.
+- **P3 — Subscriptions.** **Build `[offline]`:** plugin gating logic; the custom
+  `/account` surface (upgrade / downgrade / restore / read + portal buttons) +
+  the "billing unavailable" degraded state. **Wire `[needs-keys]`:** enable the
+  plugin with sandbox secrets; real upgrade / downgrade / cancel / trial +
+  billing portal. (Gating _mechanism_ stays deferred — see [C].)
+- **P4 — Production cutover** (`[needs-keys]` `[needs-deploy]`): live account,
+  live `sync`, live endpoints via the provisioners, guardrail against live,
+  deploy. (done when: a real card buys a shirt and a subscription in prod)
 
 ## Test scenarios
 
