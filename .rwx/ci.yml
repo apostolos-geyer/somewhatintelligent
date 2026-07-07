@@ -166,7 +166,7 @@ tasks:
     with:
       repository: https://github.com/apostolos-geyer/somewhatintelligent.git
       ref: ${{ init.commit-sha }}
-      github-token: ${{ github.token }}
+      github-token: ${{ github['apostolos-geyer'].token }}
 
   # Captain runs the test suites: parses vitest results, renders them inline in the
   # RWX UI, retries only failed tests. RWX auto-provides Captain's access token and
@@ -252,6 +252,11 @@ tasks:
       - workers/*/package.json
       - workers/*/vite.config.ts
       - packages/*/package.json
+      # @si/stripe's env:init regenerates the gitignored src/generated.ts
+      # stub (fetch.ts + the product/price config it reads) — without these
+      # in the layer, bootstrap dies with "Module not found scripts/fetch.ts"
+      - packages/stripe/scripts/**
+      - packages/stripe/src/config.ts
       - package.json
       - bun.lock
       - vite.config.ts

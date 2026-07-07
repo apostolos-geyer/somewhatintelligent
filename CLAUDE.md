@@ -87,21 +87,27 @@ one worktree at a time (machine-global proxy + hostnames).
 - **Bouncer's route table is single-host per env** (`workers/bouncer/wrangler.jsonc`
   `vars.ROUTES`, schema + dispatch in `src/routes.ts` / `src/index.ts` /
   `src/proxy.ts`): staging is `staging.somewhatintelligent.ca`, production is
-  `somewhatintelligent.ca` + `www.somewhatintelligent.ca`. Three mounts share
-  each host — `/api` → guestlist (`passthrough`), `/account` → identity
-  (`vmf`: bouncer strips the mount prefix before forwarding and rewrites
-  asset paths / redirect Location / Set-Cookie paths on the way back — see
-  `handleMountedApp`), `/` → a redirect (mode `"redirect"`, no upstream
-  binding) to the not-yet-built `/shop` storefront (404s at destination until
-  a parallel track adds that worker). Route modes are enforced per
-  `(host, mount)`, not per host, so passthrough/vmf/redirect can share one
-  host as long as they don't own the same mount. **Known gap:** vmf rewrites
-  HTTP-layer responses (HTML asset attrs, Location, Set-Cookie) but cannot
-  rewrite a client-side-routed SPA's own history/link state — identity's
-  TanStack Router has no basepath, so client-side navigation after hydration
-  can drop the `/account` prefix from the browser's URL bar. See the P1
-  decision log in `docs/exec-plans/active/0001-greenfield-bootstrap.md` for
-  the full writeup and why the basepath alternative was rejected.
+  `somewhatintelligent.ca` + `www.somewhatintelligent.ca`. Six mounts share
+  each host — `/api` → guestlist (`passthrough`), `/account` → identity and
+  `/shop` → store (both `vmf`: bouncer strips the mount prefix before
+  forwarding and rewrites asset paths / redirect Location / Set-Cookie paths
+  on the way back — see `handleMountedApp`), `/_sfn/store` → store and
+  `/_sfn/account` → identity (`passthrough` — see below), `/` → a redirect
+  (mode `"redirect"`, no upstream binding) to `/shop`. Route modes are
+  enforced per `(host, mount)`, not per host, so passthrough/vmf/redirect can
+  share one host as long as they don't own the same mount. **The vmf
+  client-side contract** (vmf rewrites HTTP-layer responses but cannot reach
+  a hydrated SPA's history/link state) is closed by two pieces working
+  together: (1) bouncer's `MountMetaInjector` announces the mount via
+  `<meta name="si-mount">`, and each app feeds it to a TanStack Router
+  `rewrite` pair (`mountRewrite` in `workers/*/src/lib/basepath.ts` — NOT the
+  `basepath` option, which TanStack Start clobbers on both server and client
+  with its own `TSS_ROUTER_BASEPATH` define); (2) each app compiles a unique
+  server-fn base (`tanstackStart({ serverFns: { base: "/_sfn/<app>" } })` in
+  its vite.config.ts) because Start's client calls server fns at the APEX,
+  outside the mount — bouncer passes those paths through unstripped to the
+  owning worker. Full history in the P1 decision log in
+  `docs/exec-plans/active/0001-greenfield-bootstrap.md`.
 - **Browser automation is set up** (`docs/browser-automation.md`):
   **agent-browser** runs standalone locally (manages its own Chrome; one
   command at a time — concurrent/backgrounded calls wedge its daemon) or

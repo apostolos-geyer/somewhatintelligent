@@ -112,7 +112,14 @@ function makePlugins(): PluginOption[] {
     ...devtools(),
     tailwindcss(),
     ...cloudflare({ viteEnvironment: { name: "ssr" }, inspectorPort: false }),
-    ...tanstackStart(),
+    // Unique server-fn base: TanStack Start compiles ONE root-relative base
+    // into both the server handler and the client bundle, so under bouncer's
+    // vmf mount the hydrated client calls server fns at the APEX (outside
+    // `/shop`). `/_sfn/store` is passed through unstripped by bouncer
+    // (workers/bouncer/wrangler.jsonc ROUTES) straight to this worker, where
+    // it matches the same compiled base. Dev-direct is unaffected (same
+    // origin, same path).
+    ...tanstackStart({ serverFns: { base: "/_sfn/store" } }),
     ...react(),
   ];
 }

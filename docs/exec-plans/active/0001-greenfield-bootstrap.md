@@ -69,6 +69,26 @@ pruning dead weight and applying accumulated harness learnings at each step.
 | A2  | Auth re-seated on the platform spine: `getSession` (kit `createPlatformStartApp`) + session-shaped function middleware | Source used `@apostoli/kit` middleware + a `@apostoli/bouncer-service` RPC (role hierarchy anon<user<trusted<admin). Replaced with this platform's `lib/platform.ts` (envelope verify + guestlist RPC, mirrors identity), and `lib/middleware/auth.ts` exposing SESSION-shaped `authMiddleware`/`requireAuthMiddleware`/`requireAdminMiddleware` so the ported server fns keep reading `context.session.user.{id,email,role}` unchanged. Admin = `isAdminRole(session.user.role)` (`@si/kit/roles`; seeded `super@user.com`), enforced in route `beforeLoad` AND every mutating server fn. Dev-direct self-mints the envelope via kit's stamper in `worker.ts` (like identity).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | A3  | Logic extracted into pure modules for the unit tier; D1 tier via a separate `vitest.pool.config.ts` + `*.itest.ts`     | `pricing.ts` (order totals / price-from-product / stock guards), `catalog.ts` (slug/SKU/size-sort/cover-stock rollup), `cart-core.ts` (cart reducers), `basepath.ts` — all behavior-identical extractions the server-fn/hook wrappers now delegate to. Source shipped ZERO tests; added 33 unit + 8 D1 pool. The pool tier follows greenroom/sprout (`test:pool`, binds only D1) rather than the fork's fold-into-`*.test.ts` convention, per the task's explicit gate.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
+### A1 superseded (P3 live verification)
+
+A1's client-only `basepath` shipped and immediately failed on staging: TanStack
+Start's own bootstrap calls `router.update({ basepath: process.env.TSS_ROUTER_BASEPATH })`
+on BOTH sides (start-server-core `createStartHandler`, start-client-core
+`hydrateStart`), clobbering any createRouter-level basepath with `""` and
+unmounting the tree on the SPA-mode hydration invariant ("renders then
+vanishes"). Two-part replacement, verified live on staging:
+
+1. The mount rides the documented **`rewrite` option** (`mountRewrite` in
+   `workers/{store,identity}/src/lib/basepath.ts`), which `router.update()`
+   preserves and re-composes — fed at runtime by bouncer's `si-mount` meta
+   (`MountMetaInjector`), `PUBLIC_BASE` as build-time fallback.
+2. Hydrated clients call **server fns at the apex** (single compiled
+   `TSS_SERVER_FN_BASE`), so each app gets a unique base
+   (`tanstackStart({ serverFns: { base: "/_sfn/<app>" } })`) with a matching
+   bouncer `passthrough` route — otherwise every client-side loader bounced
+   off the `/` redirect into a 500 ("Only HTML requests are supported here")
+   and broke all client-side navigation.
+
 ## Decision log — Track B (Stripe IaC, executed by a worktree agent)
 
 | #   | Decision                                                                                                                                                                                                                     | Why                                                                                                                                                                                                                                                                                                                                       |

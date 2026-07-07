@@ -127,7 +127,10 @@ function makePlugins(): PluginOption[] {
     // auto-increment probe races when apps (or worktrees) start
     // simultaneously. Set a number here temporarily when you need DevTools.
     ...cloudflare({ viteEnvironment: { name: "ssr" }, inspectorPort: false }),
-    ...tanstackStart(),
+    // Unique server-fn base — see workers/store/vite.config.ts for the full
+    // rationale: vmf-mounted clients call server fns at the apex, so each
+    // app owns a distinct passthrough path in bouncer's ROUTES.
+    ...tanstackStart({ serverFns: { base: "/_sfn/account" } }),
     ...react(),
   ];
 }

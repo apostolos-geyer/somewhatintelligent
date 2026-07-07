@@ -1,26 +1,29 @@
 import { createRouter as createTanStackRouter } from "@tanstack/react-router";
 import type { PlatformSession } from "@si/auth";
 import { routeTree } from "@/routeTree.gen";
-import { readMountMeta, resolveBasepath } from "@/lib/basepath";
+import { mountRewrite, readMountMeta, resolveBasepath } from "@/lib/basepath";
 
 export interface RouterContext {
   session: PlatformSession | null;
 }
 
 export function getRouter() {
+  // THE one place the `/shop` mount enters app code. Client-only: the server
+  // router stays at root (bouncer's vmf already stripped the mount), while
+  // the browser router re-applies `/shop` so the URL bar keeps the prefix
+  // across client-side navigation + hard refresh. Route definitions and every
+  // <Link>/navigate/redirect stay prefix-free. The mount rides the `rewrite`
+  // option, NOT `basepath` — TanStack Start clobbers `basepath` on both sides
+  // (see mountRewrite in src/lib/basepath.ts for the full story).
+  const mount = resolveBasepath({
+    isServer: typeof window === "undefined",
+    publicBase: import.meta.env.PUBLIC_BASE,
+    mountMeta: readMountMeta(),
+  });
+
   const router = createTanStackRouter({
     routeTree,
-    // THE one place the `/shop` mount enters app code. Client-only: the server
-    // router stays at root (bouncer's vmf already stripped the mount), while
-    // the browser router re-applies `/shop` so the URL bar keeps the prefix
-    // across client-side navigation + hard refresh. Route definitions and every
-    // <Link>/navigate/redirect stay prefix-free — TanStack Router prepends the
-    // basepath on href generation and strips it on match. See src/lib/basepath.ts.
-    basepath: resolveBasepath({
-      isServer: typeof window === "undefined",
-      publicBase: import.meta.env.PUBLIC_BASE,
-      mountMeta: readMountMeta(),
-    }),
+    rewrite: mountRewrite(mount),
     scrollRestoration: true,
     defaultPreload: "intent",
     defaultPreloadStaleTime: 0,

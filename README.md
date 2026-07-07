@@ -6,6 +6,13 @@ cross-cutting packages they share. The spine is designed to be **forked per
 client**: rebranding is editing three TypeScript files and running one
 script.
 
+> **Activation status (2026-07-07):** staging is live
+> (`staging.somewhatintelligent.ca`, Access-gated); production is **not
+> deployed yet** ([`docs/runbooks/PRODUCTION-DEPLOY.md`](docs/runbooks/PRODUCTION-DEPLOY.md));
+> CI/CD in `.rwx/` is **scaffolding-only** until the operator executes
+> [`docs/ops/rwx-setup.md`](docs/ops/rwx-setup.md) (RWX org + GitHub App +
+> vaults) — pushes and PRs trigger nothing until then.
+
 ## Layout
 
 ```
@@ -15,7 +22,8 @@ platform-template/
 │   │                # refreshes session, dispatches to apps via service binding
 │   ├── guestlist      # Central auth service (Elysia + Better Auth + D1)
 │   ├── roadie       # R2-backed blob storage broker (Workers RPC + cron)
-│   ├── promoter     # Deferred-work runner (Workers RPC + cron)
+│   ├── promoter     # Outbound comms + deferred work — queue consumer for
+│   │                # email via Resend today (SMS later), plus cron jobs
 │   └── identity      # Sign-in / account UI (TanStack Start, CF Workers)
 ├── packages/
 │   ├── audio         # WebAudio primitives (consumed by ui's file-preview)
