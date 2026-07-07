@@ -71,8 +71,13 @@ export interface AccessTarget {
   hostname: string;
 }
 
-/** Reads the account's workers.dev subdomain (e.g. "example-account"). */
+/** Reads the account's workers.dev subdomain (e.g. "example-account").
+ *  `WORKERS_SUBDOMAIN` overrides the API read — the si-access-admin token
+ *  deliberately carries no Workers scope, so callers can resolve the
+ *  subdomain once with a Workers-scoped token and pass it in. */
 async function resolveWorkersDevSubdomain(cf: Cloudflare, account: string): Promise<string> {
+  const override = process.env.WORKERS_SUBDOMAIN?.trim();
+  if (override) return override;
   const res = await cf.workers.subdomains.get({ account_id: account });
   const subdomain = (res as { subdomain?: string }).subdomain;
   if (!subdomain) throw new Error("Could not resolve the account's workers.dev subdomain.");

@@ -21,7 +21,7 @@
       "binding": "DB",
       "database_name": "roadie-staging-db",
       // TODO(provision): real D1 database_id from this fork's Cloudflare account.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "e8b5d45d-a130-443f-adbb-78bb6a1ad5c3",
       "migrations_dir": "migrations",
     },
   ],

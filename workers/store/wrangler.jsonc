@@ -39,7 +39,7 @@
       "database_name": "store-staging-db",
       "migrations_dir": "migrations",
       // TODO(provision): real D1 database_id from this fork's Cloudflare account.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "d197e866-4587-4981-bacc-ef01266498c8",
     },
   ],
   "services": [

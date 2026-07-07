@@ -268,15 +268,25 @@ export interface PermissionGroupResolution {
 
 /**
  * Pure name->group mapping, split out from `resolvePermissionGroups` so the
- * matching logic (first-wins on duplicate names, exact-name-only matching)
- * is unit-testable without a network call.
+ * matching logic is unit-testable without a network call.
+ *
+ * Cloudflare's catalog contains DUPLICATE names with different scopes (e.g.
+ * "Access: Apps and Policies Write" exists both zone- and account-scoped).
+ * On a name collision the ACCOUNT-scoped variant wins: every API surface this
+ * suite manages through such groups (Access apps/policies) is account-level;
+ * genuinely zone-only capabilities (DNS Write, Workers Routes Write, …) have
+ * no account-scoped variant, so they are unaffected.
  */
 export function mapPermissionGroupsByName(
   all: PermissionGroup[],
   names: string[],
 ): PermissionGroupResolution {
   const byName = new Map<string, PermissionGroup>();
-  for (const g of all) if (!byName.has(g.name)) byName.set(g.name, g);
+  for (const g of all) {
+    const existing = byName.get(g.name);
+    if (!existing) byName.set(g.name, g);
+    else if (isZoneScoped(existing) && !isZoneScoped(g)) byName.set(g.name, g);
+  }
 
   const resolved: PermissionGroup[] = [];
   const missing: string[] = [];

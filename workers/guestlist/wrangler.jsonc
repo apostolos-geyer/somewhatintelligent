@@ -34,7 +34,7 @@
       "database_name": "guestlist-staging-db",
       "migrations_dir": "migrations",
       // TODO(provision): real D1 database_id from this fork's Cloudflare account.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "d6199f92-9546-4ff9-bdb3-2b55be6b566c",
     },
   ],
   "services": [
