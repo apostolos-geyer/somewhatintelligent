@@ -1,0 +1,28 @@
+{
+  "extends": "@greenroom/typescript-config/base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    // jsx is required only because `@greenroom/guestlist-service/client` re-exports
+    // a `GuestlistApp` type (via `import type { GuestlistApp } from "../index"`)
+    // whose inference chain transitively pulls `auth.ts` → `@greenroom/email`
+    // (.tsx). Bouncer emits no JSX itself. Tracked as a guestlist-client
+    // tightening follow-up; until then every guestlist/client consumer needs jsx.
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    // Drop DOM from base — bouncer is a pure Worker, no browser surface.
+    // Matches the upstream microfrontend template's tsconfig: WebWorker lib
+    // for runtime globals, `@cloudflare/workers-types` for `Fetcher` /
+    // `HTMLRewriter` / `Element`. lib.dom would otherwise shadow Workers'
+    // `Element` / `Request` / `Headers` and clash at API boundaries.
+    "lib": ["es2022", "WebWorker"],
+    "types": ["@cloudflare/vitest-pool-workers"],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "worker-configuration.d.ts"],
+  "exclude": ["node_modules", "dist", "__tests__"]
+}

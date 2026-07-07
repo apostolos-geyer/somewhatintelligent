@@ -1,0 +1,11 @@
+{
+  "extends": "@greenroom/typescript-config/react-library.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "outDir": "dist",
+    "declaration": false,
+    "declarationMap": false
+  },
+  "include": ["src"]
+}

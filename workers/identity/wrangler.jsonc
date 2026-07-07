@@ -1,0 +1,56 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sprout-identity-staging",
+  "account_id": "30ce6004cd9c2907f0b06fe401c4f4ba",
+  "main": "./src/worker.ts",
+  "compatibility_date": "2026-04-16",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+  },
+  "upload_source_maps": true,
+  "workers_dev": true,
+  "preview_urls": true,
+  "vars": {
+    "ENVIRONMENT": "staging",
+    "IDENTITY_URL": "https://identity-staging.sproutportal.ca",
+    "MARKETING_URL": "https://sprout-marketing-staging.sproutcannabis.workers.dev",
+    "SPROUT_URL": "https://sprout-staging.sproutportal.ca",
+    // Controlled apex (leading dot, mirrors guestlist AUTH_DOMAIN + the auth
+    // server's `*.{apex}` trustedOrigins). The post-auth redirect guard
+    // (src/lib/return-to.ts) trusts this apex + every subdomain of it.
+    "AUTH_DOMAIN": ".sproutportal.ca",
+  },
+  "services": [
+    {
+      "binding": "GUESTLIST",
+      "service": "sprout-guestlist-staging",
+    },
+  ],
+  "env": {
+    "production": {
+      // Explicit — without this wrangler would derive
+      // "sprout-identity-staging-production" (top-level name + "-production"),
+      // a brand-new worker, instead of updating this one.
+      "name": "sprout-identity-production",
+      // Staging turns this on for workers.dev preview access; production must
+      // not inherit that (it would otherwise, since named envs inherit
+      // workers_dev/preview_urls from the top level).
+      "workers_dev": false,
+      "preview_urls": false,
+      "vars": {
+        "ENVIRONMENT": "production",
+        "IDENTITY_URL": "https://identity.sproutportal.ca",
+        "MARKETING_URL": "https://sproutportal.ca",
+        "SPROUT_URL": "https://sprout.sproutportal.ca",
+        "AUTH_DOMAIN": ".sproutportal.ca",
+      },
+      "services": [
+        {
+          "binding": "GUESTLIST",
+          "service": "sprout-guestlist-production",
+        },
+      ],
+    },
+  },
+}

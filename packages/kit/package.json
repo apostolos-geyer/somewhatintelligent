@@ -1,0 +1,44 @@
+{
+  "name": "@greenroom/kit",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./ids": "./src/ids/index.ts",
+    "./roles": "./src/roles.ts",
+    "./log": "./src/log/index.ts",
+    "./request-context": "./src/request-context/index.ts",
+    "./react": "./src/react/index.ts",
+    "./react-start": "./src/react-start/index.ts",
+    "./react-start/client": "./src/react-start/client.ts"
+  },
+  "scripts": {
+    "test": "vp test run"
+  },
+  "dependencies": {
+    "@greenroom/auth": "workspace:*",
+    "@greenroom/config": "workspace:*",
+    "ulidx": "catalog:"
+  },
+  "devDependencies": {
+    "@babel/plugin-proposal-decorators": "^7.29.0",
+    "@greenroom/typescript-config": "workspace:*",
+    "@rolldown/plugin-babel": "^0.2.3",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "peerDependencies": {
+    "@tanstack/react-start": "catalog:",
+    "react": "catalog:"
+  },
+  "peerDependenciesMeta": {
+    "@tanstack/react-start": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    }
+  }
+}

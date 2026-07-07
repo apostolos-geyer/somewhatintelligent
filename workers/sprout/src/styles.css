@@ -1,0 +1,46 @@
+@import "@greenroom/design/theme.css";
+@source "../../../packages/ui/src/**/*.tsx";
+@source "../../../packages/ui/src/**/*.ts";
+@source "../**/*.tsx";
+@source "../**/*.ts";
+
+/* Route navigation runs WITHOUT view transitions (see router.tsx): the
+   document-wide exit→enter fade read as the whole UI flashing on every soft
+   navigation. Content swaps in place; overlays animate themselves. */
+
+/* ── Typing indicator dots ── */
+
+@keyframes typing-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+
+.typing-dot {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background-color: currentColor;
+  animation: typing-dot 1.4s ease-in-out infinite;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .typing-dot {
+    animation: none;
+    opacity: 0.6;
+  }
+}

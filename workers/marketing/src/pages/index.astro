@@ -1,0 +1,44 @@
+---
+import { platformDeployConfig } from "@greenroom/config";
+
+import Base from "../layouts/Base.astro";
+import DualCta from "../components/DualCta.astro";
+import FinalCta from "../components/FinalCta.astro";
+
+import { Nav } from "../components/nav";
+import { Hero } from "../components/hero";
+import { Positioning, Why, Platform, Steps } from "../components/sections";
+import { Audiences } from "../components/audiences";
+import { Footer } from "../components/footer";
+
+// Computed at build time (Astro frontmatter runs in Node via Vite, which
+// resolves the @greenroom/config workspace package). Passed to the Nav island
+// so "Sign in" points at the identity app for this deploy target.
+const identityUrl = `https://identity.${platformDeployConfig.baseDomain}`;
+---
+
+<Base>
+  <!-- Interactive island: sticky header + mobile menu -->
+  <Nav client:load identityUrl={identityUrl} />
+
+  <main>
+    <!-- Hero now carries the interactive email-capture island, so it hydrates. -->
+    <Hero client:load />
+
+    <!-- Static sections: pre-rendered to HTML, zero client JS. -->
+    <Positioning />
+    <Why />
+    <Platform />
+
+    <!-- Interactive island: audience tab switcher. -->
+    <Audiences client:visible />
+
+    <Steps />
+
+    <!-- Static cards; only the email forms inside hydrate (see .astro files). -->
+    <DualCta />
+    <FinalCta />
+  </main>
+
+  <Footer />
+</Base>

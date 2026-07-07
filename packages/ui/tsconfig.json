@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "paths": {
+      "@greenroom/ui/*": ["./src/*"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["node_modules"]
+}

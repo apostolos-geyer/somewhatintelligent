@@ -1,0 +1,183 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sprout-bouncer-staging",
+  "account_id": "30ce6004cd9c2907f0b06fe401c4f4ba",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-04-14",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+  },
+  "upload_source_maps": true,
+  "workers_dev": true,
+  "preview_urls": true,
+  "vars": {
+    "ENVIRONMENT": "staging",
+    "IDENTITY_URL": "https://identity-staging.sproutportal.ca",
+    "SPROUT_URL": "https://sprout-staging.sproutportal.ca",
+    // Bouncer is the attestation MINTER (src/envelope.ts signs with
+    // env.BNC_ATT_KID + the BNC_ATT_PRIV secret) — unlike identity/sprout,
+    // where BNC_ATT_KID is a dev-only self-mint fallback kept out of this
+    // file, bouncer NEEDS a kid in every environment. Staging signs with the
+    // well-known dev keypair (same as the pre-flip config);
+    // packages/config/src/bouncer-attestation.ts maps kid → public key.
+    "BNC_ATT_KID": "dev",
+    "ROUTES": {
+      "routes": [
+        {
+          "binding": "GUESTLIST",
+          "host": "identity-staging.sproutportal.ca",
+          "path": "/api",
+          "mode": "passthrough",
+        },
+        {
+          "binding": "GUESTLIST",
+          "host": "identity-staging.sproutportal.ca",
+          "path": "/u",
+          "mode": "passthrough",
+        },
+        {
+          "binding": "IDENTITY",
+          "host": "identity-staging.sproutportal.ca",
+          "path": "/",
+          "mode": "passthrough",
+        },
+        // Sprout Hub on staging via a single custom domain. Brand-subdomain
+        // portals (<slug>.sproutportal.ca) stay production-only — they share the
+        // prod zone hostnames + the wildcard cert. Fronting the Hub here means
+        // bouncer mints the envelope, so its authed flows work on staging.
+        {
+          "binding": "SPROUT",
+          "host": "sprout-staging.sproutportal.ca",
+          "path": "/",
+          "mode": "passthrough",
+        },
+      ],
+    },
+  },
+  "services": [
+    { "binding": "GUESTLIST", "service": "sprout-guestlist-staging" },
+    { "binding": "IDENTITY", "service": "sprout-identity-staging" },
+    // Sprout Hub is fronted on staging at sprout-staging.sproutportal.ca (route
+    // above). Brand-subdomain portals (<slug>.sproutportal.ca) stay production-
+    // only — they reuse the prod zone hostnames + need the wildcard cert.
+    { "binding": "SPROUT", "service": "sprout-sprout-staging" },
+  ],
+  "routes": [
+    { "pattern": "identity-staging.sproutportal.ca", "custom_domain": true },
+    { "pattern": "sprout-staging.sproutportal.ca", "custom_domain": true },
+  ],
+  "env": {
+    "production": {
+      "name": "sprout-bouncer-production",
+      "workers_dev": false,
+      "preview_urls": false,
+      "vars": {
+        "ENVIRONMENT": "production",
+        "IDENTITY_URL": "https://identity.sproutportal.ca",
+        "SPROUT_URL": "https://sprout.sproutportal.ca",
+        // Production attestation kid — see the staging vars note: bouncer is
+        // the minter and requires this var; the paired BNC_ATT_PRIV is a
+        // wrangler secret.
+        "BNC_ATT_KID": "production",
+        "ROUTES": {
+          "routes": [
+            {
+              "binding": "GUESTLIST",
+              "host": "identity.sproutportal.ca",
+              "path": "/api",
+              "mode": "passthrough",
+            },
+            {
+              "binding": "GUESTLIST",
+              "host": "identity.sproutportal.ca",
+              "path": "/u",
+              "mode": "passthrough",
+            },
+            {
+              "binding": "IDENTITY",
+              "host": "identity.sproutportal.ca",
+              "path": "/",
+              "mode": "passthrough",
+            },
+            // Public marketing landing: apex + www at ROOT → MARKETING worker.
+            // Both are EXACT hosts (tier 0), outranking the SPROUT single-label
+            // wildcard below (tier 1) — see matchRoute's hostTier in routes.ts.
+            {
+              "binding": "MARKETING",
+              "host": "sproutportal.ca",
+              "path": "/",
+              "mode": "passthrough",
+            },
+            {
+              "binding": "MARKETING",
+              "host": "www.sproutportal.ca",
+              "path": "/",
+              "mode": "passthrough",
+            },
+            // Sprout Hub: /hub on the APEX → SPROUT worker. A longer static mount
+            // ("/hub", len 4) outscores the "/" MARKETING route (len 1) at the same
+            // host tier (matchRoute score = mountActual.length*1e6), so /hub* hits
+            // the portal while apex / stays on the landing. Only the apex carries
+            // /hub — NOT www: slugFromHost reads `www` as a brand label, so www is
+            // marketing-only (www/hub falls through to the www→MARKETING route).
+            {
+              "binding": "SPROUT",
+              "host": "sproutportal.ca",
+              "path": "/hub",
+              "mode": "passthrough",
+            },
+            // Org portals: every single-label subdomain (<org>.sproutportal.ca)
+            // → SPROUT worker at root. DEFERRED — see the routes[] note below. A
+            // bare `*.sproutportal.ca` also matches the STAGING service hosts
+            // (`identity-staging`, `sprout-staging`, …) which share this zone, so
+            // enabling it here + the zone route shadowed every *-staging custom
+            // domain → all staging 404'd (incident 2026-07-01). Re-enable only once
+            // staging moves off this zone (e.g. `*.staging.sproutportal.ca`).
+            // {
+            //   "binding": "SPROUT",
+            //   "host": "*.sproutportal.ca",
+            //   "path": "/",
+            //   "mode": "passthrough",
+            // },
+          ],
+        },
+      },
+      "services": [
+        { "binding": "GUESTLIST", "service": "sprout-guestlist-production" },
+        { "binding": "IDENTITY", "service": "sprout-identity-production" },
+        { "binding": "SPROUT", "service": "sprout-sprout-production" },
+        { "binding": "MARKETING", "service": "sprout-marketing-production" },
+      ],
+      "routes": [
+        { "pattern": "identity.sproutportal.ca", "custom_domain": true },
+        // www (marketing landing) as a custom domain — wrangler auto-creates its
+        // proxied DNS record + edge cert on deploy, same as identity.
+        { "pattern": "www.sproutportal.ca", "custom_domain": true },
+        // Apex (marketing landing) as a custom domain.
+        { "pattern": "sproutportal.ca", "custom_domain": true },
+        // DEFERRED — org-subdomain zone wildcard. A `*.sproutportal.ca/*` zone
+        // route (unlike a custom_domain) is a broad, low-precedence match that
+        // ALSO catches the single-label STAGING hosts on this same zone
+        // (`identity-staging.sproutportal.ca`, `sprout-staging.sproutportal.ca`, …).
+        // When this route existed it shadowed every *-staging custom domain and
+        // routed them to bouncer-PRODUCTION → sprout-production (subdomain mode) →
+        // 404 across ALL staging (incident 2026-07-01, fixed by deleting the route).
+        // Do NOT re-add until org subdomains are actually needed AND staging is
+        // moved off this zone (nested `*.staging.sproutportal.ca` or its own zone),
+        // AND a proxied `*.sproutportal.ca` DNS record + `*` zone cert exist
+        // (wrangler does not create DNS for zone routes). Prod org portals are not
+        // live yet (no wildcard DNS, no prod brands), so removing this is a no-op
+        // for prod today.
+        // { "pattern": "*.sproutportal.ca/*", "zone_name": "sproutportal.ca" },
+      ],
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "logs": {
+          "enabled": true,
+        },
+      },
+    },
+  },
+}

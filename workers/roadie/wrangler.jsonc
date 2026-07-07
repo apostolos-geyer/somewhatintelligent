@@ -1,0 +1,72 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sprout-roadie-staging",
+  "main": "src/index.ts",
+  "account_id": "30ce6004cd9c2907f0b06fe401c4f4ba",
+  "compatibility_date": "2026-04-19",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+  },
+  "upload_source_maps": true,
+  "workers_dev": false,
+  "preview_urls": true,
+  "vars": {
+    "ENVIRONMENT": "staging",
+    "R2_BUCKET": "roadie-staging-blobs",
+    "R2_ACCOUNT_ID": "30ce6004cd9c2907f0b06fe401c4f4ba",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "roadie-staging-db",
+      "database_id": "a3558a3a-5dc6-4526-acf7-8e546b685743",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "r2_buckets": [
+    {
+      "binding": "BLOBS",
+      "bucket_name": "roadie-staging-blobs",
+    },
+  ],
+  // v1 ships only the pending reaper. Zero-ref reap, deletion drain, and
+  // reconcile are described in the spec but deferred — see spec §Deferrals.
+  "triggers": {
+    "crons": ["*/15 * * * *"],
+  },
+  "env": {
+    "production": {
+      "name": "sprout-roadie-production",
+      "vars": {
+        "ENVIRONMENT": "production",
+        "R2_BUCKET": "roadie-production-blobs",
+        "R2_ACCOUNT_ID": "30ce6004cd9c2907f0b06fe401c4f4ba",
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "roadie-production-db",
+          "database_id": "d433005f-a673-420b-b8f5-f1fbf6276ac8",
+          "migrations_dir": "migrations",
+        },
+      ],
+      "r2_buckets": [
+        {
+          "binding": "BLOBS",
+          "bucket_name": "roadie-production-blobs",
+        },
+      ],
+      "triggers": {
+        "crons": ["*/15 * * * *"],
+      },
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+      },
+      "preview_urls": false,
+
+      // No "routes" block — Roadie has no public surface in v1.
+    },
+  },
+}

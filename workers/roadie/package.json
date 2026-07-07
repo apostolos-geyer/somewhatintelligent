@@ -1,0 +1,43 @@
+{
+  "name": "@greenroom/roadie-service",
+  "version": "0.2.2",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": "./src/client/index.ts",
+    "./client/upload": "./src/client/upload.ts"
+  },
+  "scripts": {
+    "dev": "WRANGLER_REGISTRY_PATH=${WRANGLER_REGISTRY_PATH:-$PWD/../../.wrangler/dev-registry} wrangler dev --port ${ROADIE_PORT:-8790} --inspector-port ${ROADIE_INSPECTOR_PORT:-0}",
+    "env:init": "bun scripts/env-init.ts",
+    "dev:solo": "bun ../../scripts/dev-solo.ts",
+    "deploy:staging": "wrangler deploy",
+    "deploy:production": "wrangler deploy --env production",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:staging": "wrangler d1 migrations apply DB --remote",
+    "db:migrate:production": "wrangler d1 migrations apply DB --remote --env production",
+    "types": "wrangler types -c wrangler.jsonc",
+    "typecheck": "tsgo --noEmit",
+    "cors:setup": "bun run scripts/setup-cors.ts",
+    "test": "vp test run"
+  },
+  "dependencies": {
+    "@greenroom/kit": "workspace:*",
+    "aws4fetch": "^1.0.20",
+    "drizzle-orm": "catalog:"
+  },
+  "devDependencies": {
+    "@babel/plugin-proposal-decorators": "^7.29.0",
+    "@cloudflare/vitest-pool-workers": "^0.14.6",
+    "@cloudflare/workers-types": "^4",
+    "@greenroom/typescript-config": "workspace:*",
+    "@rolldown/plugin-babel": "^0.2.3",
+    "@types/node": "catalog:",
+    "drizzle-kit": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:",
+    "wrangler": "^4"
+  }
+}

@@ -1,0 +1,13 @@
+#!/bin/sh
+# Pre-commit: lint/format ONLY the staged files (vp staged stashes unstaged
+# changes, runs the `staged` config from root vite.config.ts -> scripts/
+# staged-check.ts, and re-stages fixes). Escape hatch: git commit --no-verify.
+#
+# Git runs hooks in a bare shell that does NOT export node_modules/.bin, so a
+# repo set up with a plain `bun install` (fresh clones, worktrees, ephemeral
+# agent/CI containers) hits "vp: not found" even though vite-plus is installed.
+# Put the repo-local bin dir on PATH so the locally-pinned vp is always found
+# without relying on a global install or the caller's PATH.
+PATH="$(git rev-parse --show-toplevel)/node_modules/.bin:$PATH"
+export PATH
+exec vp staged

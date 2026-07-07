@@ -1,0 +1,104 @@
+@import "@greenroom/design/theme.css";
+@import "@greenroom/design/assets.css";
+
+/* Tailwind scans these for class usage. Paths are relative to this file. */
+@source "../../../packages/ui/src/**/*.{ts,tsx}";
+@source "./**/*.{astro,ts,tsx}";
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* ============================================================
+   Marketing-only motion (ported from the Sprout prototype).
+   Colours live in the components as Tailwind utilities — this
+   file holds ONLY keyframes + the utility classes that bind to
+   them, so section components can reach a motion by class name.
+   ============================================================ */
+
+/* scroll-reveal / staggered entrance — site.css fade-in pattern */
+@keyframes sprout-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* signup-success entrance — site.css @keyframes pop */
+@keyframes sprout-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* idle hover bob for the hero phone */
+@keyframes sprout-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* audience-panel swap — site.css @keyframes fade */
+@keyframes sprout-fade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* live-blip pulse — phones.css @keyframes blink */
+@keyframes sprout-blink {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.animate-fade-up {
+  animation: sprout-fade-up 0.6s ease both;
+}
+
+.animate-pop {
+  animation: sprout-pop 0.4s cubic-bezier(0.2, 1.2, 0.4, 1) both;
+}
+
+.animate-float {
+  animation: sprout-float 6s ease-in-out infinite;
+}
+
+.animate-fade {
+  animation: sprout-fade 0.35s ease both;
+}
+
+.animate-blink {
+  animation: sprout-blink 1.3s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .animate-fade-up,
+  .animate-pop,
+  .animate-float,
+  .animate-fade,
+  .animate-blink {
+    animation: none;
+  }
+}

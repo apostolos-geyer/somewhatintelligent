@@ -1,0 +1,9 @@
+{
+  "extends": "@greenroom/typescript-config/bun.json",
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM"],
+    "jsx": "react-jsx"
+  },
+  "include": ["src", "scripts", "stories"],
+  "exclude": ["node_modules"]
+}

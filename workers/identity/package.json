@@ -1,0 +1,68 @@
+{
+  "name": "identity",
+  "version": "0.2.2",
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#/*": "./src/*"
+  },
+  "scripts": {
+    "dev": "portless",
+    "dev:bare": "vp dev",
+    "env:init": "bun scripts/env-init.ts",
+    "dev:solo": "bun ../../scripts/dev-solo.ts",
+    "preview": "vp preview",
+    "deploy": "vp run build && wrangler deploy",
+    "deploy:staging": "GREENROOM_BUILD=1 vp run build && wrangler deploy",
+    "deploy:production": "CLOUDFLARE_ENV=production vp run build && wrangler deploy --env production",
+    "types": "wrangler types -c ./wrangler.jsonc -c ../guestlist/wrangler.jsonc -c ../roadie/wrangler.jsonc",
+    "typecheck": "tsgo --noEmit",
+    "test": "vp test run"
+  },
+  "dependencies": {
+    "@greenroom/config": "workspace:*",
+    "@greenroom/design": "workspace:*",
+    "@greenroom/guestlist-service": "workspace:*",
+    "@greenroom/kit": "workspace:*",
+    "@greenroom/ui": "workspace:*",
+    "@tailwindcss/vite": "catalog:",
+    "@tanstack/react-devtools": "latest",
+    "@tanstack/react-router": "1.170.10",
+    "@tanstack/react-router-devtools": "latest",
+    "@tanstack/react-start": "catalog:",
+    "@tanstack/router-plugin": "^1.132.0",
+    "arktype": "catalog:",
+    "lucide-react": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "simple-icons": "^16.16.0",
+    "tailwindcss": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.37.1",
+    "@greenroom/og": "workspace:*",
+    "@tanstack/devtools-vite": "latest",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.0",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "^6.0.1",
+    "jsdom": "^28.1.0",
+    "jsonc-parser": "^3.3.1",
+    "typescript": "^5.7.2",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "lightningcss"
+    ]
+  },
+  "portless": {
+    "name": "identity.sproutportal",
+    "script": "dev:bare"
+  }
+}

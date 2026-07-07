@@ -1,0 +1,23 @@
+{
+  "name": "@greenroom/auth",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsgo --noEmit"
+  },
+  "dependencies": {
+    "@better-auth/api-key": "^1.6.0",
+    "@better-auth/oauth-provider": "^1.6.0",
+    "@better-auth/passkey": "^1.6.0",
+    "better-auth": "catalog:",
+    "cookie-es": "^3.1.1"
+  },
+  "devDependencies": {
+    "@greenroom/typescript-config": "workspace:*",
+    "vite-plus": "catalog:"
+  }
+}

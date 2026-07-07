@@ -1,0 +1,271 @@
+/* ═══════════════════════════════════════════════════
+   GENERATED — do not edit. Source: src/tokens/
+   Run: bun run codegen
+   ═══════════════════════════════════════════════════ */
+
+:root {
+  /* Neutrals */
+  --color-bg: hsl(60 23% 94%);
+  --color-bg-hsl: 60 23% 94%;
+  --color-surface: hsl(0 0% 100%);
+  --color-surface-hsl: 0 0% 100%;
+  --color-surface-raised: hsl(60 33% 98%);
+  --color-surface-raised-hsl: 60 33% 98%;
+  --color-surface-sunken: hsl(140 22% 96%);
+  --color-surface-sunken-hsl: 140 22% 96%;
+  --color-border: hsl(145 18% 50%);
+  --color-border-hsl: 145 18% 50%;
+  --color-border-strong: hsl(150 22% 42%);
+  --color-border-strong-hsl: 150 22% 42%;
+
+  /* Text */
+  --color-text: hsl(143 100% 7%);
+  --color-text-hsl: 143 100% 7%;
+  --color-text-secondary: hsl(150 34% 31%);
+  --color-text-secondary-hsl: 150 34% 31%;
+  --color-text-tertiary: hsl(150 18% 45%);
+  --color-text-tertiary-hsl: 150 18% 45%;
+  --color-text-on-accent: hsl(60 23% 94%);
+  --color-text-on-accent-hsl: 60 23% 94%;
+
+  /* Accents */
+  --color-sprout: hsl(122 55% 28%);
+  --color-sprout-hsl: 122 55% 28%;
+  --color-sprout-hover: hsl(123 58% 23%);
+  --color-sprout-hover-hsl: 123 58% 23%;
+  --color-stigma: hsl(17 56% 40%);
+  --color-stigma-hsl: 17 56% 40%;
+  --color-stigma-hover: hsl(16 60% 33%);
+  --color-stigma-hover-hsl: 16 60% 33%;
+  --color-growth: hsl(116 56% 29%);
+  --color-growth-hsl: 116 56% 29%;
+  --color-growth-hover: hsl(117 60% 24%);
+  --color-growth-hover-hsl: 117 60% 24%;
+  --color-pistil: hsl(38 72% 32%);
+  --color-pistil-hsl: 38 72% 32%;
+  --color-pistil-hover: hsl(37 76% 27%);
+  --color-pistil-hover-hsl: 37 76% 27%;
+  --color-haze: hsl(283 34% 37%);
+  --color-haze-hsl: 283 34% 37%;
+  --color-haze-hover: hsl(283 38% 30%);
+  --color-haze-hover-hsl: 283 38% 30%;
+
+  /* Effects */
+  --glass-bg: hsl(60 23% 96% / 0.72);
+  --glass-border: hsl(0 0% 100% / 0.6);
+  --glass-blur: 24px;
+
+  /* Shadows */
+  --neo-raised: 4px 4px 8px hsl(60 90% 5% / 0.08), -2px -2px 6px hsl(0 0% 100% / 0.7);
+  --neo-inset: inset 2px 2px 5px hsl(60 90% 5% / 0.08), inset -2px -2px 5px hsl(0 0% 100% / 0.6);
+  --brutal-sm: 2px 2px 0 var(--color-border-strong);
+  --brutal-md: 4px 4px 0 var(--color-border-strong);
+  --brutal-lg: 6px 6px 0 var(--color-border-strong);
+  --soft-sm: 0 1px 3px hsl(143 100% 7% / 0.06), 0 1px 2px hsl(143 100% 7% / 0.04);
+  --soft-md: 0 4px 8px hsl(143 100% 7% / 0.08), 0 2px 4px hsl(143 100% 7% / 0.04);
+  --soft-lg: 0 12px 24px hsl(143 100% 7% / 0.1), 0 4px 8px hsl(143 100% 7% / 0.05);
+  --glass-shadow: 0 4px 12px hsl(0 0% 0% / 0.15);
+
+  /* Fonts */
+  --font-display: "Zerove", "Switzer", system-ui, sans-serif;
+  --font-body: "Switzer", system-ui, -apple-system, sans-serif;
+  --font-editorial: "IBM Plex Serif", Georgia, serif;
+  --font-editorial-display: "Zerove", "Switzer", system-ui, sans-serif;
+  --font-accent: "Quadrillion", "Zerove", sans-serif;
+  --font-mono: "Iosevka", ui-monospace, "SF Mono", monospace;
+
+  /* Raw brand palette (exact hex, theme-invariant) */
+  --color-sprout-green: #c7f27d;
+  --color-growth-green: #3e9f32;
+  --color-sativa-green: #b2df93;
+  --color-indica-green: #00240d;
+  --color-purple-haze: #6d4c7d;
+  --color-plum-kush: #2e233f;
+  --color-lilac-diesel: #ae92c3;
+  --color-trichome: #d7adad;
+  --color-cream: #f2f2ec;
+  --color-charcoal: #121412;
+  --color-tinder: #2a2d2a;
+  --color-stoned: #525852;
+  --color-kief: #a9a493;
+  --color-lime-50: #f5fce9;
+  --color-lime-100: #eaf9ce;
+  --color-lime-200: #daf3a8;
+  --color-lime-300: #c7f27d;
+  --color-lime-400: #b2e659;
+  --color-lime-500: #97ce3d;
+  --color-lime-600: #79a82c;
+  --color-growth-300: #6fc15e;
+  --color-growth-400: #4fae40;
+  --color-growth-500: #3e9f32;
+  --color-growth-600: #2f7e27;
+  --color-growth-700: #235e1d;
+  --color-forest-50: #f4f8f5;
+  --color-forest-100: #e9f0eb;
+  --color-forest-200: #d7e3dc;
+  --color-forest-300: #b6ccc0;
+  --color-forest-400: #8aaa9a;
+  --color-forest-500: #5e8770;
+  --color-forest-600: #356b49;
+  --color-forest-700: #1c5733;
+  --color-forest-800: #0e4422;
+  --color-forest-900: #053116;
+  --color-forest-950: #00240d;
+  --color-paper-0: #ffffff;
+  --color-paper-50: #fbfbf7;
+  --color-paper-100: #f2f2ec;
+  --color-paper-200: #e7e7dd;
+  --color-paper-300: #d6d6c8;
+  --color-success: #3e9f32;
+  --color-success-bg: #e6f4e1;
+  --color-warning: #f4a300;
+  --color-warning-bg: #fdefd2;
+  --color-warning-ink: #8a5c00;
+  --color-danger: #b85c38;
+  --color-danger-bg: #f6e5dc;
+  --color-danger-ink: #7e3a20;
+  --color-info: #6d4c7d;
+  --color-info-bg: #eae3ef;
+
+  /* Radius (theme-invariant; aliased by @theme so tenants can override) */
+  --radius-none: 0px;
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --radius-xl: 30px;
+  --radius-full: 9999px;
+
+  /* Semantic spacing (theme-invariant; aliased by @theme so tenants can override) */
+  --spacing-page: clamp(24px, 5vw, 48px);
+  --spacing-section: clamp(24px, 4vw, 48px);
+  --spacing-grid: clamp(12px, 2vw, 20px);
+}
+
+[data-theme="dark"] {
+  /* Neutrals */
+  --color-bg: hsl(40 14% 8%);
+  --color-bg-hsl: 40 14% 8%;
+  --color-surface: hsl(40 11% 12%);
+  --color-surface-hsl: 40 11% 12%;
+  --color-surface-raised: hsl(38 10% 16%);
+  --color-surface-raised-hsl: 38 10% 16%;
+  --color-surface-sunken: hsl(40 16% 6%);
+  --color-surface-sunken-hsl: 40 16% 6%;
+  --color-border: hsl(40 8% 28%);
+  --color-border-hsl: 40 8% 28%;
+  --color-border-strong: hsl(40 8% 38%);
+  --color-border-strong-hsl: 40 8% 38%;
+
+  /* Text */
+  --color-text: hsl(48 28% 92%);
+  --color-text-hsl: 48 28% 92%;
+  --color-text-secondary: hsl(44 14% 72%);
+  --color-text-secondary-hsl: 44 14% 72%;
+  --color-text-tertiary: hsl(42 11% 56%);
+  --color-text-tertiary-hsl: 42 11% 56%;
+  --color-text-on-accent: hsl(40 16% 9%);
+  --color-text-on-accent-hsl: 40 16% 9%;
+
+  /* Accents */
+  --color-sprout: hsl(80 81% 72%);
+  --color-sprout-hsl: 80 81% 72%;
+  --color-sprout-hover: hsl(82 85% 80%);
+  --color-sprout-hover-hsl: 82 85% 80%;
+  --color-stigma: hsl(14 60% 62%);
+  --color-stigma-hsl: 14 60% 62%;
+  --color-stigma-hover: hsl(13 64% 70%);
+  --color-stigma-hover-hsl: 13 64% 70%;
+  --color-growth: hsl(100 58% 64%);
+  --color-growth-hsl: 100 58% 64%;
+  --color-growth-hover: hsl(98 62% 72%);
+  --color-growth-hover-hsl: 98 62% 72%;
+  --color-pistil: hsl(40 95% 56%);
+  --color-pistil-hsl: 40 95% 56%;
+  --color-pistil-hover: hsl(40 98% 64%);
+  --color-pistil-hover-hsl: 40 98% 64%;
+  --color-haze: hsl(279 38% 72%);
+  --color-haze-hsl: 279 38% 72%;
+  --color-haze-hover: hsl(279 42% 80%);
+  --color-haze-hover-hsl: 279 42% 80%;
+
+  /* Effects */
+  --glass-bg: hsl(146 82% 11% / 0.55);
+  --glass-border: hsl(80 81% 72% / 0.16);
+
+  /* Shadows (dark) */
+  --neo-raised: 6px 6px 14px hsl(0 0% 0% / 0.5), -3px -3px 10px hsl(0 0% 100% / 0.04);
+  --neo-inset: inset 3px 3px 8px hsl(0 0% 0% / 0.5), inset -3px -3px 8px hsl(0 0% 100% / 0.03);
+  --brutal-sm: 2px 2px 0 var(--color-border-strong);
+  --brutal-md: 4px 4px 0 var(--color-border-strong);
+  --brutal-lg: 6px 6px 0 var(--color-border-strong);
+  --soft-sm: 0 1px 3px hsl(0 0% 0% / 0.06), 0 1px 2px hsl(0 0% 0% / 0.04);
+  --soft-md: 0 4px 8px hsl(0 0% 0% / 0.08), 0 2px 4px hsl(0 0% 0% / 0.04);
+  --soft-lg: 0 12px 24px hsl(0 0% 0% / 0.1), 0 4px 8px hsl(0 0% 0% / 0.05);
+  --glass-shadow: 0 4px 12px hsl(0 0% 0% / 0.15);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    /* Neutrals */
+    --color-bg: hsl(40 14% 8%);
+    --color-bg-hsl: 40 14% 8%;
+    --color-surface: hsl(40 11% 12%);
+    --color-surface-hsl: 40 11% 12%;
+    --color-surface-raised: hsl(38 10% 16%);
+    --color-surface-raised-hsl: 38 10% 16%;
+    --color-surface-sunken: hsl(40 16% 6%);
+    --color-surface-sunken-hsl: 40 16% 6%;
+    --color-border: hsl(40 8% 28%);
+    --color-border-hsl: 40 8% 28%;
+    --color-border-strong: hsl(40 8% 38%);
+    --color-border-strong-hsl: 40 8% 38%;
+
+    /* Text */
+    --color-text: hsl(48 28% 92%);
+    --color-text-hsl: 48 28% 92%;
+    --color-text-secondary: hsl(44 14% 72%);
+    --color-text-secondary-hsl: 44 14% 72%;
+    --color-text-tertiary: hsl(42 11% 56%);
+    --color-text-tertiary-hsl: 42 11% 56%;
+    --color-text-on-accent: hsl(40 16% 9%);
+    --color-text-on-accent-hsl: 40 16% 9%;
+
+    /* Accents */
+    --color-sprout: hsl(80 81% 72%);
+    --color-sprout-hsl: 80 81% 72%;
+    --color-sprout-hover: hsl(82 85% 80%);
+    --color-sprout-hover-hsl: 82 85% 80%;
+    --color-stigma: hsl(14 60% 62%);
+    --color-stigma-hsl: 14 60% 62%;
+    --color-stigma-hover: hsl(13 64% 70%);
+    --color-stigma-hover-hsl: 13 64% 70%;
+    --color-growth: hsl(100 58% 64%);
+    --color-growth-hsl: 100 58% 64%;
+    --color-growth-hover: hsl(98 62% 72%);
+    --color-growth-hover-hsl: 98 62% 72%;
+    --color-pistil: hsl(40 95% 56%);
+    --color-pistil-hsl: 40 95% 56%;
+    --color-pistil-hover: hsl(40 98% 64%);
+    --color-pistil-hover-hsl: 40 98% 64%;
+    --color-haze: hsl(279 38% 72%);
+    --color-haze-hsl: 279 38% 72%;
+    --color-haze-hover: hsl(279 42% 80%);
+    --color-haze-hover-hsl: 279 42% 80%;
+
+    /* Effects */
+    --glass-bg: hsl(146 82% 11% / 0.55);
+    --glass-border: hsl(80 81% 72% / 0.16);
+
+    /* Shadows (dark) */
+    --neo-raised: 6px 6px 14px hsl(0 0% 0% / 0.5), -3px -3px 10px hsl(0 0% 100% / 0.04);
+    --neo-inset: inset 3px 3px 8px hsl(0 0% 0% / 0.5), inset -3px -3px 8px hsl(0 0% 100% / 0.03);
+    --brutal-sm: 2px 2px 0 var(--color-border-strong);
+    --brutal-md: 4px 4px 0 var(--color-border-strong);
+    --brutal-lg: 6px 6px 0 var(--color-border-strong);
+    --soft-sm: 0 1px 3px hsl(0 0% 0% / 0.06), 0 1px 2px hsl(0 0% 0% / 0.04);
+    --soft-md: 0 4px 8px hsl(0 0% 0% / 0.08), 0 2px 4px hsl(0 0% 0% / 0.04);
+    --soft-lg: 0 12px 24px hsl(0 0% 0% / 0.1), 0 4px 8px hsl(0 0% 0% / 0.05);
+    --glass-shadow: 0 4px 12px hsl(0 0% 0% / 0.15);
+  }
+}

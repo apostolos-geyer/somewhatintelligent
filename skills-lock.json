@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "agent-browser": {
+      "source": "vercel-labs/agent-browser",
+      "sourceType": "github",
+      "skillPath": "skills/agent-browser/SKILL.md",
+      "computedHash": "228f87d57035100d9dc6efcfc05aafd4b6e3962adacaa04b8217ab2fadb15dc8"
+    },
+    "remotion-best-practices": {
+      "source": "remotion-dev/skills",
+      "sourceType": "github",
+      "skillPath": "skills/remotion/SKILL.md",
+      "computedHash": "006f8413941b59eff54a7ce64851b8a2fb79e7a3a5f1a895e97a48f01482553d"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "@greenroom/og",
+  "version": "0.0.1",
+  "private": true,
+  "bin": {
+    "platform-og": "./src/cli.ts"
+  },
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsgo --noEmit"
+  },
+  "dependencies": {
+    "@greenroom/design": "workspace:*",
+    "@resvg/resvg-js": "^2.6.2",
+    "satori": "^0.26.0"
+  },
+  "devDependencies": {
+    "@greenroom/typescript-config": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "react": "catalog:",
+    "tinyglobby": "^0.2.16"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  }
+}

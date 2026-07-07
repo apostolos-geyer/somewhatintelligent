@@ -1,0 +1,37 @@
+{
+  "name": "@greenroom/bouncer-service",
+  "version": "0.2.2",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "portless",
+    "dev:bare": "wrangler dev --port $PORT",
+    "env:init": "bun scripts/env-init.ts",
+    "dev:solo": "bun ../../scripts/dev-solo.ts",
+    "build": "wrangler deploy --dry-run",
+    "deploy:staging": "wrangler deploy",
+    "deploy:production": "wrangler deploy --env production",
+    "types": "wrangler types -c wrangler.jsonc -c ../guestlist/wrangler.jsonc",
+    "typecheck": "tsgo --noEmit",
+    "test": "vp test run"
+  },
+  "dependencies": {
+    "@greenroom/config": "workspace:*",
+    "@greenroom/guestlist-service": "workspace:*",
+    "@greenroom/kit": "workspace:*",
+    "arktype": "catalog:",
+    "cookie-es": "^3.1.1"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.14.6",
+    "@greenroom/typescript-config": "workspace:*",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:",
+    "wrangler": "^4"
+  },
+  "portless": {
+    "name": "sproutportal",
+    "script": "dev:bare"
+  }
+}

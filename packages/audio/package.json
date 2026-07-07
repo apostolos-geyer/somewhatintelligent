@@ -1,0 +1,24 @@
+{
+  "name": "@greenroom/audio",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./web": "./src/web/index.ts",
+    "./react": "./src/react/index.ts",
+    "./waveform": "./src/waveform.ts"
+  },
+  "dependencies": {
+    "zustand": "catalog:"
+  },
+  "devDependencies": {
+    "@greenroom/typescript-config": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "peerDependencies": {
+    "react": ">=19",
+    "tone": ">=15"
+  }
+}

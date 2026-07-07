@@ -1,0 +1,34 @@
+/* ═══════════════════════════════════════
+   @greenroom/design — brand texture tokens
+   ───────────────────────────────────────
+   Gradient + line-art background renders from the Sprout brand guidelines,
+   exposed as CSS custom properties so any surface can reach a texture by
+   token instead of a path:  background-image: var(--texture-green-waves);
+
+   OPT-IN: this file is NOT pulled in by theme.css — the texture PNGs are
+   large (~8 MB total) and only hero / marketing / splash surfaces want them.
+   Import it explicitly where needed:
+
+     @import "@greenroom/design/assets.css";
+
+   The relative url()s below are resolved + emitted (content-hashed) by the
+   consuming app's bundler, exactly like the @font-face files in fonts.css.
+   Logos are small and per-element, so import those as ESM URLs instead:
+
+     import lockup from "@greenroom/design/assets/logos/sprout-lockup-cream.png";
+   ═══════════════════════════════════════ */
+
+:root {
+  /* Green gradients — the default (Light→Sprout / Indica→Growth waves) */
+  --texture-green-waves: url("./assets/textures/bg-green-waves.png");
+  /* Radiating concentric arcs — for dark Indica surfaces */
+  --texture-dark-arcs: url("./assets/textures/bg-dark-arcs.png");
+  /* Fine branching line-art — for light cream surfaces */
+  --texture-light-branches: url("./assets/textures/bg-light-branches.png");
+  /* Warm gradient (cream→Pistil amber) */
+  --texture-warm-gradient: url("./assets/textures/bg-warm-gradient.png");
+  /* Large faint sprout-icon watermark — hero background */
+  --texture-sprout-watermark: url("./assets/textures/bg-sprout-watermark.png");
+  /* Multi-hue aurora (amber / lilac / grey) — occasional variety */
+  --texture-aurora: url("./assets/textures/bg-aurora.png");
+}

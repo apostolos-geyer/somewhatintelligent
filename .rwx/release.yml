@@ -1,0 +1,181 @@
+# greenroom — manual per-worker re-ship / rollback (production, on RWX).
+#
+# Spec 03 (§B.3) moved the AUTOMATIC production deploy INTO the release-please
+# run (.rwx/release-please.yml): a Release-PR merge cuts per-worker component
+# tags (`<worker>-v<x.y.z>`) and, in the same run, ships exactly the released
+# workers in canonical order. This file no longer auto-fires on a tag push —
+# per-worker component tags don't match the old `refs/tags/v*` pattern, and one
+# deploy-per-tag is precisely what we want to avoid (N tags from one merge would
+# race N deploys and break the bouncer-LAST ordering).
+#
+# What's left here is the human escape hatch: re-ship (or roll back) ONE worker
+# at ONE already-cut tag, on demand. Dispatch it:
+#
+#   rwx dispatch reship-worker --param worker=guestlist --param tag=guestlist-v1.2.0
+#
+# ---- DELIBERATELY DISPATCHING IS THE APPROVAL -------------------------------
+# Single-maintainer repo: as with merging a release-please Release PR, the
+# deliberate act of dispatching this run — naming the worker and the tag — IS
+# the production-ship decision. There is no separate human gate afterward; a
+# second approval would be the same person approving their own choice twice.
+#
+# ---- WHY CLONE AT THE TAG BUT UNLOCK THE VAULT ON main ----------------------
+# The clone ref is the `tag` PARAM (the tag's commit), but the dispatch itself
+# is invoked WITHOUT `--ref`, so RWX uses the default `main` ref to unlock
+# vaults. That makes the main-locked `greenroom_deploy` vault resolve normally —
+# it sidesteps the old tag-ref vault-access caveat entirely (a tag push did NOT
+# unlock a main-locked vault by default). Tradeoff, acceptable for a
+# single-maintainer repo and documented per RWX's dispatch-ref security note
+# (/docs/dispatch-triggers#dispatch-refs): because the clone ref comes from a
+# param rather than the trusted `event.git` context, an org member could in
+# principle dispatch an arbitrary ref while the main-locked vault unlocks. The
+# "org" here is the sole owner, so this is a non-issue; if this repo ever gains
+# collaborators, switch to dispatching `--ref <tag>` + cloning `event.git.sha`.
+#
+# ---- DEPLOY MECHANICS live in .rwx/deploy.yml -------------------------------
+# The canonical worker dependency order (bouncer LAST) and the error-10143
+# binding-existence history that dictates it are documented in .rwx/deploy.yml's
+# `deploy` task. This file only ever ships ONE worker, so ordering is moot here;
+# it still runs that worker's D1 migration first (schema before code) and the
+# same public apex smoke test as the fleet deploy.
+
+on:
+  # The manual re-ship. `worker` is a dropdown of the seven deployable workers;
+  # `tag` is the already-cut component tag to deploy (the run clones its commit).
+  dispatch:
+    key: reship-worker
+    params:
+      - key: worker
+        name: Worker
+        description: Which worker to re-ship to production.
+        required: true
+        values:
+          - promoter
+          - roadie
+          - guestlist
+          - identity
+          - marketing
+          - sprout
+          - bouncer
+      - key: tag
+        name: Release tag
+        description: The already-cut component tag to deploy, e.g. guestlist-v1.2.0.
+        required: true
+    init:
+      worker: ${{ event.dispatch.params.worker }}
+      tag: ${{ event.dispatch.params.tag }}
+    title: "Re-ship ${{ init.worker }} @ ${{ init.tag }} to production"
+  # Local validation only: `rwx run .rwx/release.yml --init worker=guestlist
+  # --init tag=guestlist-v1.2.0`. A bare `rwx run` leaves `worker` empty, so the
+  # `reship-gate` below skips every task — no accidental deploy.
+  cli:
+    init:
+      worker: ""
+      tag: ${{ event.git.tag }}
+
+# Serialize production re-ships (never race two deploys of the same worker fleet
+# against each other). cancel-waiting is correct here — this IS the deploy step,
+# so dropping a stale queued re-ship in favor of the newest is right (unlike
+# release-please, where every trigger might be the one that flips state).
+concurrency-pools:
+  - id: greenroom/greenroom:production
+    capacity: 1
+    on-overflow: cancel-waiting
+
+base:
+  image: ubuntu:24.04
+  config: rwx/base 1.1.1
+
+aliases:
+  # IDENTICAL to .rwx/deploy.yml's `deploy-env`, pinned to production.
+  deploy-env: &deploy-env
+    CLOUDFLARE_API_TOKEN: ${{ vaults.greenroom_deploy.secrets.CLOUDFLARE_API_TOKEN }}
+    CLOUDFLARE_ACCOUNT_ID: ${{ vaults.greenroom_deploy.secrets.CLOUDFLARE_ACCOUNT_ID }}
+    GH_TOKEN: ${{ vaults.greenroom_deploy.github-apps.rwx-automation-greenroom.token }}
+    GH_DEPLOYMENT_ENV: production
+    GH_DEPLOYMENT_URL: https://sproutportal.ca
+
+  # Skip everything on a bare `rwx run` (empty worker); a real dispatch always
+  # supplies `worker` (required: true).
+  reship-gate: &reship-gate ${{ init.worker != '' }}
+
+tasks:
+  - key: system-packages
+    run: |
+      sudo apt-get update
+      sudo apt-get install -y jq unzip gh
+      sudo apt-get clean
+
+  - key: code
+    call: git/clone 2.0.8
+    if: *reship-gate
+    with:
+      repository: https://github.com/apostolos-geyer/greenroom.git
+      # Clone the tag's commit (the thing being re-shipped). See the header for
+      # why the ref comes from the param while the vault unlocks on main.
+      ref: ${{ init.tag }}
+      github-token: ${{ github.token }}
+
+  - key: bun
+    use: system-packages
+    if: *reship-gate
+    run: |
+      curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.11"
+      echo "$HOME/.bun/bin" > "$RWX_ENV/PATH"
+      "$HOME/.bun/bin/bun" --version
+
+  # node for the worker tasks that hang under bun (astro build for marketing).
+  - key: node
+    call: nodejs/install 1.1.14
+    with:
+      node-version: 24.16.0
+
+  # UNFILTERED install, same shape as deploy.yml's — this lane BUILDS the app
+  # workers, and the ci.yml-style outputs filter (node_modules/** only) drops
+  # workspace bin links builds need (identity's `platform-og` from packages/og;
+  # the class already bit promote-staging and preview before this lane).
+  # The gate keeps its filtered install — it never builds.
+  - key: install
+    use: [code, bun]
+    if: *reship-gate
+    run: bun install --frozen-lockfile --ignore-scripts
+    timeout: 8m
+
+  # Re-ship the single worker: D1 migrate (if it has one) BEFORE its code, then
+  # deploy, then the apex smoke test. `cache: false` so wrangler always runs.
+  - key: deploy-one
+    use: [system-packages, install, node]
+    if: *reship-gate
+    cache: false
+    timeout: 30m
+    env: *deploy-env
+    run: |
+      set -euo pipefail
+      WORKER="${{ init.worker }}"
+      # Guard: only ever deploy a known worker (the dropdown enforces this in the
+      # UI, but a CLI/API dispatch could pass anything).
+      case "${WORKER}" in
+        promoter|roadie|guestlist|identity|marketing|sprout|bouncer) : ;;
+        *) echo "unknown worker '${WORKER}'"; exit 1 ;;
+      esac
+
+      # GitHub Deployment record for the re-ship (mirrors .rwx/deploy.yml). The
+      # EXIT trap flips it to failure on any error, success at the end.
+      source scripts/rwx-github-deployment.sh
+      gh_deployment_create "${{ init.tag }}"
+      trap 'rc=$?; if [ "$rc" -eq 0 ]; then gh_deployment_status success "re-shipped ${{ init.worker }} to production"; else gh_deployment_status failure "re-ship of ${{ init.worker }} failed"; fi; exit $rc' EXIT
+      gh_deployment_status in_progress "re-shipping ${{ init.worker }} (${{ init.tag }}) to production"
+
+      echo "==> ${WORKER}: migrate (if any) + deploy:production"
+      # Migrate-before-code then deploy, via the shared scripts/deploy-worker.sh
+      # `ship` subcommand (same per-worker mechanics as .rwx/deploy.yml +
+      # .rwx/release-please.yml — one source of truth). A migration failure is
+      # fatal there (no `|| true`), flipping this task's EXIT trap to `failure`.
+      bash scripts/deploy-worker.sh ship "${WORKER}" production
+
+      # Post-deploy apex smoke test (shared scripts/smoke-test.sh). The public
+      # bouncer router at the production apex exercises the router path
+      # end-to-end; a 5xx / no-connection fails and the EXIT trap reports
+      # `failure`. (A leaf-only re-ship is smoke-tested via the un-redeployed
+      # router — see the script's header for that coverage tradeoff.)
+      bash scripts/smoke-test.sh https://sproutportal.ca

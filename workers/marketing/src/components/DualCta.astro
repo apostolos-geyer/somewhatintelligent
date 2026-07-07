@@ -1,0 +1,56 @@
+---
+import { SectionHead } from "./section-head";
+import { MiniForm } from "./signup-form";
+import { Building2, Store, Sprout } from "./icons";
+
+// Two early-access "doors" (the prototype's .dual / .dual-card). The cards are
+// static HTML (zero JS); only the email-capture <MiniForm> islands hydrate, on
+// view. Mirrors `.section-tight .bg-forest-50 #get-access-paths` + `.dual*`.
+---
+
+<section id="get-access-paths" class="bg-forest-50 px-6 py-[clamp(48px,6vw,84px)]">
+  <div class="mx-auto max-w-[1180px]">
+    <SectionHead
+      kicker="Get early access"
+      title="Tell us who you are"
+      lede="Two doors, same list. We'll tailor what we send you based on how you join."
+    />
+
+    <div class="mt-[clamp(40px,5vw,56px)] grid gap-6 md:grid-cols-2">
+      <div class="rounded-xl border border-border bg-surface p-[clamp(28px,3vw,44px)] shadow-sm">
+        <span class="inline-flex items-center gap-1.5 font-body text-[11px] font-semibold uppercase leading-tight tracking-[0.14em] text-growth">
+          <Building2 className="size-[13px]" />
+          Licensed Producers
+        </span>
+        <h3 class="mt-3 font-body text-2xl font-semibold leading-tight tracking-[-0.01em] text-text sm:text-3xl">
+          Put your brand in budtenders&apos; hands
+        </h3>
+        <p class="mb-[18px] mt-3 text-text-secondary">
+          For Canadian LPs who want to educate, engage and reward the budtenders
+          selling their products.
+        </p>
+        <MiniForm client:visible placeholder="brand@yourLP.ca" source="lp" />
+      </div>
+
+      <div class="rounded-xl border border-border bg-surface p-[clamp(28px,3vw,44px)] shadow-sm">
+        <span class="inline-flex items-center gap-1.5 font-body text-[11px] font-semibold uppercase leading-tight tracking-[0.14em] text-growth">
+          <Store className="size-[13px]" />
+          Retailers
+        </span>
+        <h3 class="mt-3 font-body text-2xl font-semibold leading-tight tracking-[-0.01em] text-text sm:text-3xl">
+          Level up your whole team
+        </h3>
+        <p class="mb-[18px] mt-3 text-text-secondary">
+          For dispensaries that want better-trained, more motivated budtenders —
+          at no cost to the store.
+        </p>
+        <MiniForm client:visible placeholder="you@yourdispensary.ca" source="retail" />
+      </div>
+    </div>
+
+    <p class="mt-6 text-center text-sm text-text-tertiary">
+      A budtender? <Sprout className="mx-0.5 mb-0.5 inline size-[13px] text-growth" /> Ask
+      your store to bring Sprout in — or join the general list up top.
+    </p>
+  </div>
+</section>

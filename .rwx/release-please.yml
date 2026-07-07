@@ -1,0 +1,430 @@
+# greenroom — release-please on RWX (version + changelog + tags), then the
+# ordered production deploy of the released worker subset.
+#
+# Moved off GitHub Actions so it never consumes Actions minutes — the rest of
+# the platform's CI/CD already lives on RWX, so this keeps everything in one
+# place. Replaces the old .github/workflows/release-please.yml (deleted).
+#
+# On every push to main this runs the release-please CLI in two phases, as two
+# SEPARATE tasks (so a future failure/no-op is independently visible per phase
+# in the RWX UI, not buried inside one combined log):
+#   1. release-pr      — open/update the "Release PR" (version bump + CHANGELOG)
+#                        from the conventional commits since the last release.
+#   2. github-release  — if a Release PR was just merged, cut the per-worker
+#                        component tags `<worker>-v<x.y.z>` (e.g. guestlist-v1.2.0)
+#                        + GitHub Releases for every worker that changed.
+# Both are idempotent no-ops when there's nothing to do, so running both every
+# push is correct: a feature push refreshes the Release PR; the push that merges
+# the Release PR cuts the tags.
+#
+# ---- PER-WORKER DEPLOY FOLDED IN (Spec 03, §B.3) ---------------------------
+# release-please is in MANIFEST mode, one component per worker, so a single
+# Release-PR merge can cut tags for SEVERAL workers at once. Per-tag deploy runs
+# would be wrong (N tags -> N racing runs, and the canonical deploy order —
+# bouncer LAST — could not be honored). So the production deploy runs HERE, in
+# this same run, right after github-release:
+#   3. released-components — derive which workers have `<worker>-v*` tags
+#                            pointing AT the release commit (reads them back from
+#                            the STRONGLY-CONSISTENT GitHub git-refs API, ordered
+#                            after the tag write — see that task's comment).
+#   4. deploy-production   — clone the release commit and ship ONLY the released
+#                            workers, in canonical dependency order, D1 migrate
+#                            first, then a public apex smoke test.
+# This retires the old `refs/tags/v*` trigger in .rwx/release.yml (component
+# tags no longer match `v*`, and one deploy-per-tag is exactly what we don't
+# want). .rwx/release.yml is now a MANUAL per-worker re-ship/rollback dispatch.
+# Because this deploy runs in the branch-`main` push context, the main-locked
+# `greenroom_deploy` vault unlocks normally (simpler than a tag-ref vault story).
+#
+# ---- NOT YET VALIDATED AGAINST A LIVE RELEASE (Spec 03 §B.5) ----------------
+# This whole folded-in deploy path (phases 3+4) is `rwx lint`-clean but has never
+# run against a real release — no RWX token / no real release was available when
+# it was written. §B.5(a)-(e) remain to confirm on the FIRST real Release-PR
+# merge: (a) only changed workers get `<worker>-v*` tags, (b) exactly ONE deploy
+# run fires, (c) only the released subset deploys, in canonical order, (d)
+# `wrangler deployments list` per worker corroborates, (e) .rwx/ci.yml's
+# is-release-commit staging-skip still fires on the group-PR merge commit.
+# Structural review is green; behavioral confirmation is still outstanding.
+#
+# ---- POSTMORTEM: the first real release silently never cut a tag ----------
+# Sequence: push A (a feature PR merge) opened Release PR #22. The user merged
+# #22 minutes later — push B. Push B should have triggered THIS file again,
+# whose github-release phase detects "the tracked Release PR just merged" and
+# cuts v0.1.1. It never did: no tag, no GitHub Release, PR #22 stayed labeled
+# `autorelease: pending` forever, and `.rwx/release.yml` (which only fires on
+# `refs/tags/v*`) correctly never ran — there was nothing for it to fire on.
+#
+# Root cause: the concurrency pool below was `on-overflow: cancel-waiting`.
+# Per RWX semantics, cancel-waiting cancels a run that's QUEUED (not yet
+# started) when a new trigger arrives — it does NOT cancel a run already
+# executing. `npx --yes release-please@17 ...` does a cold install on every
+# invocation (no warm cache on a fresh RWX runner), and this file used to run
+# TWO such cold installs sequentially in one task. If push A's run was still
+# mid-install when push B's webhook arrived ~4 minutes later, push B's run sat
+# queued behind it and was DROPPED — not delayed, gone, with no error anywhere,
+# because cancellation isn't a failure. That dropped run was the one that would
+# have cut the tag.
+#
+# Fix: `on-overflow: queue` (confirmed correct per RWX docs: "the runs queuing,
+# waiting to execute until there is capacity available" — vs cancel-waiting's
+# "cancel any runs that are currently in the queue"). A release-please push MUST
+# eventually run; none may ever be silently dropped, because each one may be the
+# one moment that detects a just-merged Release PR. Capacity stays 1 (no two
+# concurrent runs racing the same manifest/branch), but now overflow QUEUES
+# instead of discarding.
+#
+# NOTE (deploy serialization): this pool ALSO serializes the folded-in
+# production deploy — capacity 1 + a run-scoped deploy means two release-please
+# runs never deploy production concurrently. Deliberately DO NOT add a second
+# `cancel-waiting` production pool here: cancel-waiting could drop a QUEUED
+# release-please run and reintroduce the exact silent-drop bug above. The manual
+# re-ship lane (.rwx/release.yml) keeps its own production pool.
+on:
+  # Manual: `rwx run .rwx/release-please.yml` (gated to main by the task `if`).
+  cli:
+    init:
+      branch: ${{ event.git.branch }}
+      sha: ${{ event.git.sha }}
+      is-release-commit: false
+  github:
+    push:
+      if: ${{ event.git.branch == 'main' }}
+      title: "release-please: ${{ event.github.push.head_commit.message }}"
+      init:
+        branch: ${{ event.git.branch }}
+        # The commit that TRIGGERED this run — captured at trigger time, so it is
+        # immutable for the run. On the push that merges a Release PR this IS the
+        # merge commit, which is exactly what release-please-github-release tags.
+        # `released-components` filters tags by THIS sha (not a live re-read of
+        # main HEAD) and phase 4 clones it, so neither can be knocked off the
+        # release commit by a later push advancing main HEAD while this run's cold
+        # multi-minute `npx release-please` install is still in flight (the
+        # `on-overflow: queue` pool STACKS runs, making that HEAD-advance real).
+        sha: ${{ event.git.sha }}
+        # True when this push is a Release-PR merge (its combined-PR title is
+        # `chore: release main`, per release-please-config.json's
+        # group-pull-request-title-pattern). Mirrors .rwx/ci.yml's is-release-commit.
+        # `released-components` uses it to turn "a release commit that cut no
+        # matching tags" into a LOUD failure instead of a silent no-deploy.
+        is-release-commit: "${{ starts-with(event.github.push.head_commit.message, 'chore: release ') }}"
+
+# RWX permits exactly ONE pool per run (first live run failed with "Only one
+# concurrency pool can apply to a run"), so this lane sits in the shared
+# `production` pool — the same pool as .rwx/release.yml's reship-worker. One
+# pool buys both properties: release-please runs serialize against each other
+# (release-PR upkeep never races itself), and the folded-in deploy-production
+# task is mutually excluded from manual reships (both write production
+# workers; unserialized they race last-writer-wins). `queue`, NOT
+# cancel-waiting: a queued run may be the one that cuts the tag — dropping it
+# is the postmortem's silent-no-op bug.
+concurrency-pools:
+  - id: greenroom/greenroom:production
+    capacity: 1
+    on-overflow: queue
+
+base:
+  image: ubuntu:24.04
+  config: rwx/base 1.1.1
+
+aliases:
+  # GitHub token for release-please. The `rwx-automation-greenroom` GitHub App
+  # must be granted **contents: write** + **pull-requests: write** (its staging
+  # deploy use only needs deployments: write — add the two write scopes for
+  # release-please). Stored/locked in the same main-locked `greenroom_deploy`
+  # vault as the deploy creds. Also used by `released-components` to READ tags
+  # back (contents: write includes read).
+  rp-env: &rp-env
+    GITHUB_TOKEN: ${{ vaults.greenroom_deploy.github-apps.rwx-automation-greenroom.token }}
+
+  # Shared deploy env for `deploy-production` — IDENTICAL to .rwx/deploy.yml's
+  # `deploy-env` alias, pinned to production (this file only ever ships prod):
+  #   - Cloudflare creds for wrangler against the LIVE account, from the
+  #     main-locked `greenroom_deploy` vault (the deploy runs in the main push
+  #     context, so the vault unlocks normally). The token must cover production
+  #     (Workers Scripts Edit + D1 Edit).
+  #   - GH_TOKEN: the `rwx-automation-greenroom` App (`deployments: write`),
+  #     consumed by scripts/rwx-github-deployment.sh to record the deploy under
+  #     the repo's GitHub Deployments/Environments timeline.
+  deploy-env: &deploy-env
+    CLOUDFLARE_API_TOKEN: ${{ vaults.greenroom_deploy.secrets.CLOUDFLARE_API_TOKEN }}
+    CLOUDFLARE_ACCOUNT_ID: ${{ vaults.greenroom_deploy.secrets.CLOUDFLARE_ACCOUNT_ID }}
+    GH_TOKEN: ${{ vaults.greenroom_deploy.github-apps.rwx-automation-greenroom.token }}
+    GH_DEPLOYMENT_ENV: production
+    GH_DEPLOYMENT_URL: https://sproutportal.ca
+
+  # Deploy gate: only clone/install/deploy when this run actually cut releases
+  # AND we're on main. Referencing `tasks.released-components.values.any` makes
+  # every gated task depend on `released-components` (so they wait for the tag
+  # derivation), and a false gate skips the task — which cascades to its `use`
+  # dependents (RWX: "Any tasks that depend on the skipped task will also be
+  # skipped"), so a no-release push does zero deploy work.
+  deploy-gate: &deploy-gate ${{ tasks.released-components.values.any == 'true' && init.branch == 'main' }}
+
+tasks:
+  - key: node
+    call: nodejs/install 1.1.14
+    with:
+      node-version: 24.16.0
+
+  # jq (tag parsing + GitHub Deployment API) + unzip (bun installer). Ungated:
+  # `released-components` needs jq on every main push to detect releases.
+  - key: system-packages
+    run: |
+      sudo apt-get update
+      sudo apt-get install -y jq unzip gh
+      sudo apt-get clean
+
+  # Phase 1: open/update the Release PR. Independently visible in the RWX UI —
+  # if this no-ops ("nothing to release") that's expected on most pushes; if it
+  # errors, the task goes red here, not buried inside a combined log.
+  - key: release-please-pr
+    use: node
+    # Gate to main: protects against an accidental `rwx run` on a feature branch
+    # creating a release against the live repo (the github push trigger is
+    # already main-only; this also covers the cli trigger).
+    if: ${{ init.branch == 'main' }}
+    env: *rp-env
+    timeout: 8m
+    run: |
+      set -euo pipefail
+      echo "==> release-please release-pr (open/update the Release PR)"
+      npx --yes release-please@17 release-pr \
+        --debug \
+        --token="$GITHUB_TOKEN" \
+        --repo-url=apostolos-geyer/greenroom \
+        --target-branch=main \
+        --config-file=release-please-config.json \
+        --manifest-file=.release-please-manifest.json
+      echo "==> release-pr phase complete"
+
+  # Phase 2: cut the per-worker tags + GitHub Releases if a previously-opened
+  # Release PR was just merged. `after: release-please-pr` keeps the two phases
+  # in the documented order (PR state settles before release detection reads it)
+  # while still giving each its own task/log/pass-fail in the RWX UI.
+  - key: release-please-github-release
+    use: node
+    after: release-please-pr
+    if: ${{ init.branch == 'main' }}
+    env: *rp-env
+    timeout: 8m
+    run: |
+      set -euo pipefail
+      echo "==> release-please github-release (cut tags + GitHub Releases if a Release PR just merged)"
+      npx --yes release-please@17 github-release \
+        --debug \
+        --token="$GITHUB_TOKEN" \
+        --repo-url=apostolos-geyer/greenroom \
+        --target-branch=main \
+        --config-file=release-please-config.json \
+        --manifest-file=.release-please-manifest.json
+      echo "==> github-release phase complete"
+
+  # Phase 3: derive which workers have `<worker>-v*` tags pointing AT the release
+  # commit (init.sha), so phase 4 ships exactly them.
+  - key: released-components
+    use: system-packages
+    after: release-please-github-release
+    if: ${{ init.branch == 'main' }}
+    env: *rp-env
+    timeout: 5m
+    run: |
+      set -euo pipefail
+      # -----------------------------------------------------------------------
+      # DESIGN CHOICE — read the tags from the GitHub git-refs API, not a clone.
+      #
+      # The component tags (<worker>-v<semver>) are created by
+      # release-please-github-release ABOVE, through the GitHub API. To learn
+      # which tags it just cut we could either (a) clone the repo and
+      # `git tag --points-at HEAD`, or (b) read the refs back from the API. A
+      # clone taken during THIS run is a point-in-time snapshot that can PREDATE
+      # the tag-writes — it races the write. So: API read.
+      #
+      # But the read must ALSO be immune to eventual consistency. Two properties
+      # together guarantee that here:
+      #   1. ORDERING — this task `after: release-please-github-release`, so the
+      #      read is issued strictly AFTER the write returns.
+      #   2. STRONG CONSISTENCY — we hit the git-database refs endpoint
+      #      (GET /repos/{repo}/git/matching-refs/tags/), which reads the ref
+      #      store directly. (The convenience list endpoint GET /repos/{repo}/tags
+      #      is served from a short-TTL CACHE — a just-created ref can be missing
+      #      from it even after the write completes; ordered-after is not enough
+      #      there. On a release commit that stale read would yield an empty
+      #      RELEASED and trip the LOUD is-release-commit fail-safe below — never a
+      #      silent mis-deploy, but a spuriously-failed legitimate release. The
+      #      git-refs endpoint avoids that.)
+      # matching-refs returns each ref's `.object.sha` from the git store;
+      # release-please cuts LIGHTWEIGHT tags, so that IS the target commit sha (no
+      # deref needed). Standard page/per_page pagination.
+      #
+      # NOTE (semantics): this derives "workers whose <worker>-v* tags point AT
+      # init.sha", which on the sole automatic trigger — one push per release
+      # commit — is exactly "workers released in THIS run". A MANUAL `rwx run` of
+      # this file while main HEAD is STILL a prior release commit would re-derive
+      # that prior release's set (its tags still point there) and re-run the
+      # production deploy; that is idempotent and manual-only, but don't read the
+      # "this run" shorthand as anything stronger than "tags at init.sha".
+      #
+      # The release commit is the commit that TRIGGERED this run — pinned into
+      # `init.sha` at trigger time (see the SHA assignment below for why we must
+      # NOT re-read live main HEAD here).
+      # -----------------------------------------------------------------------
+      REPO="apostolos-geyer/greenroom"
+      gh_api() {
+        curl -fsS \
+          -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+          -H "Accept: application/vnd.github+json" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          "$@"
+      }
+
+      # Anchor to the TRIGGER commit (init.sha carries the trigger's event.git.sha), NOT a
+      # live `GET /commits/main`. release-please-github-release above tags the
+      # Release-PR MERGE commit, which is exactly this triggering commit. A live
+      # HEAD re-read would race any push that lands while this run's cold
+      # multi-minute `npx release-please` install is in flight (the
+      # `on-overflow: queue` pool STACKS runs, so a feature push mid-install is
+      # realistic): HEAD would be that later commit, match NONE of the just-cut
+      # tags, and SILENTLY skip the entire production deploy while the tags +
+      # GitHub Releases were really cut — the postmortem's silent-no-op class,
+      # recreated as a no-deploy. Pinning to the trigger sha is immune to that.
+      SHA="${{ init.sha }}"
+      echo "release commit (trigger sha): ${SHA}"
+
+      tags_file="$(mktemp)"
+      page=1
+      # Page cap: 20 pages = 2000 tags — years of releases at 7 workers. If ever
+      # hit, fail LOUDLY rather than trust unbounded pagination behavior.
+      while : ; do
+        if [ "${page}" -gt 20 ]; then
+          echo "FATAL: >2000 tags — refusing to paginate further; raise the cap deliberately" >&2
+          exit 1
+        fi
+        # git-refs (strongly consistent): array of {ref, object:{sha,type}}. For
+        # release-please's LIGHTWEIGHT tags .object.sha IS the target commit.
+        # Belt-and-suspenders: an ANNOTATED tag's .object.sha is the tag OBJECT,
+        # not the commit — dereference via /git/tags/<sha> so such a tag still
+        # matches instead of silently falling out of the released set.
+        resp="$(gh_api "https://api.github.com/repos/${REPO}/git/matching-refs/tags/?per_page=100&page=${page}")"
+        count="$(jq 'length' <<<"${resp}")"
+        [ "${count}" -eq 0 ] && break
+        jq -r --arg sha "${SHA}" '.[] | select(.object.type == "commit" and .object.sha == $sha) | .ref | sub("^refs/tags/"; "")' <<<"${resp}" >> "${tags_file}"
+        while IFS="$(printf '\t')" read -r ref objsha; do
+          [ -z "${ref}" ] && continue
+          target="$(gh_api "https://api.github.com/repos/${REPO}/git/tags/${objsha}" | jq -r '.object.sha')"
+          if [ "${target}" = "${SHA}" ]; then
+            echo "${ref#refs/tags/}" >> "${tags_file}"
+          fi
+        done <<< "$(jq -r '.[] | select(.object.type == "tag") | [.ref, .object.sha] | @tsv' <<<"${resp}")"
+        [ "${count}" -lt 100 ] && break
+        page=$((page + 1))
+      done
+
+      # `<worker>-v<semver>` -> `<worker>`, unique, space-joined on one line.
+      RELEASED="$(sed -nE 's/^([a-z]+)-v[0-9].*$/\1/p' "${tags_file}" | sort -u | tr '\n' ' ' | sed -E 's/ +$//')"
+      echo "released workers: [${RELEASED}]"
+
+      # LOUD FAIL-SAFE: if THIS push is a Release-PR merge (is-release-commit),
+      # release-please-github-release MUST have cut `<worker>-v*` tags pointing at
+      # this exact commit — so RELEASED cannot be empty. An empty RELEASED on a
+      # release commit means github-release did not tag what we expected (partial
+      # failure, or a tag whose target isn't the trigger commit): FAIL here rather
+      # than silently ship nothing, which is exactly the silent-no-op class the
+      # concurrency postmortem above warns against. (On a non-release feature push
+      # an empty RELEASED is normal — nothing to deploy — so the guard is gated on
+      # is-release-commit and never false-positives there.)
+      if [ "${{ init.is-release-commit }}" = "true" ] && [ -z "${RELEASED}" ]; then
+        echo "FATAL: release commit ${SHA} cut no <worker>-v* tags pointing at it — refusing to silently no-deploy" >&2
+        exit 1
+      fi
+
+      # Emit for phase 4. printf (no trailing newline) so the values are exact.
+      printf '%s' "${SHA}"      > "${RWX_VALUES}/sha"
+      printf '%s' "${RELEASED}" > "${RWX_VALUES}/released"
+      if [ -n "${RELEASED}" ]; then printf 'true' > "${RWX_VALUES}/any"; else printf 'false' > "${RWX_VALUES}/any"; fi
+      echo "any=$(cat "${RWX_VALUES}/any")"
+
+  # ---- Phase 4: production deploy of the released subset --------------------
+  # Clone + install chain copied from .rwx/deploy.yml (INCLUDING Spec 01's
+  # install filter/outputs) — gated so a no-release push does no clone/install.
+  - key: code
+    call: git/clone 2.0.8
+    if: *deploy-gate
+    with:
+      repository: https://github.com/apostolos-geyer/greenroom.git
+      # Deploy EXACTLY the commit whose tags we read in phase 3.
+      ref: ${{ tasks.released-components.values.sha }}
+      github-token: ${{ github.token }}
+
+  - key: bun
+    use: system-packages
+    if: *deploy-gate
+    run: |
+      curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.11"
+      echo "$HOME/.bun/bin" > "$RWX_ENV/PATH"
+      "$HOME/.bun/bin/bun" --version
+
+  # UNFILTERED install, same shape as deploy.yml's — this lane BUILDS the app
+  # workers, and the ci.yml-style outputs filter (node_modules/** only) drops
+  # workspace bin links builds need (identity's `platform-og` from packages/og;
+  # the class already bit promote-staging and preview before this lane).
+  # The gate keeps its filtered install — it never builds.
+  - key: install
+    use: [code, bun]
+    if: *deploy-gate
+    run: bun install --frozen-lockfile --ignore-scripts
+    timeout: 8m
+
+  # The ordered production ship of the released workers. `cache: false` so a
+  # deploy ALWAYS executes wrangler — never replays a cached "success" and
+  # silently skips shipping. Credentials come from the main-locked vault via
+  # *deploy-env; this only resolves in the branch-main push context (which is
+  # exactly when release-please cuts tags).
+  - key: deploy-production
+    use: [system-packages, install, node]
+    if: *deploy-gate
+    cache: false
+    timeout: 30m
+    env: *deploy-env
+    run: |
+      set -euo pipefail
+      # Open the GitHub Deployment record so the whole migrate->deploy sequence
+      # shows up under the repo's Deployments/Environments timeline (mirrors
+      # .rwx/deploy.yml). The EXIT trap reports the terminal state; a migration
+      # or deploy failure flips it to `failure`.
+      source scripts/rwx-github-deployment.sh
+      gh_deployment_create "${{ tasks.released-components.values.sha }}"
+      trap 'rc=$?; if [ "$rc" -eq 0 ]; then gh_deployment_status success "deployed to production"; else gh_deployment_status failure "production deploy failed"; fi; exit $rc' EXIT
+      gh_deployment_status in_progress "deploying released workers to production"
+
+      RELEASED="${{ tasks.released-components.values.released }}"
+      echo "released workers to ship: [${RELEASED}]"
+
+      # Ship ONLY the released subset, but always in canonical dependency order —
+      # promoter/roadie (true leaves, no bindings) -> guestlist (binds
+      # promoter+roadie) -> identity (binds guestlist) -> marketing (no bindings)
+      # -> sprout (binds guestlist+roadie+promoter) -> bouncer (router; binds
+      # guestlist+identity+sprout) LAST, so the public router only ever points at
+      # already-deployed upstreams. See .rwx/deploy.yml's `deploy` task for the
+      # full error-10143 history. The per-worker migrate-before-code + deploy
+      # mechanics live in scripts/deploy-worker.sh (the `ship` subcommand:
+      # migrate-if-present then deploy), shared with .rwx/deploy.yml +
+      # .rwx/release.yml so a fix can't land in one lane and miss the others. A
+      # migration failure is fatal there (no `|| true`), flipping this task's EXIT
+      # trap to `failure`.
+      ORDER="promoter roadie guestlist identity marketing sprout bouncer"
+      for w in $ORDER; do
+        case " ${RELEASED} " in
+          *" ${w} "*) : ;;                                   # released — ship it
+          *) echo "skip ${w} (not released this run)"; continue ;;
+        esac
+        echo "==> ${w}: migrate (if any) + deploy:production"
+        bash scripts/deploy-worker.sh ship "$w" production
+      done
+
+      # Post-deploy apex smoke test (shared scripts/smoke-test.sh). Always hits
+      # the public bouncer router at the production apex end-to-end, regardless of
+      # which subset shipped; a 5xx / no-connection fails and the EXIT trap then
+      # reports the deploy as `failure`. NOTE: a leaf-only release (no bouncer /
+      # marketing) is smoke-tested via the un-redeployed router — see the script's
+      # header for that conscious coverage tradeoff.
+      bash scripts/smoke-test.sh https://sproutportal.ca

@@ -1,0 +1,33 @@
+{
+  "name": "@greenroom/promoter-service",
+  "version": "0.2.2",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "wrangler dev",
+    "env:init": "bun scripts/env-init.ts",
+    "dev:solo": "bun ../../scripts/dev-solo.ts",
+    "deploy:staging": "wrangler deploy",
+    "deploy:production": "wrangler deploy --env production",
+    "types": "wrangler types",
+    "typecheck": "tsgo --noEmit",
+    "test": "vp test run"
+  },
+  "dependencies": {
+    "@greenroom/config": "workspace:*",
+    "@greenroom/email": "workspace:*",
+    "@greenroom/kit": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4",
+    "@greenroom/typescript-config": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "react": "catalog:",
+    "vite-plus": "catalog:",
+    "wrangler": "^4"
+  }
+}

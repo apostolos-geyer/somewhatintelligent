@@ -1,0 +1,83 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sprout-guestlist-staging",
+  "account_id": "30ce6004cd9c2907f0b06fe401c4f4ba",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-04-14",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+  },
+  "upload_source_maps": true,
+  "workers_dev": false,
+  "preview_urls": true,
+  "vars": {
+    "ENVIRONMENT": "staging",
+    "BETTER_AUTH_URL": "https://identity-staging.sproutportal.ca",
+    "IDENTITY_URL": "https://identity-staging.sproutportal.ca",
+    "AUTH_DOMAIN": ".sproutportal.ca",
+    "EMAIL_FROM": "identity@resend.dev",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "guestlist-staging-db",
+      "migrations_dir": "migrations",
+      "database_id": "a3843194-c218-4ff4-b656-dbe29e719ba2",
+    },
+  ],
+  "services": [
+    {
+      "binding": "PROMOTER",
+      "service": "sprout-promoter-staging",
+      "entrypoint": "Promoter",
+    },
+    {
+      "binding": "ROADIE",
+      "service": "sprout-roadie-staging",
+      "entrypoint": "Roadie",
+      "props": { "callerApp": "guestlist" },
+    },
+  ],
+  "env": {
+    "production": {
+      "name": "sprout-guestlist-production",
+      "preview_urls": false,
+      "vars": {
+        "ENVIRONMENT": "production",
+        "BETTER_AUTH_URL": "https://identity.sproutportal.ca",
+        "IDENTITY_URL": "https://identity.sproutportal.ca",
+        "AUTH_DOMAIN": ".sproutportal.ca",
+        "EMAIL_FROM": "Sprout <hello@sproutportal.ca>",
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "guestlist-production-db",
+          "migrations_dir": "migrations",
+          "database_id": "d3ab5e57-0d01-4389-be33-72c31225cb7f",
+        },
+      ],
+      "services": [
+        {
+          "binding": "PROMOTER",
+          "service": "sprout-promoter-production",
+          "entrypoint": "Promoter",
+        },
+        {
+          "binding": "ROADIE",
+          "service": "sprout-roadie-production",
+          "entrypoint": "Roadie",
+          "props": { "callerApp": "guestlist" },
+        },
+      ],
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "logs": {
+          "enabled": true,
+        },
+      },
+    },
+  },
+}

@@ -1,0 +1,512 @@
+# greenroom — CI + continuous deployment to Cloudflare (staging), on RWX.
+#
+# One dependency graph does the whole verification gate AND the deploy. Deploy
+# tasks `after` the gate, so RWX only ships a commit the gate proved green; deploy
+# is additionally gated on `init.deploy` (push to main only).
+#
+# GATE = one task PER PACKAGE, each with a `filter`, so RWX caches them
+# independently (content-based caching keys off the filtered input filesystem):
+#   - typecheck-<pkg>: `cd <pkg> && bun run typecheck` (its own `tsgo --noEmit`).
+#     Splitting per-package is also what FIXES the old OOM hang — `vp run -r
+#     typecheck` fanned ~15 tsgo + marketing's astro/vite onto ONE box and
+#     deadlocked; one tsgo per agent doesn't.
+#   - test-<pkg>: `captain run greenroom-<pkg>` (suite in .captain/config.yml).
+#     One `vp test` process per machine sidesteps the workerd dev-registry
+#     contention; Captain emits rwx-v1-json into `outputs.test-results` for inline
+#     UI results + retries.
+# Effect: change one app/service → only its 1–2 tasks re-run; change a shared
+# `packages/*` lib (or the lockfile) → everything re-runs. Correct, and cached.
+#
+# Deploy logic itself lives in .rwx/deploy.yml (shared with .rwx/release.yml's
+# production lane) — D1 migrations (guestlist, roadie, sprout) ->
+# dependency-ordered worker deploy (see deploy.yml's `deploy` task for the
+# exact order and why) -> GitHub Deployment record. This file calls it as an
+# RWX "embedded run" (https://www.rwx.com/docs/rwx/call-embedded-runs) after
+# the gate, with env=staging.
+
+on:
+  # Local iteration: `rwx run .rwx/ci.yml`. Deploy is off by default; exercise it
+  # with `rwx run .rwx/ci.yml --init deploy=true` (needs deploy-vault access).
+  cli:
+    init:
+      commit-sha: ${{ event.git.sha }}
+      branch: ${{ event.git.branch }}
+      deploy: false
+      is-release-commit: false
+      base-sha: ""
+      pr-title: ""
+  github:
+    # Push only triggers CI on main: post-merge verification + the deploy. Feature
+    # branches are verified through the pull_request trigger below. This is what
+    # kills the duplicate runs: previously a push to a branch with an open PR fired
+    # BOTH a push run and a PR `synchronize` run for the same SHA, and the branch
+    # concurrency pool (`cancel-running`) then killed the in-flight push run ~1m in.
+    # One commit is now verified once. (Trade-off: a branch with no open PR gets no
+    # CI until a PR exists; open a draft PR if you want CI sooner.)
+    push:
+      if: ${{ event.git.branch == 'main' }}
+      title: "CI: ${{ event.github.push.head_commit.message }}"
+      init:
+        commit-sha: ${{ event.git.sha }}
+        branch: ${{ event.git.branch }}
+        # Ship only the tip of main, and only after the gate below goes green.
+        deploy: ${{ event.git.branch == 'main' }}
+        # release-please's version-bump commit (title pinned in
+        # release-please-config.json's group-pull-request-title-pattern) touches only
+        # package.json/.release-please-manifest.json/CHANGELOG.md — zero app
+        # code. The app code it carries already gated + deployed to staging when
+        # the underlying feature PR(s) merged, so redeploying staging for THIS
+        # commit ships nothing new. Skip just the deploy (not the gate — a final
+        # cheap regression check before this SHA can be tagged for production is
+        # still worth running).
+        is-release-commit: "${{ starts-with(event.github.push.head_commit.message, 'chore: release ') }}"
+        # Diff base for the changed-subset staging lane (promote-staging.yml).
+        # `before` is the previous main tip; all-zeros on force-push (the lane
+        # degrades to all-workers in that case).
+        base-sha: ${{ event.github.push.before }}
+        pr-title: ""
+    pull_request:
+      title: "CI for PR #${{ event.github.pull_request.number }}"
+      init:
+        commit-sha: ${{ event.git.sha }}
+        branch: ${{ event.git.branch }}
+        deploy: false
+        is-release-commit: false
+        base-sha: ""
+        # Raw webhook payload: the PR object is payload.pull_request, so the
+        # title path doubles the segment (same as preview.yml's base-sha).
+        pr-title: ${{ event.github.pull_request.pull_request.title }}
+
+# Serialize main (deploys never race; drop stale queued deploys); cancel
+# superseded feature-branch runs. Pool ids are org-global, so prefix with the repo.
+concurrency-pools:
+  - id: greenroom/greenroom:main
+    if: ${{ init.branch == 'main' }}
+    capacity: 1
+    on-overflow: cancel-waiting
+  - id: greenroom/greenroom:${{ init.branch }}
+    if: ${{ init.branch != 'main' }}
+    capacity: 1
+    on-overflow: cancel-running
+
+base:
+  image: ubuntu:24.04
+  config: rwx/base 1.1.1
+
+aliases:
+  # 4 CPU / 16 GB = GHA ubuntu-latest. Used by the test tasks (workerd pools + big
+  # suites) and the marketing typecheck (astro sync + vite). A plain `tsgo`
+  # typecheck is single-process and runs fine on the default 2 CPU / 8 GB.
+  gate-agent: &gate-agent
+    cpus: 8
+    memory: 32gb
+
+  # Shared filter prefix for every gate task: deps, all shared packages, the
+  # Captain config, and root build config. Each task ADDS its own `<pkg>/**`
+  # (RWX flattens the array). `*.json`/`*.ts` are quoted — a leading `*` is a
+  # YAML alias otherwise.
+  gate-filter: &gate-filter
+    - node_modules/**
+    - packages/**
+    # guestlist/promoter/roadie export RPC types consumed across the workspace
+    # (imported as @greenroom/*-service via node_modules symlinks into these
+    # dirs), so they're shared deps like packages/* — a change to one re-verifies
+    # its consumers. bouncer is the router, imported by nobody, so it stays
+    # isolated and only its own tasks re-run on a bouncer change.
+    - workers/guestlist/**
+    - workers/promoter/**
+    - workers/roadie/**
+    # Root scripts/ holds dev-config.ts (well-known dev secrets/keys), imported by
+    # packages/secrets' test. Shared root tooling → in the common filter.
+    - scripts/**
+    - .captain/config.yml
+    - bun.lock
+    - "tsconfig*.json"
+    - "*.json"
+    - "*.ts"
+
+  # Appended AFTER each task's own `<pkg>/**` entry (filter semantics: last
+  # match wins, so these must come last to actually exclude). Keeps
+  # non-deterministic state out of gate cache keys even if some future
+  # upstream task starts emitting it again: local D1 sqlite under .wrangler/
+  # and vp's task-cache sqlite under node_modules/.vite/.
+  gate-neg: &gate-neg
+    - "!**/.wrangler/**"
+    - "!node_modules/.vite/**"
+
+tasks:
+  # Squash-merging makes the PR TITLE the main-branch commit message, and
+  # release-please silently DROPS commits it cannot parse (the ops-pass squash
+  # "Ops maintenance pass: …" contributed nothing to versioning). Enforce
+  # conventional-commit PR titles here so every merged commit is
+  # release-please-parseable. Skipped outside PRs (pr-title is "" there).
+  - key: pr-title-lint
+    if: ${{ init.pr-title != "" }}
+    env:
+      PR_TITLE: ${{ init.pr-title }}
+    run: |
+      set -euo pipefail
+      if printf '%s' "$PR_TITLE" | grep -qE '^(feat|fix|chore|docs|refactor|perf|test|ci|build|revert)(\([a-z0-9*,/ -]+\))?!?: .+'; then
+        echo "PR title is conventional: $PR_TITLE"
+      else
+        {
+          echo "FATAL: PR title is not a conventional commit:"
+          echo "    $PR_TITLE"
+          echo "Squash merges turn the PR title into the main-branch commit message,"
+          echo "and release-please ignores commits it cannot parse — an unparseable"
+          echo "title means the merge contributes NOTHING to per-worker versioning."
+          echo "Use: type(scope): description"
+          echo "  types: feat fix chore docs refactor perf test ci build revert"
+        } >&2
+        exit 1
+      fi
+
+  - key: code
+    call: git/clone 2.0.8
+    with:
+      repository: https://github.com/apostolos-geyer/greenroom.git
+      ref: ${{ init.commit-sha }}
+      github-token: ${{ github.token }}
+
+  # Captain runs the test suites: parses vitest results, renders them inline in the
+  # RWX UI, retries only failed tests. RWX auto-provides Captain's access token and
+  # git context (branch/sha via RWX_GIT_*), so no token/secret/.git is needed.
+  - key: captain
+    call: rwx/install-captain 1.1.7
+
+  # unzip is needed by the bun installer; jq is handy. rwx/base may already carry
+  # them, but install to be safe.
+  - key: system-packages
+    run: |
+      sudo apt-get update
+      sudo apt-get install -y jq unzip
+      sudo apt-get clean
+
+  # No RWX package for bun yet — install the pinned version from the official
+  # script and put it on PATH for every downstream task (RWX joins $PATH across
+  # `use` dependencies).
+  - key: bun
+    use: system-packages
+    run: |
+      curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.11"
+      echo "$HOME/.bun/bin" > "$RWX_ENV/PATH"
+      # $RWX_ENV/PATH only applies to DOWNSTREAM tasks (via `use`), not this
+      # shell — verify with the absolute path here.
+      "$HOME/.bun/bin/bun" --version
+
+  # Node runtime for the tasks that hang under bun: vitest-pool-workers (bouncer/
+  # guestlist/roadie) opens a host↔workerd WebSocket whose 'upgrade' event bun
+  # doesn't implement (deadlocks in RWX), and astro sync (marketing) spins vite's
+  # WS optimizer. Those tasks run under node (npx / npm); everything else stays bun.
+  - key: node
+    call: nodejs/install 1.1.14
+    with:
+      # 24.x: native TS type-stripping is ON by default, so the workers tests can
+      # import .ts deps (e.g. @greenroom/config → deploy.ts) at startup. node 22.12
+      # can't load .ts natively → ERR_UNKNOWN_FILE_EXTENSION (bouncer/guestlist).
+      node-version: 24.16.0
+
+  # --ignore-scripts skips the root `prepare` (vp config + git hook wiring) — it's
+  # dev-machine-only and the gate needs none of it. bun runs no dependency scripts
+  # here anyway (no `trustedDependencies`), so this only drops that dev prepare,
+  # and it means CI needs no `.git` dir.
+  #
+  # `filter`: install's result depends ONLY on the dependency manifests — without
+  # this, the full clone (incl. .git, which changes every commit) is in the cache
+  # key and install re-executes on every push (docs/ops/01, RC1).
+  # `outputs.filesystem`: only node_modules is the product. bun's global cache
+  # under /home/ubuntu/.bun (registry manifests, tmp) is NOT byte-reproducible,
+  # lives OUTSIDE the workspace where downstream `filter`s can't exclude it, and
+  # poisoned every gate task's cache key whenever install re-ran (docs/ops/01,
+  # RC2). $HOME confirmed as /home/ubuntu via probe run a5856c34.
+  - key: install
+    use: [code, bun]
+    run: bun install --frozen-lockfile --ignore-scripts
+    filter:
+      - package.json
+      - bun.lock
+      - bunfig.toml
+      - workers/*/package.json
+      - packages/*/package.json
+    outputs:
+      filesystem:
+        filter:
+          workspace: ["node_modules/**"]
+          system: ["!/home/ubuntu/.bun/**", "!/tmp/**"]
+    timeout: 8m
+
+  # Fresh-clone setup the gate depends on: seed .dev.vars ONLY (`bun run
+  # bootstrap` = `vp run -r env:init` post docs/ops/05 — no migrations, no
+  # sqlite; tests self-apply migrations via TEST_MIGRATIONS). Now filterable:
+  # env:init reads only dev-config + each worker's seeder + the vp/workspace
+  # plumbing, so it cache-hits on any commit that doesn't touch those. Output
+  # scrub kept as belt-and-suspenders (vp's task-cache sqlite is still written;
+  # the .wrangler negation guards against a future task reintroducing state).
+  - key: bootstrap
+    use: install
+    run: bun run bootstrap
+    filter:
+      - node_modules/**
+      - scripts/**
+      - workers/*/scripts/env-init.ts
+      - workers/*/package.json
+      - workers/*/vite.config.ts
+      - packages/*/package.json
+      - package.json
+      - bun.lock
+      - vite.config.ts
+    outputs:
+      filesystem:
+        filter:
+          workspace: ["!**/.wrangler/**", "!node_modules/.vite/**"]
+          system:
+            - "!/home/ubuntu/.config/.wrangler/**"
+            - "!/home/ubuntu/.wrangler/**"
+            - "!/home/ubuntu/.vite-plus/**"
+            - "!/tmp/**"
+    timeout: 8m
+
+  # Worker types (worker-configuration.d.ts per service/app) — required by
+  # typecheck. Deterministic from each wrangler.jsonc (header carries a config
+  # hash, not a timestamp), so with the filter below it cache-hits whenever the
+  # wrangler configs + toolchain are unchanged, and even when it does re-run its
+  # scrubbed output layer keeps downstream keys stable.
+  - key: types
+    use: bootstrap
+    run: bun run types
+    filter:
+      - node_modules/**
+      - package.json
+      - bun.lock
+      - vite.config.ts
+      - workers/*/package.json
+      - packages/*/package.json
+      - "**/wrangler.jsonc"
+      # wrangler types validates the config's `main` entry exists on disk
+      # (verified: run 1 failed with `The entry-point file at "src/index.ts"
+      # was not found`). Marketing's main lives in node_modules (covered).
+      - workers/*/src/worker.ts
+      - workers/*/src/index.ts
+    outputs:
+      filesystem:
+        filter:
+          workspace: ["!node_modules/.vite/**"]
+          system:
+            - "!/home/ubuntu/.config/.wrangler/**"
+            - "!/home/ubuntu/.wrangler/**"
+            - "!/home/ubuntu/.vite-plus/**"
+            - "!/tmp/**"
+    timeout: 8m
+
+  # ---- typecheck: one task per package, independently cached --------------------
+  - key: typecheck-identity
+    use: types
+    filter: [*gate-filter, workers/identity/**, *gate-neg]
+    run: cd workers/identity && bun run typecheck
+    timeout: 8m
+  - key: typecheck-marketing
+    use: [types, node] # astro sync spins vite's WS optimizer → run under node, not bun
+    agent: *gate-agent
+    filter: [*gate-filter, workers/marketing/**, *gate-neg]
+    run: cd workers/marketing && npm run typecheck
+    timeout: 8m
+  - key: typecheck-sprout
+    use: types
+    filter: [*gate-filter, workers/sprout/**, *gate-neg]
+    run: cd workers/sprout && bun run typecheck
+    timeout: 8m
+  - key: typecheck-bouncer
+    use: types
+    filter: [*gate-filter, workers/bouncer/**, *gate-neg]
+    run: cd workers/bouncer && bun run typecheck
+    timeout: 8m
+  - key: typecheck-guestlist
+    use: types
+    filter: [*gate-filter, workers/guestlist/**, *gate-neg]
+    run: cd workers/guestlist && bun run typecheck
+    timeout: 8m
+  - key: typecheck-promoter
+    use: types
+    filter: [*gate-filter, workers/promoter/**, *gate-neg]
+    run: cd workers/promoter && bun run typecheck
+    timeout: 8m
+  - key: typecheck-roadie
+    use: types
+    filter: [*gate-filter, workers/roadie/**, *gate-neg]
+    run: cd workers/roadie && bun run typecheck
+    timeout: 8m
+  - key: typecheck-auth
+    use: types
+    filter: [*gate-filter, packages/auth/**, *gate-neg]
+    run: cd packages/auth && bun run typecheck
+    timeout: 8m
+  - key: typecheck-config
+    use: types
+    filter: [*gate-filter, packages/config/**, *gate-neg]
+    run: cd packages/config && bun run typecheck
+    timeout: 8m
+  - key: typecheck-design
+    use: types
+    filter: [*gate-filter, packages/design/**, *gate-neg]
+    run: cd packages/design && bun run typecheck
+    timeout: 8m
+  - key: typecheck-email
+    use: types
+    filter: [*gate-filter, packages/email/**, *gate-neg]
+    run: cd packages/email && bun run typecheck
+    timeout: 8m
+  - key: typecheck-og
+    use: types
+    filter: [*gate-filter, packages/og/**, *gate-neg]
+    run: cd packages/og && bun run typecheck
+    timeout: 8m
+  - key: typecheck-secrets
+    use: types
+    filter: [*gate-filter, packages/secrets/**, *gate-neg]
+    run: cd packages/secrets && bun run typecheck
+    timeout: 8m
+  - key: typecheck-ui
+    use: types
+    filter: [*gate-filter, packages/ui/**, *gate-neg]
+    run: cd packages/ui && bun run typecheck
+    timeout: 8m
+
+  # ---- test: one task per test-bearing package, independently cached ------------
+  # Each runs ONE Captain suite (one `vp test` process → no workerd contention).
+  # `mkdir .captain-out` then `captain run <suite>`; the suite (config.yml) writes
+  # its vitest json + rwx-v1-json into repo-root .captain-out/, surfaced via
+  # `outputs.test-results`.
+  - key: test-sprout
+    use: [bootstrap, captain]
+    agent: *gate-agent
+    filter: [*gate-filter, workers/sprout/**, *gate-neg]
+    timeout: 8m
+    run: |
+      mkdir -p .captain-out
+      captain run greenroom-sprout --print-summary
+    outputs:
+      test-results: [{ path: .captain-out/sprout.rwx.json }]
+  - key: test-bouncer
+    use: [bootstrap, captain, node]
+    agent: *gate-agent
+    filter: [*gate-filter, workers/bouncer/**, *gate-neg]
+    timeout: 8m
+    run: |
+      mkdir -p .captain-out
+      captain run greenroom-bouncer --print-summary
+    outputs:
+      test-results: [{ path: .captain-out/bouncer.rwx.json }]
+  - key: test-guestlist
+    use: [bootstrap, captain, node]
+    agent: *gate-agent
+    filter: [*gate-filter, workers/guestlist/**, *gate-neg]
+    timeout: 8m
+    run: |
+      mkdir -p .captain-out
+      captain run greenroom-guestlist --print-summary
+    outputs:
+      test-results: [{ path: .captain-out/guestlist.rwx.json }]
+  - key: test-promoter
+    use: [bootstrap, captain]
+    agent: *gate-agent
+    filter: [*gate-filter, workers/promoter/**, *gate-neg]
+    timeout: 8m
+    run: |
+      mkdir -p .captain-out
+      captain run greenroom-promoter --print-summary
+    outputs:
+      test-results: [{ path: .captain-out/promoter.rwx.json }]
+  - key: test-roadie
+    use: [bootstrap, captain, node]
+    agent: *gate-agent
+    filter: [*gate-filter, workers/roadie/**, *gate-neg]
+    timeout: 8m
+    run: |
+      mkdir -p .captain-out
+      captain run greenroom-roadie --print-summary
+    outputs:
+      test-results: [{ path: .captain-out/roadie.rwx.json }]
+  - key: test-kit
+    use: [bootstrap, captain]
+    agent: *gate-agent
+    filter: [*gate-filter, packages/kit/**, *gate-neg]
+    timeout: 8m
+    run: |
+      mkdir -p .captain-out
+      captain run greenroom-kit --print-summary
+    outputs:
+      test-results: [{ path: .captain-out/kit.rwx.json }]
+  - key: test-secrets
+    use: [bootstrap, captain]
+    agent: *gate-agent
+    filter: [*gate-filter, packages/secrets/**, *gate-neg]
+    timeout: 8m
+    run: |
+      mkdir -p .captain-out
+      captain run greenroom-secrets --print-summary
+    outputs:
+      test-results: [{ path: .captain-out/secrets.rwx.json }]
+
+  # Single "all green" node so the deploy edge stays readable. Succeeds only if
+  # every gate task above succeeded.
+  - key: gate
+    after:
+      - typecheck-identity
+      - typecheck-marketing
+      - typecheck-sprout
+      - typecheck-bouncer
+      - typecheck-guestlist
+      - typecheck-promoter
+      - typecheck-roadie
+      - typecheck-auth
+      - typecheck-config
+      - typecheck-design
+      - typecheck-email
+      - typecheck-og
+      - typecheck-secrets
+      - typecheck-ui
+      - test-sprout
+      - test-bouncer
+      - test-guestlist
+      - test-promoter
+      - test-roadie
+      - test-kit
+      - test-secrets
+    run: echo "gate green"
+
+  # ---- Continuous deployment to staging (push to main, after gate is green) --
+  # Changed-subset + promote-over-rebuild lane (.rwx/promote-staging.yml,
+  # docs/ops/04 §5): only workers the push actually affects deploy, each
+  # promoted from its PR-uploaded version when eligible, full-built otherwise.
+  # `after: gate` waits for the whole gate to SUCCEED before the call fires.
+  # Skipped entirely when `init.is-release-commit` (see the push trigger above)
+  # — that commit's app code already staged when the feature PR(s) merged. On
+  # PRs/feature branches `init.deploy` is false, so this never touches the
+  # vault. Full-fleet disaster lever: promote-staging.yml's `force-full=true`
+  # (or a manual run of the env-parameterized .rwx/deploy.yml).
+  - key: deploy-staging
+    call: ${{ run.dir }}/promote-staging.yml
+    after: gate
+    if: ${{ init.deploy && !init.is-release-commit }}
+    init:
+      commit-sha: ${{ init.commit-sha }}
+      base-sha: ${{ init.base-sha }}
+      force-full: false
+      gh-deployment-env: staging
+      gh-deployment-url: https://sprout-staging.sproutportal.ca
+      deploy: true
+
+# --- One-time staging provisioning for RWX ----------------------------------
+# 1. Install the RWX GitHub App on apostolos-geyer/greenroom so `github.token`
+#    can clone and report status checks (https://cloud.rwx.com -> getting started).
+# 2. Create a LOCKED vault `greenroom_deploy`, unlocked only by the `main`
+#    branch (Vaults -> Access Control), and set the Cloudflare credentials in it:
+#      rwx vaults secrets set --vault greenroom_deploy \
+#        CLOUDFLARE_API_TOKEN=<token minted FROM the Sprout CF account> \
+#        CLOUDFLARE_ACCOUNT_ID=<sprout account id>
+# 3. Push to main; the gate runs and, when green, deploy-staging (.rwx/deploy.yml,
+#    env=staging) ships every worker. Test the deploy path directly first with:
+#      rwx run .rwx/deploy.yml --init env=staging --init deploy=true \
+#        --init commit-sha=<a real main sha>   (requires deploy-vault access)
+#    — validate THIS before trusting deploy-staging's embedded `call:` blind;
+#    see .rwx/deploy.yml's header for what's unverified about the call itself.

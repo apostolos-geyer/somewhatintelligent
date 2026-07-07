@@ -1,0 +1,100 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Vite+ / Vite
+.vite-hooks/
+
+# TanStack Start dev artifacts
+.tanstack/
+
+# Claude Code
+.claude/worktrees/
+
+# Turbo (legacy, may still exist)
+.turbo/
+
+# Environment
+.env
+.env.local
+.env.development
+.env.*.local
+.env.keys
+.dev.vars
+
+# @greenroom/secrets value store — generated/operator-provided secret values
+.secrets/
+
+# Local databases
+*.db
+*.db-shm
+*.db-wal
+
+# Cloudflare Workers local state
+.wrangler/
+
+# OS
+.DS_Store
+._*
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# Debug
+*.log
+npm-debug.log*
+
+# TypeScript
+*.tsbuildinfo
+
+# Misc
+*.pem
+*.tgz
+.cache
+.parcel-cache
+coverage/
+
+# Mockup screenshots
+*.png
+# Generated OG/icon images should be committed for review
+!workers/*/public/og/*.png
+# Sprout brand assets (logos + textures) — real source, shared via @greenroom/design
+!packages/design/src/assets/**/*.png
+.vercel
+
+# Codebase intelligence — fallow's analysis cache (auto-managed by fallow)
+.fallow/
+
+# Codebase intelligence — graphify
+# Local cache. The post-commit hook regenerates this in the background after
+# every commit, so committing it just leaves the working tree dirty.
+graphify-out/
+
+!packages/typescript-config/*.json
+
+# Playwright e2e harness (docs/browser-automation.md) — artifacts + provision log
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+.browser-provision.log
+.browser-provision.lock
+
+# Astro generated types/cache
+.astro/
+
+# Captain local OSS-mode artifacts (RWX provides cloud mode; these are local-only)
+.captain-out/
+.captain/*/
+
+# Claude Code session-local lock file (rewritten per session, not project state)
+.claude/scheduled_tasks.lock
+wrangler.solo.jsonc

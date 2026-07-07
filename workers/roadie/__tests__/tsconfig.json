@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "moduleResolution": "bundler",
+    "declaration": false,
+    "declarationMap": false,
+    "types": ["@cloudflare/vitest-pool-workers", "vite-plus/test/globals"]
+  },
+  "include": ["./**/*.ts", "../worker-configuration.d.ts"]
+}

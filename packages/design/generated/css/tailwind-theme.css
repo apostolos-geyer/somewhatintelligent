@@ -1,0 +1,209 @@
+/* ═══════════════════════════════════════════════════
+   GENERATED — do not edit. Source: src/tokens/
+   Run: bun run codegen
+
+   Import AFTER tokens.css:
+   @import "tailwindcss";
+   @import "@greenroom/design/generated/css/tokens.css";
+   @import "@greenroom/design/generated/css/tailwind-theme.css";
+   ═══════════════════════════════════════════════════ */
+
+@theme inline {
+  /* Neutrals + Text */
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-surface-raised: var(--color-surface-raised);
+  --color-surface-sunken: var(--color-surface-sunken);
+  --color-border: var(--color-border);
+  --color-border-strong: var(--color-border-strong);
+  --color-text: var(--color-text);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-tertiary: var(--color-text-tertiary);
+  --color-text-on-accent: var(--color-text-on-accent);
+
+  /* Accents */
+  --color-sprout: var(--color-sprout);
+  --color-sprout-hover: var(--color-sprout-hover);
+  --color-stigma: var(--color-stigma);
+  --color-stigma-hover: var(--color-stigma-hover);
+  --color-growth: var(--color-growth);
+  --color-growth-hover: var(--color-growth-hover);
+  --color-pistil: var(--color-pistil);
+  --color-pistil-hover: var(--color-pistil-hover);
+  --color-haze: var(--color-haze);
+  --color-haze-hover: var(--color-haze-hover);
+
+  /* Glass */
+  --color-glass-bg: var(--glass-bg);
+  --color-glass-border: var(--glass-border);
+
+  /* Raw brand palette — exact-hex utilities (bg-sprout-green, text-forest-800, …) */
+  --color-sprout-green: var(--color-sprout-green);
+  --color-growth-green: var(--color-growth-green);
+  --color-sativa-green: var(--color-sativa-green);
+  --color-indica-green: var(--color-indica-green);
+  --color-purple-haze: var(--color-purple-haze);
+  --color-plum-kush: var(--color-plum-kush);
+  --color-lilac-diesel: var(--color-lilac-diesel);
+  --color-trichome: var(--color-trichome);
+  --color-cream: var(--color-cream);
+  --color-charcoal: var(--color-charcoal);
+  --color-tinder: var(--color-tinder);
+  --color-stoned: var(--color-stoned);
+  --color-kief: var(--color-kief);
+  --color-lime-50: var(--color-lime-50);
+  --color-lime-100: var(--color-lime-100);
+  --color-lime-200: var(--color-lime-200);
+  --color-lime-300: var(--color-lime-300);
+  --color-lime-400: var(--color-lime-400);
+  --color-lime-500: var(--color-lime-500);
+  --color-lime-600: var(--color-lime-600);
+  --color-growth-300: var(--color-growth-300);
+  --color-growth-400: var(--color-growth-400);
+  --color-growth-500: var(--color-growth-500);
+  --color-growth-600: var(--color-growth-600);
+  --color-growth-700: var(--color-growth-700);
+  --color-forest-50: var(--color-forest-50);
+  --color-forest-100: var(--color-forest-100);
+  --color-forest-200: var(--color-forest-200);
+  --color-forest-300: var(--color-forest-300);
+  --color-forest-400: var(--color-forest-400);
+  --color-forest-500: var(--color-forest-500);
+  --color-forest-600: var(--color-forest-600);
+  --color-forest-700: var(--color-forest-700);
+  --color-forest-800: var(--color-forest-800);
+  --color-forest-900: var(--color-forest-900);
+  --color-forest-950: var(--color-forest-950);
+  --color-paper-0: var(--color-paper-0);
+  --color-paper-50: var(--color-paper-50);
+  --color-paper-100: var(--color-paper-100);
+  --color-paper-200: var(--color-paper-200);
+  --color-paper-300: var(--color-paper-300);
+  --color-success: var(--color-success);
+  --color-success-bg: var(--color-success-bg);
+  --color-warning: var(--color-warning);
+  --color-warning-bg: var(--color-warning-bg);
+  --color-warning-ink: var(--color-warning-ink);
+  --color-danger: var(--color-danger);
+  --color-danger-bg: var(--color-danger-bg);
+  --color-danger-ink: var(--color-danger-ink);
+  --color-info: var(--color-info);
+  --color-info-bg: var(--color-info-bg);
+
+  /* Fonts */
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-editorial: var(--font-editorial);
+  --font-editorial-display: var(--font-editorial-display);
+  --font-accent: var(--font-accent);
+  --font-mono: var(--font-mono);
+
+  /* Shadows — override Tailwind defaults to our soft shadows */
+  --shadow-sm: var(--soft-sm);
+  --shadow-md: var(--soft-md);
+  --shadow-lg: var(--soft-lg);
+
+  /* Shadows — Platform tokens */
+  --shadow-brutal-sm: var(--brutal-sm);
+  --shadow-brutal-md: var(--brutal-md);
+  --shadow-brutal-lg: var(--brutal-lg);
+  --shadow-soft-sm: var(--soft-sm);
+  --shadow-soft-md: var(--soft-md);
+  --shadow-soft-lg: var(--soft-lg);
+  --shadow-neo-raised: var(--neo-raised);
+  --shadow-neo-inset: var(--neo-inset);
+
+  /* UI Type Scale — override Tailwind defaults with our line-heights */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1.5;
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.5;
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: 1.5;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.5;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.4;
+
+  /* Typography Scale — fluid (clamp) */
+  --text-hero: clamp(80px, 14vw, 200px);
+  --text-hero--line-height: 0.95;
+  --text-page-title: clamp(32px, 5vw, 56px);
+  --text-page-title--line-height: 1;
+  --text-stat: clamp(28px, 4vw, 48px);
+  --text-stat--line-height: 1;
+  --text-display-title: clamp(24px, 3vw, 36px);
+  --text-display-title--line-height: 1.1;
+  --text-editorial-h1: clamp(36px, 7vw, 72px);
+  --text-editorial-h1--line-height: 1;
+  --text-editorial-h2: clamp(28px, 4vw, 42px);
+  --text-editorial-h2--line-height: 1.1;
+  --text-editorial-h3: clamp(22px, 3vw, 30px);
+  --text-editorial-h3--line-height: 1.2;
+  --text-editorial-body: clamp(16px, 2vw, 19px);
+  --text-editorial-body--line-height: 1.75;
+  --text-editorial-lede: clamp(18px, 2.5vw, 22px);
+  --text-editorial-lede--line-height: 1.7;
+  --text-pullquote: clamp(24px, 4vw, 40px);
+  --text-pullquote--line-height: 1.32;
+
+  /* Typography Scale — fixed */
+  --text-mono-label: 11px;
+  --text-mono-label--line-height: 1;
+  --text-code: 14px;
+  --text-code--line-height: 1.6;
+  --text-section-label: 15px;
+  --text-section-label--line-height: 1.5;
+
+  /* Custom Leading */
+  --leading-display: 0.9;
+  --leading-display-tight: 0.95;
+  --leading-heading: 1.1;
+  --leading-heading-loose: 1.2;
+  --leading-pullquote: 1.3;
+  --leading-editorial-lede: 1.7;
+  --leading-editorial: 1.75;
+
+  /* Custom Tracking */
+  --tracking-display: -0.03em;
+  --tracking-display-tight: -0.02em;
+  --tracking-heading: -0.01em;
+  --tracking-caps: 0.06em;
+
+  /* Semantic Spacing — aliased to tokens.css vars so tenants can override */
+  --spacing-page: var(--spacing-page);
+  --spacing-section: var(--spacing-section);
+  --spacing-grid: var(--spacing-grid);
+
+  /* Breakpoints */
+  --breakpoint-xxs: 320px;
+  --breakpoint-xs: 475px;
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+  --breakpoint-3xl: 1792px;
+  --breakpoint-4xl: 2048px;
+  --breakpoint-5xl: 2304px;
+  --breakpoint-6xl: 2560px;
+  --breakpoint-7xl: 2816px;
+
+  /* Containers / Layout Widths */
+  --container-prose: clamp(320px, 75vw, 960px);
+  --container-content: 1100px;
+
+  /* Radius — aliased to tokens.css vars so tenants can override */
+  --radius-none: var(--radius-none);
+  --radius-xs: var(--radius-xs);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-full: var(--radius-full);
+
+  /* Blur */
+  --blur-glass: var(--glass-blur);
+}

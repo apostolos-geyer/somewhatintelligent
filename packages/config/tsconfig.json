@@ -1,0 +1,10 @@
+{
+  "extends": "@greenroom/typescript-config/base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "rootDir": "./src"
+  },
+  "include": ["src/**/*.ts"]
+}

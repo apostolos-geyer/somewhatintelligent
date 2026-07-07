@@ -1,0 +1,42 @@
+---
+import "../styles.css";
+// Favicon ships from the design package (the old /assets/... public path is gone).
+// A plain PNG import resolves to the content-hashed asset URL via Vite.
+import favicon from "@greenroom/design/assets/logos/sprout-icon-top-lime.png";
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = "Sprout — Budtender engagement, learn green earn green",
+  description = "Sprout is the budtender engagement platform for Canadian licensed producers and the retailers they sell through — learning, community and rewards. Learn green, earn green.",
+} = Astro.props;
+
+// Marketing is LIGHT-ONLY: the Sprout brand's primary identity is the warm
+// cream paper surface. We pin `data-theme="light"` on <html> so an OS
+// prefers-color-scheme:dark never flips the page (the generated tokens key
+// their dark fallback off `:root:not([data-theme="light"])`, which this
+// suppresses). The intentional dark moments — hero, final-CTA card, footer —
+// set `data-theme="dark"` locally on their own roots, which re-scopes the
+// design-system CSS vars for just that subtree regardless of the page theme.
+---
+
+<!doctype html>
+<html lang="en" data-theme="light" style="color-scheme: light;">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" type="image/png" href={favicon.src} />
+  </head>
+  <body class="min-h-screen bg-background font-sans text-foreground antialiased">
+    <slot />
+  </body>
+</html>

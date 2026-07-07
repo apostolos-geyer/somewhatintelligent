@@ -1,0 +1,14 @@
+#!/bin/sh
+# Pre-push: cheap deterministic gate (CI is the authoritative one).
+# Typecheck is clean repo-wide; vp check is deliberately NOT here (known
+# per-file phantom errors in __tests__/ — see CLAUDE.md). Escape hatch for
+# emergencies: git push --no-verify.
+#
+# Same PATH fix as pre-commit: git hooks don't export node_modules/.bin, so put
+# the repo-local bin dir on PATH so locally-pinned tooling (vp, via bun run)
+# resolves regardless of the caller's PATH.
+set -e
+PATH="$(git rev-parse --show-toplevel)/node_modules/.bin:$PATH"
+export PATH
+echo "[pre-push] bun run typecheck"
+bun run typecheck

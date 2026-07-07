@@ -1,0 +1,9 @@
+{
+  "workers/bouncer": "0.2.2",
+  "workers/guestlist": "0.2.2",
+  "workers/promoter": "0.2.2",
+  "workers/roadie": "0.2.2",
+  "workers/identity": "0.2.2",
+  "workers/marketing": "0.2.2",
+  "workers/sprout": "0.2.2"
+}

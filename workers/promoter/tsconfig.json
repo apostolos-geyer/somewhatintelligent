@@ -1,0 +1,16 @@
+{
+  "extends": "@greenroom/typescript-config/base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "worker-configuration.d.ts"],
+  "exclude": ["node_modules", "dist"]
+}

@@ -1,0 +1,194 @@
+# greenroom — shared deploy logic (Cloudflare, via RWX).
+#
+# One definition of "how greenroom ships a worker fleet" — D1
+# migrate (guestlist, roadie, sprout) -> dependency-ordered worker deploy
+# (promoter, roadie -> guestlist -> identity -> marketing -> sprout
+# -> bouncer router LAST — see the `deploy` task below for exactly why this
+# order, not just "leaf services then apps") -> GitHub Deployment record —
+# parameterized by `init.env` ("staging" | "production") instead of duplicated
+# per environment.
+#
+# This file has no `github:` trigger and is never fired directly by a push or
+# tag. It's invoked as an RWX "embedded run"
+# (https://www.rwx.com/docs/rwx/call-embedded-runs) via
+# `call: ${{ run.dir }}/deploy.yml` from:
+#   - .rwx/ci.yml      (env=staging,    after the gate, on push to main)
+#   - .rwx/release.yml (env=production, on a v* tag)
+# Before this file existed, staging and production each carried their own
+# ~50-line copy of this task graph — a fix to one (e.g. PR #14's `use:`
+# ordering fix) had no structural guarantee of landing in the other. Now
+# there's exactly one copy; both callers pass only `init.env` + the
+# GitHub-Deployment target for their environment.
+#
+# ---- UNVALIDATED AT THE TIME THIS WAS WRITTEN -------------------------------
+# The author environment had no `rwx login` (no RWX CLI auth), so none of this
+# — including the embedded-run composition itself — could be `rwx lint`ed or
+# dry-run tested against the real RWX backend. Two specific assumptions are
+# unverified by RWX's own docs (which don't address embedded-run inheritance
+# either way):
+#   1. Does a LOCKED vault's branch/ref access-control still resolve correctly
+#      from inside an embedded run (as opposed to a directly GitHub-triggered
+#      one)? If not, `vaults.greenroom_deploy.secrets.*` below resolve empty
+#      and `migrate`/`deploy` fail loudly on a Cloudflare auth error — that
+#      failure IS the signal, not silent data loss.
+#   2. Does `github.token` resolve inside an embedded run's `code` task? If
+#      not, the `code` task fails immediately and loudly (clone/checkout
+#      error) — also an obvious, fail-fast signal, not a silent skip.
+# Both failure modes are loud (a red task in the RWX UI), unlike the
+# concurrency-pool bug `.rwx/release-please.yml` documents (which failed
+# *silently*) — so the cost of being wrong here is "an obvious red deploy run
+# to investigate," not "a deploy that silently never happened." Validate before
+# trusting this for a real release: `rwx lint .rwx/deploy.yml .rwx/ci.yml
+# .rwx/release.yml`, then `rwx run .rwx/deploy.yml --init env=staging --init
+# deploy=true --init commit-sha=<a real main sha>` (needs deploy-vault access).
+# If either assumption is wrong, the fix is to revert this file and restore the
+# previous per-file inline task bodies (see git history before this commit) —
+# isolated to this one file, nothing else in this PR depends on it working.
+
+on:
+  # Manual / validation only: `rwx run .rwx/deploy.yml --init env=staging
+  # --init deploy=true --init commit-sha=<sha>`. Never triggered by GitHub
+  # directly — ci.yml and release.yml `call:` this file with their own `init:`,
+  # which is what actually drives a real deploy.
+  cli:
+    init:
+      env: staging
+      commit-sha: ${{ event.git.sha }}
+      gh-deployment-env: staging
+      gh-deployment-url: https://sprout-staging.sproutportal.ca
+      deploy: false
+
+# Serialize per environment: never run two staging deploys or two production
+# deploys concurrently (a git-push race against the same workers). cancel-waiting
+# (not queue) is intentional here — this IS the deploy step, so "skip a queued,
+# now-stale deploy in favor of the most recent one" is correct (unlike
+# release-please, where every trigger might be the one that flips state).
+concurrency-pools:
+  - id: greenroom/greenroom:deploy-${{ init.env }}
+    capacity: 1
+    on-overflow: cancel-waiting
+
+base:
+  image: ubuntu:24.04
+  config: rwx/base 1.1.1
+
+aliases:
+  # Shared env for the migrate + deploy tasks.
+  #   - Cloudflare creds: for wrangler against the LIVE account, from the
+  #     main/tag-locked `greenroom_deploy` vault. The account id is also a
+  #     literal in each checked-in wrangler.jsonc; wrangler reads either.
+  #     The token must cover BOTH envs (Workers Scripts Edit + D1 Edit) — envs
+  #     are `--env staging|production` suffixes on the SAME Cloudflare account,
+  #     not separate accounts.
+  #   - GH_TOKEN: token for the private `rwx-automation-greenroom` GitHub App
+  #     (`deployments: write`), consumed by scripts/rwx-github-deployment.sh to
+  #     record this deploy under the repo's GitHub Deployments/Environments
+  #     timeline, targeted at `init.gh-deployment-env`/`init.gh-deployment-url`
+  #     so one script serves both environments without a code change.
+  deploy-env: &deploy-env
+    CLOUDFLARE_API_TOKEN: ${{ vaults.greenroom_deploy.secrets.CLOUDFLARE_API_TOKEN }}
+    CLOUDFLARE_ACCOUNT_ID: ${{ vaults.greenroom_deploy.secrets.CLOUDFLARE_ACCOUNT_ID }}
+    GH_TOKEN: ${{ vaults.greenroom_deploy.github-apps.rwx-automation-greenroom.token }}
+    GH_DEPLOYMENT_ENV: ${{ init.gh-deployment-env }}
+    GH_DEPLOYMENT_URL: ${{ init.gh-deployment-url }}
+
+tasks:
+  - key: code
+    call: git/clone 2.0.8
+    with:
+      repository: https://github.com/apostolos-geyer/greenroom.git
+      ref: ${{ init.commit-sha }}
+      github-token: ${{ github.token }}
+
+  - key: system-packages
+    run: |
+      sudo apt-get update
+      sudo apt-get install -y jq unzip gh
+      sudo apt-get clean
+
+  - key: bun
+    use: system-packages
+    run: |
+      curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.11"
+      echo "$HOME/.bun/bin" > "$RWX_ENV/PATH"
+      "$HOME/.bun/bin/bun" --version
+
+  # node for the worker tasks that hang under bun (astro build for marketing).
+  - key: node
+    call: nodejs/install 1.1.14
+    with:
+      node-version: 24.16.0
+
+  - key: install
+    use: [code, bun]
+    run: bun install --frozen-lockfile --ignore-scripts
+    timeout: 8m
+
+  # `cache: false` so a deploy ALWAYS executes wrangler — never replays a
+  # cached "success" and silently skips shipping. Credentials come from a
+  # locked vault, so this only resolves when the caller (ci.yml/release.yml)
+  # is itself running in a context the vault unlocks for.
+  - key: migrate
+    use: [system-packages, install] # system-packages first (install's chain builds on it); jq for the GitHub deployment API
+    if: ${{ init.deploy }}
+    cache: false
+    timeout: 8m
+    env: *deploy-env
+    run: |
+      set -euo pipefail
+      # Open the GitHub deployment record so the whole migrate->deploy run shows
+      # up under the repo's Deployments/Environments timeline. The EXIT trap
+      # flips it to `failure` if a migration aborts; `deploy` reports the final
+      # state.
+      source scripts/rwx-github-deployment.sh
+      gh_deployment_create "${{ init.commit-sha }}"
+      trap 'rc=$?; if [ "$rc" -ne 0 ]; then gh_deployment_status failure "D1 migration failed"; fi; exit $rc' EXIT
+      gh_deployment_status in_progress "migrating D1 (${{ init.env }})"
+      # D1 migrations BEFORE code, so a freshly-deployed worker never reads a
+      # schema the database doesn't have yet. ALL migrations run in this task,
+      # before ANY code ships in the `deploy` task below — so a migration failure
+      # aborts the whole fleet before a single worker is redeployed. The
+      # per-worker migrate mechanics (and the no-`|| true` invariant) live in
+      # scripts/deploy-worker.sh, shared with the two production lanes; the three
+      # D1-backed workers are guestlist, roadie, sprout.
+      bash scripts/deploy-worker.sh migrate guestlist ${{ init.env }}
+      bash scripts/deploy-worker.sh migrate roadie ${{ init.env }}
+      bash scripts/deploy-worker.sh migrate sprout ${{ init.env }}
+
+  - key: deploy
+    use: [migrate, node]
+    if: ${{ init.deploy }}
+    cache: false
+    timeout: 30m
+    env: *deploy-env
+    run: |
+      set -euo pipefail
+      # GH_DEPLOYMENT_ID is inherited from `migrate` (via $RWX_ENV). The EXIT
+      # trap reports the terminal deployment state (success/failure) to GitHub
+      # with the environment URL + a link back to this RWX run.
+      source scripts/rwx-github-deployment.sh
+      trap 'rc=$?; if [ "$rc" -eq 0 ]; then gh_deployment_status success "deployed to ${{ init.env }}"; else gh_deployment_status failure "${{ init.env }} deploy failed"; fi; exit $rc' EXIT
+      # True dependency order, not just "leaf services then apps": guestlist has
+      # service bindings to promoter + roadie, so wrangler's binding-existence
+      # check fails if guestlist deploys before they exist (hit for real on the
+      # first production deploy: promoter/roadie didn't exist yet, and wrangler
+      # refused to deploy guestlist with a binding to a nonexistent Worker —
+      # error 10143). promoter + roadie are true leaves (no bindings) and go
+      # first; guestlist next (needs both); then everything that binds to
+      # guestlist (identity) or to guestlist+roadie+promoter
+      # (sprout); marketing has no bindings, so its position doesn't matter;
+      # bouncer (binds to guestlist, identity, sprout) goes LAST,
+      # so the public router only ever points at already-deployed upstreams.
+      # Per-worker deploy mechanics (incl. marketing-under-npm) live in
+      # scripts/deploy-worker.sh, shared with .rwx/release-please.yml and
+      # .rwx/release.yml so a fix can't land in one lane and miss the others.
+      for w in promoter roadie guestlist identity marketing sprout bouncer; do
+        bash scripts/deploy-worker.sh deploy "$w" ${{ init.env }}
+      done
+
+      # Post-deploy smoke test — the automated safety net that lets a tag push
+      # auto-deploy prod with no human babysitting (see .rwx/release.yml header).
+      # `set -e` + the script's explicit exit make the EXIT trap above report the
+      # deploy as `failure` so a bad ship is loud, not silent. Shared with the two
+      # production lanes.
+      bash scripts/smoke-test.sh "${{ init.gh-deployment-url }}"

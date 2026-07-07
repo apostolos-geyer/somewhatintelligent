@@ -1,0 +1,115 @@
+import { cn } from "@greenroom/ui/lib/utils";
+import { platformConfig } from "@greenroom/config";
+import type { LogoProps } from "./types";
+import { LogoIcon } from "./logo-icon";
+
+/**
+ * Top-level Sprout logo component. Composes `LogoIcon` with the Sprout
+ * wordmark — the friendly, green-forward lockup for the budtender-engagement
+ * platform. The rendered text always comes from `platformConfig.brand`
+ * (`name` / `short`), so forks get their own wordmark with no change here.
+ *
+ * Composes `LogoIcon` with a wordmark in one of four layouts:
+ * - `icon` — mark only (default)
+ * - `horizontal` — mark + wordmark side by side
+ * - `stacked` — mark over uppercase wordmark
+ * - `compact` — small mark + wordmark for navs/headers
+ */
+export function Logo({
+  layout = "icon",
+  className,
+  style,
+  iconProps,
+  angle,
+  weight,
+  detail,
+  colorScheme,
+  size,
+  colors,
+  weights,
+  shadowRect,
+  mainRect,
+  leftShaft,
+  rightShaft,
+  leftSerifCap,
+  rightSerifCap,
+  leftBracket,
+  rightBracket,
+  leftFootSerif,
+  rightFootSerif,
+  rotatedA,
+  innerHairline,
+  hCrossbar,
+  vCrossbar,
+  leftOuterHairline,
+  rightOuterHairline,
+}: LogoProps) {
+  const sharedIconProps = {
+    angle,
+    weight,
+    detail,
+    colorScheme,
+    colors,
+    weights,
+    shadowRect,
+    mainRect,
+    leftShaft,
+    rightShaft,
+    leftSerifCap,
+    rightSerifCap,
+    leftBracket,
+    rightBracket,
+    leftFootSerif,
+    rightFootSerif,
+    rotatedA,
+    innerHairline,
+    hCrossbar,
+    vCrossbar,
+    leftOuterHairline,
+    rightOuterHairline,
+    ...iconProps,
+  };
+
+  if (layout === "icon") {
+    return <LogoIcon size={size ?? 80} className={className} style={style} {...sharedIconProps} />;
+  }
+
+  if (layout === "horizontal") {
+    const iconSize = size ?? 56;
+    return (
+      <div
+        className={cn("flex items-center", className)}
+        style={{ gap: iconSize * 0.12, ...style }}
+      >
+        <LogoIcon size={iconSize} {...sharedIconProps} />
+        <span
+          className="font-display font-light tracking-[0.04em] leading-none"
+          style={{ fontSize: iconSize * 0.72 }}
+        >
+          {platformConfig.brand.name}
+        </span>
+      </div>
+    );
+  }
+
+  if (layout === "stacked") {
+    return (
+      <div className={cn("flex flex-col items-center gap-1", className)} style={style}>
+        <LogoIcon size={size ?? 64} {...sharedIconProps} />
+        <span className="font-display text-lg font-light tracking-[0.12em] leading-none uppercase">
+          {platformConfig.brand.short}
+        </span>
+      </div>
+    );
+  }
+
+  // compact
+  return (
+    <div className={cn("flex items-center gap-2.5", className)} style={style}>
+      <LogoIcon size={size ?? 36} {...sharedIconProps} />
+      <span className="font-display text-2xl font-light tracking-[0.04em] leading-none">
+        {platformConfig.brand.name}
+      </span>
+    </div>
+  );
+}

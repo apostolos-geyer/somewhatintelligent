@@ -1,0 +1,75 @@
+# Fallow codebase intelligence
+# https://docs.fallow.tools
+
+# CF Workers entry points (consumed by Wrangler, not static module-graph imports)
+# TanStack Start entry (wrangler.jsonc main field, not imported)
+# Service worker files (built by vite-plugin-pwa outside the normal module graph)
+# OG image generators (discovered at build time by packages/og CLI via glob)
+entry = [
+  "workers/*/src/worker.ts",
+  "workers/*/src/start.ts",
+  "workers/*/src/sw.ts",
+  "workers/*/src/router.tsx",
+  "workers/*/scripts/generate-sw.ts",
+  "workers/*/src/index.ts",
+]
+
+dynamicallyLoaded = [
+  "workers/*/og/**/*.og.tsx",
+  "workers/*/og/**/*.og.ts",
+  "workers/*/src/scheduled/*.ts",
+]
+
+# Test files (fallow knows is_test_path internally but only via --production CLI flag).
+# Excluding here matches what `--production` does for test paths and bakes it into config.
+# Generated outputs and one-shot infra scripts — not part of the live module graph.
+ignorePatterns = [
+  "**/__tests__/**",
+  "**/*.test.ts",
+  "**/*.test.tsx",
+  "**/*.spec.ts",
+  "**/*.spec.tsx",
+  "packages/design/generated/**",
+  "scripts/**",
+  "workers/guestlist/auth.codegen.ts",
+  "workers/guestlist/scripts/**",
+  "workers/roadie/scripts/**",
+  # wrangler-generated ambient types — never imported, 15k lines per worker
+  "**/worker-configuration.d.ts",
+]
+
+# Referenced outside the import graph fallow sees:
+# @greenroom/design — packages/og/src/fonts.ts require.resolve()s its font files by string spec
+# agent-browser — CLI driven by docs/browser-automation.md + the agent-browser skill, no imports
+# playwright-core — imported by scripts/setup-browsers.ts (scripts/** is in ignorePatterns)
+# @react-email/preview-server — resolved at runtime by `email dev` (packages/email dev script)
+# @babel/plugin-proposal-decorators — string-referenced in packages/kit + workers/roadie vite.config.ts
+ignoreDependencies = [
+  "@greenroom/design",
+  "agent-browser",
+  "playwright-core",
+  "@react-email/preview-server",
+  "@babel/plugin-proposal-decorators",
+]
+
+# Generated route trees stay in the module graph (router.tsx imports them)
+# but skew duplication/complexity numbers.
+[duplicates]
+ignore = ["**/routeTree.gen.ts"]
+ignoreImports = true
+
+[health]
+ignore = ["**/routeTree.gen.ts"]
+
+# Error subclasses follow the JS convention `override name = "MySubclass"` so
+# `error.name`/log lines/sentry show the subclass name. Fallow doesn't see
+# external readers (most code uses `instanceof`) but `.name` is the JS Error API.
+[[usedClassMembers]]
+extends = "Error"
+members = ["name"]
+
+# Same-named exports across RPC procedure namespaces (create/list/getBySlug/presign/remove/complete)
+# and roadie scheduled jobs (each exports `run` by convention) are intentional.
+# Downgrade to warn so real duplicates still surface.
+[rules]
+duplicate-exports = "warn"
