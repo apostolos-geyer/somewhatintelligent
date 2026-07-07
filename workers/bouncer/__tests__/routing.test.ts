@@ -1,5 +1,5 @@
 import { compileRoutes, matchRoute } from "../src/routes";
-import { platformDeployConfig } from "@greenroom/config";
+import { platformDeployConfig } from "@si/config";
 
 // Base domain is config-derived so a rebrand never leaves these matcher
 // fixtures stale. e.g. baseDomain="platform.example" → wildcard "*.platform.example",
@@ -58,7 +58,23 @@ describe("compileRoutes", () => {
     ).toThrow(/ROUTES validation failed/);
   });
 
-  test("rejects mixing passthrough and vmf for the same host", () => {
+  test("rejects mixing passthrough and vmf for the SAME mount on one host", () => {
+    expect(() =>
+      compileRoutes({
+        routes: [
+          { binding: "A", host: "files.test", path: "/transfers", mode: "vmf" },
+          { binding: "B", host: "files.test", path: "/transfers", mode: "passthrough" },
+        ],
+      }),
+    ).toThrow(/host "files\.test" mount "\/transfers" has routes in both/);
+  });
+
+  test("allows mixing passthrough and vmf on ONE host as long as their mounts differ", () => {
+    // The mode-consistency rule is per-(host, mount) now, not per-host: a
+    // vmf-mounted app and a passthrough API can share an apex (e.g. `/account`
+    // vmf + `/api` passthrough) — dispatch already picks mode per matched
+    // route, so there's no cross-mount conflict for handleMountedApp to worry
+    // about.
     expect(() =>
       compileRoutes({
         routes: [
@@ -66,7 +82,7 @@ describe("compileRoutes", () => {
           { binding: "B", host: "files.test", path: "/raw", mode: "passthrough" },
         ],
       }),
-    ).toThrow(/host "files\.test" has routes in both/);
+    ).not.toThrow();
   });
 
   test("multiple vmf routes on the same host parse cleanly", () => {
@@ -168,5 +184,85 @@ describe("matchRoute", () => {
     });
     expect(matchRoute(r4, baseDomain, "/")?.route.bindingName).toBe("PLATFORM");
     expect(matchRoute(r4, "other.com", "/")?.route.bindingName).toBe("FALLBACK");
+  });
+});
+
+describe("redirect mode", () => {
+  test("schema accepts a redirect route with no binding", () => {
+    expect(() =>
+      compileRoutes({
+        routes: [{ host: baseDomain, path: "/", mode: "redirect", to: "/shop" }],
+      }),
+    ).not.toThrow();
+  });
+
+  test("status defaults to 308 when omitted, and is preserved when explicit", () => {
+    const { routes: r1 } = compileRoutes({
+      routes: [{ host: baseDomain, path: "/", mode: "redirect", to: "/shop" }],
+    });
+    expect(r1[0]!.redirectStatus).toBe(308);
+    expect(r1[0]!.redirectTo).toBe("/shop");
+
+    const { routes: r2 } = compileRoutes({
+      routes: [{ host: baseDomain, path: "/", mode: "redirect", to: "/shop", status: 302 }],
+    });
+    expect(r2[0]!.redirectStatus).toBe(302);
+  });
+
+  test("rejects an unknown status code", () => {
+    expect(() =>
+      compileRoutes({
+        routes: [{ host: baseDomain, path: "/", mode: "redirect", to: "/shop", status: 599 }],
+      }),
+    ).toThrow(/ROUTES validation failed/);
+  });
+
+  test("requires `to` for redirect routes", () => {
+    expect(() =>
+      compileRoutes({
+        routes: [{ host: baseDomain, path: "/", mode: "redirect" }],
+      }),
+    ).toThrow();
+  });
+
+  test("coexists with a passthrough route on the same host (does not trip mode-consistency)", () => {
+    expect(() =>
+      compileRoutes({
+        routes: [
+          { binding: "GUESTLIST", host: baseDomain, path: "/api", mode: "passthrough" },
+          { host: baseDomain, path: "/", mode: "redirect", to: "/shop" },
+        ],
+      }),
+    ).not.toThrow();
+  });
+
+  test("coexists with a vmf route on the same host", () => {
+    expect(() =>
+      compileRoutes({
+        routes: [
+          { binding: "APP", host: baseDomain, path: "/app", mode: "vmf" },
+          { host: baseDomain, path: "/legacy", mode: "redirect", to: "/app" },
+        ],
+      }),
+    ).not.toThrow();
+  });
+
+  test("a longer static mount (e.g. /api) is not shadowed by a `/` redirect on the same host", () => {
+    const { routes } = compileRoutes({
+      routes: [
+        { binding: "GUESTLIST", host: baseDomain, path: "/api", mode: "passthrough" },
+        { host: baseDomain, path: "/", mode: "redirect", to: "/shop" },
+      ],
+    });
+    const apiMatch = matchRoute(routes, baseDomain, "/api/whoami");
+    expect(apiMatch?.route.mode).toBe("passthrough");
+    expect(apiMatch?.route.bindingName).toBe("GUESTLIST");
+
+    const rootMatch = matchRoute(routes, baseDomain, "/");
+    expect(rootMatch?.route.mode).toBe("redirect");
+    expect(rootMatch?.route.redirectTo).toBe("/shop");
+
+    const otherMatch = matchRoute(routes, baseDomain, "/anything-else");
+    expect(otherMatch?.route.mode).toBe("redirect");
   });
 });

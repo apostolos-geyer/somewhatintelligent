@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "sprout-identity-staging",
-  "account_id": "30ce6004cd9c2907f0b06fe401c4f4ba",
+  "name": "si-identity-staging",
+  "account_id": "c735c5a53d864bee37400befb7f4c7f4",
   "main": "./src/worker.ts",
   "compatibility_date": "2026-04-16",
   "compatibility_flags": ["nodejs_compat"],
@@ -13,18 +13,23 @@
   "preview_urls": true,
   "vars": {
     "ENVIRONMENT": "staging",
-    "IDENTITY_URL": "https://identity-staging.sproutportal.ca",
-    "MARKETING_URL": "https://sprout-marketing-staging.sproutcannabis.workers.dev",
-    "SPROUT_URL": "https://sprout-staging.sproutportal.ca",
+    // Identity's own PUBLIC address, now that bouncer vmf-mounts it at
+    // `/account` of the single-host apex (workers/bouncer/wrangler.jsonc) —
+    // used for cross-app links this app renders itself (sidebar "identity"
+    // nav item, admin invite-link base). `src/lib/auth-client.ts`'s SSR
+    // fallback derives the bare origin from this via `new URL(...).origin`
+    // rather than using it directly, since the same-host `/api` guestlist
+    // route lives at the origin ROOT, not under `/account`.
+    "IDENTITY_URL": "https://staging.somewhatintelligent.ca/account",
     // Controlled apex (leading dot, mirrors guestlist AUTH_DOMAIN + the auth
     // server's `*.{apex}` trustedOrigins). The post-auth redirect guard
     // (src/lib/return-to.ts) trusts this apex + every subdomain of it.
-    "AUTH_DOMAIN": ".sproutportal.ca",
+    "AUTH_DOMAIN": ".somewhatintelligent.ca",
   },
   "services": [
     {
       "binding": "GUESTLIST",
-      "service": "sprout-guestlist-staging",
+      "service": "si-guestlist-staging",
     },
   ],
   "env": {
@@ -32,7 +37,7 @@
       // Explicit — without this wrangler would derive
       // "sprout-identity-staging-production" (top-level name + "-production"),
       // a brand-new worker, instead of updating this one.
-      "name": "sprout-identity-production",
+      "name": "si-identity-production",
       // Staging turns this on for workers.dev preview access; production must
       // not inherit that (it would otherwise, since named envs inherit
       // workers_dev/preview_urls from the top level).
@@ -40,15 +45,13 @@
       "preview_urls": false,
       "vars": {
         "ENVIRONMENT": "production",
-        "IDENTITY_URL": "https://identity.sproutportal.ca",
-        "MARKETING_URL": "https://sproutportal.ca",
-        "SPROUT_URL": "https://sprout.sproutportal.ca",
-        "AUTH_DOMAIN": ".sproutportal.ca",
+        "IDENTITY_URL": "https://somewhatintelligent.ca/account",
+        "AUTH_DOMAIN": ".somewhatintelligent.ca",
       },
       "services": [
         {
           "binding": "GUESTLIST",
-          "service": "sprout-guestlist-production",
+          "service": "si-guestlist-production",
         },
       ],
     },

@@ -1,10 +1,10 @@
-import { withRequestLog } from "@greenroom/kit/log";
+import { withRequestLog } from "@si/kit/log";
 import {
   extractRequestId,
   routingHostFromHeaders,
   updateRequestContext,
   withRequestContext,
-} from "@greenroom/kit/request-context";
+} from "@si/kit/request-context";
 import {
   buildAssetPrefixes,
   handleMountedApp,
@@ -33,7 +33,7 @@ const configCache = new WeakMap<Env, CompiledConfig>();
 // a closed-over host, or getStamper's per-isolate memoization would freeze the
 // first request's host into every envelope; see __tests__/stamper-host.test.ts).
 function resolveRoutingHost(request: Request, env: Env): string {
-  // Delegates to the shared rule (@greenroom/kit/request-context) so bouncer, the
+  // Delegates to the shared rule (@si/kit/request-context) so bouncer, the
   // dev stamper that emulates it, and the apps' host→brand reads all agree.
   // fallbackHost (the request URL host) guarantees a non-null result.
   return routingHostFromHeaders(request.headers, {
@@ -118,8 +118,16 @@ export default {
         const refreshedReq = mergeCookiesIntoRequest(request, setCookies);
 
         let response: Response;
-        if (match) {
-          const upstream = getFetcher(env, match.route.bindingName);
+        if (match && match.route.mode === "redirect") {
+          // Bouncer answers directly — no upstream `binding`, no header
+          // stamping (there's no fetch to stamp headers onto).
+          log.add({ dispatch: "redirect", mode: "redirect", redirect_to: match.route.redirectTo });
+          response = new Response(null, {
+            status: match.route.redirectStatus ?? 308,
+            headers: { location: match.route.redirectTo! },
+          });
+        } else if (match) {
+          const upstream = getFetcher(env, match.route.bindingName!);
           const fwdReq = stampUpstreamHeaders(refreshedReq, envelope, actor);
           if (match.route.mode === "passthrough") {
             log.add({

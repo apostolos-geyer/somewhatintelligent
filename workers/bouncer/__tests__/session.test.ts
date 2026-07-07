@@ -1,7 +1,7 @@
 import { env } from "cloudflare:test";
 import { createBouncerSessionResolver, mergeCookiesIntoRequest } from "../src/session";
-import { withRequestContext } from "@greenroom/kit/request-context";
-import { platformConfig } from "@greenroom/config";
+import { withRequestContext } from "@si/kit/request-context";
+import { platformConfig } from "@si/config";
 
 const prefix = platformConfig.cookies.prefix;
 // Wire cookie names: `<prefix>.session_token`, `<prefix>.session_data`. The

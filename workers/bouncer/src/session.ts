@@ -1,12 +1,12 @@
-import { createGuestlistClient } from "@greenroom/guestlist-service/client";
-import { getRequestContext, getRequestId } from "@greenroom/kit/request-context";
+import { createGuestlistClient } from "@si/guestlist-service/client";
+import { getRequestContext, getRequestId } from "@si/kit/request-context";
 import {
   parseRequestCookies,
   type SessionResolver,
   type SessionResolverResult,
   type StampableSession,
-} from "@greenroom/auth";
-import { platformConfig } from "@greenroom/config";
+} from "@si/auth";
+import { platformConfig } from "@si/config";
 import { type CookieSerializeOptions, parse as parseCookieHeader, serialize } from "cookie-es";
 
 const SESSION_TOKEN_COOKIE = `${platformConfig.cookies.prefix}.session_token`;

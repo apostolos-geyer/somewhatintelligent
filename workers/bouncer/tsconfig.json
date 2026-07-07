@@ -1,11 +1,11 @@
 {
-  "extends": "@greenroom/typescript-config/base.json",
+  "extends": "@si/typescript-config/base.json",
   "compilerOptions": {
     "module": "ESNext",
     "moduleResolution": "bundler",
-    // jsx is required only because `@greenroom/guestlist-service/client` re-exports
+    // jsx is required only because `@si/guestlist-service/client` re-exports
     // a `GuestlistApp` type (via `import type { GuestlistApp } from "../index"`)
-    // whose inference chain transitively pulls `auth.ts` → `@greenroom/email`
+    // whose inference chain transitively pulls `auth.ts` → `@si/email`
     // (.tsx). Bouncer emits no JSX itself. Tracked as a guestlist-client
     // tightening follow-up; until then every guestlist/client consumer needs jsx.
     "jsx": "react-jsx",

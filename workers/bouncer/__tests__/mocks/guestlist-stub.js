@@ -2,7 +2,7 @@
 // don't need to share globals across the worker isolate boundary.
 //
 // Mock stub workers are loaded directly by miniflare (no Vite resolution), so
-// they can't import @greenroom/config. Instead of hardcoding the brand cookie
+// they can't import @si/config. Instead of hardcoding the brand cookie
 // PREFIX, branch on the prefix-independent token cookie SUFFIX (session_token,
 // which is better-auth's own literal name) + the sentinel value the test sets.
 // The wire token cookie is `<prefix>.session_token`; matching `session_token=STALE`

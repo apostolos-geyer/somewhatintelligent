@@ -1,6 +1,6 @@
-import { getRequestLog } from "@greenroom/kit/log";
-import { getRequestId } from "@greenroom/kit/request-context";
-import { PLATFORM_HEADERS, stampPlatformHeaders, type EnvelopeActor } from "@greenroom/auth";
+import { getRequestLog } from "@si/kit/log";
+import { getRequestId } from "@si/kit/request-context";
+import { PLATFORM_HEADERS, stampPlatformHeaders, type EnvelopeActor } from "@si/auth";
 
 /**
  * Stamp the platform's privileged header contract on a request before
@@ -50,9 +50,11 @@ export function stripPlatformResponseHeaders(response: Response): Response {
  * header rewriting. Header stamping happens upstream of this in
  * `stampUpstreamHeaders`.
  *
- * Used for hosts whose upstream is mount-aware (knows it owns the host
- * and emits its own canonical URLs). Most platform subdomains —
- * identity, sprout — fit this contract.
+ * Used for mounts whose upstream is mount-aware (knows it owns the mount
+ * and emits its own canonical URLs) — guestlist's `/api` mount fits this
+ * contract. Compare `handleMountedApp` below, used for mount-naive upstreams
+ * (e.g. identity's `/account` vmf mount) that need path/asset/redirect/
+ * cookie rewriting.
  */
 export async function handlePassthrough(request: Request, upstream: Fetcher): Promise<Response> {
   const log = getRequestLog();

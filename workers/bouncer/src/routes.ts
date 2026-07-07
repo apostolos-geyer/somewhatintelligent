@@ -11,16 +11,27 @@
 // string`) rather than the prior hand-rolled "Invalid route entry" error.
 import { type } from "arktype";
 
-// `passthrough` (default): one upstream owns this host fully — bouncer is a
+// `passthrough` (default): one upstream owns this MOUNT fully — bouncer is a
 // transparent reverse proxy. No URL/asset/cookie/redirect rewriting.
-// `vmf`: one or more mount-naive upstreams under this host — bouncer runs
+// `vmf`: one or more mount-naive upstreams under this MOUNT — bouncer runs
 // the full Cloudflare-microfrontend transformation pipeline (path strip,
 // asset-prefix rewriting, Location/cookie path scoping, preload injection).
-// Mode is fixed per host; mixing modes for routes that share a host is a
-// boot-time error (see compileRoutes' per-host mode-consistency check).
+// `redirect`: bouncer answers directly with a Location redirect — no
+// upstream `binding` involved at all.
+// Mode is fixed per (host, mount) — e.g. one host can freely run `/api` in
+// passthrough and `/account` in vmf, since dispatch (index.ts) already picks
+// mode per matched route and `handleMountedApp` only ever rewrites the
+// response for the mount it matched. What's rejected is the SAME mount on
+// the SAME host declared in two different modes — see compileRoutes' mode-
+// consistency check. `redirect` is exempt even from that: it never touches
+// the passthrough/vmf asset-handling contract the rule protects, so it's
+// free to coexist with either mode on the same mount too.
 const RouteModeSchema = type("'passthrough' | 'vmf'");
+const RedirectStatusSchema = type("301 | 302 | 307 | 308");
 
-const RouteConfigSchema = type({
+// Passthrough/vmf routes proxy to an upstream `binding`; redirect routes
+// answer directly with a Location header and carry no binding at all.
+const ProxyRouteConfigSchema = type({
   binding: "string > 0",
   "host?": "string | string[]",
   path: "string > 0",
@@ -28,21 +39,34 @@ const RouteConfigSchema = type({
   "mode?": RouteModeSchema,
 });
 
+const RedirectRouteConfigSchema = type({
+  "host?": "string | string[]",
+  path: "string > 0",
+  mode: "'redirect'",
+  to: "string > 0",
+  "status?": RedirectStatusSchema,
+});
+
+const RouteConfigSchema = ProxyRouteConfigSchema.or(RedirectRouteConfigSchema);
+
 const RoutesConfigSchema = type({
   "smoothTransitions?": "boolean",
   routes: RouteConfigSchema.array(),
 });
 
-type RouteMode = typeof RouteModeSchema.infer;
+type RouteMode = typeof RouteModeSchema.infer | "redirect";
+type RedirectStatus = typeof RedirectStatusSchema.infer;
 
 export type CompiledRoute = {
   expr: string;
-  bindingName: string;
+  bindingName?: string;
   host?: string;
   hostIsWildcard: boolean;
   hostWildcardTail?: string;
   preload?: boolean;
   mode: RouteMode;
+  redirectTo?: string;
+  redirectStatus?: RedirectStatus;
   re: RegExp;
   isStaticMount: boolean;
   staticMount?: string;
@@ -176,37 +200,57 @@ export function compileRoutes(input: unknown): {
         ? [undefined]
         : rec.host
       : [rec.host];
-    const mode: RouteMode = rec.mode ?? "passthrough";
     for (const host of hosts) {
       const hostIsWildcard = !!host?.startsWith("*.");
-      compiled.push({
+      const shared = {
         expr,
-        bindingName: rec.binding,
         host,
         hostIsWildcard,
         hostWildcardTail: hostIsWildcard ? host!.slice(1) : undefined,
-        preload: rec.preload,
-        mode,
         re,
         isStaticMount,
         staticMount,
         baseSpecificity: computeBaseSpecificity(expr),
-      });
+      };
+      if (rec.mode === "redirect") {
+        compiled.push({
+          ...shared,
+          mode: "redirect",
+          redirectTo: rec.to,
+          redirectStatus: rec.status ?? 308,
+        });
+      } else {
+        compiled.push({
+          ...shared,
+          bindingName: rec.binding,
+          preload: rec.preload,
+          mode: rec.mode ?? "passthrough",
+        });
+      }
     }
   }
-  // Per-host mode consistency: a single host either runs in passthrough or
-  // vmf mode for *all* its routes. Mixing them is nonsense (the upstream
-  // contract differs) and almost certainly a config bug, so reject at boot.
-  // Wildcard hosts are checked separately from exact hosts since they're
-  // distinct match tiers.
-  const hostModes = new Map<string, RouteMode>();
+  // Per-(host, mount) mode consistency: the SAME mount on the SAME host can't
+  // be declared in two different modes — which one would actually dispatch is
+  // ambiguous and almost certainly a config bug, so reject at boot. This is
+  // narrower than the original per-HOST rule: passthrough and vmf now legally
+  // coexist on one host as long as they own DIFFERENT mounts (e.g. `/api`
+  // passthrough + `/account` vmf on the same apex) — dispatch in index.ts
+  // already picks per-route mode at match time, so there's no cross-mount
+  // asset/cookie/redirect-rewriting conflict for `handleMountedApp` to worry
+  // about; it only ever touches the response for the mount it matched.
+  // `redirect` is exempt entirely — it never touches the passthrough/vmf
+  // asset-handling contract this rule protects, so it's free to coexist with
+  // either mode on the same mount too. Wildcard hosts are checked separately
+  // from exact hosts since they're distinct match tiers (same as before).
+  const mountModes = new Map<string, RouteMode>();
   for (const r of compiled) {
-    if (r.host === undefined) continue;
-    const prev = hostModes.get(r.host);
-    if (prev === undefined) hostModes.set(r.host, r.mode);
+    if (r.host === undefined || r.mode === "redirect") continue;
+    const key = `${r.host}${r.expr}`;
+    const prev = mountModes.get(key);
+    if (prev === undefined) mountModes.set(key, r.mode);
     else if (prev !== r.mode) {
       throw new Error(
-        `ROUTES validation failed: host "${r.host}" has routes in both "${prev}" and "${r.mode}" mode; one host must use a single mode.`,
+        `ROUTES validation failed: host "${r.host}" mount "${r.expr}" has routes in both "${prev}" and "${r.mode}" mode; one mount must use a single mode.`,
       );
     }
   }

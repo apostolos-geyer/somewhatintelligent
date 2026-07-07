@@ -3,7 +3,7 @@
  * `createEnvelopeStamper` is async; we memoize the resolved stamper per `Env`
  * reference so each isolate signs in <1ms after the first request.
  */
-import { createEnvelopeStamper, type EnvelopeStamper } from "@greenroom/auth";
+import { createEnvelopeStamper, type EnvelopeStamper } from "@si/auth";
 import { createBouncerSessionResolver } from "./session";
 
 export interface StamperEnv {

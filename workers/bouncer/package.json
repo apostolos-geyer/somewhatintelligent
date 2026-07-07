@@ -1,5 +1,5 @@
 {
-  "name": "@greenroom/bouncer-service",
+  "name": "@si/bouncer-service",
   "version": "0.2.2",
   "private": true,
   "type": "module",
@@ -16,22 +16,22 @@
     "test": "vp test run"
   },
   "dependencies": {
-    "@greenroom/config": "workspace:*",
-    "@greenroom/guestlist-service": "workspace:*",
-    "@greenroom/kit": "workspace:*",
+    "@si/config": "workspace:*",
+    "@si/guestlist-service": "workspace:*",
+    "@si/kit": "workspace:*",
     "arktype": "catalog:",
     "cookie-es": "^3.1.1"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.14.6",
-    "@greenroom/typescript-config": "workspace:*",
+    "@si/typescript-config": "workspace:*",
     "vite": "catalog:",
     "vite-plus": "catalog:",
     "vitest": "catalog:",
     "wrangler": "^4"
   },
   "portless": {
-    "name": "sproutportal",
+    "name": "somewhatintelligent",
     "script": "dev:bare"
   }
 }

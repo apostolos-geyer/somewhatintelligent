@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "sprout-guestlist-staging",
-  "account_id": "30ce6004cd9c2907f0b06fe401c4f4ba",
+  "name": "si-guestlist-staging",
+  "account_id": "c735c5a53d864bee37400befb7f4c7f4",
   "main": "src/index.ts",
   "compatibility_date": "2026-04-14",
   "compatibility_flags": ["nodejs_compat"],
@@ -13,9 +13,19 @@
   "preview_urls": true,
   "vars": {
     "ENVIRONMENT": "staging",
-    "BETTER_AUTH_URL": "https://identity-staging.sproutportal.ca",
-    "IDENTITY_URL": "https://identity-staging.sproutportal.ca",
-    "AUTH_DOMAIN": ".sproutportal.ca",
+    // Origin only — NOT `/account`. Better-auth appends its own `/api/auth`
+    // basePath (packages/auth/src/server.ts) to this, and identity's browser
+    // client always calls same-origin `/api/...` (window.location.origin has
+    // no path component), which bouncer's `/api` passthrough route serves
+    // straight off this same host. Also the base `formatAvatarUrl` in
+    // src/index.ts appends `/u/avatar/:refId` to.
+    "BETTER_AUTH_URL": "https://staging.somewhatintelligent.ca",
+    // Identity's PUBLIC address (vmf-mounted at `/account`) — used for
+    // browser-facing links this worker mints (OAuth-provider login/consent
+    // pages, org-invitation accept links). See bouncer/wrangler.jsonc's
+    // matching IDENTITY_URL comment for the vmf-mount rationale.
+    "IDENTITY_URL": "https://staging.somewhatintelligent.ca/account",
+    "AUTH_DOMAIN": ".somewhatintelligent.ca",
     "EMAIL_FROM": "identity@resend.dev",
   },
   "d1_databases": [
@@ -23,50 +33,52 @@
       "binding": "DB",
       "database_name": "guestlist-staging-db",
       "migrations_dir": "migrations",
-      "database_id": "a3843194-c218-4ff4-b656-dbe29e719ba2",
+      // TODO(provision): real D1 database_id from this fork's Cloudflare account.
+      "database_id": "00000000-0000-0000-0000-000000000000",
     },
   ],
   "services": [
     {
       "binding": "PROMOTER",
-      "service": "sprout-promoter-staging",
+      "service": "si-promoter-staging",
       "entrypoint": "Promoter",
     },
     {
       "binding": "ROADIE",
-      "service": "sprout-roadie-staging",
+      "service": "si-roadie-staging",
       "entrypoint": "Roadie",
       "props": { "callerApp": "guestlist" },
     },
   ],
   "env": {
     "production": {
-      "name": "sprout-guestlist-production",
+      "name": "si-guestlist-production",
       "preview_urls": false,
       "vars": {
         "ENVIRONMENT": "production",
-        "BETTER_AUTH_URL": "https://identity.sproutportal.ca",
-        "IDENTITY_URL": "https://identity.sproutportal.ca",
-        "AUTH_DOMAIN": ".sproutportal.ca",
-        "EMAIL_FROM": "Sprout <hello@sproutportal.ca>",
+        "BETTER_AUTH_URL": "https://somewhatintelligent.ca",
+        "IDENTITY_URL": "https://somewhatintelligent.ca/account",
+        "AUTH_DOMAIN": ".somewhatintelligent.ca",
+        "EMAIL_FROM": "somewhatintelligent <hello@somewhatintelligent.ca>",
       },
       "d1_databases": [
         {
           "binding": "DB",
           "database_name": "guestlist-production-db",
           "migrations_dir": "migrations",
-          "database_id": "d3ab5e57-0d01-4389-be33-72c31225cb7f",
+          // TODO(provision): real D1 database_id from this fork's Cloudflare account.
+          "database_id": "00000000-0000-0000-0000-000000000000",
         },
       ],
       "services": [
         {
           "binding": "PROMOTER",
-          "service": "sprout-promoter-production",
+          "service": "si-promoter-production",
           "entrypoint": "Promoter",
         },
         {
           "binding": "ROADIE",
-          "service": "sprout-roadie-production",
+          "service": "si-roadie-production",
           "entrypoint": "Roadie",
           "props": { "callerApp": "guestlist" },
         },
