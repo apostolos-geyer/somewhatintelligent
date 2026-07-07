@@ -27,7 +27,7 @@ export const BOUNCER_ATTESTATION_KEYS = {
   /** Well-known dev keypair — paired with `LOCAL_BNC_ATT_PRIV` in scripts/dev-config.ts. */
   dev: "MCowBQYDK2VwAyEAfw6nHplwIGKJBTJeITzErHw5kQej7FjhrcNIWEbP5cg=",
   /** Production — paired private key is si-bouncer-production's BNC_ATT_PRIV secret. */
-  production: "MCowBQYDK2VwAyEAdbRDzkgTCIpywDrP9yGs5Qzc3QL0gsBCzipLNSqO9AM=",
+  production: "MCowBQYDK2VwAyEAfOxYC2R3pp5KChlmBnpM2TyfPIoFcvbjZT7KO0yjfXU=",
 } as const satisfies Record<string, string>;
 
 export type BouncerAttestationKid = keyof typeof BOUNCER_ATTESTATION_KEYS;
