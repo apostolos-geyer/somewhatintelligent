@@ -82,7 +82,7 @@ aliases:
   #     The token must cover BOTH envs (Workers Scripts Edit + D1 Edit) — envs
   #     are `--env staging|production` suffixes on the SAME Cloudflare account,
   #     not separate accounts.
-  #   - GH_TOKEN: token for the private `rwx-automation-somewhatintelligent` GitHub App
+  #   - GH_TOKEN: token for the private `rwx-automation-si` GitHub App
   #     (`deployments: write`), consumed by scripts/rwx-github-deployment.sh to
   #     record this deploy under the repo's GitHub Deployments/Environments
   #     timeline, targeted at `init.gh-deployment-env`/`init.gh-deployment-url`
@@ -90,7 +90,7 @@ aliases:
   deploy-env: &deploy-env
     CLOUDFLARE_API_TOKEN: ${{ vaults.si_deploy.secrets.CLOUDFLARE_API_TOKEN }}
     CLOUDFLARE_ACCOUNT_ID: ${{ vaults.si_deploy.secrets.CLOUDFLARE_ACCOUNT_ID }}
-    GH_TOKEN: ${{ vaults.si_deploy.github-apps.rwx-automation-somewhatintelligent.token }}
+    GH_TOKEN: ${{ vaults.si_deploy.github-apps.rwx-automation-si.token }}
     GH_DEPLOYMENT_ENV: ${{ init.gh-deployment-env }}
     GH_DEPLOYMENT_URL: ${{ init.gh-deployment-url }}
 

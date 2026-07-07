@@ -23,7 +23,7 @@
 #     preview token can upload 0%-traffic versions, nothing else). Unlocked
 #     vault = any branch can upload versions; acceptable for this
 #     single-maintainer private repo.
-# Optionally grant the rwx-automation-somewhatintelligent GitHub App
+# Optionally grant the rwx-automation-si GitHub App
 # issues:write and add it to the vault for PR comments
 # (scripts/pr-preview-comment.sh degrades to run-links-only without it).
 # Vault does NOT exist yet on this fork — until `rwx vaults create --name

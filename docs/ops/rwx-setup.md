@@ -43,7 +43,7 @@ env-parameterized full-fleet reference (`.rwx/deploy.yml`).
    resolve in the lanes (clone + status checks) and turns on the `github:`
    triggers in `.rwx/*.yml`.
 3. Create the **automation GitHub App entry** named
-   `rwx-automation-somewhatintelligent` (RWX → Vaults → GitHub Apps), pointed
+   `rwx-automation-si` (RWX → Vaults → GitHub Apps), pointed
    at this repo, with these repository permissions:
    - `deployments: write` — fleet + per-worker GitHub Deployment records
      (`scripts/rwx-github-deployment.sh`)
@@ -85,7 +85,7 @@ rwx vaults secrets set --vault si_deploy \
   CLOUDFLARE_API_TOKEN=<the minted si-deploy token> \
   CLOUDFLARE_ACCOUNT_ID=c735c5a53d864bee37400befb7f4c7f4
 # Attach the GitHub App token to the same vault:
-#   Vaults -> si_deploy -> GitHub Apps -> rwx-automation-somewhatintelligent
+#   Vaults -> si_deploy -> GitHub Apps -> rwx-automation-si
 
 # Unlocked preview vault — any branch may upload 0%-traffic versions;
 # acceptable for this single-maintainer private repo because the token can
@@ -97,7 +97,7 @@ rwx vaults secrets set --vault si_preview \
 
 Vault/App names are load-bearing: the lanes reference
 `vaults.si_deploy.secrets.*`,
-`vaults.si_deploy.github-apps.rwx-automation-somewhatintelligent.token`, and
+`vaults.si_deploy.github-apps.rwx-automation-si.token`, and
 `vaults.si_preview.secrets.CLOUDFLARE_API_TOKEN_PREVIEW` literally.
 
 ## 4. Verify, lane by lane

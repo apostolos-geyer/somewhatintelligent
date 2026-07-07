@@ -90,7 +90,7 @@ aliases:
   deploy-env: &deploy-env
     CLOUDFLARE_API_TOKEN: ${{ vaults.si_deploy.secrets.CLOUDFLARE_API_TOKEN }}
     CLOUDFLARE_ACCOUNT_ID: ${{ vaults.si_deploy.secrets.CLOUDFLARE_ACCOUNT_ID }}
-    GH_TOKEN: ${{ vaults.si_deploy.github-apps.rwx-automation-somewhatintelligent.token }}
+    GH_TOKEN: ${{ vaults.si_deploy.github-apps.rwx-automation-si.token }}
     GH_DEPLOYMENT_ENV: production
     GH_DEPLOYMENT_URL: https://somewhatintelligent.ca
 

@@ -43,7 +43,7 @@ aliases:
   deploy-env: &deploy-env
     CLOUDFLARE_API_TOKEN: ${{ vaults.si_deploy.secrets.CLOUDFLARE_API_TOKEN }}
     CLOUDFLARE_ACCOUNT_ID: ${{ vaults.si_deploy.secrets.CLOUDFLARE_ACCOUNT_ID }}
-    GH_TOKEN: ${{ vaults.si_deploy.github-apps.rwx-automation-somewhatintelligent.token }}
+    GH_TOKEN: ${{ vaults.si_deploy.github-apps.rwx-automation-si.token }}
     GH_DEPLOYMENT_ENV: ${{ init.gh-deployment-env }}
     GH_DEPLOYMENT_URL: ${{ init.gh-deployment-url }}
 
@@ -92,8 +92,12 @@ tasks:
     if: ${{ init.deploy }}
     cache: false
     env:
+      # The RWX github context is not provided to this public repo's runs
+      # (greenroom, private, gets it; this repo demonstrably does not), so
+      # detect reads via the same automation-app token the deploy task uses —
+      # fine here because detect is deploy-gated (main-only, vault-unlocked).
       GH_TOKEN:
-        value: ${{ github.token }}
+        value: ${{ vaults.si_deploy.github-apps.rwx-automation-si.token }}
         cache-key: excluded
     run: |
       set -euo pipefail
