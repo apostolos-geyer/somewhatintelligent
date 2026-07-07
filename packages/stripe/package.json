@@ -12,6 +12,7 @@
     "fetch:strict": "bun run scripts/fetch.ts --strict",
     "sync": "bun run scripts/sync.ts",
     "validate": "bun run scripts/validate.ts",
+    "typecheck": "bun run fetch && tsgo --noEmit",
     "test": "vp test run"
   },
   "dependencies": {

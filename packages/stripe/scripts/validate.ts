@@ -12,7 +12,7 @@
  */
 
 import Stripe from "stripe";
-import { prices, products } from "../src/config";
+import { archived, prices, products } from "../src/config";
 import { CONFIG_KEY, CURRENCY, MANAGED_BY_KEY, MANAGED_BY_VALUE } from "../src/types";
 
 // Validate environment
@@ -31,6 +31,8 @@ console.log(`🔍 Validating Stripe configuration (${modeLabel} mode)...\n`);
 
 let hasErrors = false;
 let hasWarnings = false;
+const archivedProducts = new Set<string>(archived.products);
+const archivedPrices = new Set<string>(archived.prices);
 
 // ============================================================================
 // PRODUCTS
@@ -77,8 +79,12 @@ for (const [key, config] of Object.entries(products)) {
 for (const product of managedProducts) {
   const configKey = product.metadata[CONFIG_KEY];
   if (configKey && !(configKey in products)) {
-    console.log(`  ⚠️  ${product.name} (${product.id}) - orphaned (not in config)`);
-    hasWarnings = true;
+    if (archivedProducts.has(configKey)) {
+      console.log(`  🗄️  ${product.name} (${product.id}) - archived`);
+    } else {
+      console.log(`  ❌ ${product.name} (${product.id}) - orphaned (not in config)`);
+      hasErrors = true;
+    }
   }
 }
 
@@ -136,8 +142,12 @@ for (const [key, config] of Object.entries(prices)) {
 for (const price of managedPrices) {
   const configKey = price.metadata[CONFIG_KEY];
   if (configKey && !(configKey in prices)) {
-    console.log(`  ⚠️  ${configKey} (${price.id}) - orphaned (not in config)`);
-    hasWarnings = true;
+    if (archivedPrices.has(configKey)) {
+      console.log(`  🗄️  ${configKey} (${price.id}) - archived`);
+    } else {
+      console.log(`  ❌ ${configKey} (${price.id}) - orphaned (not in config)`);
+      hasErrors = true;
+    }
   }
 }
 
@@ -147,8 +157,10 @@ for (const price of managedPrices) {
 console.log("");
 
 if (hasErrors) {
-  console.log("❌ Validation FAILED - missing resources detected");
-  console.log("   Run `bun run sync` to create missing resources");
+  console.log("❌ Validation FAILED - missing resources or unmanaged orphans detected");
+  console.log(
+    "   Run `bun run sync` to create missing resources, or add intentional removals to archived",
+  );
   process.exit(1);
 } else if (hasWarnings) {
   console.log("⚠️  Validation passed with WARNINGS - drift detected");

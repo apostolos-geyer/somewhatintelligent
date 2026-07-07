@@ -365,6 +365,11 @@ tasks:
     filter: [*gate-filter, packages/secrets/**, *gate-neg]
     run: cd packages/secrets && bun run typecheck
     timeout: 8m
+  - key: typecheck-stripe
+    use: types
+    filter: [*gate-filter, packages/stripe/**, *gate-neg]
+    run: cd packages/stripe && bun run typecheck
+    timeout: 8m
   - key: typecheck-ui
     use: types
     filter: [*gate-filter, packages/ui/**, *gate-neg]
@@ -446,6 +451,16 @@ tasks:
       captain run si-secrets --print-summary
     outputs:
       test-results: [{ path: .captain-out/secrets.rwx.json }]
+  - key: test-stripe
+    use: [bootstrap, captain]
+    agent: *gate-agent
+    filter: [*gate-filter, packages/stripe/**, *gate-neg]
+    timeout: 8m
+    run: |
+      mkdir -p .captain-out
+      captain run si-stripe --print-summary
+    outputs:
+      test-results: [{ path: .captain-out/stripe.rwx.json }]
 
   # Single "all green" node so the deploy edge stays readable. Succeeds only if
   # every gate task above succeeded.
@@ -463,6 +478,7 @@ tasks:
       - typecheck-email
       - typecheck-og
       - typecheck-secrets
+      - typecheck-stripe
       - typecheck-ui
       - test-bouncer
       - test-guestlist
@@ -471,6 +487,7 @@ tasks:
       - test-store
       - test-kit
       - test-secrets
+      - test-stripe
     run: echo "gate green"
 
   # ---- Continuous deployment to staging (push to main, after gate is green) --

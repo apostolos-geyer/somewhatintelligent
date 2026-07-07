@@ -12,6 +12,7 @@ describe("workerName", () => {
   test("applies the fork prefix + env suffix", () => {
     expect(workerName("guestlist", "staging")).toBe("si-guestlist-staging");
     expect(workerName("bouncer", "production")).toBe("si-bouncer-production");
+    expect(workerName("store", "staging")).toBe("si-store-staging");
   });
 });
 
@@ -55,5 +56,26 @@ describe("pruned product secrets stay gone", () => {
   test("RTK_API_TOKEN (RealtimeKit) left with the sprout product", () => {
     expect(SECRETS.find((s) => s.name === "RTK_API_TOKEN")).toBeUndefined();
     expect(SECRETS.find((s) => s.name === "RTK_APP_ID")).toBeUndefined();
+  });
+});
+
+describe("Stripe secrets", () => {
+  test("are optional and shared by guestlist subscriptions plus store commerce", () => {
+    expect(byName("STRIPE_SECRET_KEY")).toMatchObject({
+      required: false,
+      perEnv: {
+        local: ["guestlist", "store"],
+        staging: ["guestlist", "store"],
+        production: ["guestlist", "store"],
+      },
+    });
+    expect(byName("STRIPE_WEBHOOK_SIGNING_SECRET")).toMatchObject({
+      required: false,
+      perEnv: {
+        local: ["guestlist", "store"],
+        staging: ["guestlist", "store"],
+        production: ["guestlist", "store"],
+      },
+    });
   });
 });
