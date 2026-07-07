@@ -31,11 +31,6 @@ export async function loadFonts(): Promise<SatoriFont[]> {
     aileItalic,
     iosevkaRegular,
     iosevkaBold,
-    boskaLight,
-    boskaRegular,
-    boskaMedium,
-    boskaBold,
-    boskaItalic,
   ] = await Promise.all([
     load("@si/design/fonts/iosevka-aile/IosevkaAile-Light.ttf"),
     load("@si/design/fonts/iosevka-aile/IosevkaAile-Regular.ttf"),
@@ -45,11 +40,6 @@ export async function loadFonts(): Promise<SatoriFont[]> {
     load("@si/design/fonts/iosevka-aile/IosevkaAile-Italic.ttf"),
     load("@si/design/fonts/iosevka/Iosevka-Regular.ttf"),
     load("@si/design/fonts/iosevka/Iosevka-Bold.ttf"),
-    load("@si/design/fonts/boska/Boska-Light.ttf"),
-    load("@si/design/fonts/boska/Boska-Regular.ttf"),
-    load("@si/design/fonts/boska/Boska-Medium.ttf"),
-    load("@si/design/fonts/boska/Boska-Bold.ttf"),
-    load("@si/design/fonts/boska/Boska-Italic.ttf"),
   ]);
 
   cached = [
@@ -61,11 +51,6 @@ export async function loadFonts(): Promise<SatoriFont[]> {
     { name: "Iosevka Aile", weight: 400, style: "italic", data: aileItalic },
     { name: "Iosevka", weight: 400, style: "normal", data: iosevkaRegular },
     { name: "Iosevka", weight: 700, style: "normal", data: iosevkaBold },
-    { name: "Boska", weight: 300, style: "normal", data: boskaLight },
-    { name: "Boska", weight: 400, style: "normal", data: boskaRegular },
-    { name: "Boska", weight: 500, style: "normal", data: boskaMedium },
-    { name: "Boska", weight: 700, style: "normal", data: boskaBold },
-    { name: "Boska", weight: 400, style: "italic", data: boskaItalic },
   ];
   return cached;
 }
