@@ -1,4 +1,5 @@
 import { instrumented } from "@si/kit/log";
+import { handleVersionRequest } from "@si/kit/version";
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { readCallerApp, type RoadieInstance } from "./log";
 import { actorId, validateMeta } from "./meta";
@@ -130,14 +131,19 @@ type RetOf<F extends (...args: never[]) => unknown> = Promise<
   Awaited<ReturnType<F>> | Result<never, "internal_error">
 >;
 
-// Default `fetch` returns 404: Roadie has no public HTTP surface in v1
-// (ADR-RD-001). Consumers reach Roadie exclusively over service bindings.
+// Default `fetch`: /__version (the only HTTP surface — version/commit are
+// ship-time-injected vars, see @si/kit/version), 404 for everything else:
+// Roadie has no other public HTTP surface in v1 (ADR-RD-001). Consumers
+// reach Roadie exclusively over service bindings.
 // `scheduled` dispatches the configured cron entries; v1 ships only the
 // pending reaper. The other scheduled tasks are stubbed via
 // adminTriggerTask (see spec §Deferrals).
 export default {
-  async fetch(): Promise<Response> {
-    return new Response(null, { status: 404 });
+  async fetch(request: Request, env: RoadieEnv): Promise<Response> {
+    return (
+      handleVersionRequest(request, { worker: "roadie", env }) ??
+      new Response(null, { status: 404 })
+    );
   },
   async scheduled(
     controller: ScheduledController,

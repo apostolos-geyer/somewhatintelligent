@@ -5,6 +5,7 @@ import {
   updateRequestContext,
   withRequestContext,
 } from "@si/kit/request-context";
+import { handleVersionRequest } from "@si/kit/version";
 import {
   buildAssetPrefixes,
   handleMountedApp,
@@ -89,6 +90,14 @@ function loadConfig(env: Env): CompiledConfig {
 
 export default {
   async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
+    // Bouncer's own version endpoint, answered BEFORE route matching so it
+    // works on every host bouncer fronts (values are ship-time-injected —
+    // see @si/kit/version). Mounted apps' endpoints stay reachable through
+    // their mounts: /account/__version is vmf-stripped to identity's
+    // /__version, /api/__version passes through to guestlist untouched.
+    const version = handleVersionRequest(request, { worker: "bouncer", env });
+    if (version) return version;
+
     // Bouncer is a public-edge ingress: no upstream caller, so the request
     // context carries only the request id. caller_app is meaningful only on
     // app/service boundaries that receive an x-caller-app header.

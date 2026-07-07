@@ -7,6 +7,7 @@ import {
 } from "@better-auth/oauth-provider";
 import { and, count, desc, eq, inArray, like, or } from "drizzle-orm";
 import { extractRequestId, getRequestId, withRequestContext } from "@si/kit/request-context";
+import { handleVersionRequest } from "@si/kit/version";
 import { ulid } from "@si/kit/ids";
 import { createRoadieClient } from "@si/roadie-service/client";
 import { platformDeployConfig } from "@si/config";
@@ -1142,6 +1143,17 @@ export type GuestlistApp = typeof app;
 //      anywhere except this boundary, and never pass them to authz code.
 export default withExecutionContext({
   fetch(request: Request): Promise<Response> {
+    // Version endpoint, answered at the boundary before Elysia routing.
+    // Two spellings: /__version (direct / service-binding calls) and
+    // /api/__version (bouncer mounts guestlist at /api in PASSTHROUGH mode —
+    // the prefix is not stripped, so the mounted spelling must answer too).
+    // Values are ship-time-injected vars — see @si/kit/version.
+    const version = handleVersionRequest(request, {
+      worker: "guestlist",
+      env,
+      paths: ["/__version", "/api/__version"],
+    });
+    if (version) return Promise.resolve(version);
     return withRequestContext(
       {
         requestId: extractRequestId(request),

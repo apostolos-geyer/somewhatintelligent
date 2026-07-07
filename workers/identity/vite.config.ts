@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { parse as parseJsonc } from "jsonc-parser";
@@ -85,6 +86,35 @@ const clientDefines = process.env.VITEST
       ]),
     );
 
+// Build-time app version + commit, baked via `define` (the inbox
+// vite-config pattern) into BOTH the client bundle (UI footer) and the SSR
+// worker bundle (/__version in src/worker.ts). Falls back safely when
+// package.json is unreadable or git is unavailable (e.g. a source archive
+// with no .git directory).
+function readAppVersion(): string {
+  try {
+    const pkg = JSON.parse(readFileSync(path.resolve(__dirname, "./package.json"), "utf8")) as {
+      version?: unknown;
+    };
+    return typeof pkg.version === "string" ? pkg.version : "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
+}
+
+function readGitSha(): string {
+  try {
+    return execSync("git rev-parse --short HEAD", {
+      cwd: __dirname,
+      stdio: ["ignore", "pipe", "ignore"],
+    })
+      .toString()
+      .trim();
+  } catch {
+    return "unknown";
+  }
+}
+
 // CF plugin's `ssr` environment declares every node built-in as `external`,
 // which vitest rejects. Drop CF-specific plugins under VITEST; the return-to
 // unit tests run as plain node.
@@ -109,7 +139,11 @@ export default defineConfig({
       "#": path.resolve(__dirname, "./src"),
     },
   },
-  define: clientDefines,
+  define: {
+    ...clientDefines,
+    __APP_VERSION__: JSON.stringify(readAppVersion()),
+    __APP_COMMIT__: JSON.stringify(readGitSha()),
+  },
   server: {
     port: Number(process.env.PORT) || 5173,
     host: "0.0.0.0",

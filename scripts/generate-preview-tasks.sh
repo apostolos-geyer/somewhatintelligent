@@ -59,7 +59,12 @@ for w in ${CHANGED}; do
     ${build}
     cd workers/${w}
     export WRANGLER_OUTPUT_FILE_PATH=/tmp/wr-${w}.ndjson
-    bunx wrangler versions upload --tag "pr-${PR}-${SHA}" --preview-alias "pr-${PR}" --message "PR #${PR}" | tee /tmp/upload-${w}.log
+    # --var: ship-time version stamping for /__version (mirrors
+    # scripts/deploy-worker.sh) so a version PROMOTED on merge reports the
+    # version/commit it was built from, not fallbacks. WORKER_COMMIT is the
+    # PR head sha this upload is tagged with.
+    WVER="\$(jq -r '.version // "0.0.0"' package.json)"
+    bunx wrangler versions upload --tag "pr-${PR}-${SHA}" --preview-alias "pr-${PR}" --message "PR #${PR}" --var "WORKER_VERSION:\${WVER}" --var "WORKER_COMMIT:${SHA}" | tee /tmp/upload-${w}.log
     VID="\$(jq -r 'select(.type == "version-upload") | .version_id // empty' /tmp/wr-${w}.ndjson | tail -1)"
     # Stable per-PR alias first, per-version URL as fallback (fields verified
     # against a real upload's ndjson: version_id / preview_url / preview_alias_url).

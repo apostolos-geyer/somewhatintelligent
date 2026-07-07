@@ -26,6 +26,7 @@ import {
 import { PlatformNav, type PlatformApp } from "@si/ui/components/platform-nav";
 import type { PlatformSession } from "@si/auth";
 import { SidebarUserMenu } from "@/components/dashboard/sidebar-user-menu";
+import { APP_COMMIT, APP_VERSION } from "@/lib/version";
 import { isAdminRole } from "@si/kit/roles";
 
 // Only the apps this fork actually ships. The source template shipped extra
@@ -123,6 +124,10 @@ export function AppSidebar({ session }: { session: PlatformSession }) {
 
       <SidebarFooter>
         <SidebarUserMenu user={user} />
+        {/* Build fingerprint, rendered subtly (exec plan 0001). */}
+        <div className="px-2 pb-1 font-mono text-[10px] text-muted-foreground/60 group-data-[collapsible=icon]:hidden">
+          v{APP_VERSION} · {APP_COMMIT}
+        </div>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
