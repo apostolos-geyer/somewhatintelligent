@@ -8,16 +8,24 @@
  *   - PROMOTER-backed sendEmail callbacks (correlated via request-context)
  *   - executionContext-backed backgroundTasks handler
  *   - brand info pulled from `@si/config`
+ *   - Stripe billing config, gated on STRIPE_SECRET_KEY +
+ *     STRIPE_WEBHOOK_SIGNING_SECRET both being present (dormant in every
+ *     current env — see packages/stripe/README.md)
  *
  * Kept as a `(env, db) => auth` factory (not a top-level instance) so
  * `auth.codegen.ts` can call it with `process.env` stubs without importing
  * `cloudflare:workers` indirectly.
  */
-import { createPlatformAuth, type PlatformAuthSocialProviders } from "@si/auth";
+import {
+  createPlatformAuth,
+  type CreatePlatformAuthOptions,
+  type PlatformAuthSocialProviders,
+} from "@si/auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { ulid } from "@si/kit/ids";
 import { getRequestId } from "@si/kit/request-context";
 import { platformConfig } from "@si/config";
+import { stripePrices } from "@si/stripe";
 
 import type { Database } from "./db";
 import type { GuestlistEnv } from "./guestlist-env";
@@ -60,6 +68,19 @@ function buildSocialProviders(env: GuestlistEnv): PlatformAuthSocialProviders {
   };
 }
 
+// Dormant unless BOTH secrets reach this worker — see the `stripe` field doc
+// on `CreatePlatformAuthOptions` (packages/auth/src/server.ts). No env today
+// sets either, so this returns `undefined` and the plugin never enters the
+// `plugins` array.
+function buildStripeOptions(env: GuestlistEnv): CreatePlatformAuthOptions["stripe"] {
+  if (!env.STRIPE_SECRET_KEY || !env.STRIPE_WEBHOOK_SIGNING_SECRET) return undefined;
+  return {
+    secretKey: env.STRIPE_SECRET_KEY,
+    webhookSecret: env.STRIPE_WEBHOOK_SIGNING_SECRET,
+    memberPriceId: stripePrices.member_monthly,
+  };
+}
+
 export function createGuestlistAuth(env: GuestlistEnv, db: Database) {
   return createPlatformAuth({
     baseURL: env.BETTER_AUTH_URL,
@@ -72,6 +93,7 @@ export function createGuestlistAuth(env: GuestlistEnv, db: Database) {
     twoFactorIssuer: platformConfig.auth.twoFactorIssuer,
     database: drizzleAdapter(db, { provider: "sqlite", schema }),
     socialProviders: buildSocialProviders(env),
+    stripe: buildStripeOptions(env),
     sendEmail: {
       verification: async ({ user, url }) => {
         await env.PROMOTER.send(

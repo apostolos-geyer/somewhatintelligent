@@ -26,6 +26,11 @@ GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 LINKEDIN_CLIENT_ID=
 LINKEDIN_CLIENT_SECRET=
+# Stripe subscription billing — unset until Stripe onboarding (packages/
+# stripe/README.md). The better-auth stripe plugin stays out of the plugins
+# array entirely until BOTH are set.
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SIGNING_SECRET=
 `;
 
 writeDevVarsIfMissing(`${pkgDir}/.dev.vars`, devVars, label);

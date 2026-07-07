@@ -103,6 +103,24 @@ export const SECRETS: SecretSpec[] = [
     perEnv: { local: ["promoter"], staging: ["promoter"] },
   },
   {
+    name: "STRIPE_SECRET_KEY",
+    kind: { type: "provided" },
+    required: false,
+    description:
+      "Stripe secret key. Unset until Stripe onboarding — gates the better-auth " +
+      "stripe plugin (guestlist), which stays out of the plugins array entirely " +
+      "until this AND STRIPE_WEBHOOK_SIGNING_SECRET are both set.",
+    perEnv: { local: ["guestlist"], staging: ["guestlist"], production: ["guestlist"] },
+  },
+  {
+    name: "STRIPE_WEBHOOK_SIGNING_SECRET",
+    kind: { type: "provided" },
+    required: false,
+    description:
+      "Stripe webhook signing secret. Unset until Stripe onboarding — see " + "STRIPE_SECRET_KEY.",
+    perEnv: { local: ["guestlist"], staging: ["guestlist"], production: ["guestlist"] },
+  },
+  {
     name: "S3_ACCESS_KEY_ID",
     kind: { type: "provided" },
     required: false,

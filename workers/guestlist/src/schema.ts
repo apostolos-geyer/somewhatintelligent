@@ -21,6 +21,11 @@ export const user = sqliteTable("user", {
   banReason: text("ban_reason"),
   banExpires: integer("ban_expires", { mode: "timestamp_ms" }),
   twoFactorEnabled: integer("two_factor_enabled", { mode: "boolean" }).default(false),
+  // better-auth `stripe` plugin field (packages/auth/src/server.ts). Shipped
+  // now even though the plugin is dormant everywhere today — see
+  // docs/exec-plans/active/0001-greenfield-bootstrap.md Track B: flipping
+  // STRIPE_SECRET_KEY on later must not require a schema migration.
+  stripeCustomerId: text("stripe_customer_id"),
 });
 
 export const session = sqliteTable(
@@ -311,6 +316,10 @@ export const organization = sqliteTable(
     logo: text("logo"),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
     metadata: text("metadata"),
+    // better-auth `stripe` plugin field, organization-billing surface. See
+    // the `user.stripeCustomerId` comment above — shipped ahead of the
+    // plugin turning on.
+    stripeCustomerId: text("stripe_customer_id"),
   },
   (table) => [uniqueIndex("organization_slug_uidx").on(table.slug)],
 );
@@ -356,6 +365,35 @@ export const invitation = sqliteTable(
     index("invitation_organizationId_idx").on(table.organizationId),
     index("invitation_email_idx").on(table.email),
   ],
+);
+
+// better-auth `stripe` plugin's subscription table (packages/auth/src/
+// server.ts, `@better-auth/stripe`'s `subscriptions` schema fragment).
+// Shipped now, ahead of the plugin turning on, so onboarding a real Stripe
+// key later is a config flip, not a migration — see
+// docs/exec-plans/active/0001-greenfield-bootstrap.md Track B.
+export const subscription = sqliteTable(
+  "subscription",
+  {
+    id: text("id").primaryKey(),
+    plan: text("plan").notNull(),
+    referenceId: text("reference_id").notNull(),
+    stripeCustomerId: text("stripe_customer_id"),
+    stripeSubscriptionId: text("stripe_subscription_id"),
+    status: text("status").default("incomplete").notNull(),
+    periodStart: integer("period_start", { mode: "timestamp_ms" }),
+    periodEnd: integer("period_end", { mode: "timestamp_ms" }),
+    trialStart: integer("trial_start", { mode: "timestamp_ms" }),
+    trialEnd: integer("trial_end", { mode: "timestamp_ms" }),
+    cancelAtPeriodEnd: integer("cancel_at_period_end", { mode: "boolean" }).default(false),
+    cancelAt: integer("cancel_at", { mode: "timestamp_ms" }),
+    canceledAt: integer("canceled_at", { mode: "timestamp_ms" }),
+    endedAt: integer("ended_at", { mode: "timestamp_ms" }),
+    seats: integer("seats"),
+    billingInterval: text("billing_interval"),
+    stripeScheduleId: text("stripe_schedule_id"),
+  },
+  (table) => [index("subscription_referenceId_idx").on(table.referenceId)],
 );
 
 export const rateLimit = sqliteTable("rate_limit", {

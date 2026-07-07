@@ -29,6 +29,13 @@
       "when": 1779061448974,
       "tag": "0003_closed_wendigo",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1783405388019,
+      "tag": "0004_fearless_grandmaster",
+      "breakpoints": true
     }
   ]
 }

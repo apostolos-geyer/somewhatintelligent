@@ -7,14 +7,17 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsgo --noEmit"
+    "typecheck": "tsgo --noEmit",
+    "test": "vp test run"
   },
   "dependencies": {
     "@better-auth/api-key": "^1.6.0",
     "@better-auth/oauth-provider": "^1.6.0",
     "@better-auth/passkey": "^1.6.0",
+    "@better-auth/stripe": "1.6.13",
     "better-auth": "catalog:",
-    "cookie-es": "^3.1.1"
+    "cookie-es": "^3.1.1",
+    "stripe": "catalog:"
   },
   "devDependencies": {
     "@si/typescript-config": "workspace:*",

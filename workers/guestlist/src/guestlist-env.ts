@@ -36,6 +36,12 @@ export interface GuestlistEnv {
   FACEBOOK_CLIENT_SECRET?: string;
   LINKEDIN_CLIENT_ID?: string;
   LINKEDIN_CLIENT_SECRET?: string;
+  // Stripe subscription billing — optional, gates the better-auth `stripe`
+  // plugin (packages/auth/src/server.ts). Both must be present for the
+  // plugin to turn on; unset in every current env (dormant by design until
+  // Stripe onboarding — see packages/stripe/README.md).
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_WEBHOOK_SIGNING_SECRET?: string;
   PROMOTER: Service<typeof Promoter>;
   ROADIE: Service<typeof Roadie>;
 }

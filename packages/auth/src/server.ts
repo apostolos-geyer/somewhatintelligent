@@ -35,6 +35,8 @@ import {
 import { oauthProvider } from "@better-auth/oauth-provider";
 import { passkey } from "@better-auth/passkey";
 import { apiKey } from "@better-auth/api-key";
+import { stripe as stripePlugin } from "@better-auth/stripe";
+import Stripe from "stripe";
 
 // Platform-wide organization access control — extends BA's default statements
 // with platform-specific resources (theme, billing, scim). Roles stay
@@ -130,9 +132,47 @@ export interface CreatePlatformAuthOptions {
   sendEmail: PlatformAuthSendEmail;
   /** Optional background-task handler (ctx.waitUntil etc.). No-op when omitted. */
   backgroundTasks?: { handler: (promise: Promise<unknown>) => void };
+  /**
+   * Stripe subscription billing (better-auth's `stripe` plugin — single
+   * "member" plan, no storefront/checkout wiring here; a parallel track owns
+   * that). Threaded in raw, same as every other opt, so this module gains no
+   * hard dependency on a live Stripe account or on `@si/stripe`/`@si/config`.
+   *
+   * DORMANT BY DEFAULT: omit this (or leave `secretKey`/`webhookSecret`
+   * unset) and the plugin is left out of the `plugins` array entirely —
+   * not just disabled — so auth behavior is byte-identical to a build with
+   * no Stripe integration at all. This is the state of every env today.
+   * Both `secretKey` and `webhookSecret` must be present to turn it on.
+   */
+  stripe?: {
+    /** Stripe secret key. Caller resolves this from `STRIPE_SECRET_KEY`. */
+    secretKey: string;
+    /** Webhook signing secret. Caller resolves this from `STRIPE_WEBHOOK_SIGNING_SECRET`. */
+    webhookSecret: string;
+    /** Stripe price id for the single "member" subscription plan. */
+    memberPriceId: string;
+  };
 }
 
 export function createPlatformAuth(opts: CreatePlatformAuthOptions) {
+  // Built outside the `plugins` array (rather than inline like the
+  // socialProviders spreads above) because constructing it takes more than
+  // one expression: a Stripe client + the plugin factory call. `null` when
+  // gating fails, so the array below stays exactly as it was pre-Stripe.
+  const stripeConfig = opts.stripe;
+  const stripeBillingPlugin =
+    stripeConfig?.secretKey && stripeConfig.webhookSecret
+      ? stripePlugin({
+          stripeClient: new Stripe(stripeConfig.secretKey),
+          stripeWebhookSecret: stripeConfig.webhookSecret,
+          createCustomerOnSignUp: true,
+          subscription: {
+            enabled: true,
+            plans: [{ name: "member", priceId: stripeConfig.memberPriceId }],
+          },
+        })
+      : null;
+
   return betterAuth({
     baseURL: opts.baseURL,
     database: opts.database,
@@ -250,6 +290,10 @@ export function createPlatformAuth(opts: CreatePlatformAuthOptions) {
           });
         },
       }),
+      // Stripe subscription billing — see the `stripe` field doc above.
+      // Completely absent from this array (not merely disabled) whenever
+      // `opts.stripe` is unset, which is every current env.
+      ...(stripeBillingPlugin ? [stripeBillingPlugin] : []),
     ],
 
     emailAndPassword: {
