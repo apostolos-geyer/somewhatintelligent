@@ -1,0 +1,13 @@
+{
+  "extends": "@greenroom/typescript-config/base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "types": ["node", "bun"]
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules"]
+}

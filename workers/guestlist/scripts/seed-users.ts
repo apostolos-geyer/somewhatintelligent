@@ -92,6 +92,17 @@ console.log(
 
 $.cwd(serviceDir);
 
+// Optional Cloudflare Access service-token headers, for remote environments
+// gated by Zero Trust Access (e.g. staging.<zone> — see
+// scripts/provision/access.ts + docs/ops/provisioning.md at the repo root).
+// Additive/no-op when unset — local dev and any ungated remote URL are
+// unaffected.
+const accessHeaders: Record<string, string> = {};
+if (process.env.CF_ACCESS_CLIENT_ID && process.env.CF_ACCESS_CLIENT_SECRET) {
+  accessHeaders["CF-Access-Client-Id"] = process.env.CF_ACCESS_CLIENT_ID;
+  accessHeaders["CF-Access-Client-Secret"] = process.env.CF_ACCESS_CLIENT_SECRET;
+}
+
 for (const u of users) {
   const email = u.email;
   const password = u.password;
@@ -103,7 +114,7 @@ for (const u of users) {
   // Sign up — ignore errors (user may already exist)
   const signupInit: RequestInit = {
     method: "POST",
-    headers: { "Content-Type": "application/json", Origin: authBaseUrl },
+    headers: { "Content-Type": "application/json", Origin: authBaseUrl, ...accessHeaders },
     body: JSON.stringify({ email, password, name }),
   };
   if (isLocalTls) {

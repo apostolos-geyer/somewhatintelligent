@@ -30,6 +30,10 @@ out/
 # @si/secrets value store — generated/operator-provided secret values
 .secrets/
 
+# scripts/provision/ — minted Cloudflare tokens, R2 S3 keypairs, and Access
+# service-token credentials (docs/ops/provisioning.md). NEVER commit.
+.provision/
+
 # Local databases
 *.db
 *.db-shm
