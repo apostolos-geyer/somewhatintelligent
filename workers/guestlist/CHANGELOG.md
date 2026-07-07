@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/apostolos-geyer/somewhatintelligent/compare/guestlist-v0.3.0...guestlist-v0.4.0) (2026-07-07)
+
+
+### Features
+
+* **repo:** production cloudflare provisioning applied ([a28da28](https://github.com/apostolos-geyer/somewhatintelligent/commit/a28da284dbe22218d17e59d22557f71535d21c91))
+
 ## [0.3.0](https://github.com/apostolos-geyer/somewhatintelligent/compare/guestlist-v0.2.2...guestlist-v0.3.0) (2026-07-07)
 
 
