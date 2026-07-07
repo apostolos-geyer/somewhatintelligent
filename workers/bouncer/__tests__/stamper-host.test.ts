@@ -35,7 +35,7 @@ beforeEach(() => {
       { binding: "IDENTITY", host: "first.test", path: "/", mode: "passthrough" },
       { binding: "IDENTITY", host: "second.test", path: "/", mode: "passthrough" },
     ],
-  });
+  }) as unknown as Env["ROUTES"];
 });
 
 describe("envelope host stamping across hosts in one isolate", () => {

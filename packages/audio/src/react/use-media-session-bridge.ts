@@ -1,3 +1,6 @@
+/* oxlint-disable typescript/unbound-method -- zustand store methods are
+   arrow functions on the store object; referencing them detached is the
+   idiomatic selector pattern and never loses `this`. */
 "use client";
 
 import { useEffect } from "react";

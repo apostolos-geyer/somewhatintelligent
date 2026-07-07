@@ -137,6 +137,7 @@ describe("@instrumented class decorator", () => {
         return { ok: true };
       }
 
+      // oxlint-disable-next-line typescript/unbound-method -- decorator reference, not a call
       @logged.skip
       async healthCheck() {
         return { status: "healthy" };

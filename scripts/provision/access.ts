@@ -52,7 +52,6 @@ import {
   logFound,
   logSkip,
   logUpdate,
-  logWarn,
   parseCliArgs,
   REPO_ROOT,
   writeProvisionFile,
@@ -60,7 +59,6 @@ import {
   zoneName,
   type WorkerConfigFile,
 } from "./lib";
-import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 const POLICY_NAME = "si-staff-access";

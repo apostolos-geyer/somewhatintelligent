@@ -94,7 +94,7 @@ export function LogoLoading({
       len: el.getTotalLength(),
     }));
 
-    const offsets = new Array(strokes.length).fill(0) as number[];
+    const offsets: number[] = Array.from({ length: strokes.length }, () => 0);
     let orderIdx = 0;
     let expanded = true;
 

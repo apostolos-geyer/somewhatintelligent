@@ -157,7 +157,7 @@ export function describeThrown(e: unknown): { message: string; stack?: string } 
     try {
       return { message: JSON.stringify(e).slice(0, 500) };
     } catch {
-      return { message: String(e) };
+      return { message: "[unserializable object]" };
     }
   }
   return { message: String(e) };

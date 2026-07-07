@@ -44,9 +44,20 @@ export default defineConfig({
     // git worktrees under `.claude/` (which duplicate every `__tests__` file and
     // drag in stale copies) — plus the Playwright `e2e/**` specs, which call
     // Playwright's `test()` and must run via `bun run test:e2e`, never vitest.
-    // Per-worker pool-worker suites still run in their own per-service tier
-    // (`cd <service> && bun run test`) — see docs/ARCHITECTURE.md and each
-    // worker's own README for the pool-worker test tier.
-    exclude: [...defaultExclude, ...testExcludePatterns, "e2e/**"],
+    // Per-worker suites are their OWN tier (`cd <worker> && bun run test`,
+    // which is also what CI's per-package gate runs): they import
+    // `cloudflare:test` (workerd-only) or app-local aliases that only that
+    // worker's vite config resolves, so root discovery must skip them or the
+    // root run is permanently red with runner-mismatch noise. Same for
+    // `packages/kit`'s decorator-based log tests (needs kit's transform).
+    // Root `bun run test` therefore covers the packages/* unit tier only.
+    exclude: [
+      ...defaultExclude,
+      ...testExcludePatterns,
+      "e2e/**",
+      "workers/**/__tests__/**",
+      "**/*.itest.ts",
+      "packages/kit/src/log/__tests__/instrumented.test.ts",
+    ],
   },
 });

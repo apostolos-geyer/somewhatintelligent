@@ -364,7 +364,7 @@ function resamplePeaks(peaks: number[], target: number): number[] {
     return out;
   }
   // Up-sample by nearest-neighbour. Cheap; rare path (we usually downsample).
-  const out: number[] = new Array(target);
+  const out: number[] = Array.from({ length: target }, () => 0);
   for (let i = 0; i < target; i++) {
     out[i] = peaks[Math.floor((i / target) * peaks.length)]!;
   }

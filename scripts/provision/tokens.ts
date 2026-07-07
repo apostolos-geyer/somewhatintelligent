@@ -51,7 +51,6 @@ import {
   logFound,
   logSkip,
   logUpdate,
-  logWarn,
   parseCliArgs,
   resolvePermissionGroups,
   writeProvisionFile,

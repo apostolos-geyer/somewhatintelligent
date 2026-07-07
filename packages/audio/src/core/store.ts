@@ -1,3 +1,6 @@
+/* oxlint-disable typescript/unbound-method -- zustand store methods are
+   arrow functions on the store object; referencing them detached is the
+   idiomatic selector pattern and never loses `this`. */
 /**
  * Audio player store with FSM-based state management and queue support.
  *
@@ -294,7 +297,7 @@ export function createAudioPlayerStore(
                 const newState = get();
                 if (newState.fsm.intent === "play" && currentEngine) {
                   logger.store.info("restarting playback after transition (intent: play)");
-                  currentEngine.play();
+                  void currentEngine.play();
                 }
               } else {
                 logger.store.debug(`canplay event ignored (state: ${fsm.playbackState})`);

@@ -3,7 +3,7 @@ import { SELF, env } from "cloudflare:test";
 beforeEach(() => {
   env.ROUTES = JSON.stringify({
     routes: [{ binding: "WWW", host: "platform.test", path: "/" }],
-  });
+  }) as unknown as Env["ROUTES"];
 });
 
 describe("proxy / dispatch", () => {
