@@ -16,6 +16,14 @@ import { type } from "arktype";
 // `vmf`: one or more mount-naive upstreams under this MOUNT — bouncer runs
 // the full Cloudflare-microfrontend transformation pipeline (path strip,
 // asset-prefix rewriting, Location/cookie path scoping, preload injection).
+// The mounted app serves at its OWN root (bouncer strips the mount inbound)
+// and stays entirely prefix-free server-side; bouncer rewrites the outbound
+// artifacts (asset paths, Location, Set-Cookie paths) back under the mount.
+// The identity (`/account`) and store (`/shop`) SPAs are mounted this way.
+// The one thing vmf cannot rewrite is a hydrated client router's history/link
+// state — so each SPA closes that gap itself with a CLIENT-ONLY router
+// `basepath` fed by a single `PUBLIC_BASE` config value (see decision #14 in
+// docs/exec-plans/active/0001-greenfield-bootstrap.md).
 // `redirect`: bouncer answers directly with a Location redirect — no
 // upstream `binding` involved at all.
 // Mode is fixed per (host, mount) — e.g. one host can freely run `/api` in
