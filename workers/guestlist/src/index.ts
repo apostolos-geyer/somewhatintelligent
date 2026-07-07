@@ -12,10 +12,21 @@ import { ulid } from "@si/kit/ids";
 import { createRoadieClient } from "@si/roadie-service/client";
 import { platformDeployConfig } from "@si/config";
 
+// @elysiajs/cors tests each RegExp against the full `Origin` header value
+// (scheme + host, e.g. "https://somewhatintelligent.ca"), not just the
+// hostname — so the pattern must be anchored start-to-end and account for
+// the bare apex itself, not only its subdomains. A suffix-only
+// `\.${domain}$` pattern requires a literal "." immediately before the
+// domain, which every subdomain has but the bare apex does not (the
+// character before it is "/" from "https://"), silently locking real
+// top-level-origin requests (e.g. a same-page fetch/XHR from
+// "https://somewhatintelligent.ca") out of CORS in production.
 const escapeDot = (d: string) => d.replace(/\./g, "\\.");
+const originPattern = (domain: string) =>
+  new RegExp(`^https?://([a-z0-9-]+\\.)*${escapeDot(domain)}$`);
 const corsOrigins = [
-  new RegExp(`\\.${escapeDot(platformDeployConfig.baseDomain)}$`),
-  new RegExp(`\\.${escapeDot(platformDeployConfig.devDomain)}$`),
+  originPattern(platformDeployConfig.baseDomain),
+  originPattern(platformDeployConfig.devDomain),
 ];
 
 import { env } from "./env";
