@@ -1,7 +1,7 @@
 import { createRouter as createTanStackRouter } from "@tanstack/react-router";
 import type { PlatformSession } from "@si/auth";
 import { routeTree } from "@/routeTree.gen";
-import { resolveBasepath } from "@/lib/basepath";
+import { readMountMeta, resolveBasepath } from "@/lib/basepath";
 
 export interface RouterContext {
   session: PlatformSession | null;
@@ -19,6 +19,7 @@ export function getRouter() {
     basepath: resolveBasepath({
       isServer: typeof window === "undefined",
       publicBase: import.meta.env.PUBLIC_BASE,
+      mountMeta: readMountMeta(),
     }),
     scrollRestoration: true,
     defaultPreload: "intent",

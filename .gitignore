@@ -111,3 +111,6 @@ wrangler.solo.jsonc
 
 # design redesign proof screenshots (committed evidence)
 !docs/design/redesign-proof/*.png
+
+# bundled provisioning scripts (sandbox node workaround)
+.provision-build/

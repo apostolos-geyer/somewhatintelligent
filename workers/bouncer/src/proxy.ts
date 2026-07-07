@@ -342,6 +342,30 @@ class SmoothTransitionsInjector {
 }
 
 /**
+ * HTMLRewriter handler that announces the vmf mount to the hydrated client.
+ *
+ * vmf strips the mount server-side (apps serve at their own root, prefix-free)
+ * and rewrites HTTP-layer artifacts, but the one thing it cannot reach is the
+ * SPA router's client-side history: after hydration the browser URL carries
+ * the mount while the app's router thinks in root paths. This meta tag is the
+ * runtime contract that closes that gap — each mounted app's router reads
+ * `<meta name="si-mount">` at hydration and adopts it as its client basepath.
+ * No build-time configuration, correct for any mount, absent in dev-direct
+ * (no bouncer → no meta → basepath "/").
+ */
+class MountMetaInjector {
+  private injected = false;
+
+  constructor(private mount: string) {}
+
+  element(el: Element) {
+    if (this.injected || this.mount === "/" || this.mount === "") return;
+    this.injected = true;
+    el.append(`<meta name="si-mount" content="${this.mount}">`, { html: true });
+  }
+}
+
+/**
  * HTMLRewriter handler that injects speculation rules for prefetching routes.
  *
  * Injects a <script type="speculationrules"> element into the <head> to enable
@@ -653,6 +677,7 @@ function buildHtmlRewriter(
     "*",
     new AllAttributesRewriter(mountActual, assetPrefixes),
   );
+  rewriter.on("head", new MountMetaInjector(mountActual));
   if (options?.smoothTransitions) rewriter.on("head", new SmoothTransitionsInjector());
 
   if (options?.preloadStaticMounts?.length) {

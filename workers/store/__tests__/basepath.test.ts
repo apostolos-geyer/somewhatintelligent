@@ -39,3 +39,27 @@ describe("resolveBasepath", () => {
     expect(resolveBasepath({ isServer: false, publicBase: "/" })).toBe("/");
   });
 });
+
+describe("resolveBasepath — runtime si-mount meta", () => {
+  test("client: mount meta wins over PUBLIC_BASE", () => {
+    expect(resolveBasepath({ isServer: false, publicBase: "/shop", mountMeta: "/other" })).toBe(
+      "/other",
+    );
+  });
+  test("client: falls back to PUBLIC_BASE when no meta", () => {
+    expect(resolveBasepath({ isServer: false, publicBase: "/shop", mountMeta: null })).toBe(
+      "/shop",
+    );
+    expect(resolveBasepath({ isServer: false, publicBase: "/shop", mountMeta: "  " })).toBe(
+      "/shop",
+    );
+  });
+  test("server: meta never applies — bouncer already stripped the mount", () => {
+    expect(resolveBasepath({ isServer: true, publicBase: "/shop", mountMeta: "/shop" })).toBe("/");
+  });
+  test("meta is normalized like any base", () => {
+    expect(resolveBasepath({ isServer: false, publicBase: null, mountMeta: "shop/" })).toBe(
+      "/shop",
+    );
+  });
+});

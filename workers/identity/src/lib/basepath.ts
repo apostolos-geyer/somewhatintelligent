@@ -1,7 +1,7 @@
 /**
- * The mount-prefix resolver — the ONE place the `/shop` prefix enters app code.
+ * The mount-prefix resolver — the ONE place the `/account` mount enters app code.
  *
- * The store is vmf-mounted at `/shop` behind bouncer: bouncer STRIPS the mount
+ * Identity is vmf-mounted at `/account` behind bouncer: bouncer STRIPS the mount
  * before the request reaches the worker, so the SERVER always serves at root
  * (`/`, `/products/$slug`, …) and every route definition / `<Link>` / redirect
  * in the app stays prefix-free. The one thing bouncer's HTTP-layer rewrite
@@ -12,8 +12,8 @@
  * client-side navigation and hard refreshes, with zero prefixes in app code.
  *
  * `PUBLIC_BASE` is injected into the client bundle from a single wrangler var
- * (see vite.config.ts CLIENT_VARS): `/shop` in staging/production, `/` in
- * local dev-direct (no bouncer, no mount).
+ * (see vite.config.ts CLIENT_VARS): absent for identity (the runtime
+ * si-mount meta is the only source); `/` in local dev-direct.
  */
 
 /** Normalize a raw base to a leading-slash, no-trailing-slash form ("/" stays "/"). */
