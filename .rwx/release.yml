@@ -166,6 +166,11 @@ tasks:
       # fatal there (no `|| true`), flipping this task's EXIT trap to `failure`.
       bash scripts/deploy-worker.sh ship "${WORKER}" production
 
+      # Per-worker GitHub Deployment record + compact commit comment for the
+      # re-ship (best-effort; the tag is a valid commit-ish for both APIs).
+      gh_worker_deployment "${WORKER}" "${{ init.tag }}"
+      gh_deploy_summary_comment "${{ init.tag }}"
+
       # Post-deploy apex smoke test (shared scripts/smoke-test.sh). The public
       # bouncer router at the production apex exercises the router path
       # end-to-end; a 5xx / no-connection fails and the EXIT trap reports

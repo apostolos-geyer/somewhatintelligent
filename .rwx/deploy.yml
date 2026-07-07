@@ -162,6 +162,10 @@ tasks:
       # trap reports the terminal deployment state (success/failure) to GitHub
       # with the environment URL + a link back to this RWX run.
       source scripts/rwx-github-deployment.sh
+      # Fresh summary scratch for THIS task (gh_deployment_create ran in the
+      # `migrate` task, i.e. a different agent — its truncation didn't happen
+      # here, and an agent reused across runs could hold stale lines).
+      : > "${GH_DEPLOY_SUMMARY_FILE}"
       trap 'rc=$?; if [ "$rc" -eq 0 ]; then gh_deployment_status success "deployed to ${{ init.env }}"; else gh_deployment_status failure "${{ init.env }} deploy failed"; fi; exit $rc' EXIT
       # True dependency order, not just "leaf services then apps": guestlist has
       # service bindings to promoter + roadie, so wrangler's binding-existence
@@ -177,7 +181,16 @@ tasks:
       # in one lane and miss the others.
       for w in promoter roadie guestlist identity store bouncer; do
         bash scripts/deploy-worker.sh deploy "$w" ${{ init.env }}
+        # Per-worker GitHub Deployment record (env `<env>/<worker>`) with the
+        # CF-dashboard deep link + live URL — best-effort, never turns the
+        # deploy red (scripts/rwx-github-deployment.sh).
+        gh_worker_deployment "$w" "${{ init.commit-sha }}"
       done
+
+      # Compact per-worker summary comment on the merged PR (or commit) —
+      # idempotent upsert by marker; placed BEFORE the smoke test because the
+      # workers above really shipped regardless of the smoke outcome.
+      gh_deploy_summary_comment "${{ init.commit-sha }}"
 
       # Post-deploy smoke test — the automated safety net that lets a tag push
       # auto-deploy prod with no human babysitting (see .rwx/release.yml header).

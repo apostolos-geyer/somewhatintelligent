@@ -420,7 +420,15 @@ tasks:
         esac
         echo "==> ${w}: migrate (if any) + deploy:production"
         bash scripts/deploy-worker.sh ship "$w" production
+        # Per-worker GitHub Deployment record (env `production/<worker>`) with
+        # the CF-dashboard deep link + live URL — best-effort.
+        gh_worker_deployment "$w" "${{ tasks.released-components.values.sha }}"
       done
+
+      # Compact per-worker summary comment (upserted on the release-PR merge
+      # commit's PR) — before the smoke test; the ships above are real
+      # regardless of the smoke outcome.
+      gh_deploy_summary_comment "${{ tasks.released-components.values.sha }}"
 
       # Post-deploy apex smoke test (shared scripts/smoke-test.sh). Always hits
       # the public bouncer router at the production apex end-to-end, regardless of

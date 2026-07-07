@@ -33,6 +33,13 @@ FORCE_FULL="${FORCE_FULL:-false}"
 REPO="apostolos-geyer/somewhatintelligent"
 ORDER=(promoter roadie guestlist identity store bouncer)
 
+# Per-worker GitHub Deployment records (env `staging/<worker>`, CF-dashboard +
+# live-URL links) — best-effort helpers, sourced so BOTH ship paths below
+# (version promotion and full deploy) record identically. The summary comment
+# itself is flushed by the calling lane (.rwx/promote-staging.yml).
+# shellcheck source=scripts/rwx-github-deployment.sh
+source "$(dirname "$0")/rwx-github-deployment.sh"
+
 if [ -z "${CHANGED}" ]; then
   echo "promote-staging: no affected workers — nothing to deploy"
   exit 0
@@ -79,4 +86,5 @@ for w in "${ORDER[@]}"; do
     mode="deployed"
   fi
   echo "${w}: ${mode}"
+  gh_worker_deployment "${w}" "${SHA}"
 done

@@ -137,4 +137,9 @@ tasks:
           --paginate --jq '.files[].filename' > /tmp/changed-files
       fi
       FILES=/tmp/changed-files bash scripts/promote-staging.sh
+      # promote-staging.sh recorded a per-worker GitHub Deployment (with CF
+      # dashboard + live-URL links) for each worker it shipped; upsert the
+      # compact summary comment before the smoke test (the ships above are
+      # real regardless of the smoke outcome).
+      gh_deploy_summary_comment "${SHA}"
       bash scripts/smoke-test.sh "${{ init.gh-deployment-url }}"
