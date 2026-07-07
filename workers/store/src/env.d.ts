@@ -16,6 +16,12 @@ interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
 
+interface Env {
+  STRIPE_SECRET_KEY: string;
+  STRIPE_WEBHOOK_SIGNING_SECRET: string;
+  STRIPE_EVENTS: Queue<import("@/lib/stripe-webhook").StoreStripeEventMessage>;
+}
+
 // Build-time version stamp, defined by vite.config.ts (rendered in the footer
 // via src/lib/version.ts). Safe fallbacks baked in when git/pkg unavailable.
 declare const __APP_VERSION__: string;

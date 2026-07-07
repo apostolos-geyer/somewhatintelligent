@@ -97,3 +97,16 @@ test-suites:
     retries:
       attempts: 2
       command: bunx vp test run --root packages/secrets '{{ file }}' -t '{{ testNamePattern }}' --reporter=default --reporter=json --outputFile=../../.captain-out/secrets.vitest.json
+
+  si-stripe:
+    command: bunx vp test run --root packages/stripe --reporter=default --reporter=json --outputFile=../../.captain-out/stripe.vitest.json
+    results:
+      language: JavaScript
+      framework: Vitest
+      path: .captain-out/stripe.vitest.json
+    output:
+      reporters:
+        rwx-v1-json: .captain-out/stripe.rwx.json
+    retries:
+      attempts: 2
+      command: bunx vp test run --root packages/stripe '{{ file }}' -t '{{ testNamePattern }}' --reporter=default --reporter=json --outputFile=../../.captain-out/stripe.vitest.json

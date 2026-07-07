@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { prices, products } from "../src/config";
+import { archived, prices, products } from "../src/config";
 import { CONFIG_KEY, CURRENCY, MANAGED_BY_KEY, MANAGED_BY_VALUE } from "../src/types";
 
 describe("products", () => {
@@ -59,5 +59,12 @@ describe("constants", () => {
     expect(MANAGED_BY_VALUE).toBe("si");
     expect(MANAGED_BY_KEY).toBe("managed_by");
     expect(CONFIG_KEY).toBe("config_key");
+  });
+});
+
+describe("archived resources", () => {
+  test("archive lists are explicit config-key allowlists", () => {
+    expect(archived.products).toEqual([]);
+    expect(archived.prices).toEqual([]);
   });
 });

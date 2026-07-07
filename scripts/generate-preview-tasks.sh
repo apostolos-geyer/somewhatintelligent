@@ -56,6 +56,16 @@ for w in ${CHANGED}; do
   run: |
     set -euo pipefail
     ${build}
+    # Store's Stripe queue binding is deploy-time infrastructure, not a useful
+    # per-PR preview dependency. Preview uploads run with the intentionally
+    # narrow si_preview token (Workers Scripts write, not Queues write) and the
+    # queue may not exist until the live Stripe wiring step. Strip the generated
+    # Vite deploy config before wrangler versions upload so a store preview
+    # can still validate the runnable web surface without requiring queue infra.
+    if [ "${w}" = "store" ] && [ -f "workers/store/dist/server/wrangler.json" ]; then
+      jq 'del(.queues)' workers/store/dist/server/wrangler.json > /tmp/store-preview-wrangler.json
+      mv /tmp/store-preview-wrangler.json workers/store/dist/server/wrangler.json
+    fi
     cd workers/${w}
     export WRANGLER_OUTPUT_FILE_PATH=/tmp/wr-${w}.ndjson
     # --var: ship-time version stamping for /__version (mirrors
