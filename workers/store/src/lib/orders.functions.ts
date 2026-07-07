@@ -10,6 +10,7 @@ import { type } from "arktype";
 import { customerOrder, orderItem, product, productVariant } from "@/db/schema";
 import { getDb } from "@/lib/db";
 import { ulid } from "@si/kit/ids";
+import { getPostHogClient } from "@/lib/posthog-server";
 import {
   authMiddleware,
   requireAdminMiddleware,
@@ -120,6 +121,18 @@ export const placeOrder = createServerFn({ method: "POST" })
     });
     // D1 batch — all-or-nothing.
     await db.batch([orderInsert, ...lineStatements]);
+
+    getPostHogClient().capture({
+      distinctId: context.session.user.id,
+      event: "order_placed",
+      properties: {
+        order_number: num,
+        item_count: lines.reduce((sum, l) => sum + l.quantity, 0),
+        subtotal_cents: subtotal,
+        shipping_cents: shippingCents,
+        total_cents: total,
+      },
+    });
 
     return { ok: true, orderNumber: num };
   });

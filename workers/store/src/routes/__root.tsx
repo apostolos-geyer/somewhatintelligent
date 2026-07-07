@@ -1,4 +1,5 @@
 import { HeadContent, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
+import { PostHogProvider } from "@posthog/react";
 import type { RouterContext } from "@/router";
 import { AppError, AppNotFound } from "@/components/app-status-pages";
 import { StorefrontHeader } from "@/components/storefront-header";
@@ -43,11 +44,21 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body className="bg-background text-foreground min-h-screen font-sans antialiased">
-        <AuthProvider initialSession={session}>
-          <StorefrontHeader />
-          {children}
-          <Toaster position="top-right" />
-        </AuthProvider>
+        <PostHogProvider
+          apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN!}
+          options={{
+            api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
+            defaults: "2026-05-30",
+            capture_exceptions: true,
+            debug: import.meta.env.DEV,
+          }}
+        >
+          <AuthProvider initialSession={session}>
+            <StorefrontHeader />
+            {children}
+            <Toaster position="top-right" />
+          </AuthProvider>
+        </PostHogProvider>
         <Scripts />
       </body>
     </html>

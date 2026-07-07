@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { MinusIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { usePostHog } from "@posthog/react";
 import { Button } from "@si/ui/components/button";
 import { Card } from "@si/ui/components/card";
 import { ProductImage } from "@/components/product-image";
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/_public/cart")({
 
 function CartPage() {
   const { lines, setQty, remove, subtotalCents, count } = useCart();
+  const posthog = usePostHog();
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 md:px-6 md:py-12">
@@ -47,7 +49,15 @@ function CartPage() {
                   <Button
                     variant="outline"
                     size="icon-sm"
-                    onClick={() => setQty(l.variantId, l.quantity - 1)}
+                    onClick={() => {
+                      posthog.capture("cart_quantity_changed", {
+                        variant_id: l.variantId,
+                        product_name: l.title,
+                        old_quantity: l.quantity,
+                        new_quantity: l.quantity - 1,
+                      });
+                      setQty(l.variantId, l.quantity - 1);
+                    }}
                     aria-label="Decrease"
                   >
                     <MinusIcon className="size-3.5" />
@@ -56,7 +66,15 @@ function CartPage() {
                   <Button
                     variant="outline"
                     size="icon-sm"
-                    onClick={() => setQty(l.variantId, l.quantity + 1)}
+                    onClick={() => {
+                      posthog.capture("cart_quantity_changed", {
+                        variant_id: l.variantId,
+                        product_name: l.title,
+                        old_quantity: l.quantity,
+                        new_quantity: l.quantity + 1,
+                      });
+                      setQty(l.variantId, l.quantity + 1);
+                    }}
                     aria-label="Increase"
                   >
                     <PlusIcon className="size-3.5" />
@@ -68,7 +86,16 @@ function CartPage() {
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  onClick={() => remove(l.variantId)}
+                  onClick={() => {
+                    posthog.capture("remove_from_cart", {
+                      variant_id: l.variantId,
+                      product_name: l.title,
+                      size: l.size,
+                      price_cents: l.priceCents,
+                      quantity: l.quantity,
+                    });
+                    remove(l.variantId);
+                  }}
                   aria-label="Remove"
                 >
                   <Trash2Icon className="size-3.5" />

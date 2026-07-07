@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { type } from "arktype";
+import { usePostHog } from "@posthog/react";
 import { useAppForm } from "@si/ui/hooks/use-app-form";
 import { Card, CardContent } from "@si/ui/components/card";
 import { Alert } from "@si/ui/components/alert";
@@ -24,6 +25,7 @@ export function SignUpForm({
   providers: SocialProviders;
 }) {
   const navigate = useNavigate();
+  const posthog = usePostHog();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,6 +53,7 @@ export function SignUpForm({
         setError(result.error.message ?? "Something went wrong.");
         setLoading(false);
       } else {
+        posthog.capture("signed_up", { method: "email" });
         void navigate({
           to: "/verify-email",
           search: {

@@ -1,6 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { type } from "arktype";
 import { toast } from "sonner";
+import { usePostHog } from "@posthog/react";
 import { Button } from "@si/ui/components/button";
 import { Card } from "@si/ui/components/card";
 import { useAppForm } from "@si/ui/hooks/use-app-form";
@@ -26,9 +28,20 @@ const checkoutSchema = type({
 function Checkout() {
   const { lines, subtotalCents, clear } = useCart();
   const navigate = useNavigate();
+  const posthog = usePostHog();
 
   const shippingCents = calculateShipping(subtotalCents);
   const totalCents = subtotalCents + shippingCents;
+
+  useEffect(() => {
+    if (lines.length > 0) {
+      posthog.capture("checkout_started", {
+        item_count: lines.reduce((sum, l) => sum + l.quantity, 0),
+        subtotal_cents: subtotalCents,
+        total_cents: totalCents,
+      });
+    }
+  }, []);
 
   const form = useAppForm({
     defaultValues: { name: "", line1: "", line2: "", city: "", region: "", postal: "", phone: "" },
@@ -55,6 +68,11 @@ function Checkout() {
           },
         });
         if (!result.ok) {
+          posthog.capture("checkout_failed", {
+            error: result.error,
+            item_count: lines.reduce((sum, l) => sum + l.quantity, 0),
+            total_cents: totalCents,
+          });
           toast.error(result.message ? `${result.error}: ${result.message}` : result.error);
           return;
         }
@@ -62,6 +80,7 @@ function Checkout() {
         toast.success("Order placed!");
         void navigate({ to: "/orders/$orderNumber", params: { orderNumber: result.orderNumber } });
       } catch (err) {
+        posthog.captureException(err);
         toast.error(err instanceof Error ? err.message : "Checkout failed");
       }
     },

@@ -1,7 +1,8 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { CheckIcon, ShoppingBagIcon } from "lucide-react";
+import { usePostHog } from "@posthog/react";
 import { Button } from "@si/ui/components/button";
 import { Badge } from "@si/ui/components/badge";
 import { ProductImage } from "@/components/product-image";
@@ -18,6 +19,7 @@ function ProductDetail() {
   const { product, images, variants } = Route.useLoaderData();
   const router = useRouter();
   const { add } = useCart();
+  const posthog = usePostHog();
   const [activeImage, setActiveImage] = useState(0);
   const [variantId, setVariantId] = useState<string | null>(
     variants.find((v) => v.stock > 0)?.id ?? null,
@@ -25,6 +27,16 @@ function ProductDetail() {
 
   const coverRef = images[0]?.roadieReferenceId ?? null;
   const selected = variants.find((v) => v.id === variantId) ?? null;
+
+  useEffect(() => {
+    posthog.capture("product_viewed", {
+      product_id: product.id,
+      product_slug: product.slug,
+      product_name: product.title,
+      price_cents: product.priceCents,
+      in_stock: variants.some((v) => v.stock > 0),
+    });
+  }, [product.id]);
 
   function addToCart() {
     if (!selected) {
@@ -43,6 +55,14 @@ function ProductDetail() {
       },
       1,
     );
+    posthog.capture("add_to_cart", {
+      product_id: product.id,
+      product_slug: product.slug,
+      product_name: product.title,
+      variant_id: selected.id,
+      size: selected.size,
+      price_cents: product.priceCents,
+    });
     toast.success(`Added ${product.title} (${selected.size}) to cart`);
     void router.invalidate();
   }
