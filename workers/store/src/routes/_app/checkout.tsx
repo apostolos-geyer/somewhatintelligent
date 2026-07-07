@@ -2,7 +2,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { type } from "arktype";
 import { toast } from "sonner";
-import { usePostHog } from "@posthog/react";
+import { useCapture, useCaptureException } from "@si/analytics/client";
+import type { CheckoutFailureReason } from "@si/analytics/events";
 import { Button } from "@si/ui/components/button";
 import { Card } from "@si/ui/components/card";
 import { useAppForm } from "@si/ui/hooks/use-app-form";
@@ -14,6 +15,10 @@ import { placeOrder } from "@/lib/orders.functions";
 export const Route = createFileRoute("/_app/checkout")({
   component: Checkout,
 });
+
+function toCheckoutFailureReason(error: string): CheckoutFailureReason {
+  return error === "out_of_stock" ? "out_of_stock" : "unknown";
+}
 
 const checkoutSchema = type({
   name: "2 <= string <= 120",
@@ -28,14 +33,15 @@ const checkoutSchema = type({
 function Checkout() {
   const { lines, subtotalCents, clear } = useCart();
   const navigate = useNavigate();
-  const posthog = usePostHog();
+  const capture = useCapture();
+  const captureException = useCaptureException();
 
   const shippingCents = calculateShipping(subtotalCents);
   const totalCents = subtotalCents + shippingCents;
 
   useEffect(() => {
     if (lines.length > 0) {
-      posthog.capture("checkout_started", {
+      capture("checkout_started", {
         item_count: lines.reduce((sum, l) => sum + l.quantity, 0),
         subtotal_cents: subtotalCents,
         total_cents: totalCents,
@@ -68,8 +74,8 @@ function Checkout() {
           },
         });
         if (!result.ok) {
-          posthog.capture("checkout_failed", {
-            error: result.error,
+          capture("checkout_failed", {
+            reason: toCheckoutFailureReason(result.error),
             item_count: lines.reduce((sum, l) => sum + l.quantity, 0),
             total_cents: totalCents,
           });
@@ -80,7 +86,7 @@ function Checkout() {
         toast.success("Order placed!");
         void navigate({ to: "/orders/$orderNumber", params: { orderNumber: result.orderNumber } });
       } catch (err) {
-        posthog.captureException(err);
+        captureException(err);
         toast.error(err instanceof Error ? err.message : "Checkout failed");
       }
     },

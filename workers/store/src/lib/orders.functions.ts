@@ -10,13 +10,14 @@ import { type } from "arktype";
 import { customerOrder, orderItem, product, productVariant } from "@/db/schema";
 import { getDb } from "@/lib/db";
 import { ulid } from "@si/kit/ids";
-import { getPostHogClient } from "@/lib/posthog-server";
+import { analyticsEvent } from "@/lib/middleware/analytics";
 import {
   authMiddleware,
   requireAdminMiddleware,
   requireAuthMiddleware,
 } from "@/lib/middleware/auth";
 import { isAdminRole } from "@si/kit/roles";
+import type { PlatformSession } from "@si/auth";
 import { ForbiddenError, NotFoundError } from "@/lib/errors";
 import { CARRIER_KEYS } from "@/lib/config";
 import { computeOrderTotals } from "@/lib/pricing";
@@ -49,15 +50,43 @@ const placeOrderInput = type({
 });
 
 export type PlaceOrderResult =
-  | { ok: true; orderNumber: string }
+  | {
+      ok: true;
+      orderNumber: string;
+      itemCount: number;
+      subtotalCents: number;
+      shippingCents: number;
+      totalCents: number;
+    }
   | { ok: false; error: string; message?: string };
 
 export const placeOrder = createServerFn({ method: "POST" })
-  .middleware([requireAuthMiddleware])
+  // ONE line instruments the fn AND auth-gates it (analyticsEvent folds in requireAuthMiddleware).
+  .middleware([
+    analyticsEvent("order_placed", ({ result }) => {
+      const r = result as PlaceOrderResult;
+      if (!r.ok) return null; // priced-failure is a RETURN, not a throw → emit nothing
+      return {
+        properties: {
+          order_number: r.orderNumber,
+          item_count: r.itemCount,
+          subtotal_cents: r.subtotalCents,
+          shipping_cents: r.shippingCents,
+          total_cents: r.totalCents,
+        },
+        group: true, // attach groups.organization when the session has an active org
+      };
+    }),
+  ])
   .inputValidator((data: typeof placeOrderInput.infer) => placeOrderInput.assert(data))
   .handler(async ({ data, context }): Promise<PlaceOrderResult> => {
     const db = getDb();
-    const variantIds = data.items.map((i) => i.variantId);
+    // The analyticsEvent seam composes requireAuthMiddleware but its
+    // AnyFunctionMiddleware typing widens the handler's inferred data/context,
+    // so re-narrow both here (the session cast mirrors the middleware's own).
+    const input = data as typeof placeOrderInput.infer;
+    const session = context.session as PlatformSession;
+    const variantIds = input.items.map((i) => i.variantId);
     const variants = await db
       .select()
       .from(productVariant)
@@ -69,7 +98,7 @@ export const placeOrder = createServerFn({ method: "POST" })
 
     // Pure pricing + stock validation (src/lib/pricing.ts). Price is taken from
     // the product row, never the client cart.
-    const priced = computeOrderTotals(data.items, variants, products);
+    const priced = computeOrderTotals(input.items, variants, products);
     if (!priced.ok) return priced;
     const { lines, subtotalCents: subtotal, shippingCents, totalCents: total } = priced;
 
@@ -77,13 +106,13 @@ export const placeOrder = createServerFn({ method: "POST" })
     const id = ulid();
     const num = orderNumber();
     const now = new Date();
-    const s = data.shipping;
+    const s = input.shipping;
 
     const orderInsert = db.insert(customerOrder).values({
       id,
       orderNumber: num,
-      userId: context.session.user.id,
-      email: context.session.user.email ?? "",
+      userId: session.user.id,
+      email: session.user.email ?? "",
       status: "pending",
       shipName: s.name,
       shipLine1: s.line1,
@@ -122,19 +151,14 @@ export const placeOrder = createServerFn({ method: "POST" })
     // D1 batch — all-or-nothing.
     await db.batch([orderInsert, ...lineStatements]);
 
-    getPostHogClient().capture({
-      distinctId: context.session.user.id,
-      event: "order_placed",
-      properties: {
-        order_number: num,
-        item_count: lines.reduce((sum, l) => sum + l.quantity, 0),
-        subtotal_cents: subtotal,
-        shipping_cents: shippingCents,
-        total_cents: total,
-      },
-    });
-
-    return { ok: true, orderNumber: num };
+    return {
+      ok: true,
+      orderNumber: num,
+      itemCount: lines.reduce((s, l) => s + l.quantity, 0),
+      subtotalCents: subtotal,
+      shippingCents,
+      totalCents: total,
+    };
   });
 
 export const listMyOrders = createServerFn({ method: "GET" })

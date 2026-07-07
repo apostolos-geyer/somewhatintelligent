@@ -1,10 +1,8 @@
-import { useEffect } from "react";
 import { HeadContent, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
-import { PostHogProvider, usePostHog } from "@posthog/react";
+import { AnalyticsProvider } from "@si/analytics/client";
 import { platformConfig } from "@si/config";
-import type { PlatformSession } from "@si/auth";
 import type { RouterContext } from "@/router";
 import { AppError, AppNotFound } from "@/components/app-status-pages";
 import { AuthProvider } from "@/lib/auth-context";
@@ -60,16 +58,6 @@ export const Route = createRootRouteWithContext<RouterContext>()({
   notFoundComponent: AppNotFound,
 });
 
-function PostHogIdentifier({ session }: { session: PlatformSession | null }) {
-  const posthog = usePostHog();
-  useEffect(() => {
-    if (session?.user) {
-      posthog.identify(session.user.id, { name: session.user.name });
-    }
-  }, [session?.user?.id]);
-  return null;
-}
-
 function RootDocument({ children }: { children: React.ReactNode }) {
   const { session } = Route.useRouteContext();
   return (
@@ -79,16 +67,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
-        <PostHogProvider
-          apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN!}
-          options={{
-            api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
-            defaults: "2026-05-30",
-            capture_exceptions: true,
-            debug: import.meta.env.DEV,
-          }}
-        >
-          <PostHogIdentifier session={session} />
+        <AnalyticsProvider app="identity" session={session}>
           <AuthProvider initialSession={session}>
             {children}
             <TanStackDevtools
@@ -102,7 +81,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             />
             <Scripts />
           </AuthProvider>
-        </PostHogProvider>
+        </AnalyticsProvider>
       </body>
     </html>
   );

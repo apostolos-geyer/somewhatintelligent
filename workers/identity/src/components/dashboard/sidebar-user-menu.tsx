@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { usePostHog } from "@posthog/react";
+import { useCapture } from "@si/analytics/client";
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@si/ui/components/sidebar";
 import {
   DropdownMenu,
@@ -25,11 +25,10 @@ type User = {
 
 export function SidebarUserMenu({ user }: { user: User }) {
   const navigate = useNavigate();
-  const posthog = usePostHog();
+  const capture = useCapture();
 
   async function handleSignOut() {
-    posthog.capture("signed_out");
-    posthog.reset();
+    capture("signed_out", {});
     const result = await authClient.signOut();
     if (result.error) {
       toast.error(result.error.message ?? "Failed to sign out");

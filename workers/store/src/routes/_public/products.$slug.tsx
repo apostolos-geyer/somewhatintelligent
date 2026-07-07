@@ -2,7 +2,7 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { CheckIcon, ShoppingBagIcon } from "lucide-react";
-import { usePostHog } from "@posthog/react";
+import { useCapture } from "@si/analytics/client";
 import { Button } from "@si/ui/components/button";
 import { Badge } from "@si/ui/components/badge";
 import { ProductImage } from "@/components/product-image";
@@ -19,7 +19,7 @@ function ProductDetail() {
   const { product, images, variants } = Route.useLoaderData();
   const router = useRouter();
   const { add } = useCart();
-  const posthog = usePostHog();
+  const capture = useCapture();
   const [activeImage, setActiveImage] = useState(0);
   const [variantId, setVariantId] = useState<string | null>(
     variants.find((v) => v.stock > 0)?.id ?? null,
@@ -29,7 +29,7 @@ function ProductDetail() {
   const selected = variants.find((v) => v.id === variantId) ?? null;
 
   useEffect(() => {
-    posthog.capture("product_viewed", {
+    capture("product_viewed", {
       product_id: product.id,
       product_slug: product.slug,
       product_name: product.title,
@@ -55,11 +55,10 @@ function ProductDetail() {
       },
       1,
     );
-    posthog.capture("add_to_cart", {
+    capture("cart_item_added", {
       product_id: product.id,
-      product_slug: product.slug,
-      product_name: product.title,
       variant_id: selected.id,
+      product_name: product.title,
       size: selected.size,
       price_cents: product.priceCents,
     });

@@ -20,7 +20,7 @@
     "test": "vp test run"
   },
   "dependencies": {
-    "@posthog/react": "^1.10.3",
+    "@si/analytics": "workspace:*",
     "@si/config": "workspace:*",
     "@si/design": "workspace:*",
     "@si/guestlist-service": "workspace:*",
@@ -34,7 +34,6 @@
     "@tanstack/router-plugin": "^1.132.0",
     "arktype": "catalog:",
     "lucide-react": "catalog:",
-    "posthog-node": "^5.39.4",
     "react": "catalog:",
     "react-dom": "catalog:",
     "simple-icons": "^16.16.0",

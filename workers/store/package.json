@@ -24,7 +24,7 @@
     "test:pool": "vp test run -c ./vitest.pool.config.ts"
   },
   "dependencies": {
-    "@posthog/react": "^1.10.3",
+    "@si/analytics": "workspace:*",
     "@si/config": "workspace:*",
     "@si/design": "workspace:*",
     "@si/guestlist-service": "workspace:*",
@@ -40,7 +40,6 @@
     "arktype": "catalog:",
     "drizzle-orm": "catalog:",
     "lucide-react": "catalog:",
-    "posthog-node": "^5.39.4",
     "react": "catalog:",
     "react-dom": "catalog:",
     "tailwindcss": "catalog:"

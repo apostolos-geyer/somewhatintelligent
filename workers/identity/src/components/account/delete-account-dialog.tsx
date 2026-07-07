@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { usePostHog } from "@posthog/react";
+import { useCapture } from "@si/analytics/client";
 import { buttonVariants } from "@si/ui/components/button";
 import { cn } from "@si/ui/lib/utils";
 import {
@@ -19,7 +19,7 @@ import { authClient } from "@/lib/auth-client";
 
 export function DeleteAccountDialog() {
   const navigate = useNavigate();
-  const posthog = usePostHog();
+  const capture = useCapture();
   const [loading, setLoading] = useState(false);
 
   async function handleDelete() {
@@ -30,8 +30,7 @@ export function DeleteAccountDialog() {
       setLoading(false);
       return;
     }
-    posthog.capture("account_deleted");
-    posthog.reset();
+    capture("account_deleted", {});
     void navigate({ to: "/sign-in" });
   }
 

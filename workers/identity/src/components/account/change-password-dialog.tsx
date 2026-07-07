@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { type } from "arktype";
-import { usePostHog } from "@posthog/react";
+import { useCapture } from "@si/analytics/client";
 import { useAppForm } from "@si/ui/hooks/use-app-form";
 import { buttonVariants } from "@si/ui/components/button";
 import { cn } from "@si/ui/lib/utils";
@@ -25,7 +25,7 @@ const passwordSchema = type({
 
 export function ChangePasswordDialog() {
   const [open, setOpen] = useState(false);
-  const posthog = usePostHog();
+  const capture = useCapture();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -52,7 +52,7 @@ export function ChangePasswordDialog() {
         return;
       }
 
-      posthog.capture("password_changed");
+      capture("password_changed", {});
       setSuccess("Password updated. The old one has been retired, and so on.");
     },
   });

@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { MinusIcon, PlusIcon, Trash2Icon } from "lucide-react";
-import { usePostHog } from "@posthog/react";
+import { useCapture } from "@si/analytics/client";
 import { Button } from "@si/ui/components/button";
 import { Card } from "@si/ui/components/card";
 import { ProductImage } from "@/components/product-image";
@@ -13,7 +13,7 @@ export const Route = createFileRoute("/_public/cart")({
 
 function CartPage() {
   const { lines, setQty, remove, subtotalCents, count } = useCart();
-  const posthog = usePostHog();
+  const capture = useCapture();
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 md:px-6 md:py-12">
@@ -50,12 +50,6 @@ function CartPage() {
                     variant="outline"
                     size="icon-sm"
                     onClick={() => {
-                      posthog.capture("cart_quantity_changed", {
-                        variant_id: l.variantId,
-                        product_name: l.title,
-                        old_quantity: l.quantity,
-                        new_quantity: l.quantity - 1,
-                      });
                       setQty(l.variantId, l.quantity - 1);
                     }}
                     aria-label="Decrease"
@@ -67,12 +61,6 @@ function CartPage() {
                     variant="outline"
                     size="icon-sm"
                     onClick={() => {
-                      posthog.capture("cart_quantity_changed", {
-                        variant_id: l.variantId,
-                        product_name: l.title,
-                        old_quantity: l.quantity,
-                        new_quantity: l.quantity + 1,
-                      });
                       setQty(l.variantId, l.quantity + 1);
                     }}
                     aria-label="Increase"
@@ -87,7 +75,7 @@ function CartPage() {
                   variant="ghost"
                   size="icon-sm"
                   onClick={() => {
-                    posthog.capture("remove_from_cart", {
+                    capture("cart_item_removed", {
                       variant_id: l.variantId,
                       product_name: l.title,
                       size: l.size,
