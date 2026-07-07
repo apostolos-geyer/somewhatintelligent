@@ -123,6 +123,17 @@ tasks:
       echo "$HOME/.bun/bin" > "$RWX_ENV/PATH"
       "$HOME/.bun/bin/bun" --version
 
+  # Real node, NOT optional: wrangler's bin is `#!/usr/bin/env node`, and with
+  # no node in the container `bun run` substitutes bun — under which
+  # `wrangler deploy` prints its banner and exits 0 WITHOUT uploading. Three
+  # re-ships (identity/store/bouncer v0.3.0) "succeeded" that way while
+  # deploying nothing. Every lane that runs wrangler must `use` node.
+  - key: node
+    call: nodejs/install 1.1.14
+    if: *reship-gate
+    with:
+      node-version: 24.16.0
+
   # UNFILTERED install, same shape as deploy.yml's — this lane BUILDS the app
   # workers, and the ci.yml-style outputs filter (node_modules/** only) drops
   # workspace bin links builds need (identity's `platform-og` from packages/og;
@@ -137,7 +148,7 @@ tasks:
   # Re-ship the single worker: D1 migrate (if it has one) BEFORE its code, then
   # deploy, then the apex smoke test. `cache: false` so wrangler always runs.
   - key: deploy-one
-    use: [system-packages, install]
+    use: [system-packages, install, node]
     if: *reship-gate
     cache: false
     timeout: 30m

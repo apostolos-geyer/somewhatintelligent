@@ -120,12 +120,22 @@ tasks:
     run: bun install --frozen-lockfile --ignore-scripts
     timeout: 8m
 
+  # Real node, NOT optional: wrangler's bin is `#!/usr/bin/env node`; with no
+  # node in the container `bun run` substitutes bun, under which
+  # `wrangler deploy` prints its banner and exits 0 WITHOUT uploading (the
+  # silent no-op that hit release.yml's re-ships). Every task that runs
+  # wrangler must have this in its `use` chain.
+  - key: node
+    call: nodejs/install 1.1.14
+    with:
+      node-version: 24.16.0
+
   # `cache: false` so a deploy ALWAYS executes wrangler — never replays a
   # cached "success" and silently skips shipping. Credentials come from a
   # locked vault, so this only resolves when the caller (ci.yml/release.yml)
   # is itself running in a context the vault unlocks for.
   - key: migrate
-    use: [system-packages, install] # system-packages first (install's chain builds on it); jq for the GitHub deployment API
+    use: [system-packages, install, node] # system-packages first (install's chain builds on it); jq for the GitHub deployment API
     if: ${{ init.deploy }}
     cache: false
     timeout: 8m
@@ -145,10 +155,11 @@ tasks:
       # before ANY code ships in the `deploy` task below — so a migration failure
       # aborts the whole fleet before a single worker is redeployed. The
       # per-worker migrate mechanics (and the no-`|| true` invariant) live in
-      # scripts/deploy-worker.sh, shared with the two production lanes; the two
-      # D1-backed workers are guestlist, roadie.
+      # scripts/deploy-worker.sh, shared with the two production lanes; the
+      # D1-backed workers are guestlist, roadie, store.
       bash scripts/deploy-worker.sh migrate guestlist ${{ init.env }}
       bash scripts/deploy-worker.sh migrate roadie ${{ init.env }}
+      bash scripts/deploy-worker.sh migrate store ${{ init.env }}
 
   - key: deploy
     use: [migrate]

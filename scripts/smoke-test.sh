@@ -20,8 +20,11 @@ set -euo pipefail
 url="${1:?usage: smoke-test.sh <url>}"
 echo "Smoke-testing ${url} ..."
 for attempt in 1 2 3 4 5; do
-  code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${url}/" || echo 000)"
-  if [ "$code" != "000" ] && [ "$code" -lt 500 ]; then
+  # curl prints its -w '%{http_code}' output ("000") even when the transfer
+  # fails, so a `|| echo 000` fallback CONCATENATES ("000000") — numerically 0,
+  # slipping past `-lt 500`. Only a real 1xx-4xx status may pass.
+  code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${url}/" || true)"
+  if [[ "$code" =~ ^[1-4][0-9]{2}$ ]]; then
     echo "smoke OK (HTTP ${code})"
     exit 0
   fi
