@@ -1,0 +1,130 @@
+// Storefront schema. All timestamps are unix milliseconds. User ids are bare
+// `text` columns holding bouncer user ids — this app owns no auth tables
+// (cross-subdomain SSO via bouncer; see docs/adding-an-app.md §2).
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { ORDER_STATUSES, PRODUCT_STATUSES } from "@/lib/config";
+
+// ── Catalog ────────────────────────────────────────────────────────────────
+
+// A sellable product (a T-shirt design). Admin-managed.
+export const product = sqliteTable(
+  "product",
+  {
+    id: text("id").primaryKey(),
+    slug: text("slug").notNull().unique(), // url key, e.g. "heavyweight-black-tee"
+    title: text("title").notNull(),
+    description: text("description"), // markdown / plain
+    priceCents: integer("price_cents").notNull().default(0),
+    // draft = hidden from storefront; active = listed; archived = soft-retired.
+    status: text("status", { enum: PRODUCT_STATUSES }).notNull().default("draft"),
+    createdBy: text("created_by").notNull(), // bouncer admin user id
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [index("idx_product_status").on(t.status)],
+);
+
+// Product images live in R2 via Roadie; we store the Roadie reference id and
+// serve bytes through /api/img/$refId (302 to a signed URL). `position` orders
+// the gallery; position 0 is the cover.
+export const productImage = sqliteTable(
+  "product_image",
+  {
+    id: text("id").primaryKey(),
+    productId: text("product_id")
+      .notNull()
+      .references(() => product.id, { onDelete: "cascade" }),
+    roadieReferenceId: text("roadie_reference_id").notNull(),
+    alt: text("alt"),
+    position: integer("position").notNull().default(0),
+    // null until the browser PUT + finalize round-trip completes.
+    uploadedAt: integer("uploaded_at", { mode: "timestamp_ms" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [index("idx_image_product").on(t.productId, t.position)],
+);
+
+// A purchasable variant of a product — a size, with its own SKU and stock.
+export const productVariant = sqliteTable(
+  "product_variant",
+  {
+    id: text("id").primaryKey(),
+    productId: text("product_id")
+      .notNull()
+      .references(() => product.id, { onDelete: "cascade" }),
+    size: text("size").notNull(), // S / M / L / XL ...
+    sku: text("sku").notNull().unique(),
+    stock: integer("stock").notNull().default(0),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [
+    index("idx_variant_product").on(t.productId),
+    uniqueIndex("idx_variant_product_size").on(t.productId, t.size),
+  ],
+);
+
+// ── Orders & fulfillment ─────────────────────────────────────────────────────
+
+// Named `customer_order` to dodge the `order` SQL keyword. One shipment per
+// order (it's a T-shirt shop). `status` is the combined order + fulfillment
+// lifecycle; the tracking fields drive the customer-facing shipment view.
+export const customerOrder = sqliteTable(
+  "customer_order",
+  {
+    id: text("id").primaryKey(),
+    orderNumber: text("order_number").notNull().unique(), // human handle, e.g. AT-7Q2K9
+    userId: text("user_id").notNull(), // bouncer buyer id
+    email: text("email").notNull(),
+    status: text("status", { enum: ORDER_STATUSES }).notNull().default("pending"),
+    // Shipping address snapshot.
+    shipName: text("ship_name").notNull(),
+    shipLine1: text("ship_line1").notNull(),
+    shipLine2: text("ship_line2"),
+    shipCity: text("ship_city").notNull(),
+    shipRegion: text("ship_region").notNull(),
+    shipPostal: text("ship_postal").notNull(),
+    shipCountry: text("ship_country").notNull().default("CA"),
+    shipPhone: text("ship_phone"),
+    // Money (integer cents, CAD).
+    subtotalCents: integer("subtotal_cents").notNull(),
+    shippingCents: integer("shipping_cents").notNull().default(0),
+    totalCents: integer("total_cents").notNull(),
+    // Fulfillment / tracking.
+    carrier: text("carrier"), // CarrierKey from lib/config.ts
+    trackingNumber: text("tracking_number"),
+    fulfillmentNote: text("fulfillment_note"),
+    shippedAt: integer("shipped_at", { mode: "timestamp_ms" }),
+    deliveredAt: integer("delivered_at", { mode: "timestamp_ms" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [
+    index("idx_order_user").on(t.userId, t.createdAt),
+    index("idx_order_status").on(t.status),
+  ],
+);
+
+// Line items — snapshot title/size/price at purchase time so later catalog
+// edits never rewrite a customer's order history.
+export const orderItem = sqliteTable(
+  "order_item",
+  {
+    id: text("id").primaryKey(),
+    orderId: text("order_id")
+      .notNull()
+      .references(() => customerOrder.id, { onDelete: "cascade" }),
+    productId: text("product_id").notNull(),
+    variantId: text("variant_id").notNull(),
+    titleSnapshot: text("title_snapshot").notNull(),
+    sizeSnapshot: text("size_snapshot").notNull(),
+    unitPriceCents: integer("unit_price_cents").notNull(),
+    quantity: integer("quantity").notNull(),
+  },
+  (t) => [index("idx_item_order").on(t.orderId)],
+);
+
+export type Product = typeof product.$inferSelect;
+export type ProductImage = typeof productImage.$inferSelect;
+export type ProductVariant = typeof productVariant.$inferSelect;
+export type CustomerOrder = typeof customerOrder.$inferSelect;
+export type OrderItem = typeof orderItem.$inferSelect;

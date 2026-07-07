@@ -40,6 +40,10 @@ export default defineConfig({
         workers: [
           { name: `${wp}guestlist-staging`, modules: true, scriptPath: mock("guestlist-stub") },
           { name: `${wp}identity-staging`, modules: true, scriptPath: mock("app-stub") },
+          // STORE is a real service binding in wrangler.jsonc (si-store-staging);
+          // miniflare must resolve it at boot. Bouncer dispatch/proxy logic is
+          // upstream-agnostic, so it shares the generic app stub like identity.
+          { name: `${wp}store-staging`, modules: true, scriptPath: mock("app-stub") },
           // Test-only fixtures bound via the serviceBindings map above (not real
           // wrangler.jsonc services): the routing/proxy/template-parity specs
           // dispatch through them, so they keep fixed, unprefixed names.

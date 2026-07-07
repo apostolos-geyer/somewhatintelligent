@@ -1,0 +1,5 @@
+@import "@si/design/theme.css";
+@source "../../../packages/ui/src/**/*.tsx";
+@source "../../../packages/ui/src/**/*.ts";
+@source "../**/*.tsx";
+@source "../**/*.ts";

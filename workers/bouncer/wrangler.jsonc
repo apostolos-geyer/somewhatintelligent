@@ -13,13 +13,13 @@
   "preview_urls": true,
   "vars": {
     "ENVIRONMENT": "staging",
-    // Identity's PUBLIC address, now that it's vmf-mounted under `/account`
-    // of the single-host apex (below) instead of its own dedicated host.
-    // Identity's own code never sees this path — bouncer's vmf mode strips
-    // it on the way in and rewrites it back on the way out (asset paths,
-    // Location redirects, Set-Cookie paths); see routes.ts's mode doc + the
-    // decision-log entry in docs/exec-plans/active/0001-greenfield-bootstrap.md
-    // for the one real gap that leaves open (client-side SPA navigation).
+    // Identity's PUBLIC address, vmf-mounted under `/account` of the
+    // single-host apex (below). Identity's own code never sees this path —
+    // bouncer's vmf mode strips it inbound and rewrites it back outbound
+    // (asset paths, Location, Set-Cookie). The one gap vmf can't cover —
+    // hydrated client-side SPA navigation — identity closes itself with a
+    // client-only router basepath fed by PUBLIC_BASE (decision #14 in
+    // docs/exec-plans/active/0001-greenfield-bootstrap.md).
     "IDENTITY_URL": "https://staging.somewhatintelligent.ca/account",
     // Bouncer is the attestation MINTER (src/envelope.ts signs with
     // env.BNC_ATT_KID + the BNC_ATT_PRIV secret) — unlike identity,
@@ -30,11 +30,13 @@
     "BNC_ATT_KID": "dev",
     "ROUTES": {
       "routes": [
-        // `/api` (passthrough) + `/account` (vmf) coexist on one host — the
-        // mode-consistency rule is per-(host, mount), not per-host, so this
-        // is legal (routes.ts's compileRoutes). `/` is a catch-all redirect
-        // to the future storefront; no STORE worker/binding exists yet, so
-        // it 404s at destination until a parallel track adds one.
+        // `/api` (passthrough) + `/account` + `/shop` (both vmf) coexist on one
+        // host — the mode-consistency rule is per-(host, mount), not per-host.
+        // `/account` (identity) and `/shop` (store) are vmf-mounted SPAs:
+        // bouncer strips the mount inbound + rewrites assets/Location/cookies
+        // outbound; each SPA carries a client-only router basepath (PUBLIC_BASE)
+        // for the client-side navigation the HTTP-layer rewrite can't reach.
+        // `/` is a catch-all redirect to `/shop`.
         {
           "binding": "GUESTLIST",
           "host": "staging.somewhatintelligent.ca",
@@ -45,6 +47,12 @@
           "binding": "IDENTITY",
           "host": "staging.somewhatintelligent.ca",
           "path": "/account",
+          "mode": "vmf",
+        },
+        {
+          "binding": "STORE",
+          "host": "staging.somewhatintelligent.ca",
+          "path": "/shop",
           "mode": "vmf",
         },
         {
@@ -60,6 +68,7 @@
   "services": [
     { "binding": "GUESTLIST", "service": "si-guestlist-staging" },
     { "binding": "IDENTITY", "service": "si-identity-staging" },
+    { "binding": "STORE", "service": "si-store-staging" },
   ],
   "routes": [{ "pattern": "staging.somewhatintelligent.ca", "custom_domain": true }],
   "env": {
@@ -89,13 +98,19 @@
               "mode": "vmf",
             },
             {
+              "binding": "STORE",
+              "host": "somewhatintelligent.ca",
+              "path": "/shop",
+              "mode": "vmf",
+            },
+            {
               "host": "somewhatintelligent.ca",
               "path": "/",
               "mode": "redirect",
               "to": "/shop",
               "status": 308,
             },
-            // www mirrors the apex exactly (same three mounts).
+            // www mirrors the apex exactly (same four mounts).
             {
               "binding": "GUESTLIST",
               "host": "www.somewhatintelligent.ca",
@@ -106,6 +121,12 @@
               "binding": "IDENTITY",
               "host": "www.somewhatintelligent.ca",
               "path": "/account",
+              "mode": "vmf",
+            },
+            {
+              "binding": "STORE",
+              "host": "www.somewhatintelligent.ca",
+              "path": "/shop",
               "mode": "vmf",
             },
             {
@@ -121,6 +142,7 @@
       "services": [
         { "binding": "GUESTLIST", "service": "si-guestlist-production" },
         { "binding": "IDENTITY", "service": "si-identity-production" },
+        { "binding": "STORE", "service": "si-store-production" },
       ],
       "routes": [
         // www as a custom domain — wrangler auto-creates its proxied DNS

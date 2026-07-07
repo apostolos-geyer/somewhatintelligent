@@ -132,6 +132,28 @@ Making roadie images actually render needs the keypair **plus** bucket CORS
 **plus** `props.callerApp` on every `ROADIE` service binding — see
 `docs/runbooks/roadie-r2-provisioning.md`.
 
+## store (`workers/store`)
+
+Dev-direct TanStack Start storefront, vmf-mounted at `/shop` behind bouncer.
+Self-mints its dev attestation envelope (bouncer isn't in the path on
+`*.somewhatintelligent.localhost`), so it carries the dev signing key in `.dev.vars` — but
+holds no secret in staging/production. Binds `DB` (D1), `GUESTLIST`, `ROADIE`.
+
+| name           | consumed by                                                 | dev source                                                                                | staging + production source                                                                                          |
+| -------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `ENVIRONMENT`  | `src/lib/platform.ts`                                       | `env-init` via `PLATFORM_DEV_VARS` (`development`)                                        | wrangler var                                                                                                         |
+| `PUBLIC_BASE`  | `src/lib/basepath.ts` → `src/router.tsx` (client basepath)  | `env-init` (`/` — dev-direct has no mount)                                                | wrangler var (`/shop`) — the sole source of the client-only router basepath so the URL bar keeps the mount prefix    |
+| `STORE_URL`    | `src/lib/platform.ts` (`expectedHost`), header sign-in link | `env-init` (`https://store.somewhatintelligent.localhost`); client prefers `PORTLESS_URL` | wrangler var — the store's own PUBLIC address (`.../shop`)                                                           |
+| `IDENTITY_URL` | `src/lib/auth-client.ts` (SSR `/api` base), sign-in link    | `env-init` via `PLATFORM_DEV_VARS`                                                        | wrangler var — identity's PUBLIC address; SSR derives the bare same-host origin via `new URL(...).origin` for `/api` |
+| `AUTH_DOMAIN`  | (platform helpers)                                          | `env-init` via `PLATFORM_DEV_VARS` (`LOCAL_AUTH_DOMAIN`)                                  | wrangler var                                                                                                         |
+| `BNC_ATT_KID`  | kit dev-envelope stamper (`src/lib/platform.ts`)            | `env-init` (`LOCAL_BNC_ATT_KID` = `dev`)                                                  | absent (bouncer mints; app verifies with committed public keys)                                                      |
+| `BNC_ATT_PRIV` | kit dev-envelope stamper                                    | `env-init` (`LOCAL_BNC_ATT_PRIV`)                                                         | absent (bouncer holds it)                                                                                            |
+
+`import.meta.env.{STORE_URL,IDENTITY_URL,AUTH_DOMAIN,ENVIRONMENT,PUBLIC_BASE}`
+are baked into the client bundle at build time by `vite.config.ts`
+(allowlisted in `CLIENT_VARS`), gated by `SI_BUILD` / `CLOUDFLARE_ENV` so a dev
+`.dev.vars` never leaks into a shipped bundle.
+
 ---
 
 ## Cross-cutting / build / CI / CD

@@ -1,0 +1,44 @@
+/**
+ * The mount-prefix resolver — the ONE place the `/shop` prefix enters app code.
+ *
+ * The store is vmf-mounted at `/shop` behind bouncer: bouncer STRIPS the mount
+ * before the request reaches the worker, so the SERVER always serves at root
+ * (`/`, `/products/$slug`, …) and every route definition / `<Link>` / redirect
+ * in the app stays prefix-free. The one thing bouncer's HTTP-layer rewrite
+ * cannot reach is the hydrated client router's history/link state — so the
+ * CLIENT router adopts `basepath = PUBLIC_BASE` (the mount), which makes
+ * TanStack Router natively prepend the mount to the browser URL on navigation
+ * and strip it when matching. Result: the URL bar keeps `/shop` across
+ * client-side navigation and hard refreshes, with zero prefixes in app code.
+ *
+ * `PUBLIC_BASE` is injected into the client bundle from a single wrangler var
+ * (see vite.config.ts CLIENT_VARS): `/shop` in staging/production, `/` in
+ * local dev-direct (no bouncer, no mount).
+ */
+
+/** Normalize a raw base to a leading-slash, no-trailing-slash form ("/" stays "/"). */
+export function normalizeBasepath(raw: string | undefined | null): string {
+  if (raw == null) return "/";
+  let b = raw.trim();
+  if (b === "" || b === "/") return "/";
+  if (!b.startsWith("/")) b = `/${b}`;
+  while (b.length > 1 && b.endsWith("/")) b = b.slice(0, -1);
+  return b;
+}
+
+/**
+ * The router basepath for the current execution side.
+ *
+ * - Server: always "/" — bouncer already stripped the mount, so the server
+ *   router matches the stripped (root) path. A non-root basepath here would
+ *   fail to match the stripped path.
+ * - Client: the public mount (PUBLIC_BASE), so the browser URL bar carries the
+ *   prefix and deep links / hard refreshes resolve.
+ */
+export function resolveBasepath(opts: {
+  isServer: boolean;
+  publicBase: string | undefined | null;
+}): string {
+  if (opts.isServer) return "/";
+  return normalizeBasepath(opts.publicBase);
+}
