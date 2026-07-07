@@ -33,6 +33,12 @@ platform-template/
     └── dev-solo.ts          # one worker local, staging fleet via remote bindings
 ```
 
+Not part of the bun workspace above: `marketing-videos/` (Remotion) and
+`inbox/` (a vendored, standalone Agentic Inbox instance — its own
+package.json/lockfile/wrangler.jsonc, deployed separately as Worker
+`agentic-inbox-si`) are self-contained sibling projects with their own
+tooling; root scripts don't reach into them.
+
 ## Architecture
 
 ```

@@ -1,0 +1,49 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Agentic Inbox — somewhatintelligent.ca instance, vendored here as a
+  // standalone, separately-deployed project. Upstream (/home/user/agentic-inbox)
+  // runs this same codebase as two named-environment instances (`apostoli` and
+  // `somewhatintelligent`); this copy keeps only the somewhatintelligent
+  // instance and promotes it to the top level, so there is no `env.*` split.
+  //
+  // `wrangler deploy` (no `--env`) ships Worker "agentic-inbox-si" directly.
+  "name": "agentic-inbox-si",
+  "account_id": "c735c5a53d864bee37400befb7f4c7f4",
+  "compatibility_date": "2025-11-28",
+  "main": "./workers/app.ts",
+  "observability": {
+    "enabled": true,
+  },
+  "compatibility_flags": ["nodejs_compat"],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["MailboxDO"] },
+    { "tag": "v2", "new_sqlite_classes": ["EmailAgent"] },
+    { "tag": "v3", "new_sqlite_classes": ["EmailMCP"] },
+  ],
+  "vars": {
+    // Production deploys must also define POLICY_AUD and TEAM_DOMAIN (set as
+    // secrets by scripts/setup-access.mjs). TEAM_DOMAIN may be the base Access
+    // URL or the full /cdn-cgi/access/certs URL. The worker fails closed
+    // outside local development if Access is not configured.
+    "DOMAINS": "mail.somewhatintelligent.ca",
+    "EMAIL_ADDRESSES": [],
+  },
+  "send_email": [{ "name": "EMAIL", "remote": true }],
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "agentic-inbox-si",
+      "preview_bucket_name": "agentic-inbox-si",
+    },
+  ],
+  "ai": {
+    "binding": "AI",
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "MAILBOX", "class_name": "MailboxDO" },
+      { "name": "EMAIL_AGENT", "class_name": "EmailAgent" },
+      { "name": "EMAIL_MCP", "class_name": "EmailMCP" },
+    ],
+  },
+}

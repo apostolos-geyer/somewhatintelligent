@@ -6,6 +6,20 @@ import { defaultExclude, defineConfig } from "vite-plus";
 // (semi + double-quote) on every boot and churning the diff.
 const ignorePatterns = [".agents/**", ".claude/**", "dist/**", "**/routeTree.gen.ts"];
 
+// `inbox/` is a vendored, self-contained project
+// with its own package.json/lockfile/tsconfig/tooling — not a bun workspace
+// member, not held to this repo's stricter type-aware lint rules (its own
+// `cd inbox && bun run typecheck` is the correctness signal for it). `vp fmt`
+// is left alone (its formatting already matches, and the staged-check split
+// below needs `scripts/`+`__tests__/` files under inbox/ to stay formattable).
+// Root `vp test` has no per-directory scoping either, so exclude inbox/**
+// from test discovery: it keeps inbox's own vitest suite in its own tier
+// (`cd inbox && bun run test`) instead of double-running under root `vp
+// test` against a different, unpinned vitest resolved from inbox's own
+// node_modules.
+const lintIgnorePatterns = [...ignorePatterns, "inbox/**"];
+const testExcludePatterns = [...ignorePatterns, "inbox/**"];
+
 export default defineConfig({
   fmt: {
     semi: true,
@@ -14,7 +28,7 @@ export default defineConfig({
   },
   lint: {
     options: { typeAware: true, typeCheck: true },
-    ignorePatterns,
+    ignorePatterns: lintIgnorePatterns,
   },
   staged: {
     // One entry routing through a partition script: test files get format-only
@@ -33,6 +47,6 @@ export default defineConfig({
     // Per-worker pool-worker suites still run in their own per-service tier
     // (`cd <service> && bun run test`) — see docs/ARCHITECTURE.md and each
     // worker's own README for the pool-worker test tier.
-    exclude: [...defaultExclude, ...ignorePatterns, "e2e/**"],
+    exclude: [...defaultExclude, ...testExcludePatterns, "e2e/**"],
   },
 });

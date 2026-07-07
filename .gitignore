@@ -68,6 +68,8 @@ coverage/
 !workers/*/public/og/*.png
 # Sprout brand assets (logos + textures) — real source, shared via @si/design
 !packages/design/src/assets/**/*.png
+# Vendored inbox/ README screenshot (from upstream agentic-inbox)
+!inbox/demo_app.png
 .vercel
 
 # Codebase intelligence — fallow's analysis cache (auto-managed by fallow)
