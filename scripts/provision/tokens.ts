@@ -75,6 +75,12 @@ export const TOKEN_SPECS: TokenSpec[] = [
       "Workers Routes Write",
       "DNS Write",
       "SSL and Certificates Write",
+      // `wrangler deploy` VALIDATES bindings against their APIs before upload:
+      // R2 buckets (roadie, inbox), Workers AI + send_email (inbox). Without
+      // these the deploy 403s on the binding check, not on the upload itself.
+      "Workers R2 Storage Write",
+      "Workers AI Read",
+      "Email Sending Write",
     ],
   },
   {
