@@ -22,8 +22,12 @@ env-parameterized full-fleet reference (`.rwx/deploy.yml`).
 
 ## 1. Install the RWX GitHub App
 
-1. Sign in at <https://cloud.rwx.com> (org: the account that owns
-   `apostolos-geyer/somewhatintelligent`).
+1. Sign in at <https://cloud.rwx.com> and create a **dedicated RWX
+   organization for this platform** (owner decision 2026-07-07: do NOT reuse
+   the `greenroom` org — vaults, GitHub App installations, and access tokens
+   are all org-scoped, so a shared org would put this fork's deploy secrets
+   inside the template org's blast radius). Every step below happens inside
+   the new org; the CLI needs a token minted under it (`rwx login`).
 2. Install the RWX GitHub App on **apostolos-geyer/somewhatintelligent**
    (Getting Started → GitHub integration). This is what makes `github.token`
    resolve in the lanes (clone + status checks) and turns on the `github:`
