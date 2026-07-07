@@ -387,8 +387,16 @@ export function createPlatformAuth(opts: CreatePlatformAuthOptions) {
     },
 
     trustedOrigins: (() => {
+      // Better Auth's wildcard matcher (`wildcardMatch` in
+      // better-auth/utils/wildcard) treats `*.${apex}` as requiring a
+      // literal "." before `apex` in the matched origin — every subdomain
+      // has one, but the bare apex itself does not. Without an explicit
+      // `${apex}` entry, a script-initiated request from the bare apex
+      // origin (e.g. `https://somewhatintelligent.ca`) is rejected as
+      // untrusted even though it's the platform's canonical production
+      // host.
       const apex = opts.authDomain.replace(/^\./, "");
-      return [`https://*.${apex}`, `http://*.${apex}`];
+      return [`https://${apex}`, `https://*.${apex}`, `http://${apex}`, `http://*.${apex}`];
     })(),
   });
 }
