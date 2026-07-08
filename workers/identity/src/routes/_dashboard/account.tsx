@@ -48,7 +48,12 @@ function AccountLayout() {
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-grid">
+    <div className="relative flex flex-1 flex-col gap-grid">
+      <GridLine orientation="vertical" className="left-0" />
+      <GridLine orientation="vertical" className="right-0" />
+
+      <GridLine />
+
       <IdentityCard user={identityUser} />
 
       <GridLine />
