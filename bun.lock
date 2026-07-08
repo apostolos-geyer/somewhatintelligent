@@ -217,7 +217,7 @@
     },
     "workers/bouncer": {
       "name": "@si/bouncer-service",
-      "version": "0.2.2",
+      "version": "0.0.0",
       "dependencies": {
         "@si/config": "workspace:*",
         "@si/guestlist-service": "workspace:*",
@@ -236,7 +236,7 @@
     },
     "workers/guestlist": {
       "name": "@si/guestlist-service",
-      "version": "0.2.2",
+      "version": "0.0.0",
       "dependencies": {
         "@better-auth/api-key": "^1.6.0",
         "@better-auth/core": "^1.6.9",
@@ -267,7 +267,7 @@
     },
     "workers/identity": {
       "name": "identity",
-      "version": "0.2.2",
+      "version": "0.0.0",
       "dependencies": {
         "@si/config": "workspace:*",
         "@si/design": "workspace:*",
@@ -307,7 +307,7 @@
     },
     "workers/promoter": {
       "name": "@si/promoter-service",
-      "version": "0.2.2",
+      "version": "0.0.0",
       "dependencies": {
         "@si/config": "workspace:*",
         "@si/email": "workspace:*",
@@ -325,7 +325,7 @@
     },
     "workers/roadie": {
       "name": "@si/roadie-service",
-      "version": "0.2.2",
+      "version": "0.0.0",
       "dependencies": {
         "@si/kit": "workspace:*",
         "aws4fetch": "^1.0.20",
@@ -347,13 +347,14 @@
     },
     "workers/store": {
       "name": "store",
-      "version": "0.1.0",
+      "version": "0.0.0",
       "dependencies": {
         "@si/config": "workspace:*",
         "@si/design": "workspace:*",
         "@si/guestlist-service": "workspace:*",
         "@si/kit": "workspace:*",
         "@si/roadie-service": "workspace:*",
+        "@si/stripe": "workspace:*",
         "@si/ui": "workspace:*",
         "@tailwindcss/vite": "catalog:",
         "@tanstack/react-devtools": "latest",
@@ -366,6 +367,7 @@
         "lucide-react": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
+        "stripe": "catalog:",
         "tailwindcss": "catalog:",
       },
       "devDependencies": {

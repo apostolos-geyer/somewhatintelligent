@@ -50,6 +50,11 @@
         "dead_letter_queue": "si-stripe-events-dlq-staging",
         "max_retries": 5,
       },
+      // Terminal consumer: no dead_letter_queue behind it, no retries — the
+      // worker best-effort reprocesses then unconditionally acks (see worker.ts
+      // processDlqBatch), so dead events surface a log line instead of silently
+      // ageing out of the DLQ.
+      { "queue": "si-stripe-events-dlq-staging", "max_retries": 0 },
     ],
   },
   "services": [
@@ -93,6 +98,8 @@
             "dead_letter_queue": "si-stripe-events-dlq-production",
             "max_retries": 5,
           },
+          // Terminal consumer — see the staging note above.
+          { "queue": "si-stripe-events-dlq-production", "max_retries": 0 },
         ],
       },
       "services": [

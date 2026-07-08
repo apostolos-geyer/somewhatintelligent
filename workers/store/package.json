@@ -29,6 +29,7 @@
     "@si/guestlist-service": "workspace:*",
     "@si/kit": "workspace:*",
     "@si/roadie-service": "workspace:*",
+    "@si/stripe": "workspace:*",
     "@si/ui": "workspace:*",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-devtools": "latest",

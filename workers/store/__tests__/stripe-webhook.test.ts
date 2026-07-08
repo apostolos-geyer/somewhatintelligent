@@ -37,6 +37,23 @@ describe("handleStoreStripeWebhook", () => {
     expect(res.status).toBe(503);
   });
 
+  test("returns 503 without throwing when the STRIPE_EVENTS queue binding is absent (preview build)", async () => {
+    const testEnv = env({ STRIPE_EVENTS: undefined } as unknown as Partial<Env>);
+    const payload = {
+      id: "evt_no_queue",
+      object: "event",
+      created: 1_806_000_000,
+      type: "checkout.session.completed",
+      livemode: false,
+      data: { object: { id: "cs_test_456", object: "checkout.session" } },
+    };
+
+    const res = await handleStoreStripeWebhook(signedRequest(payload), testEnv);
+
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ ok: false, error: "queue_unconfigured" });
+  });
+
   test("rejects unsigned requests without enqueueing", async () => {
     const testEnv = env();
     const res = await handleStoreStripeWebhook(
@@ -56,7 +73,7 @@ describe("handleStoreStripeWebhook", () => {
       created: 1_806_000_000,
       type: "checkout.session.completed",
       livemode: false,
-      data: { object: { id: "cs_test_123", object: "checkout.session" } },
+      data: { object: { id: "cs_test_123", object: "checkout.session", payment_status: "paid" } },
     };
 
     const res = await handleStoreStripeWebhook(signedRequest(payload), testEnv);
@@ -71,6 +88,7 @@ describe("handleStoreStripeWebhook", () => {
         created: 1_806_000_000,
         livemode: false,
         objectId: "cs_test_123",
+        payment_status: "paid",
       },
     ]);
   });

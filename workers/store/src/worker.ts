@@ -5,7 +5,7 @@ import { extractPlatformStartContext } from "@si/kit/react-start";
 import { devEnvelopeStamper } from "./lib/platform";
 import { handleStoreStripeWebhook, STORE_STRIPE_WEBHOOK_PATH } from "./lib/stripe-webhook";
 import { createDb } from "./lib/db";
-import { processStoreStripeEvent } from "./lib/stripe-events";
+import { consumeStripeEventBatch, DLQ_QUEUE_PATTERN, processDlqBatch } from "./lib/stripe-queue";
 import type { StoreStripeEventMessage } from "./lib/stripe-webhook";
 
 declare module "@tanstack/react-start" {
@@ -40,10 +40,12 @@ export default {
       headers,
     });
   },
-  async queue(batch: MessageBatch, env: Env): Promise<void> {
+  async queue(batch: MessageBatch<StoreStripeEventMessage>, env: Env): Promise<void> {
     const db = createDb(env.DB);
-    for (const message of batch.messages) {
-      await processStoreStripeEvent(db, message.body as StoreStripeEventMessage);
+    if (DLQ_QUEUE_PATTERN.test(batch.queue)) {
+      await processDlqBatch(db, batch, env);
+      return;
     }
+    await consumeStripeEventBatch(db, batch, env);
   },
-} satisfies ExportedHandler<Env>;
+} satisfies ExportedHandler<Env, StoreStripeEventMessage>;
