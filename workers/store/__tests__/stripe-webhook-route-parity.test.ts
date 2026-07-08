@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { parse as parseJsonc } from "jsonc-parser";
 import { STORE_STRIPE_WEBHOOK_PATH } from "../src/lib/stripe-webhook";
@@ -21,9 +21,16 @@ type BouncerWrangler = {
 // CLAUDE.md, per-env routes live directly in each worker's wrangler.jsonc
 // (not centralized in @si/config), so this test enforces the parity that
 // would otherwise be silently unenforced.
-const wrangler = parseJsonc(
-  readFileSync(path.resolve(__dirname, "../../bouncer/wrangler.jsonc"), "utf8"),
-) as BouncerWrangler;
+//
+// This reaches into a SIBLING worker's file, so it only runs where the whole
+// repo is checked out (local `bun run test`, root `vp test run`). The isolated
+// CI `test-store` task materializes only workers/store + its deps, so
+// bouncer/wrangler.jsonc is absent and the cross-worker assertions skip; the
+// self-check below carries no filesystem dependency and always runs.
+const bouncerWranglerPath = path.resolve(__dirname, "../../bouncer/wrangler.jsonc");
+const bouncerWrangler: BouncerWrangler | null = existsSync(bouncerWranglerPath)
+  ? (parseJsonc(readFileSync(bouncerWranglerPath, "utf8")) as BouncerWrangler)
+  : null;
 
 // POSITIVE selector (not exclusion-based): matches only STORE-bound,
 // passthrough, `/hooks`-prefixed routes for the given host. This stays
@@ -41,37 +48,42 @@ function webhookRoutesFor(routes: BouncerRoute[] | undefined, host: string): Bou
   );
 }
 
-describe("bouncer webhook route parity with STORE_STRIPE_WEBHOOK_PATH", () => {
-  test("staging top-level route matches the store constant", () => {
-    const matches = webhookRoutesFor(
-      wrangler.vars?.ROUTES?.routes,
-      "staging.somewhatintelligent.ca",
-    );
-    expect(matches).toHaveLength(1);
-    expect(matches[0]?.path).toBe(STORE_STRIPE_WEBHOOK_PATH);
-  });
+describe.skipIf(!bouncerWrangler)(
+  "bouncer webhook route parity with STORE_STRIPE_WEBHOOK_PATH",
+  () => {
+    test("staging top-level route matches the store constant", () => {
+      const matches = webhookRoutesFor(
+        bouncerWrangler?.vars?.ROUTES?.routes,
+        "staging.somewhatintelligent.ca",
+      );
+      expect(matches).toHaveLength(1);
+      expect(matches[0]?.path).toBe(STORE_STRIPE_WEBHOOK_PATH);
+    });
 
-  test("production apex route matches the store constant", () => {
-    const matches = webhookRoutesFor(
-      wrangler.env?.production?.vars?.ROUTES?.routes,
-      "somewhatintelligent.ca",
-    );
-    expect(matches).toHaveLength(1);
-    expect(matches[0]?.path).toBe(STORE_STRIPE_WEBHOOK_PATH);
-  });
+    test("production apex route matches the store constant", () => {
+      const matches = webhookRoutesFor(
+        bouncerWrangler?.env?.production?.vars?.ROUTES?.routes,
+        "somewhatintelligent.ca",
+      );
+      expect(matches).toHaveLength(1);
+      expect(matches[0]?.path).toBe(STORE_STRIPE_WEBHOOK_PATH);
+    });
 
-  test("production www route matches the store constant", () => {
-    const matches = webhookRoutesFor(
-      wrangler.env?.production?.vars?.ROUTES?.routes,
-      "www.somewhatintelligent.ca",
-    );
-    expect(matches).toHaveLength(1);
-    expect(matches[0]?.path).toBe(STORE_STRIPE_WEBHOOK_PATH);
-  });
+    test("production www route matches the store constant", () => {
+      const matches = webhookRoutesFor(
+        bouncerWrangler?.env?.production?.vars?.ROUTES?.routes,
+        "www.somewhatintelligent.ca",
+      );
+      expect(matches).toHaveLength(1);
+      expect(matches[0]?.path).toBe(STORE_STRIPE_WEBHOOK_PATH);
+    });
+  },
+);
 
-  // Self-check: proves the comparison logic above isn't vacuously true. A
-  // route whose path has drifted from the TS constant (e.g. a rename that
-  // wasn't mirrored) must NOT compare equal.
+// Filesystem-independent, so it runs everywhere (incl. the isolated CI
+// test-store task). Proves the comparison logic above isn't vacuously true: a
+// route whose path drifted from the TS constant must NOT compare equal.
+describe("route-parity self-check", () => {
   test("self-check: a drifted path does not equal STORE_STRIPE_WEBHOOK_PATH", () => {
     const driftedRoutes: BouncerRoute[] = [
       {
