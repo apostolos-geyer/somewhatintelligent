@@ -21,6 +21,16 @@ export default defineConfig({
         command: "bun run env:init",
         cache: false,
       },
+
+      // Overrides the plain `"typecheck"` package.json script for anything
+      // that goes through `vp run` (root `bun run typecheck` does). Chains
+      // an UNCONDITIONAL `bun run fetch` (not the guarded codegen) before
+      // `tsgo --noEmit` so typechecking always sees a stub consistent with
+      // the current product/price config.
+      typecheck: {
+        command: ["bun run fetch", "tsgo --noEmit"],
+        cache: false,
+      },
     },
   },
 });

@@ -41,7 +41,10 @@ export type PriceKey = keyof typeof prices;
  * products/prices can be needed for invoices, so this is the explicit escape
  * hatch for validate.ts' otherwise-fatal orphan detection.
  */
-export const archived = {
-  products: [] as string[],
-  prices: [] as string[],
-} as const;
+export const archived: {
+  readonly products: readonly string[];
+  readonly prices: readonly string[];
+} = {
+  products: [],
+  prices: [],
+};

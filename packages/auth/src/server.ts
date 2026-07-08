@@ -160,6 +160,10 @@ export function createPlatformAuth(opts: CreatePlatformAuthOptions) {
   // one expression: a Stripe client + the plugin factory call. `null` when
   // gating fails, so the array below stays exactly as it was pre-Stripe.
   const stripeConfig = opts.stripe;
+  // Mirrors @si/stripe's stripeConfigured(secretKey, webhookSecret) predicate —
+  // kept as an inline literal here (not imported) because this module
+  // intentionally carries zero @si/* runtime dependencies (see the `stripe`
+  // option doc above). packages/stripe/__tests__/gate.test.ts guards the parity.
   const stripeBillingPlugin =
     stripeConfig?.secretKey && stripeConfig.webhookSecret
       ? stripePlugin({

@@ -367,8 +367,13 @@ tasks:
     timeout: 8m
   - key: typecheck-stripe
     use: types
+    # @si/stripe's typecheck is a cache:false vp task (vite.config.ts), not a
+    # package.json script — a script of that name would collide with the task
+    # and break `vp run -r typecheck`. Run the task's steps directly here: the
+    # unconditional fetch materializes the gitignored src/generated.ts stub
+    # before tsgo.
     filter: [*gate-filter, packages/stripe/**, *gate-neg]
-    run: cd packages/stripe && bun run typecheck
+    run: cd packages/stripe && bun run fetch && bunx tsgo --noEmit
     timeout: 8m
   - key: typecheck-ui
     use: types
