@@ -14,7 +14,6 @@ function SessionsPage() {
   return (
     <div className="flex flex-1 flex-col">
       <div className="mb-section">
-        <h1 className="type-page-title">Sessions</h1>
         <p className="mt-1 text-sm text-text-secondary">
           Active sessions. Each one a small thread of trust, held open until it expires or is
           revoked.

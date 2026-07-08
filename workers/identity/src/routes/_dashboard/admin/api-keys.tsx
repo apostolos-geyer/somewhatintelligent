@@ -14,7 +14,6 @@ function ApiKeysPage() {
   return (
     <div className="flex flex-1 flex-col">
       <div className="mb-section">
-        <h1 className="type-page-title">API Keys</h1>
         <p className="mt-1 text-sm text-text-secondary">
           Every key someone made. Whether they should have is another matter.
         </p>

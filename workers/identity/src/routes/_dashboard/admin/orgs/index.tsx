@@ -16,7 +16,6 @@ function OrgsPage() {
     <div className="flex flex-1 flex-col">
       <div className="mb-section flex items-baseline justify-between">
         <div>
-          <h1 className="type-page-title">Organizations</h1>
           <p className="mt-1 text-sm text-text-secondary">
             The customer brands provisioned on this platform. Each is its own tenant of the identity
             apparatus.

@@ -18,7 +18,6 @@ function AdminDashboardPage() {
   return (
     <div className="flex flex-1 flex-col">
       <div className="mb-grid">
-        <h1 className="type-page-title">Dashboard</h1>
         <p className="mt-1 text-sm text-text-secondary">The state of things, such as it is.</p>
       </div>
 
