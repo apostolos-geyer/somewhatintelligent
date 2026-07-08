@@ -114,7 +114,7 @@ function AdminProducts() {
           {products.map((p) => (
             <Link key={p.id} to="/admin/products/$id" params={{ id: p.id }} className="block">
               <Card className="hover:border-foreground flex flex-row items-center gap-4 p-3 transition-colors">
-                <div className="border-border size-14 shrink-0 overflow-hidden rounded border">
+                <div className="border-border size-14 shrink-0 overflow-hidden rounded border-2">
                   <ProductImage refId={p.coverRef} alt={p.title} className="h-full w-full" />
                 </div>
                 <div className="min-w-0 flex-1">

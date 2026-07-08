@@ -344,7 +344,7 @@ function UploadingStage() {
         <DialogDescription>Sending your new avatar to the platform.</DialogDescription>
       </DialogHeader>
       <div className="flex items-center justify-center py-8">
-        <div className="h-2 w-full overflow-hidden rounded-sm border border-dashed border-border bg-surface-sunken">
+        <div className="h-2 w-full overflow-hidden rounded-sm border-2 border-dashed border-border bg-surface-sunken">
           <div className="h-full w-1/3 animate-pulse bg-primary" />
         </div>
       </div>

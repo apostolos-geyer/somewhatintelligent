@@ -39,7 +39,7 @@ function DeviceApprovePage() {
 
       <Card className="p-page">
         <CardContent className="space-y-0 p-0">
-          <div className="mb-8 flex items-center gap-3 rounded-sm border border-dashed border-border bg-surface-sunken px-4 py-3">
+          <div className="mb-8 flex items-center gap-3 rounded-sm border-2 border-dashed border-border bg-surface-sunken px-4 py-3">
             <div className="flex size-8 items-center justify-center rounded-sm bg-primary text-xs font-semibold text-primary-foreground">
               {user.name?.charAt(0).toUpperCase() ?? "?"}
             </div>

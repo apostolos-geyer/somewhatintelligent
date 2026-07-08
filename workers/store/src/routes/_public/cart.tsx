@@ -28,13 +28,13 @@ function CartPage() {
         </Card>
       ) : (
         <>
-          <Card className="divide-border divide-y p-0">
+          <Card className="divide-border divide-y-2 divide-dashed p-0">
             {lines.map((l) => (
               <div key={l.variantId} className="flex items-center gap-4 p-4">
                 <Link
                   to="/products/$slug"
                   params={{ slug: l.slug }}
-                  className="border-border size-16 shrink-0 overflow-hidden rounded border"
+                  className="border-border size-16 shrink-0 overflow-hidden rounded border-2"
                 >
                   <ProductImage refId={l.coverRef} alt={l.title} className="h-full w-full" />
                 </Link>

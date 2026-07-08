@@ -117,34 +117,34 @@
 
 [data-theme="dark"] {
   /* Neutrals */
-  --color-bg: hsl(45 7% 8%);
-  --color-bg-hsl: 45 7% 8%;
-  --color-surface: hsl(45 6% 11%);
-  --color-surface-hsl: 45 6% 11%;
-  --color-surface-raised: hsl(45 7% 14%);
-  --color-surface-raised-hsl: 45 7% 14%;
-  --color-surface-sunken: hsl(45 9% 5%);
-  --color-surface-sunken-hsl: 45 9% 5%;
-  --color-border: hsl(45 5% 40%);
-  --color-border-hsl: 45 5% 40%;
-  --color-border-strong: hsl(45 7% 58%);
-  --color-border-strong-hsl: 45 7% 58%;
+  --color-bg: hsl(160 9% 7%);
+  --color-bg-hsl: 160 9% 7%;
+  --color-surface: hsl(160 8% 10%);
+  --color-surface-hsl: 160 8% 10%;
+  --color-surface-raised: hsl(160 9% 13%);
+  --color-surface-raised-hsl: 160 9% 13%;
+  --color-surface-sunken: hsl(160 11% 4%);
+  --color-surface-sunken-hsl: 160 11% 4%;
+  --color-border: hsl(60 10% 56%);
+  --color-border-hsl: 60 10% 56%;
+  --color-border-strong: hsl(60 14% 78%);
+  --color-border-strong-hsl: 60 14% 78%;
 
   /* Text */
-  --color-text: hsl(45 22% 91%);
-  --color-text-hsl: 45 22% 91%;
-  --color-text-secondary: hsl(45 11% 71%);
-  --color-text-secondary-hsl: 45 11% 71%;
-  --color-text-tertiary: hsl(45 7% 55%);
-  --color-text-tertiary-hsl: 45 7% 55%;
-  --color-text-on-accent: hsl(45 7% 9%);
-  --color-text-on-accent-hsl: 45 7% 9%;
+  --color-text: hsl(60 20% 93%);
+  --color-text-hsl: 60 20% 93%;
+  --color-text-secondary: hsl(60 10% 76%);
+  --color-text-secondary-hsl: 60 10% 76%;
+  --color-text-tertiary: hsl(60 7% 60%);
+  --color-text-tertiary-hsl: 60 7% 60%;
+  --color-text-on-accent: hsl(160 9% 8%);
+  --color-text-on-accent-hsl: 160 9% 8%;
 
   /* Accents */
-  --color-ink: hsl(45 20% 88%);
-  --color-ink-hsl: 45 20% 88%;
-  --color-ink-hover: hsl(45 24% 97%);
-  --color-ink-hover-hsl: 45 24% 97%;
+  --color-ink: hsl(60 18% 88%);
+  --color-ink-hsl: 60 18% 88%;
+  --color-ink-hover: hsl(60 22% 96%);
+  --color-ink-hover-hsl: 60 22% 96%;
   --color-rust: hsl(14 52% 63%);
   --color-rust-hsl: 14 52% 63%;
   --color-rust-hover: hsl(13 58% 71%);
@@ -153,18 +153,18 @@
   --color-success-hsl: 140 28% 66%;
   --color-success-hover: hsl(139 32% 74%);
   --color-success-hover-hsl: 139 32% 74%;
-  --color-warning: hsl(45 10% 66%);
-  --color-warning-hsl: 45 10% 66%;
-  --color-warning-hover: hsl(45 12% 74%);
-  --color-warning-hover-hsl: 45 12% 74%;
-  --color-info: hsl(45 7% 58%);
-  --color-info-hsl: 45 7% 58%;
-  --color-info-hover: hsl(45 8% 66%);
-  --color-info-hover-hsl: 45 8% 66%;
+  --color-warning: hsl(60 10% 66%);
+  --color-warning-hsl: 60 10% 66%;
+  --color-warning-hover: hsl(60 12% 74%);
+  --color-warning-hover-hsl: 60 12% 74%;
+  --color-info: hsl(60 7% 58%);
+  --color-info-hsl: 60 7% 58%;
+  --color-info-hover: hsl(60 8% 66%);
+  --color-info-hover-hsl: 60 8% 66%;
 
   /* Effects */
-  --glass-bg: hsl(45 7% 14%);
-  --glass-border: hsl(45 5% 40%);
+  --glass-bg: hsl(160 9% 13%);
+  --glass-border: hsl(60 10% 56%);
 
   /* Shadows (dark) */
   --neo-raised: 3px 3px 0px hsl(0 0% 0% / 0.6), -1px -1px 0px hsl(0 0% 100% / 0.06);
@@ -181,34 +181,34 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     /* Neutrals */
-    --color-bg: hsl(45 7% 8%);
-    --color-bg-hsl: 45 7% 8%;
-    --color-surface: hsl(45 6% 11%);
-    --color-surface-hsl: 45 6% 11%;
-    --color-surface-raised: hsl(45 7% 14%);
-    --color-surface-raised-hsl: 45 7% 14%;
-    --color-surface-sunken: hsl(45 9% 5%);
-    --color-surface-sunken-hsl: 45 9% 5%;
-    --color-border: hsl(45 5% 40%);
-    --color-border-hsl: 45 5% 40%;
-    --color-border-strong: hsl(45 7% 58%);
-    --color-border-strong-hsl: 45 7% 58%;
+    --color-bg: hsl(160 9% 7%);
+    --color-bg-hsl: 160 9% 7%;
+    --color-surface: hsl(160 8% 10%);
+    --color-surface-hsl: 160 8% 10%;
+    --color-surface-raised: hsl(160 9% 13%);
+    --color-surface-raised-hsl: 160 9% 13%;
+    --color-surface-sunken: hsl(160 11% 4%);
+    --color-surface-sunken-hsl: 160 11% 4%;
+    --color-border: hsl(60 10% 56%);
+    --color-border-hsl: 60 10% 56%;
+    --color-border-strong: hsl(60 14% 78%);
+    --color-border-strong-hsl: 60 14% 78%;
 
     /* Text */
-    --color-text: hsl(45 22% 91%);
-    --color-text-hsl: 45 22% 91%;
-    --color-text-secondary: hsl(45 11% 71%);
-    --color-text-secondary-hsl: 45 11% 71%;
-    --color-text-tertiary: hsl(45 7% 55%);
-    --color-text-tertiary-hsl: 45 7% 55%;
-    --color-text-on-accent: hsl(45 7% 9%);
-    --color-text-on-accent-hsl: 45 7% 9%;
+    --color-text: hsl(60 20% 93%);
+    --color-text-hsl: 60 20% 93%;
+    --color-text-secondary: hsl(60 10% 76%);
+    --color-text-secondary-hsl: 60 10% 76%;
+    --color-text-tertiary: hsl(60 7% 60%);
+    --color-text-tertiary-hsl: 60 7% 60%;
+    --color-text-on-accent: hsl(160 9% 8%);
+    --color-text-on-accent-hsl: 160 9% 8%;
 
     /* Accents */
-    --color-ink: hsl(45 20% 88%);
-    --color-ink-hsl: 45 20% 88%;
-    --color-ink-hover: hsl(45 24% 97%);
-    --color-ink-hover-hsl: 45 24% 97%;
+    --color-ink: hsl(60 18% 88%);
+    --color-ink-hsl: 60 18% 88%;
+    --color-ink-hover: hsl(60 22% 96%);
+    --color-ink-hover-hsl: 60 22% 96%;
     --color-rust: hsl(14 52% 63%);
     --color-rust-hsl: 14 52% 63%;
     --color-rust-hover: hsl(13 58% 71%);
@@ -217,18 +217,18 @@
     --color-success-hsl: 140 28% 66%;
     --color-success-hover: hsl(139 32% 74%);
     --color-success-hover-hsl: 139 32% 74%;
-    --color-warning: hsl(45 10% 66%);
-    --color-warning-hsl: 45 10% 66%;
-    --color-warning-hover: hsl(45 12% 74%);
-    --color-warning-hover-hsl: 45 12% 74%;
-    --color-info: hsl(45 7% 58%);
-    --color-info-hsl: 45 7% 58%;
-    --color-info-hover: hsl(45 8% 66%);
-    --color-info-hover-hsl: 45 8% 66%;
+    --color-warning: hsl(60 10% 66%);
+    --color-warning-hsl: 60 10% 66%;
+    --color-warning-hover: hsl(60 12% 74%);
+    --color-warning-hover-hsl: 60 12% 74%;
+    --color-info: hsl(60 7% 58%);
+    --color-info-hsl: 60 7% 58%;
+    --color-info-hover: hsl(60 8% 66%);
+    --color-info-hover-hsl: 60 8% 66%;
 
     /* Effects */
-    --glass-bg: hsl(45 7% 14%);
-    --glass-border: hsl(45 5% 40%);
+    --glass-bg: hsl(160 9% 13%);
+    --glass-border: hsl(60 10% 56%);
 
     /* Shadows (dark) */
     --neo-raised: 3px 3px 0px hsl(0 0% 0% / 0.6), -1px -1px 0px hsl(0 0% 100% / 0.06);

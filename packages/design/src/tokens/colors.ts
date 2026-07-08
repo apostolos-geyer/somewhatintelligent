@@ -121,26 +121,30 @@ export const lightColors = {
 } as const;
 
 // ============================================
-// DARK MODE — the inverted drafting board
-// Paper-ink lines on warm graphite.
+// DARK MODE — the chalkboard
+// Chalk lines on slate. Dark mode is the ONLY mode the product ships (see
+// theme init scripts) — this is not a secondary/inverted palette, it's the
+// primary surface. Hue shifts cool (slate green-gray, ~160°) rather than
+// the warm paper hue, and lines/text sit bright for real chalk-on-slate
+// contrast rather than a muted graphite inversion.
 // ============================================
 
 export const darkColors = {
-  // ── Graphite surfaces ──
-  bg: hsl(45, 7, 8), // board
-  surface: hsl(45, 6, 11), // sheet
-  surfaceRaised: hsl(45, 7, 14), // lifted sheet
-  surfaceSunken: hsl(45, 9, 5), // carved well
+  // ── Slate surfaces ──
+  bg: hsl(160, 9, 7), // the board
+  surface: hsl(160, 8, 10), // sheet
+  surfaceRaised: hsl(160, 9, 13), // lifted sheet
+  surfaceSunken: hsl(160, 11, 4), // carved well
 
-  // ── Chalk lines ──
-  border: hsl(45, 5, 40), // standard rule — ~3:1 on board
-  borderStrong: hsl(45, 7, 58), // heavy rule
+  // ── Chalk lines ── (brighter than a plain inversion — these ARE the drawing)
+  border: hsl(60, 10, 56), // standard rule — chalk stroke
+  borderStrong: hsl(60, 14, 78), // heavy rule — fresh chalk
 
   // ── Chalk ink ──
-  text: hsl(45, 22, 91), // paper-white ink
-  textSecondary: hsl(45, 11, 71),
-  textTertiary: hsl(45, 7, 55),
-  textOnAccent: hsl(45, 7, 9), // graphite — text ON chalk fills
+  text: hsl(60, 20, 93), // chalk-white ink
+  textSecondary: hsl(60, 10, 76),
+  textTertiary: hsl(60, 7, 60),
+  textOnAccent: hsl(160, 9, 8), // board — text ON chalk fills
 } as const;
 
 // ============================================
@@ -158,8 +162,8 @@ export const accentColors = {
   ink: {
     light: hsl(45, 9, 12),
     lightHover: hsl(45, 10, 3),
-    dark: hsl(45, 20, 88),
-    darkHover: hsl(45, 24, 97),
+    dark: hsl(60, 18, 88),
+    darkHover: hsl(60, 22, 96),
   },
   /** The red pen. Destructive actions, critical alerts, errors.
    *  The ONLY functional color in the system. */
@@ -182,15 +186,15 @@ export const accentColors = {
   warning: {
     light: hsl(45, 6, 34),
     lightHover: hsl(45, 7, 27),
-    dark: hsl(45, 10, 66),
-    darkHover: hsl(45, 12, 74),
+    dark: hsl(60, 10, 66),
+    darkHover: hsl(60, 12, 74),
   },
   /** Informational. Light ink — pair with DOTTED border. */
   info: {
     light: hsl(45, 4, 40),
     lightHover: hsl(45, 5, 33),
-    dark: hsl(45, 7, 58),
-    darkHover: hsl(45, 8, 66),
+    dark: hsl(60, 7, 58),
+    darkHover: hsl(60, 8, 66),
   },
 } as const;
 
@@ -207,8 +211,8 @@ export const effectColors = {
       border: "hsl(45 6% 52%)", // standard rule
     },
     dark: {
-      bg: "hsl(45 7% 14%)", // opaque lifted sheet
-      border: "hsl(45 5% 40%)",
+      bg: "hsl(160 9% 13%)", // opaque lifted sheet
+      border: "hsl(60 10% 56%)",
     },
     blur: "0px",
   },

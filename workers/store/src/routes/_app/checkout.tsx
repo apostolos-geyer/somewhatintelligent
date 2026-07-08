@@ -151,7 +151,7 @@ function Checkout() {
         <div>
           <Card variant="soft" className="p-5">
             <h2 className="text-text mb-3 font-semibold">Order summary</h2>
-            <div className="divide-border divide-y">
+            <div className="divide-border divide-y-2 divide-dashed">
               {lines.map((l) => (
                 <div key={l.variantId} className="flex justify-between gap-2 py-2 text-sm">
                   <span className="text-text-secondary truncate">
@@ -172,7 +172,7 @@ function Checkout() {
                 label="Shipping"
                 value={shippingCents === 0 ? "Free" : formatCents(shippingCents)}
               />
-              <div className="border-border mt-2 flex justify-between border-t pt-2 text-base">
+              <div className="border-border mt-2 flex justify-between border-t-2 border-dashed pt-2 text-base">
                 <span className="text-text font-semibold">Total</span>
                 <span className="text-text font-semibold">{formatCents(totalCents)}</span>
               </div>

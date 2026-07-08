@@ -137,7 +137,7 @@ export function InviteMemberModal({
             <Alert variant="success">Invitation created. Send the link below to {email}.</Alert>
             <Field>
               <Label>Accept URL</Label>
-              <div className="rounded-sm border border-dashed border-border bg-surface-sunken px-3 py-2">
+              <div className="rounded-sm border-2 border-dashed border-border bg-surface-sunken px-3 py-2">
                 <code className="type-code block break-all text-ink">{acceptUrl}</code>
               </div>
               <FieldDescription>

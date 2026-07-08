@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { authClient } from "@/lib/auth-client";
 import { isAdminRole } from "@si/kit/roles";
 import { getStats } from "@/lib/admin.functions";
+import { GridLine } from "@si/ui/components/grid-line";
 
 export const Route = createFileRoute("/_dashboard/admin")({
   // Full-load / SSR gate. On the client `context.session` is the root
@@ -54,14 +55,19 @@ function AdminGate() {
   ];
 
   return (
-    <div className="flex flex-1 flex-col gap-grid">
+    <div className="relative flex flex-1 flex-col gap-grid">
+      <GridLine orientation="vertical" className="left-0" />
+      <GridLine orientation="vertical" className="right-0" />
+
       <p className="text-sm text-text-secondary">The state of things, such as it is.</p>
+
+      <GridLine />
 
       <div className="grid grid-cols-3 gap-grid">
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className="rounded-sm border border-dashed border-border bg-surface-sunken px-4 py-3"
+            className="rounded-sm border-2 border-dashed border-border bg-surface-sunken px-4 py-3"
           >
             <div className="type-mono-label text-text-tertiary">{stat.label}</div>
             <div className="type-stat mt-1">{stat.value.toLocaleString()}</div>
@@ -69,6 +75,8 @@ function AdminGate() {
           </div>
         ))}
       </div>
+
+      <GridLine />
 
       <Outlet />
     </div>

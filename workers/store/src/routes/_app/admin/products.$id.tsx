@@ -182,7 +182,7 @@ function EditProduct() {
           <div className="grid grid-cols-3 gap-3">
             {images.map((img) => (
               <div key={img.id} className="group relative">
-                <div className="border-border aspect-square overflow-hidden rounded border">
+                <div className="border-border aspect-square overflow-hidden rounded border-2">
                   <ProductImage
                     refId={img.uploadedAt ? img.roadieReferenceId : null}
                     alt={img.alt ?? ""}
@@ -231,7 +231,10 @@ function EditProduct() {
             <p className="text-text-tertiary font-mono text-sm">No sizes yet — add one below.</p>
           )}
           {variants.map((v) => (
-            <div key={v.id} className="border-border flex items-center gap-3 rounded border p-2.5">
+            <div
+              key={v.id}
+              className="border-border flex items-center gap-3 rounded border-2 p-2.5"
+            >
               <span className="text-text w-12 font-mono text-sm font-semibold">{v.size}</span>
               <span className="text-text-tertiary flex-1 font-mono text-xs">{v.sku}</span>
               <Label className="text-text-tertiary font-mono text-xs">stock</Label>
@@ -262,7 +265,7 @@ function EditProduct() {
             e.preventDefault();
             void sizeForm.handleSubmit();
           }}
-          className="border-border mt-4 flex items-end gap-3 border-t pt-4"
+          className="border-border mt-4 flex items-end gap-3 border-t-2 border-dashed pt-4"
         >
           <sizeForm.AppField name="size">
             {(field) => <field.SelectField label="Size" options={SIZE_OPTIONS} className="w-32" />}

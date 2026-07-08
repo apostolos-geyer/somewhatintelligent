@@ -14,7 +14,7 @@ function Table({
   return (
     <div
       className={cn(
-        "relative w-full flex-1 overflow-x-auto border-2 border-border-strong",
+        "relative w-full flex-1 overflow-x-auto border-[3px] border-border-strong",
         containerClassName,
       )}
     >
@@ -43,7 +43,7 @@ function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
 
 function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   return (
-    <tr data-slot="table-row" className={cn("border-b border-border", className)} {...props} />
+    <tr data-slot="table-row" className={cn("border-b-2 border-border", className)} {...props} />
   );
 }
 

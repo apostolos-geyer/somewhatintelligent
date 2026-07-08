@@ -19,7 +19,7 @@ const cardVariants = cva(
         "neo-inset": surfaceMaterials.neoInset,
         glass: surfaceMaterials.glass,
         // Dark tile: fixed graphite sheet, paper ink — flat, heavy rule.
-        dark: "bg-ink-950 text-paper-100 border border-ink-800",
+        dark: "bg-ink-950 text-paper-100 border-2 border-ink-800",
       },
     },
     defaultVariants: {
@@ -49,7 +49,7 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-header"
       className={cn(
-        "group/card-header @container/card-header grid auto-rows-min items-start gap-1 rounded-t-md px-4 group-data-[size=sm]/card:px-3 has-data-[slot=card-action]:grid-cols-[1fr_auto] has-data-[slot=card-description]:grid-rows-[auto_auto] [.border-b]:pb-4 group-data-[size=sm]/card:[.border-b]:pb-3",
+        "group/card-header @container/card-header grid auto-rows-min items-start gap-1 rounded-t-md border-b-2 border-dashed border-border px-4 pb-4 group-data-[size=sm]/card:px-3 group-data-[size=sm]/card:pb-3 has-data-[slot=card-action]:grid-cols-[1fr_auto] has-data-[slot=card-description]:grid-rows-[auto_auto]",
         className,
       )}
       {...props}
@@ -105,7 +105,7 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-footer"
       className={cn(
-        "flex items-center rounded-b-md border-t bg-muted/50 p-4 group-data-[size=sm]/card:p-3",
+        "flex items-center rounded-b-md border-t-2 border-dashed border-border bg-muted/50 p-4 group-data-[size=sm]/card:p-3",
         className,
       )}
       {...props}

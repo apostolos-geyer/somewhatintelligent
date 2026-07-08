@@ -32,7 +32,7 @@ function AdminOrders() {
             key={f}
             onClick={() => void navigate({ to: "/admin/orders", search: { status: f } })}
             className={
-              "rounded-sm border px-3 py-1 font-mono text-xs capitalize transition-colors " +
+              "rounded-sm border-2 px-3 py-1 font-mono text-xs capitalize transition-colors " +
               (status === f
                 ? "border-primary text-text"
                 : "border-border text-text-tertiary hover:text-text")
@@ -64,7 +64,7 @@ function AdminOrders() {
             </thead>
             <tbody>
               {orders.map((o, i) => (
-                <tr key={o.id} className={i < orders.length - 1 ? "border-border border-b" : ""}>
+                <tr key={o.id} className={i < orders.length - 1 ? "border-border border-b-2" : ""}>
                   <td className="text-text p-3 font-mono text-sm font-semibold">{o.orderNumber}</td>
                   <td className="text-text-secondary p-3 text-sm">{o.shipName}</td>
                   <td className="text-text p-3 font-mono text-sm">{formatCents(o.totalCents)}</td>

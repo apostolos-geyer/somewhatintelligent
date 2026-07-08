@@ -39,13 +39,13 @@
 // they silently downgrade every card back to the control radius.
 export const surfaceMaterials = {
   /** Signature: solid rule + drafted ink offset — the default card */
-  brutal: "rounded-md bg-card border border-border-strong shadow-brutal-sm",
+  brutal: "rounded-md bg-card border-[3px] border-border-strong shadow-brutal-sm",
   /** Soft: quiet secondary sheet — dashed rule, flat */
-  soft: "rounded-md border border-dashed border-border bg-surface-raised",
+  soft: "rounded-md border-2 border-dashed border-border bg-surface-raised",
   /** Neo raised: chiseled, standing proud of the paper */
-  neo: "rounded-md border border-border bg-surface shadow-neo-raised",
+  neo: "rounded-md border-2 border-border bg-surface shadow-neo-raised",
   /** Neo inset: pressed/sunken into the paper */
-  neoInset: "rounded-md border border-border bg-surface-sunken shadow-neo-inset",
+  neoInset: "rounded-md border-2 border-border bg-surface-sunken shadow-neo-inset",
   /** Legacy "glass": an opaque fresh sheet with a solid rule (flat) */
   glass: "rounded-md glass",
 } as const;
@@ -60,11 +60,11 @@ export const interactiveMaterials = {
    *  consumed only by clickable card surfaces (never buttons/badges), so it
    *  rounds on the `md` Cards token like the surfaces. */
   brutal:
-    "rounded-md border border-border-strong shadow-brutal-sm transition-all hover:shadow-brutal-md hover:-translate-x-0.5 hover:-translate-y-0.5 active:shadow-none active:translate-x-0.5 active:translate-y-0.5",
+    "rounded-md border-[3px] border-border-strong shadow-brutal-sm transition-all hover:shadow-brutal-md hover:-translate-x-0.5 hover:-translate-y-0.5 active:shadow-none active:translate-x-0.5 active:translate-y-0.5",
   /** Soft: dashed affordance that commits to a solid rule on hover */
-  soft: "rounded-sm border border-dashed border-border transition-colors hover:[border-style:solid] hover:border-border-strong active:press-in",
+  soft: "rounded-sm border-2 border-dashed border-border transition-colors hover:[border-style:solid] hover:border-border-strong active:press-in",
   /** Neo: chisel flips inset on active */
-  neo: "rounded-sm border border-border shadow-neo-raised hover:shadow-neo-inset active:shadow-neo-inset active:press-in",
+  neo: "rounded-sm border-2 border-border shadow-neo-raised hover:shadow-neo-inset active:shadow-neo-inset active:press-in",
   /** Legacy "glass": flat sheet; rule strengthens on hover */
   glass: "rounded-sm glass transition-colors hover:border-border-strong active:press-in",
 } as const;
@@ -75,7 +75,7 @@ export const interactiveMaterials = {
 
 export const compactMaterials = {
   /** Solid rule + tiny drafted offset */
-  brutal: "border border-border-strong shadow-brutal-sm",
+  brutal: "border-2 border-border-strong shadow-brutal-sm",
   /** Legacy "glass": opaque sheet chip with a solid rule */
   glass: "glass",
 } as const;

@@ -40,7 +40,7 @@ function SessionsPage() {
         <div className="flex-1 overflow-y-auto px-4 pb-4">
           <Table className="min-w-[700px]">
             <TableHeader>
-              <TableRow className="border-b-2 border-border-strong bg-surface-sunken">
+              <TableRow className="border-b-[3px] border-border-strong bg-surface-sunken">
                 <TableHead>User</TableHead>
                 <TableHead>IP</TableHead>
                 <TableHead>Created</TableHead>

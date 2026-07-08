@@ -71,7 +71,7 @@ function ProductDetail() {
       <div className="grid gap-8 md:grid-cols-2 md:gap-12">
         {/* Gallery */}
         <div>
-          <div className="border-border bg-card aspect-square overflow-hidden rounded-md border">
+          <div className="border-border bg-card aspect-square overflow-hidden rounded-md border-2">
             <ProductImage
               refId={images[activeImage]?.roadieReferenceId ?? coverRef}
               alt={product.title}
@@ -85,7 +85,7 @@ function ProductDetail() {
                   key={img.id}
                   onClick={() => setActiveImage(i)}
                   className={
-                    "border-border size-16 overflow-hidden rounded border " +
+                    "border-border size-16 overflow-hidden rounded border-2 " +
                     (i === activeImage ? "ring-primary ring-2" : "opacity-70")
                   }
                 >

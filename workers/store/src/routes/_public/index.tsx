@@ -31,7 +31,7 @@ function Home() {
         </div>
 
         {products.length === 0 ? (
-          <div className="border-border text-text-tertiary rounded-md border border-dashed p-16 text-center font-mono text-sm">
+          <div className="border-border text-text-tertiary rounded-md border-2 border-dashed p-16 text-center font-mono text-sm">
             Nothing live yet — check back soon.
           </div>
         ) : (
@@ -43,7 +43,7 @@ function Home() {
                 params={{ slug: p.slug }}
                 className="group block"
               >
-                <div className="border-border bg-card relative aspect-square overflow-hidden rounded-md border">
+                <div className="border-border bg-card relative aspect-square overflow-hidden rounded-md border-2">
                   <ProductImage
                     refId={p.coverRef}
                     alt={p.title}

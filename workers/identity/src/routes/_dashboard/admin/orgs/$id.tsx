@@ -175,10 +175,10 @@ function OrgDetailPage() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto border-t-2 border-border-strong">
+              <div className="overflow-x-auto border-t-[3px] border-border-strong">
                 <table className="w-full min-w-[640px] border-collapse text-sm">
                   <thead>
-                    <tr className="border-b-2 border-border-strong bg-surface-sunken">
+                    <tr className="border-b-[3px] border-border-strong bg-surface-sunken">
                       <th className="w-12 px-4 py-3" />
                       <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
                         Name
@@ -206,7 +206,7 @@ function OrgDetailPage() {
                     {members.map((m) => {
                       const isOnlyOwner = m.role === "owner" && ownerCount <= 1;
                       return (
-                        <tr key={m.memberId} className="border-b border-border last:border-0">
+                        <tr key={m.memberId} className="border-b-2 border-border last:border-0">
                           <td className="px-4 py-3">
                             <Avatar size="sm">
                               {m.image ? <AvatarImage src={m.image} alt="" /> : null}
@@ -253,10 +253,10 @@ function OrgDetailPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="overflow-x-auto border-t-2 border-border-strong">
+                <div className="overflow-x-auto border-t-[3px] border-border-strong">
                   <table className="w-full min-w-[640px] border-collapse text-sm">
                     <thead>
-                      <tr className="border-b-2 border-border-strong bg-surface-sunken">
+                      <tr className="border-b-[3px] border-border-strong bg-surface-sunken">
                         <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
                           Email
                         </th>
@@ -274,7 +274,7 @@ function OrgDetailPage() {
                     </thead>
                     <tbody>
                       {invitations.map((inv) => (
-                        <tr key={inv.id} className="border-b border-border last:border-0">
+                        <tr key={inv.id} className="border-b-2 border-border last:border-0">
                           <td className="px-4 py-3 font-mono text-xs">{inv.email}</td>
                           <td className="px-4 py-3">
                             <RoleBadge role={inv.role} />

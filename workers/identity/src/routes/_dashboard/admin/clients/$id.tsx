@@ -69,17 +69,17 @@ function ClientDetailPage() {
           <div className="flex flex-col gap-grid">
             {managed && <Alert variant="warning">Managed by IaC. Identity is immutable.</Alert>}
 
-            <div className="rounded-sm border border-dashed border-border bg-surface-sunken px-4 py-3">
+            <div className="rounded-sm border-2 border-dashed border-border bg-surface-sunken px-4 py-3">
               <div className="type-mono-label mb-1 text-text-tertiary">Client ID</div>
               <code className="type-code break-all text-foreground">{c.clientId}</code>
             </div>
 
             <div className="grid grid-cols-2 gap-grid">
-              <div className="rounded-sm border border-dashed border-border bg-surface-sunken px-4 py-3">
+              <div className="rounded-sm border-2 border-dashed border-border bg-surface-sunken px-4 py-3">
                 <div className="type-mono-label text-text-tertiary">Tokens</div>
                 <div className="type-stat mt-1">{tokenCount}</div>
               </div>
-              <div className="rounded-sm border border-dashed border-border bg-surface-sunken px-4 py-3">
+              <div className="rounded-sm border-2 border-dashed border-border bg-surface-sunken px-4 py-3">
                 <div className="type-mono-label text-text-tertiary">Consents</div>
                 <div className="type-stat mt-1">{consentCount}</div>
               </div>
@@ -252,7 +252,7 @@ function ClientSecretCard({ id }: { id: string }) {
       </CardHeader>
       <CardContent>
         {rotatedSecret ? (
-          <div className="rounded-sm border border-dashed border-border bg-surface-sunken px-3 py-2">
+          <div className="rounded-sm border-2 border-dashed border-border bg-surface-sunken px-3 py-2">
             <code className="type-code break-all text-ink">{rotatedSecret}</code>
             <p className="mt-1.5 text-2xs text-text-tertiary">Will not be shown again.</p>
           </div>

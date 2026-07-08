@@ -14,7 +14,7 @@ function PageFrame({ className, children, ...props }: React.ComponentProps<"div"
     <div className={cn("relative mx-auto w-full max-w-content flex-1", className)} {...props}>
       <CornerMark className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2" />
       <CornerMark className="absolute top-0 right-0 translate-x-1/2 -translate-y-1/2" />
-      <div className="min-h-full border-x border-dashed border-border">{children}</div>
+      <div className="min-h-full border-x-2 border-dashed border-border">{children}</div>
       <CornerMark className="absolute bottom-0 left-0 -translate-x-1/2 translate-y-1/2" />
       <CornerMark className="absolute right-0 bottom-0 translate-x-1/2 translate-y-1/2" />
     </div>
@@ -30,7 +30,7 @@ function CornerMark({ className }: { className?: string }) {
       viewBox="0 0 9 9"
       className={cn("pointer-events-none z-10 text-border", className)}
     >
-      <path d="M4.5 0V9M0 4.5H9" stroke="currentColor" strokeWidth="1" />
+      <path d="M4.5 0V9M0 4.5H9" stroke="currentColor" strokeWidth="1.5" />
     </svg>
   );
 }

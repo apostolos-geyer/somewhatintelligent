@@ -2,7 +2,6 @@ import { Link } from "@tanstack/react-router";
 import { ShoppingBagIcon, ShirtIcon, BoxIcon, LayoutDashboardIcon } from "lucide-react";
 import { Badge } from "@si/ui/components/badge";
 import { Button } from "@si/ui/components/button";
-import { ThemeToggle } from "@si/ui/components/theme-toggle";
 import { AppFrame, type FabMenuGroup } from "@si/ui/components/app-frame";
 import type { PlatformApp } from "@si/ui/components/platform-nav";
 import { isAdminRole } from "@si/kit/roles";
@@ -55,7 +54,6 @@ export function StoreFrame() {
       <AppFrame>
         <AppFrame.Brand current={{ id: "store", label: "shop" }} apps={APPS} linkComponent={Link} />
         <AppFrame.Right>
-          <ThemeToggle />
           <Button
             variant="outline"
             size="sm"

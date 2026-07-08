@@ -22,6 +22,7 @@
     "types": "vp run -r types",
     "typecheck": "vp run -r typecheck",
     "browsers:install": "bun scripts/setup-browsers.ts",
+    "screenshot-tour": "bun scripts/screenshot-tour.ts",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",

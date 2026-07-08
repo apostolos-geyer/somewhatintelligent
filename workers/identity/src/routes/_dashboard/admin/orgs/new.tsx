@@ -241,7 +241,7 @@ function NewOrgPage() {
                       </Button>
                     )}
                     {searchOpen && searchResults.length > 0 && !ownerUserId && (
-                      <div className="absolute z-10 mt-1 w-full overflow-hidden border-2 border-border-strong bg-surface-raised shadow-soft-md">
+                      <div className="absolute z-10 mt-1 w-full overflow-hidden border-[3px] border-border-strong bg-surface-raised shadow-soft-md">
                         {searchResults.map((u) => (
                           <button
                             key={u.id}

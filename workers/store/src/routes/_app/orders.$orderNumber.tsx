@@ -75,7 +75,7 @@ function OrderDetail() {
 
       {/* Items */}
       <Card className="mb-6 p-0">
-        <div className="divide-border divide-y">
+        <div className="divide-border divide-y-2 divide-dashed">
           {items.map((it) => (
             <div key={it.id} className="flex items-center justify-between gap-3 p-4 text-sm">
               <span className="text-text-secondary">
@@ -90,13 +90,13 @@ function OrderDetail() {
             </div>
           ))}
         </div>
-        <div className="border-border space-y-1.5 border-t p-4 font-mono text-sm">
+        <div className="border-border space-y-1.5 border-t-2 border-dashed p-4 font-mono text-sm">
           <Line k="Subtotal" v={formatCents(order.subtotalCents)} />
           <Line
             k="Shipping"
             v={order.shippingCents === 0 ? "Free" : formatCents(order.shippingCents)}
           />
-          <div className="border-border flex justify-between border-t pt-2 text-base">
+          <div className="border-border flex justify-between border-t-2 border-dashed pt-2 text-base">
             <span className="text-text font-semibold">Total</span>
             <span className="text-text font-semibold">{formatCents(order.totalCents)}</span>
           </div>

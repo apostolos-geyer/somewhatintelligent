@@ -17,13 +17,13 @@ function GridLine({
     return (
       <div
         aria-hidden
-        className={cn("absolute inset-y-0 w-px border-l border-dashed border-border", className)}
+        className={cn("absolute inset-y-0 w-px border-l-2 border-dashed border-border", className)}
       />
     );
   }
   return (
     <div aria-hidden className={cn("relative h-px w-full", className)}>
-      <div className="absolute inset-y-0 left-1/2 w-screen -translate-x-1/2 border-t border-dashed border-border" />
+      <div className="absolute inset-y-0 left-1/2 w-screen -translate-x-1/2 border-t-2 border-dashed border-border" />
     </div>
   );
 }

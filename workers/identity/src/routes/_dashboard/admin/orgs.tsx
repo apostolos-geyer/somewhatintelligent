@@ -11,6 +11,7 @@ import {
 } from "@si/ui/components/table";
 import { listOrgsForAdmin } from "@/lib/org-admin.functions";
 import { relativeTime } from "@/lib/relative-time";
+import { GridLine } from "@si/ui/components/grid-line";
 
 export const Route = createFileRoute("/_dashboard/admin/orgs")({
   loader: () => listOrgsForAdmin(),
@@ -24,7 +25,10 @@ function OrgsPage() {
   const { orgs } = Route.useLoaderData();
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="relative flex flex-1 flex-col">
+      <GridLine orientation="vertical" className="left-0" />
+      <GridLine orientation="vertical" className="right-0" />
+
       <div className="mb-section flex items-baseline justify-between">
         <div>
           <p className="mt-1 text-sm text-text-secondary">
@@ -37,9 +41,11 @@ function OrgsPage() {
         </Link>
       </div>
 
+      <GridLine className="mb-section" />
+
       <Table className="min-w-[700px]">
         <TableHeader>
-          <TableRow className="border-b-2 border-border-strong bg-surface-sunken">
+          <TableRow className="border-b-[3px] border-border-strong bg-surface-sunken">
             <TableHead>Slug</TableHead>
             <TableHead>Name</TableHead>
             <TableHead>Members</TableHead>

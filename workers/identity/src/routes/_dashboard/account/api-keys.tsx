@@ -98,7 +98,7 @@ function ApiKeysPage() {
         <div className="flex-1 overflow-y-auto px-4 pb-4">
           <div className="flex flex-col gap-4">
             {createdKey && (
-              <div className="rounded-sm border border-dashed border-border bg-surface-sunken px-4 py-3">
+              <div className="rounded-sm border-2 border-dashed border-border bg-surface-sunken px-4 py-3">
                 <div className="type-mono-label mb-1 text-text-tertiary">New Key</div>
                 <code className="type-code break-all text-ink">{createdKey}</code>
                 <p className="mt-2 text-xs text-text-tertiary">This will not be shown again.</p>

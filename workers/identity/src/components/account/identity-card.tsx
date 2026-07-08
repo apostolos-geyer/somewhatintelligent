@@ -102,7 +102,7 @@ export function IdentityCard({ user }: { user: IdentityUser }) {
           </FieldRow>
         </div>
 
-        <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-border pt-4 text-xs text-text-tertiary">
+        <div className="mt-6 flex flex-wrap items-center gap-2 border-t-2 border-dashed border-border pt-4 text-xs text-text-tertiary">
           <Badge variant={isAdminRole(user.role) ? "ink" : "secondary"} size="sm">
             {user.role ?? "user"}
           </Badge>
@@ -227,7 +227,7 @@ function FieldRow({
 }
 
 function FieldDivider() {
-  return <div className="border-b border-border" />;
+  return <div className="border-b-2 border-dashed border-border" />;
 }
 
 function formatJoined(value: number | string | Date | null | undefined): string | null {
