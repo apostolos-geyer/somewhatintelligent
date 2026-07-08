@@ -1,7 +1,7 @@
 ---
 title: Platform Architecture
 subtitle: C4 reference for the platform-template monorepo
-date: 2026-05-19
+date: 2026-07-07
 ---
 
 # Platform Architecture
@@ -16,6 +16,8 @@ The template is opinionated about **TanStack Start** apps but the underlying pri
 
 Dev/prod parity is explicit. Apps run alone in development (no bouncer in front, just service bindings to guestlist) and the same code paths route to guestlist. The same apps in production require a valid bouncer attestation envelope or return 403. The behavioral split is two `ENVIRONMENT` checks, both encoded inside `@si/auth`'s verifier — never scattered across app code.
 
+Sections §1–§6 describe the request/auth spine (containers, components, shared patterns, adding an app, config & secrets). Sections §7–§10 cover the platform's operational surfaces: the Stripe billing-ingestion pipeline (§7), release engineering & CI/CD (§8), DevOps/IaC — the wrangler config model, binding inventory, and provisioning (§9), and the testing strategy (§10). Product analytics is a cross-cutting shared pattern (§4.8).
+
 ---
 
 # §1 — Context
@@ -28,22 +30,28 @@ flowchart LR
   dev(["Developer<br/>operator"]):::person
 
   subgraph platform["Platform"]
-    spine["Platform Spine<br/><i>Cloudflare Workers monorepo</i><br/>bouncer · apps · guestlist · roadie · promoter"]:::system
+    spine["Platform Spine<br/><i>Cloudflare Workers monorepo</i><br/>bouncer · identity · store · guestlist · roadie · promoter"]:::system
   end
 
   cf["Cloudflare Edge<br/><i>TLS / DDoS / routing</i>"]:::ext
-  d1[("Cloudflare D1<br/><i>guestlist + roadie</i>")]:::ext
+  d1[("Cloudflare D1<br/><i>guestlist · roadie · store</i>")]:::ext
   r2[("Cloudflare R2 / S3<br/><i>roadie blobs</i>")]:::ext
-  resend["Resend<br/><i>outbound email</i>"]:::ext
+  queues[["Cloudflare Queues<br/><i>store: si-stripe-events + DLQ</i>"]]:::ext
+  resend["Resend / CF Email<br/><i>outbound email</i>"]:::ext
   idp["OAuth providers<br/><i>Google · Microsoft · Facebook · LinkedIn</i>"]:::ext
+  stripe["Stripe<br/><i>webhooks + Billing API</i>"]:::ext
+  posthog["PostHog<br/><i>product analytics</i>"]:::ext
 
   user -->|HTTPS| cf
   cf -->|service binding to bouncer| spine
   dev -->|wrangler dev / deploy| spine
   spine -->|SQL| d1
   spine -->|S3 API + signed URLs| r2
+  spine -->|enqueue · consume| queues
   spine -->|REST| resend
   spine -->|OAuth 2.1 / OIDC| idp
+  stripe -->|signed webhooks| spine
+  spine -->|posthog-node / posthog-js| posthog
 
   classDef person fill:#08427b,stroke:#073b6f,color:#fff
   classDef system fill:#1168bd,stroke:#0b4884,color:#fff
@@ -58,10 +66,13 @@ flowchart LR
 **External dependencies.**
 
 - **Cloudflare Edge** — TLS termination + DDoS + request routing. Every public host in the platform is a CF Custom Domain pointing at the bouncer Worker.
-- **Cloudflare D1** — relational store. Guestlist owns the auth schema (users, sessions, accounts, two-factor, organizations). Roadie owns the blob index. No app directly accesses any D1.
+- **Cloudflare D1** — relational store. Guestlist owns the auth schema (users, sessions, accounts, two-factor, organizations). Roadie owns the blob index. Store owns the storefront catalog + orders + the Stripe idempotency ledger. No app reads another worker's D1.
 - **Cloudflare R2 / S3-compatible storage** — roadie's blob backend. App workers never touch R2 directly; they request signed PUT/GET URLs from roadie.
-- **Resend** — promoter's email backend. App workers never call Resend directly.
+- **Cloudflare Queues** — store's async billing-ingestion transport. Store is the only worker that binds queues (`si-stripe-events-{env}` + a dead-letter queue). See §7.
+- **Resend / Cloudflare Email Service** — promoter's email backend. Staging uses Resend (`RESEND_API_KEY`); production uses the Cloudflare Email Service `send_email` binding (`EMAIL_PROVIDER` var selects). App workers never call the email backend directly.
 - **OAuth providers** — Google, Microsoft, Facebook, LinkedIn. Optional. Wired in guestlist's `auth-config.ts` when client ids/secrets are present in env.
+- **Stripe** — billing. Sends signed webhooks to two disjoint listeners (store's `/hooks/store` commerce pipeline; guestlist's better-auth subscription webhook) and is the target of the Billing API. Optional and additive — every worker boots, typechecks, tests, and runs `bun run dev` with **zero** Stripe config; absence is a branch, never a throw. See §7.
+- **PostHog** — product analytics. Reached only through `@si/analytics`; store + identity capture client and server events. The write token is a committed public constant in `@si/config`, not a secret. See §4.8.
 
 ---
 
@@ -80,7 +91,7 @@ flowchart LR
     subgraph apps["Apps — TSS or any CF framework"]
       direction LR
       identity["<b>identity</b><br/><i>TSS app</i><br/>sign-in · account · admin"]:::ctr
-      other["<b>other apps</b><br/><i>store · ...</i>"]:::ctr
+      store["<b>store</b><br/><i>TSS app</i><br/>storefront · commerce · webhooks"]:::ctr
     end
 
     guestlist["<b>guestlist</b><br/><i>TS Worker — Elysia + BA</i><br/>auth API · session authority"]:::ctr
@@ -90,23 +101,31 @@ flowchart LR
 
   d1b[("guestlist D1<br/><i>users · sessions · accounts</i>")]:::db
   d1r[("roadie D1<br/><i>blob index</i>")]:::db
+  d1s[("store D1<br/><i>catalog · orders · event ledger</i>")]:::db
   r2[("R2<br/><i>object storage</i>")]:::ext
-  resend["Resend<br/><i>email</i>"]:::ext
+  q[["si-stripe-events<br/>+ DLQ"]]:::ext
+  email["Resend / CF Email"]:::ext
+  stripe["Stripe"]:::ext
 
   user -->|"HTTPS baseDomain (path-mounted)"| bouncer
   bouncer -->|"session resolve · /api proxy"| guestlist
   bouncer -->|"stamped request + envelope"| identity
-  bouncer -->|"stamped request + envelope"| other
+  bouncer -->|"stamped request + envelope"| store
+  stripe -->|"/hooks/store (passthrough)"| bouncer
 
   identity -.->|"fallback + admin RPC"| guestlist
-  other -.->|"fallback"| guestlist
-  other -->|"blob grants"| roadie
-  other -->|"email send"| promoter
+  store -.->|"fallback · ensureStripeCustomer RPC"| guestlist
+  store -->|"blob grants"| roadie
+  store -->|"verify → enqueue"| q
+  q -->|"idempotent consumer"| store
+  guestlist -->|"blob grants (entrypoint Roadie)"| roadie
+  guestlist -->|"email RPC (entrypoint Promoter)"| promoter
 
   guestlist --> d1b
   roadie --> d1r
+  store --> d1s
   roadie --> r2
-  promoter --> resend
+  promoter --> email
 
   classDef person fill:#08427b,stroke:#073b6f,color:#fff
   classDef ctr fill:#438dd5,stroke:#2e6295,color:#fff
@@ -116,14 +135,15 @@ flowchart LR
 
 ## §2.1 Containers in detail
 
-| Container          | Role                                                                                                                                                                                                                                                                                                                                                                                                                | Public host?                                                                                                                                   | Holds secrets?                                                                                   |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| **bouncer**        | Single public ingress. Resolves session via guestlist. Mints + stamps bouncer attestation envelope. Dispatches to apps (passthrough or mounted-microfrontend mode). Strips privileged headers from inbound and outbound traffic.                                                                                                                                                                                    | Yes — every public hostname is a bouncer Custom Domain.                                                                                        | `BNC_ATT_PRIV` (Ed25519 private key for envelope signing). No `BETTER_AUTH_SECRET`.              |
-| **guestlist**      | Sole authority on session validity. Owns Better Auth wiring, the user database, plugin set (passkey, twoFactor, oauthProvider, admin, organization). Exposes `/api/auth/*` (BA handler), `/api/avatar/*` (presigned-upload flow via roadie), `/admin/*` (sessions, stats, API keys, OAuth clients), `/user/connections`, `/u/avatar/:refId` (public avatar read broker), `/providers`, `/.well-known/*`, `/health`. | No public Custom Domain in the target topology. Reached only via service bindings (from bouncer for `/api`/`/u`, from apps for session/admin). | `BETTER_AUTH_SECRET`, OAuth client secrets, internal API tokens.                                 |
-| **roadie**         | Blob storage and signed-URL minting for app-uploaded files. Apps request "give me a PUT URL for blob X for user Y"; roadie validates and returns a presigned R2 URL.                                                                                                                                                                                                                                                | No public Custom Domain.                                                                                                                       | `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, signed-meta secret.                                  |
-| **promoter**       | Outbound transactional email. Wraps Resend behind a typed RPC surface (`sendVerificationEmail`, `sendMagicLinkEmail`, etc.). Apps don't speak to Resend; they speak to promoter over a service binding.                                                                                                                                                                                                             | No public Custom Domain.                                                                                                                       | `RESEND_API_KEY`, signed-meta secret.                                                            |
-| **identity** (app) | Sign-in, sign-up, account settings, admin sessions surface. The reference TanStack Start app.                                                                                                                                                                                                                                                                                                                       | No direct host. `<baseDomain>/account` is bouncer → identity (vmf-mounted).                                                                    | None at the app level. `BOUNCER_ATTESTATION_KEYS` is committed code (public keys), not a secret. |
-| **other apps**     | Product-specific. Each app reaches the same primitives via the same kit factories. May be TSS or any other CF-deployable framework.                                                                                                                                                                                                                                                                                 | Each gets a path mount under the shared host, owned by bouncer (passthrough or vmf) — e.g. `store` at `<baseDomain>/shop`.                     | None.                                                                                            |
+| Container          | Role                                                                                                                                                                                                                                                                                                                                                                                                                | Public host?                                                                                                                                   | Holds secrets?                                                                                        |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| **bouncer**        | Single public ingress. Resolves session via guestlist. Mints + stamps bouncer attestation envelope. Dispatches to apps (passthrough or mounted-microfrontend mode). Strips privileged headers from inbound and outbound traffic.                                                                                                                                                                                    | Yes — every public hostname is a bouncer Custom Domain.                                                                                        | `BNC_ATT_PRIV` (Ed25519 private key for envelope signing). No `BETTER_AUTH_SECRET`.                   |
+| **guestlist**      | Sole authority on session validity. Owns Better Auth wiring, the user database, plugin set (passkey, twoFactor, oauthProvider, admin, organization). Exposes `/api/auth/*` (BA handler), `/api/avatar/*` (presigned-upload flow via roadie), `/admin/*` (sessions, stats, API keys, OAuth clients), `/user/connections`, `/u/avatar/:refId` (public avatar read broker), `/providers`, `/.well-known/*`, `/health`. | No public Custom Domain in the target topology. Reached only via service bindings (from bouncer for `/api`/`/u`, from apps for session/admin). | `BETTER_AUTH_SECRET`, OAuth client secrets, internal API tokens.                                      |
+| **roadie**         | Blob storage and signed-URL minting for app-uploaded files. Apps request "give me a PUT URL for blob X for user Y"; roadie validates and returns a presigned R2 URL.                                                                                                                                                                                                                                                | No public Custom Domain.                                                                                                                       | `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, signed-meta secret.                                       |
+| **promoter**       | Outbound transactional email. Wraps Resend behind a typed RPC surface (`sendVerificationEmail`, `sendMagicLinkEmail`, etc.). Apps don't speak to Resend; they speak to promoter over a service binding.                                                                                                                                                                                                             | No public Custom Domain.                                                                                                                       | `RESEND_API_KEY`, signed-meta secret.                                                                 |
+| **identity** (app) | Sign-in, sign-up, account settings, admin sessions surface. The reference TanStack Start app.                                                                                                                                                                                                                                                                                                                       | No direct host. `<baseDomain>/account` is bouncer → identity (vmf-mounted).                                                                    | None at the app level. `BOUNCER_ATTESTATION_KEYS` is committed code (public keys), not a secret.      |
+| **store** (app)    | Storefront + commerce. TanStack Start app owning its own D1 (catalog, `customer_order`, `processed_stripe_event` ledger). Hosts the commerce billing pipeline: a `/hooks/store` webhook front door that verifies + enqueues Stripe events, and a `queue()` consumer that idempotently applies order state (§7). Binds guestlist (session + `ensureStripeCustomer` RPC) and roadie (product photos).                 | No direct host. `<baseDomain>/shop` is bouncer → store (vmf); `<baseDomain>/hooks/store` is bouncer → store (passthrough, raw body).           | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SIGNING_SECRET` (both optional — absent = manual-stub checkout). |
+| **other apps**     | Product-specific. Each app reaches the same primitives via the same kit factories. May be TSS or any other CF-deployable framework.                                                                                                                                                                                                                                                                                 | Each gets a path mount under the shared host, owned by bouncer (passthrough or vmf) — e.g. `store` at `<baseDomain>/shop`.                     | None.                                                                                                 |
 
 ## §2.2 Service binding graph
 
@@ -133,21 +153,23 @@ The trust graph is a DAG:
 flowchart TD
   edge[Cloudflare Edge] --> gw[bouncer]
   gw --> idn[identity]
-  gw --> other[other apps]
+  gw --> str[store]
   gw -->|"session resolve · /api proxy"| bnc[(guestlist)]
   idn -.->|"fallback + admin RPC"| bnc
-  other -.->|"fallback"| bnc
-  other --> roadie[(roadie)]
-  other --> promoter[(promoter)]
+  str -.->|"fallback · ensureStripeCustomer"| bnc
+  str --> roadie[(roadie)]
+  bnc --> roadie
+  bnc --> promoter[(promoter)]
 
   classDef def fill:#e8e8ff,stroke:#5b5b9c
-  class edge,gw,idn,other,bnc,roadie,promoter def
+  class edge,gw,idn,str,bnc,roadie,promoter def
 ```
 
-- **Bouncer** binds to every app and to guestlist. Bouncer never binds to roadie or promoter (no use case).
-- **Apps** bind to guestlist (session fallback + `/api/auth` proxy + user search for in-app pickers), and where useful to roadie (blob grants) and promoter (email).
+- **Bouncer** binds to every app (`IDENTITY`, `STORE`) and to guestlist. Bouncer never binds to roadie or promoter (no use case).
+- **Apps** bind to guestlist (session fallback + `/api/auth` proxy + user search; store also for `ensureStripeCustomer`), and where useful to roadie (blob grants). Store binds roadie for product photos; identity binds only guestlist today.
+- **Guestlist** is not a leaf — it binds **promoter** (transactional email, entrypoint `Promoter`) and **roadie** (avatar blobs, entrypoint `Roadie` + `props.callerApp: "guestlist"`). Every worker that binds `ROADIE` must set that entrypoint + `props.callerApp`, or roadie's `readCallerApp` throws on every call (§9, roadie runbook).
 - **Apps** do not bind to each other. App-to-app communication, when needed, is mediated by bouncer or by a shared service.
-- **Guestlist, roadie, promoter** do not bind to anything inside the platform — they're leaves.
+- **Roadie and promoter** are the true leaves — they bind nothing inside the platform. They are RPC _targets_ (of guestlist and store), not callers.
 
 This shape is what makes the security model tractable: the platform's only inbound surface from the public Internet is bouncer, and the platform's authority chain converges on guestlist.
 
@@ -349,9 +371,51 @@ flowchart LR
 
 ## §3.5 promoter
 
-Promoter is similar in shape but for email. Apps call typed RPCs over a service binding (`send({ kind: "verification", to, code })` and friends); promoter formats via templates and dispatches via Resend. Apps never hold `RESEND_API_KEY`.
+Promoter is similar in shape but for email. Apps call typed RPCs over a service binding (`send({ kind: "verification", to, code })` and friends); promoter formats via templates and dispatches. Apps never hold `RESEND_API_KEY`. The backend is provider-selected by the `EMAIL_PROVIDER` var: **staging uses Resend** (`RESEND_API_KEY` secret), **production uses the Cloudflare Email Service `send_email` binding** (`EMAIL`, declared only in `env.production`). Promoter also runs cron jobs; it binds no queues today (the only queue infra on the platform lives on store — §7).
 
 **Trust model.** Same posture as roadie: service-binding-only callee, no public Custom Domain, identity from the RPC `meta` parameter. Same future hardening applies — envelope verification on the inbound side, a signed-meta token for outbound-email idempotency. Not implemented today.
+
+## §3.6 store
+
+Store is the platform's storefront + commerce app. Structurally it is a second reference TanStack Start app (same kit factories, envelope verifier, and dev-direct topology as identity — §3.3), but it adds three things identity doesn't have: **its own D1 database**, the **Stripe commerce webhook pipeline** (the only Cloudflare Queue producer/consumer on the platform), and a **product-analytics** server seam (§4.8).
+
+```mermaid
+flowchart LR
+  subgraph st["store Worker — TanStack Start + commerce"]
+    direction TB
+    w_entry[worker entry<br/>src/worker.ts]:::cmp
+    hook[webhook front door<br/>src/lib/stripe-webhook.ts<br/><i>verify + enqueue + 200</i>]:::cmp
+    consumer[queue consumer<br/>src/lib/stripe-queue.ts<br/>+ stripe-events.ts]:::cmp
+    routes_node[TSS routes<br/>src/routes/ · orders.functions.ts]:::cmp
+    db_node[Drizzle schema<br/>src/db/schema.ts]:::cmp
+  end
+
+  q[[si-stripe-events<br/>+ DLQ]]:::db
+  d1[(store D1)]:::db
+  stripe([Stripe]):::db
+
+  w_entry -->|"/hooks/store"| hook
+  w_entry -->|"else → SSR"| routes_node
+  stripe -->|signed webhook| hook
+  hook -->|send| q
+  q -->|batch| consumer
+  consumer --> db_node
+  routes_node --> db_node
+  db_node --> d1
+
+  classDef cmp fill:#85bbf0,stroke:#5d82a8,color:#000
+  classDef db fill:#3a6a9e,stroke:#1d3a5c,color:#fff
+```
+
+| component          | role                                                                                                                                                                                                                                                       |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `worker entry`     | `src/worker.ts` — hand-written `fetch` that **short-circuits `/hooks/store` before SSR** (webhook needs the raw body, not TSS), and otherwise wraps the request in `runWithExecutionContext(ctx, …)` + Start. Also exports the `queue()` consumer handler. |
+| webhook front door | `handleStoreStripeWebhook` — config gate → signature check (`constructEventAsync`) → enqueue a compact event snapshot → `200`. Dumb by design (§7).                                                                                                        |
+| queue consumer     | `consumeStripeEventBatch` / `processStoreStripeEvent` — idempotent per-message ack/retry against the `processed_stripe_event` ledger; a name-regex forks the DLQ batch to `processDlqBatch` (§7).                                                          |
+| TSS routes         | storefront browse/cart/checkout + `orders.functions.ts` (`placeOrder`). Checkout today is the **manual pending→paid stub** — Checkout Session _creation_ is deferred (§7).                                                                                 |
+| schema             | Drizzle: `customer_order` (+ nullable `stripe_customer_id`, unique `stripe_checkout_session_id`, `payment_status`), catalog tables, and the `processed_stripe_event` idempotency ledger.                                                                   |
+
+**Status.** The billing pipeline is at **ingestion-only** maturity (exec-plan `0002`, phase P1): webhook receipt → verify → enqueue → idempotent consumer → order-state update all exist and are tested. What is **not** wired yet: Checkout Session creation (nothing calls `sessions.create`), so no order carries a session id, so every _real_ event currently finds no matching order and drains to the DLQ as retryable — the design is forward-compatible (no ledger row is written until an order matches). The `@better-auth/stripe` subscription plugin on guestlist is likewise present-but-dormant (§7). Full pipeline detail is §7.
 
 ---
 
@@ -761,6 +825,36 @@ withRequestLog({ service: "identity" }, request, async (log) => {
 
 The shape is consistent across bouncer, guestlist, apps, roadie, promoter. Log aggregation (Workers Logs, Logpush) keys off `request_id` to join lines from different services for the same end-user request.
 
+## §4.8 Product analytics (`@si/analytics`)
+
+Product analytics is a single shared package, `@si/analytics`, that is the **only** place the PostHog SDKs are imported. A vitest guard (`packages/analytics/src/__tests__/vendor-boundary.test.ts`) walks `workers/` and `packages/` and fails if `posthog-node`, `posthog-js`, or `@posthog/react` is imported anywhere else — so every consumer reaches PostHog through this one seam. The package has exactly three public entry points: `@si/analytics/events` (an isomorphic, zero-dep typed event registry), `@si/analytics/client` (browser), and `@si/analytics/server`.
+
+**Config is a committed constant, not a secret.** `packages/config/src/analytics.ts` exports `platformAnalyticsConfig = { token: "phc_…", host: "https://us.i.posthog.com" }` — the PostHog **write** key is public by design and is inlined into both the client and SSR bundles. There is no `POSTHOG_*` env var or wrangler secret. The only env-driven input is `ENVIRONMENT` (a wrangler `var`, surfaced to the bundle via each app's `vite.config.ts` `CLIENT_VARS` allowlist), which is stamped onto every event and drives the client dev kill-switch.
+
+**Client model** (`packages/analytics/src/client.tsx`).
+
+- `AnalyticsProvider({ app, environment, session, children })` mounts `@posthog/react`'s `PostHogProvider` plus an identity bridge. It is a **hard no-op in development** (`if (environment === "development") return children`), and configures cost-control defaults: `person_profiles: "identified_only"`, `autocapture: false`, `disable_session_recording: true`, SPA pageviews on history change.
+- `useCapture()` returns a fully-typed `(event, props) => posthog.capture(...)` keyed on the `ClientEventProps` registry (`signed_in`, `signed_up`, `magic_link_requested`, `product_viewed`, `cart_item_added`, `checkout_started`, `checkout_failed`, …) — there is no stringly-typed capture. `useCaptureException()` wraps `captureException`.
+- `AnalyticsIdentityBridge` drives `identify` / `group` / `reset` off session transitions: it `identify(user.id, …)` on sign-in (resetting first on an A→B person switch, which posthog-js requires), `group("organization", …)` when the session has an active org, and `reset()` on sign-out/expiry. `is_customer` is set as a derived boolean (`stripeCustomerId != null`) — the raw Stripe id is never sent.
+
+**Server model** (`packages/analytics/src/server/`). The server surface deliberately exposes **no** `capture(distinctId, …)` — "a server event on the wrong person is not representable at any call site." Instead `makeAnalyticsEvent({ app, requireAuth, environment })` returns a TanStack **function-middleware** factory `analyticsEvent(event, derive?)` that (1) composes the app's auth gate, (2) runs the wrapped handler, then (3) derives properties from `{ session, data, result }` and delivers with `distinctId` **forced** to `session.user.id`. A thrown handler (failure/redirect) emits nothing; a `null` derive result is a clean skip. Store mounts exactly one — `order_placed` on the `placeOrder` server fn — so a single middleware line both auth-gates and instruments. `serverAnalytics(app, env).captureAnonymous(...)` covers the rare genuinely-anonymous server metric.
+
+**Execution-context flushing — why it exists.** A Worker isolate can be frozen the instant it returns a `Response`, dropping any in-flight PostHog POST. The delivery layer (`packages/analytics/src/server/delivery.ts`) builds a module-singleton `posthog-node` client with `flushAt: 1, flushInterval: 0` (no background timer — timers don't survive an isolate) and sends each event via `captureImmediate`, whose returned promise **is** the flush unit. To keep the isolate alive for that promise without adding request latency, delivery reads an `ExecutionContext` out of an `AsyncLocalStorage` seeded at the worker `fetch` boundary:
+
+```mermaid
+flowchart LR
+  entry["worker.ts fetch(req, env, ctx)"] -->|"runWithExecutionContext(ctx, …)"| als[("AsyncLocalStorage&lt;{ waitUntil }&gt;<br/>@si/kit/execution-context")]
+  handler["server fn → analyticsEvent middleware"] --> deliver["delivery.send(payload)"]
+  deliver -->|"captureImmediate → promise"| ph[(PostHog)]
+  deliver -.->|"executionContext.getStore()"| als
+  als -->|"ctx.waitUntil(sent) → return now"| done([response returned])
+  deliver -->|"no ctx (queue / tests) → await sent"| ph
+```
+
+`@si/kit/execution-context` is tiny — it exports the `executionContext` ALS, `runWithExecutionContext(ctx, fn)`, and a structural `WaitUntilContext = { waitUntil }` (so kit needs no `@cloudflare/workers-types` dependency). Both SSR workers (`store`, `identity`) wrap their whole request in it; the store `queue()` consumer does **not**, so analytics emitted from a queue path take the `await sent` branch and are never dropped.
+
+**Consumers.** Store mounts `AnalyticsProvider app="store"` (SPA pageviews + `product_viewed` / `cart_item_*` / `checkout_*` client events + the `order_placed` server event). Identity mounts `AnalyticsProvider app="identity"` (auth-lifecycle client events: `signed_in`, `signed_up`, `magic_link_requested`, `password_changed`, `account_deleted`, `signed_out`; no server-side capture). **Guestlist has no analytics** — it is a backend auth worker with no SSR root and no PostHog dependency or execution-context wrapper.
+
 ---
 
 # §5 — Adding a new app
@@ -897,19 +991,24 @@ There is no render step. `wrangler deploy` (no `--env`) ships staging; `wrangler
 
 ## §6.3 Secrets matrix
 
-| Secret                                      | Per env | Holder             | Purpose                                                                         |
-| ------------------------------------------- | ------- | ------------------ | ------------------------------------------------------------------------------- |
-| `BETTER_AUTH_SECRET`                        | yes     | **guestlist only** | Better Auth cookie signing. Single holder by design — no app holds it.          |
-| `BNC_ATT_PRIV`                              | yes     | **bouncer only**   | Ed25519 private key for envelope signing. Single secret, single rotation point. |
-| `RESEND_API_KEY`                            | yes     | promoter           | Outbound email.                                                                 |
-| `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | yes     | roadie             | R2 SigV4 credentials.                                                           |
-| OAuth client id/secret pairs                | yes     | guestlist          | Google, Microsoft, Facebook, LinkedIn — wired conditionally.                    |
+| Secret                                      | Per env | Holder             | Purpose                                                                                                              |
+| ------------------------------------------- | ------- | ------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `BETTER_AUTH_SECRET`                        | yes     | **guestlist only** | Better Auth cookie signing. Single holder by design — no app holds it.                                               |
+| `BNC_ATT_PRIV`                              | yes     | **bouncer only**   | Ed25519 private key for envelope signing. Single secret, single rotation point.                                      |
+| `RESEND_API_KEY`                            | yes     | promoter           | Outbound email.                                                                                                      |
+| `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | yes     | roadie             | R2 SigV4 credentials.                                                                                                |
+| OAuth client id/secret pairs                | yes     | guestlist          | Google, Microsoft, Facebook, LinkedIn — wired conditionally.                                                         |
+| `STRIPE_SECRET_KEY`                         | yes     | guestlist + store  | Stripe Billing API. **Optional/additive** — absent = no-Stripe fallback (§7).                                        |
+| `STRIPE_WEBHOOK_SIGNING_SECRET`             | yes     | guestlist + store  | Webhook signature verification. Both must be present for a worker's Stripe surface to activate (`stripeConfigured`). |
+
+Both Stripe secrets are unset in every env today; guestlist's better-auth Stripe plugin stays out of the plugin array and store's `/hooks/store` returns `503` until they are provided (§7). Guestlist's webhook-secret var is named `STRIPE_WEBHOOK_SIGNING_SECRET` here (the better-auth plugin's own reader is `STRIPE_WEBHOOK_SECRET` — see the exec-plan for the two-listener split).
 
 Things that are **not secrets** (public values, committed to repo or `vars`):
 
-- `BETTER_AUTH_URL`, `IDENTITY_URL`, `AUTH_DOMAIN` — public URLs.
+- `BETTER_AUTH_URL`, `IDENTITY_URL`, `STORE_URL`, `AUTH_DOMAIN` — public URLs.
 - `EMAIL_FROM` — the From: address (the API key is the secret).
 - `BOUNCER_ATTESTATION_KEYS` — public-key set; lives in `packages/config/src/bouncer-attestation.ts`.
+- **PostHog `token` + `host`** — the PostHog **write** key is public by design; committed as `platformAnalyticsConfig` in `packages/config/src/analytics.ts` and inlined into bundles (§4.8). Not a secret, not an env var.
 - D1 ids, account ids — non-sensitive identifiers.
 
 ## §6.4 Rotation runbooks
@@ -935,6 +1034,295 @@ Public-key publication is via committed code, so rotation is a code change + a s
 4. **PR #3** — drop the old `kid` from `BOUNCER_ATTESTATION_KEYS`. Deploy apps. Old envelopes (max 30s lifetime) are gone by then.
 
 No flag day. The overlap window is bounded by the envelope's `exp` (30s), not by deploy coordination.
+
+---
+
+# §7 — Billing ingestion (Stripe)
+
+Billing is **optional, additive infrastructure**. Every worker boots, typechecks, tests, and runs `bun run dev` (any subset) with **zero** Stripe — no CLI, no API key, no webhook secret. When Stripe config is present a surface lights up; when absent it degrades to a no-Stripe fallback that already exists. The single predicate is `stripeConfigured(secretKey, webhookSecret)` (`packages/stripe/src/gate.ts`, imported via the dependency-light `@si/stripe/gate` subpath): `Boolean(secretKey && webhookSecret)`. **Absence is a branch, never a throw.**
+
+There are **two disjoint webhook listeners** — deliberately separate Stripe event destinations with separate signing secrets, so neither double-handles the other's events:
+
+1. **Commerce** → store's `/hooks/store` — verify, enqueue to a Cloudflare Queue, return `200`, and process asynchronously + idempotently with a DLQ. This is the pipeline that is **implemented** (exec-plan `0002`, phase P1). It is the subject of most of this section.
+2. **Subscriptions** → guestlist's `/api/auth/stripe/webhook` — the `@better-auth/stripe` plugin verifies and mutates its own `subscription` table **in-request**. Present but **dormant** — see the end of this section.
+
+## §7.1 The commerce pipeline
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant S as Stripe
+  participant BN as bouncer
+  participant H as store /hooks/store<br/>(worker.ts front door)
+  participant Q as si-stripe-events queue
+  participant C as store queue() consumer
+  participant D as store D1
+  participant DLQ as si-stripe-events-dlq
+
+  S->>BN: POST raw body + Stripe-Signature
+  BN->>H: passthrough (raw body, unstripped path)
+  H->>H: stripeConfigured? → else 503
+  H->>H: constructEventAsync(raw, sig, whsec, SubtleCryptoProvider)
+  alt bad signature
+    H-->>S: 400 (no enqueue)
+  else verified
+    H->>Q: send compact event snapshot
+    H-->>S: 200 immediately
+  end
+  Q->>C: batch (at-least-once)
+  C->>D: db.batch([ ledger INSERT…SELECT WHERE EXISTS, order UPDATE(s) ])
+  alt order exists & first sight
+    D-->>C: applied
+  else duplicate (ledger already had event.id)
+    D-->>C: duplicate (idempotent no-op)
+  else no matching order
+    C->>Q: message.retry() → after 5 retries → DLQ
+    Q->>DLQ: poison
+    DLQ->>C: one best-effort reprocess, then ack
+  end
+```
+
+**The front door is dumb by design** (`workers/store/src/lib/stripe-webhook.ts`, `handleStoreStripeWebhook`). `worker.ts` short-circuits the path `STORE_STRIPE_WEBHOOK_PATH = "/hooks/store"` **before** SSR and before the analytics execution context, because signature verification needs the **raw** request body (`await request.text()`, never `.json()`). Order of checks and their status codes are load-bearing:
+
+- not `stripeConfigured` → `503 { error: "stripe_unconfigured" }`.
+- missing `stripe-signature` header → `400 { error: "missing_signature" }`.
+- verify with `stripe.webhooks.constructEventAsync(raw, sig, whsec, undefined, Stripe.createSubtleCryptoProvider())` — the **async, WebCrypto** verifier (sync `constructEvent` uses Node crypto and won't run on Workers); any throw → `400 { error: "invalid_signature" }`.
+- queue binding absent (e.g. a preview build with `queues` stripped) → `503 { error: "queue_unconfigured" }` — checked _after_ signature so unsigned requests still `400` first.
+- enqueue then `200 { ok: true }`.
+
+What gets enqueued is a **compact snapshot**, not the full event: `{ id, type, created, livemode, objectId?, payment_status? }`. Carrying `payment_status` lets the consumer settle the order **without a network re-fetch** in the common case.
+
+## §7.2 Queue infrastructure
+
+Store is the **only** worker that binds Cloudflare Queues. Per env (`workers/store/wrangler.jsonc`, staging top-level + `env.production`):
+
+| role                  | binding / queue                            | dead-letter                  | max_retries |
+| --------------------- | ------------------------------------------ | ---------------------------- | ----------- |
+| producer              | `STRIPE_EVENTS` → `si-stripe-events-{env}` | —                            | —           |
+| main consumer         | `si-stripe-events-{env}`                   | `si-stripe-events-dlq-{env}` | 5           |
+| terminal DLQ consumer | `si-stripe-events-dlq-{env}`               | _(none)_                     | 0           |
+
+Both the main queue and the DLQ point at the **same** worker's `queue()` handler; routing is by queue-name regex `DLQ_QUEUE_PATTERN = /-dlq-/` (`stripe-queue.ts`). The main consumer (`consumeStripeEventBatch`) fans out per-message with `Promise.all`, each wrapped in try/catch: `ok → message.ack()`, retryable → `message.retry()`, thrown → log + `retry()`. The terminal DLQ consumer (`processDlqBatch`) does one best-effort reprocess then **unconditionally acks** — a stuck event surfaces a triage log line (`stripe_dlq_reprocess_failed`) instead of silently ageing out.
+
+## §7.3 Atomicity & idempotency
+
+Both Stripe **and** Cloudflare Queues deliver **at-least-once**, so idempotency is enforced once, in the consumer, keyed on `event.id`. The ledger table `processed_stripe_event` (`event_id` PK, `event_type`, `processed_at`) and the order UPDATE(s) commit **together in one `db.batch(...)`** (a D1 batch is a single atomic transaction), so you can never record "processed" without applying, or apply without recording:
+
+```ts
+// EXISTS-gated ledger insert: only records the event when a matching order exists,
+// so a no-match event records nothing and a later redelivery still applies.
+const ledgerInsert = db
+  .insert(processedStripeEvent)
+  .select(
+    sql`select ${message.id}, ${message.type}, ${Date.now()} where exists (
+        select 1 from ${customerOrder}
+        where ${customerOrder.stripeCheckoutSessionId} = ${objectId})`,
+  )
+  .onConflictDoNothing();
+
+const results = await db.batch([ledgerInsert, ...mutations]);
+```
+
+Outcome is classified from each statement's `meta.changes` with **no extra round-trip** — a 4-way result `applied | duplicate | ignored | retryable`:
+
+- `orderChanges === 0` → **retryable** (no order carries this session id — see §7.5).
+- `ledgerChanges === 1` → **applied** (first sight).
+- else → **duplicate** (order present, ledger already had `event.id`; the idempotent UPDATE re-ran harmlessly).
+- unrecognized event type / wrong livemode → **ignored** (acked).
+
+The event-type `switch` in `buildEventMutations` **is the allowlist** — recognition and dispatch are one path. Order-state guards live in SQL `CASE` expressions evaluated against pre-update values, so out-of-order terminal states are never clobbered (e.g. `checkout.session.completed` advances `payment_status` only `when payment_status = 'unpaid'`). Correctness-critical state is trusted from the snapshot's `payment_status`, matching Stripe's "don't trust a thin/stale payload" guidance for the fields that matter.
+
+## §7.4 livemode gating
+
+`expectedLivemode = env.ENVIRONMENT === "production"`. **Production processes only `livemode:true`; every other env (staging/dev/CI) only `livemode:false`.** A wrong-mode event is permanently inapplicable, so it is recorded in the ledger (to stop redelivery re-warnings) but **no order is touched**, and it returns `ignored`.
+
+## §7.5 What is deferred (current state)
+
+Checkout Session **creation** is not wired: a repo grep for `sessions.create` / `createCheckoutSession` in `workers/store/src` returns zero call sites. Storefront checkout runs the **manual pending→paid stub** (`placeOrder`). Because no order carries a `stripe_checkout_session_id`, the EXISTS gate never matches today, so every _real_ commerce event returns `retryable`, retries 5×, and drains to the DLQ. This is intentional and forward-compatible: no ledger row is written until an order matches, so once session-creation lands, Stripe redeliveries apply cleanly.
+
+The **subscription** listener is likewise dormant. `packages/auth/src/server.ts` builds the `@better-auth/stripe` plugin **outside** the plugins array and spreads it in only when `opts.stripe` is set; `workers/guestlist/src/auth-config.ts`'s `buildStripeOptions(env)` returns `undefined` unless `stripeConfigured(...)`. With no env setting the secrets, the plugin **never enters the array** — auth behavior is byte-identical to a no-Stripe build.
+
+## §7.6 The `@si/stripe` IaC package
+
+`@si/stripe` is the dormant billing IaC + codegen package. `src/config.ts` is the product/price source of truth (one `member` product, one `member_monthly` price placeholder). Three scripts drive Stripe as code:
+
+- **`scripts/fetch.ts`** (read-only) generates the gitignored `src/generated.ts` id map. **Without a key it writes a typed empty-string stub and exits 0 before importing the Stripe SDK** — this is what lets a keyless clone / CI typecheck.
+- **`scripts/sync.ts`** is the write path: idempotently create/update products (matched by `metadata.config_key`, never by name), create prices (immutable), 5 s abort window on `sk_live_`.
+- **`scripts/validate.ts`** is the CD drift-guard: reports missing resources, field drift, and **orphans** (managed in Stripe but absent from config, unless `archived`) — fatal, because Stripe products/prices are permanent (archive-only).
+
+The codegen is a `vp` task-graph node (`packages/stripe/vite.config.ts`): the `typecheck` task chains `bun run fetch` before `tsgo --noEmit` so typecheck always sees a stub consistent with current config. Anything bundling code that imports `@si/stripe` depends on `@si/stripe#codegen`.
+
+## §7.7 Invariants
+
+- **INV — server-authoritative.** No client-reported amount or client-reported success mutates order state; only webhooks + server-side truth do.
+- **INV — signature is the gate.** Every webhook (both listeners, all envs) is verified with `constructEventAsync` + the endpoint's `whsec` before any side effect.
+- **INV — idempotent.** Replayed events (Stripe or Queues redelivery) cause no duplicate side effects, enforced on `event.id` in `processed_stripe_event`.
+- **INV — decoupled.** No worker's boot, `bun run dev`, typecheck, test, or build depends on any Stripe key/secret/CLI existing. Enforced in CI, which has no Stripe.
+- **INV — no new guestlist tables.** Only better-auth's own plugin tables (`subscription`, `user.stripeCustomerId`) are Stripe-related in guestlist; the store's commerce tables live in store's D1.
+
+> **Provisioning gap (current state).** The queue infrastructure exists in code but has **no provisioning automation and no runbook** — `si-stripe-events-*` and the DLQs must be created out-of-band per env before store deploys (`scripts/provision/all.ts` is `tokens → d1 → r2 → access → email`, with no queue step). Store's Stripe secrets are also not seeded by `workers/store/scripts/env-init.ts`, so a fresh clone's `/hooks/store` is `503` locally. Both are tracked in `docs/ops/env-vars.md` "Known inconsistencies".
+
+---
+
+# §8 — Release engineering & CI/CD
+
+CI/CD runs entirely on **RWX** (a dependency-graph CI runner) with **Captain** (test parsing + flaky-test retries), configured under `.rwx/` and `.captain/config.yml`. There is no GitHub Actions. Deploys are single-account Cloudflare, wrangler-driven.
+
+**The fleet + the canonical deploy order** (identical in every lane and script):
+
+```
+promoter  roadie  guestlist  identity  store  bouncer   ← bouncer LAST
+```
+
+`promoter`/`roadie` are leaves (deploy first); `guestlist` binds them; `identity`/`store` bind guestlist; `bouncer` binds guestlist + identity + store and deploys **last** so the public router never points at an undeployed upstream (wrangler's binding-existence check would otherwise fail — CF error `10143`). The vendored `inbox` app is outside all lanes (manual `cd inbox && bun run deploy`).
+
+## §8.1 The lanes
+
+```mermaid
+flowchart TD
+  pr([PR opened / pushed]) --> gate["ci.yml GATE<br/>pr-title-lint · typecheck-* · test-*"]
+  pr --> prev["preview.yml<br/>upload 0% version per changed worker<br/>tag pr-N-headsha · sticky comment"]
+  gate -->|green| merge([merge to main])
+  merge --> gate2["ci.yml GATE (re-run on main)"]
+  gate2 -->|"green & not a release commit"| promote["promote-staging.yml<br/>changed subset → STAGING<br/>promote-over-rebuild"]
+  merge --> rp["release-please.yml<br/>maintain grouped Release PR"]
+  rp -->|"merge Release PR"| tags["cut per-worker tags<br/>&lt;worker&gt;-v x.y.z"]
+  tags --> prod["deploy-production<br/>released subset, ordered"]
+  promote --> smoke1([smoke apex])
+  prod --> smoke2([smoke apex])
+  reship["release.yml (manual dispatch)<br/>reship ONE worker at ONE tag"] --> prod2([production])
+```
+
+## §8.2 Gate — `.rwx/ci.yml`
+
+One RWX graph does both the verification gate and (on push to main) the staging deploy. Triggers: `pull_request` (feature verification, sets `pr-title`), `push` to main only (post-merge verify + deploy), and `cli`. Setup tasks install a pinned toolchain (`git/clone`, `install-captain`, `bun-v1.3.11`, **node 24.16.0** — required because vitest-pool-workers deadlocks under bun and wrangler's bin no-ops under bun), then `install` (`bun install --frozen-lockfile --ignore-scripts`), `bootstrap` (`vp run -r env:init`), and `types` (`bun run types` → per-worker `worker-configuration.d.ts`).
+
+Gate tasks, all content-cached via per-task `filter`:
+
+- **`pr-title-lint`** (PRs only) — conventional-commit regex on the PR title. Squash-merge makes the title the main-branch commit message, and release-please silently drops commits it can't parse, so a non-conforming title fails the PR.
+- **14 `typecheck-<pkg>` tasks** — each `use: types`, `cd <pkg> && bun run typecheck` (`tsgo --noEmit`). `typecheck-stripe` first runs `bun run fetch` to materialize the `@si/stripe` stub.
+- **8 `test-<pkg>` tasks** — each `captain run si-<pkg> --print-summary`, emitting `.captain-out/<pkg>.rwx.json`. Workerd-pool suites (`bouncer`, `guestlist`, `roadie`, `store`) add `use: node`.
+- **`gate`** — an aggregation node `after:` all typecheck + test tasks (the single "all green" edge the deploy hangs off).
+
+The `filter` cache is the efficiency lever: change one app → only its 1–2 tasks re-run; change a shared package, `bun.lock`, or one of the RPC-producer workers (`guestlist`/`promoter`/`roadie`, which export types workspace-wide) → everything re-runs.
+
+## §8.3 Staging on merge — `.rwx/promote-staging.yml`
+
+Fires only on push-to-main, `after: gate`, and **skipped on release commits** (`chore: release …` — that app code already staged when the feature PRs merged). It computes the **changed subset**: `scripts/changed-workers.sh` reads the `git compare` file list (base = `event.github.push.before`) and maps files → workers in canonical order (a change under an RPC-producer worker or `packages/**`/lockfile fans out to the whole fleet; a docs/CI-only change touches nothing; unknown → conservative all).
+
+**Promote-over-rebuild:** rather than rebuilding, `scripts/promote-staging.sh` reuses the exact version artifact `preview.yml` already uploaded on the PR and flips it to 100%. Per worker, in canonical order: (1) **migrate first** (`deploy-worker.sh migrate`); (2) if the worker's `wrangler.jsonc` changed → **full deploy** (config/binding/route changes can't ride a version); (3) else resolve the merged PR, build tag `pr-<n>-<pr_head_sha>`, find the newest matching uploaded version and `wrangler versions deploy <id>@100%`; (4) on any miss → fall back to full deploy. Then a GitHub Deployment record + `smoke-test.sh` against the apex.
+
+## §8.4 Production — `.rwx/release-please.yml`
+
+release-please runs in **manifest mode, one component per worker** (`release-please-config.json`, `release-type: simple`, `include-component-in-tag`, tags shaped `<worker>-v<x.y.z>`), producing **one grouped Release PR** titled `chore: release main`. The production deploy is folded into this same run (a single Release-PR merge can cut tags for several workers at once; per-tag deploy runs would race and break bouncer-LAST ordering). Four tasks:
+
+1. `release-please-pr` — open/update the grouped Release PR from conventional commits.
+2. `release-please-github-release` — on a merged Release PR, cut the per-worker `<worker>-v*` tags + GitHub Releases.
+3. `released-components` — derive which workers were actually released, reading tags via the **strongly-consistent git-refs API** filtered to refs whose object sha equals the trigger sha (not a live HEAD re-read, which could race). **Loud fail-safe:** a release commit that yields an empty released set is a fatal exit, not a silent no-deploy.
+4. `deploy-production` — iterate the canonical order, skip any worker not released, and run `deploy-worker.sh ship <w> production` (migrate-then-deploy) each, then smoke the apex.
+
+## §8.5 Preview & single-worker reship
+
+- **`.rwx/preview.yml`** — per-PR preview versions. For each changed worker, `scripts/generate-preview-tasks.sh` emits a dynamic `upload-<w>` task that builds (identity/store with `SI_BUILD=1`, guestlist via `vp run build` for `@si/stripe` codegen), **strips any `queues` binding** from the built config (the preview token lacks Queues:Write), and `wrangler versions upload --tag pr-<n>-<sha> --preview-alias pr-<n>` at 0% traffic. A sticky PR comment tabulates the preview URLs. **These uploaded versions double as the promote-on-merge artifacts** (§8.3). The `si_preview` vault token is scoped to Workers Scripts:Write + Account Settings:Read only.
+- **`.rwx/release.yml`** — manual single-worker reship / rollback (`rwx dispatch si-reship-worker --param worker=… --param tag=…`). The deliberate act of naming worker + tag is the approval; a bare run deploys nothing (`reship-gate`). Serializes against production via a shared capacity-1 pool.
+
+## §8.6 The deploy primitive, smoke, and Captain
+
+`scripts/deploy-worker.sh` is the **single source of truth** for per-worker mechanics, shared by every lane. `migrate` runs a worker's `db:migrate:<env>` only if it exists (**no `|| true` — a migration failure is fatal**); `deploy` stamps `WORKER_VERSION` + `WORKER_COMMIT` vars (surfaced by `@si/kit/version`); `ship` = migrate **then** deploy — the migrate-before-code invariant, "so a freshly-deployed worker never reads a schema the database doesn't have yet."
+
+`scripts/smoke-test.sh <url>` hits `<url>/` up to 5×; **PASS on any `1xx`–`4xx`** (a 302 to sign-in is a healthy router), **FAIL on 5xx or `000`**. Always hits the public apex, so a leaf-only release is smoke-tested through the un-redeployed router.
+
+Captain (`.captain/config.yml`) defines one `si-<pkg>` suite per test-bearing package, parses vitest JSON, and **retries only the failed test** (`retries.attempts: 2`, templated `{{ file }}` / `{{ testNamePattern }}`). Workerd suites use `npx vp` (node); pure-node suites use `bunx vp`.
+
+Secrets live in two RWX vaults: **`si_deploy`** (main-locked — `CLOUDFLARE_API_TOKEN`, account id, the `rwx-automation-si` GitHub App token) and **`si_preview`** (unlocked — the narrow preview token). Deploy secrets are never pushed by CI; operators run `bun run secrets <env>` (§9).
+
+> **Activation status (current state).** These lanes are scaffolding until the RWX GitHub App is installed and the vaults exist (runbook `docs/ops/rwx-setup.md`). Until previews are enabled, promote-staging safely falls back to full deploys.
+
+---
+
+# §9 — DevOps & Infrastructure-as-Code
+
+## §9.1 The wrangler config model
+
+Each worker has **one checked-in `wrangler.jsonc`** (source, not generated): the **top level is staging**, and a single **`env.production`** block is production. There is no `env.staging`. Cloudflare named environments **do not inherit** bindings/vars, so each `env.production` block **re-declares everything** — `name`, vars, D1, queues, services, routes, observability. Load-bearing details, uniform across all six workers:
+
+- **Explicit production `name`** (`si-<worker>-production`) is mandatory — without it wrangler derives `si-<worker>-staging-production` (top-level name + `-production`), a brand-new worker.
+- `workers_dev` / `preview_urls` **must be re-set to `false`** in production (those two _are_ inherited from the top level, unlike bindings).
+- `observability` and `account_id` (the literal `c735c5a53d864bee37400befb7f4c7f4`) are re-declared/hardcoded in each block.
+
+`wrangler deploy` (no `--env`) ships staging; `wrangler deploy --env production` ships production; local dev runs the staging top level with `.dev.vars` overrides. After editing a `wrangler.jsonc` or `deploy.ts`, run `cd <service> && bun run types`.
+
+**`packages/config/src/deploy.ts`** holds only the **code-consumed** deploy constants — `baseDomain` (`somewhatintelligent.ca`), `devDomain` (`somewhatintelligent.localhost`), `workerPrefix` (`si`), `cloudflareAccountId`. JSONC can't import, so these are **duplicated as literals** into each `wrangler.jsonc` (the `si-` prefix, the account id). `deploy.ts` exists for the importers that _can_ read it (`@si/secrets` manifest, provision scripts, the bouncer/guestlist vitest configs). Per-env resource ids (D1 UUIDs, queue names) live **only** in each wrangler config. `brand.ts` holds code-consumed brand/cookie/auth-provider constants (not referenced by wrangler).
+
+## §9.2 Binding inventory
+
+| worker    | D1 (`DB`)            | Queues                                         | R2 / cron                       | other bindings                                                                                    |
+| --------- | -------------------- | ---------------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------- |
+| bouncer   | —                    | —                                              | —                               | services `GUESTLIST`, `IDENTITY`, `STORE` (plain); `routes` (apex)                                |
+| guestlist | `guestlist-<env>-db` | —                                              | —                               | `PROMOTER` (entrypoint `Promoter`), `ROADIE` (entrypoint `Roadie`, `props.callerApp:"guestlist"`) |
+| identity  | —                    | —                                              | —                               | `GUESTLIST` (plain)                                                                               |
+| store     | `store-<env>-db`     | producer `STRIPE_EVENTS` + main + DLQ consumer | —                               | `GUESTLIST` (plain), `ROADIE` (entrypoint `Roadie`, `props.callerApp:"store"`)                    |
+| roadie    | `roadie-<env>-db`    | —                                              | R2 `BLOBS`; cron `*/15 * * * *` | — (RPC target only, no public route)                                                              |
+| promoter  | —                    | —                                              | —                               | prod-only `send_email` binding `EMAIL` (staging uses Resend)                                      |
+
+Three workers own D1 (**guestlist, store, roadie**). **Store is the only queue producer/consumer.** **No worker uses Durable Objects** — the only `migrations`/`migrations_dir` keys are D1 migration directories, not DO migration tags. Any worker binding `ROADIE` **must** set `entrypoint: "Roadie"` + `props.callerApp`, or roadie's `readCallerApp` throws on every call (reads and uploads) — the silent-killer runbook is `docs/runbooks/roadie-r2-provisioning.md`.
+
+## §9.3 Provisioning — rendered vars vs manual per-env
+
+**Rendered/committed** (already in each `wrangler.jsonc`, no per-env action): `ENVIRONMENT`, all URLs, `AUTH_DOMAIN`, `PUBLIC_BASE`, `BNC_ATT_KID`, `EMAIL_PROVIDER`/`EMAIL_FROM`, roadie's `R2_BUCKET`/`R2_ACCOUNT_ID`, bouncer's `ROUTES` table, `account_id`.
+
+**Manual / out-of-band per env:**
+
+- **Secrets** — never pushed by CD. Operators run `bun run secrets <env>` (`@si/secrets`; manifest `packages/secrets/src/manifest.ts`, values in gitignored `.secrets/<env>.env`; runbook `docs/runbooks/SECRETS.md`). Sources: `devDefault` / `generate` (`BETTER_AUTH_SECRET`, prod `BNC_ATT_PRIV`) / `provided` (Resend, OAuth, R2 keypair, Stripe).
+- **D1 databases** — must exist before migrations (`scripts/provision/d1.ts` find-or-create, or `wrangler d1 create` + paste UUID + `bun run types`).
+- **R2 (roadie)** — the account-scoped S3 keypair secret **and** the bucket CORS policy for browser-direct PUTs (`workers/roadie/scripts/setup-cors.ts`; automated by `scripts/provision/r2.ts`).
+- **Queues** — **manual, no automation** (§7). `scripts/provision/all.ts` is `tokens → d1 → r2 → access → email`; there is no queue step and no queue runbook yet.
+
+The provision suite (`scripts/provision/`): `tokens.ts` (mints the `si-deploy` / `si-preview` / `si-access-admin` CF tokens), `d1.ts`, `r2.ts`, `access.ts` (Cloudflare Zero Trust Access apps + the `si-smoke` service token), `email.ts`, orchestrated by `all.ts`; plus `seed-users.ts`. Per-worker `scripts/env-init.ts` seeds only the `.dev.vars` keys that must differ from the staging wrangler values for local correctness (attestation dev keypair, blank R2/OAuth/Stripe placeholders, dev URLs).
+
+Runbooks under `docs/runbooks/`: **`PRODUCTION-DEPLOY.md`** (release-please manifest releases, deploy order, migrate-before-code, apex smoke, prereqs checklist), **`roadie-r2-provisioning.md`** (the ROADIE entrypoint+props requirement + R2 keypair/CORS), **`SECRETS.md`** (`@si/secrets` model). The env-var contract table is `docs/ops/env-vars.md` — one table per worker plus cross-cutting/CI/CD; a new env var "is not done until it has a row there."
+
+---
+
+# §10 — Testing strategy
+
+The toolchain is **vite-plus** (`vp`, a VoidZero distribution — `vp test`, `vp run -r <task>`, `vp check`) and **tsgo** (`@typescript/native-preview`) for typecheck. Tests fall in two tiers.
+
+```mermaid
+flowchart TD
+  subgraph A["Tier A — per-package (the CI gate)"]
+    direction TB
+    unit["unit *.test.ts<br/>node env"]:::t
+    pool["D1 / pool<br/>@cloudflare/vitest-pool-workers<br/>(miniflare + real local D1)"]:::t
+  end
+  subgraph B["Tier B — e2e (manual, NOT in CI)"]
+    e2e["Playwright *.spec.ts<br/>e2e/ · absolute URLs"]:::t
+  end
+  gate["ci.yml: captain run si-&lt;pkg&gt;"] --> A
+  dev(["bun run test:e2e<br/>(stack must be up)"]) --> B
+
+  classDef t fill:#85bbf0,stroke:#5d82a8,color:#000
+```
+
+**Tier A — per-package unit + D1/pool.** Run by `vp test run` per package (root `bun run test` → `vp test`; CI → `captain run si-<pkg>`). D1 tests run inside **workerd via miniflare** against a **real local D1** using `@cloudflare/vitest-pool-workers`, with migrations read by `readD1Migrations(...)` and applied through `applyD1Migrations`. Two pool patterns coexist:
+
+- **guestlist / roadie** wire `cloudflareTest(...)` **inline in `vite.config.ts`**, so their D1 tests are ordinary `*.test.ts` picked up by the default `vp test run` — and therefore **run in CI**.
+- **store** uses a **separate `vitest.pool.config.ts`** with an `*.itest.ts` suffix and a `test:pool` script (its `wrangler.jsonc` carries service bindings miniflare can't boot, so the pool config declares bindings explicitly). Store's default `vite.config.ts` test block only globs `__tests__/**/*.test.ts`.
+
+**Tier B — e2e.** Playwright specs (`*.spec.ts`) under `e2e/`, run by `bun run test:e2e`. **Not in CI** (no Playwright task in `.rwx/ci.yml`; `e2e/README.md` says so). Playwright starts nothing — the stack must be up (`bun run dev`); specs use **absolute URLs** (no `baseURL`) because the platform spans many subdomains. Real journeys live under `e2e/store/` (`browse-and-cart.spec.ts`, `checkout.spec.ts`, `admin.spec.ts`); `e2e/smoke.spec.ts` is a hermetic "is Chromium provisioned?" check.
+
+**Naming keeps the runners from colliding:** vitest only ever globs `*.test.ts` (+ store's `*.itest.ts`); Playwright's `testDir` is `./e2e` and its specs are `*.spec.ts`, which vitest never sees.
+
+**The typecheck gate.** `worker-configuration.d.ts` is generated by `wrangler types` per worker (deterministic — config-hash header, not a timestamp, so it cache-hits); CI runs a single `types` task then per-package `typecheck-<pkg>` (`use: types`). `vp run -r typecheck` is the workspace signal. Note the **per-file vs workspace `vp check` quirk**: the per-file checker reports ~50–250 phantom vitest-global errors inside `__tests__/`; workspace `bun run check` from root is the reference signal (worker configs also set `lint.ignorePatterns: ["__tests__/**/*"]`).
+
+**Where new tests go** (lowest tier that can catch the bug):
+
+- Pure Stripe logic (signature verify, event compaction, ack/retry dispatch) → Tier A unit — models already exist: `workers/store/__tests__/stripe-webhook.test.ts`, `stripe-queue.test.ts`, `stripe-dlq-consumer.test.ts`.
+- Stripe behavior only provable against a real DB (idempotency ledger, atomic order mutation, livemode gate) → the D1/pool tier as `*.itest.ts` (`workers/store/__tests__/integration/stripe-events.itest.ts`).
+- Analytics logic → Tier A unit in `packages/analytics/src/__tests__/` (`delivery.test.ts` mocks `posthog-node` + the execution-context ALS; `vendor-boundary.test.ts` enforces the single-import rule).
+- Shared Stripe gating → `packages/stripe/__tests__/gate.test.ts`, `packages/auth/__tests__/stripe-gating.test.ts`.
+
+> **CI-gate gap (current state).** The `si-store` Captain suite runs `vp test run --root workers/store` with **no `-c ./vitest.pool.config.ts`**, and nothing in `.rwx/ci.yml` / `.captain/config.yml` invokes `test:pool` or `.itest.ts`. So store's D1 pool tests (`place-order.itest.ts`, `stripe-events.itest.ts`, `constraints.itest.ts`) are a **locally-run tier, not part of the CI gate**. guestlist/roadie D1 tests _do_ gate in CI because they are plain `*.test.ts` in the single `vite.config.ts`. A claim of "all D1 constraints are gated in CI" holds for guestlist/roadie but not for store's `.itest.ts` suite.
 
 ---
 
@@ -965,4 +1353,15 @@ The `getEnvelope()` fast path costs nothing — JWS verify is sub-millisecond. T
 - **Platform contract** — the `x-platform-*` header family. The only privileged header set apps and services read.
 - **Promoter** — the Worker that owns outbound email. Wraps Resend.
 - **Roadie** — the Worker that owns blob storage. Wraps R2 with signed-URL minting.
+- **Store** — the storefront + commerce TanStack Start app. Owns its own D1 and the only Cloudflare Queue infrastructure on the platform; hosts the Stripe commerce webhook pipeline (§7).
+- **`/hooks/store`** — store's commerce webhook front door. Bouncer passthrough (raw body, unstripped path); verifies the Stripe signature, enqueues a compact event snapshot, returns 200.
+- **`processed_stripe_event`** — store's idempotency ledger (`event_id` PK). Written atomically with the order UPDATE in one `db.batch(...)`; dedupes at-least-once redeliveries (§7.3).
+- **DLQ** — dead-letter queue. `si-stripe-events-dlq-<env>`; a message that fails 5 main-queue retries lands here and gets one best-effort reprocess, then is acked. Routed by the name regex `/-dlq-/`.
+- **`stripeConfigured`** — the single Stripe gate predicate (`@si/stripe/gate`): `Boolean(secretKey && webhookSecret)`. Absence branches to a no-Stripe fallback, never throws.
+- **`@si/analytics`** — the only package that imports the PostHog SDKs; typed client + server capture, PostHog write token committed as a public `@si/config` constant (§4.8).
+- **Execution-context flushing** — seeding Cloudflare's `ctx` into an ALS (`@si/kit/execution-context`, `runWithExecutionContext`) so `@si/analytics` can `ctx.waitUntil(captureImmediate)` the event without dropping it on isolate freeze or adding request latency (§4.8).
+- **RWX / Captain** — the CI/CD runner (dependency-graph tasks in `.rwx/`) and the test-suite parser/retrier (`.captain/config.yml`). No GitHub Actions.
+- **Promote-over-rebuild** — staging-on-merge reuses the exact `wrangler versions upload` artifact a PR's preview already built (tag `pr-<n>-<head-sha>`) and flips it to 100%, rather than rebuilding; full deploy is the fallback (§8.3).
+- **release-please (manifest mode)** — per-worker components producing `<worker>-v<x.y.z>` tags from one grouped Release PR; merging it cuts tags and deploys the released subset in canonical order (§8.4).
+- **vite-plus (`vp`) / vitest-pool-workers** — the test/build toolchain; the D1 test tier runs inside workerd+miniflare against a real local D1 (§10).
 - **VMF** — virtual microfrontend; bouncer's `mode: "vmf"` rewrites HTML/CSS/Location/cookies when mounting an upstream app under a path prefix. `"passthrough"` (no rewriting) is used for mounts where the upstream is already prefix-aware, such as `/api` → guestlist. **Status:** implemented in `workers/bouncer/src/proxy.ts` and covered by `__tests__/routing.test.ts` + `__tests__/template-parity.test.ts`; the production route table uses `mode: "vmf"` for the `/account` (identity) and `/shop` (store) mounts.
