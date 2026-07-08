@@ -13,7 +13,7 @@ export type Env = "local" | "staging" | "production";
 export const ENVS = ["local", "staging", "production"] as const satisfies readonly Env[];
 export type RemoteEnv = Exclude<Env, "local">;
 
-export type ServiceName = "guestlist" | "bouncer" | "promoter" | "roadie" | "identity";
+export type ServiceName = "guestlist" | "bouncer" | "promoter" | "roadie" | "identity" | "store";
 
 /** Repo-relative directory holding each service's `.dev.vars` (the local target). */
 export const SERVICE_DIR: Record<ServiceName, string> = {
@@ -22,6 +22,7 @@ export const SERVICE_DIR: Record<ServiceName, string> = {
   promoter: "workers/promoter",
   roadie: "workers/roadie",
   identity: "workers/identity",
+  store: "workers/store",
 };
 
 /**
@@ -110,7 +111,11 @@ export const SECRETS: SecretSpec[] = [
       "Stripe secret key. Unset until Stripe onboarding — gates the better-auth " +
       "stripe plugin (guestlist), which stays out of the plugins array entirely " +
       "until this AND STRIPE_WEBHOOK_SIGNING_SECRET are both set.",
-    perEnv: { local: ["guestlist"], staging: ["guestlist"], production: ["guestlist"] },
+    perEnv: {
+      local: ["guestlist", "store"],
+      staging: ["guestlist", "store"],
+      production: ["guestlist", "store"],
+    },
   },
   {
     name: "STRIPE_WEBHOOK_SIGNING_SECRET",
@@ -118,7 +123,11 @@ export const SECRETS: SecretSpec[] = [
     required: false,
     description:
       "Stripe webhook signing secret. Unset until Stripe onboarding — see " + "STRIPE_SECRET_KEY.",
-    perEnv: { local: ["guestlist"], staging: ["guestlist"], production: ["guestlist"] },
+    perEnv: {
+      local: ["guestlist", "store"],
+      staging: ["guestlist", "store"],
+      production: ["guestlist", "store"],
+    },
   },
   {
     name: "S3_ACCESS_KEY_ID",

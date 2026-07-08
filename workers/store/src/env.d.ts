@@ -16,6 +16,18 @@ interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
 
+interface Env {
+  STRIPE_SECRET_KEY: string;
+  STRIPE_WEBHOOK_SIGNING_SECRET: string;
+  // STRIPE_EVENTS is NOT hand-declared here: it comes solely from the
+  // wrangler-generated worker-configuration.d.ts (present when
+  // queues.producers exists, absent after the preview build's
+  // `jq 'del(.queues)'`). A hand decl would keep asserting the binding even in
+  // that preview build — a green typecheck over a runtime `undefined.send()`.
+  // The sole producer call site treats it as optional via a local structural
+  // cast — see StripeEventsEnv in src/lib/stripe-webhook.ts.
+}
+
 // Build-time version stamp, defined by vite.config.ts (rendered in the footer
 // via src/lib/version.ts). Safe fallbacks baked in when git/pkg unavailable.
 declare const __APP_VERSION__: string;

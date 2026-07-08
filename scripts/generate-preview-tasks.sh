@@ -56,6 +56,17 @@ for w in ${CHANGED}; do
   run: |
     set -euo pipefail
     ${build}
+    # si_preview's CLOUDFLARE_API_TOKEN_PREVIEW is scoped to Workers
+    # Scripts:Write + Account Settings:Read only (no Queues:Write) — see
+    # .rwx/preview.yml. A queue binding is deploy-time-only infra from
+    # preview's POV: strip it from the built wrangler.json (if present)
+    # before `wrangler versions upload`. Gated on the binding's PRESENCE,
+    # not the worker name, so the next queue-bound worker is covered.
+    dist_wrangler="workers/${w}/dist/server/wrangler.json"
+    if [ -f "\${dist_wrangler}" ] && jq -e 'has("queues")' "\${dist_wrangler}" > /dev/null; then
+      jq 'del(.queues)' "\${dist_wrangler}" > "/tmp/${w}-preview-wrangler.json"
+      mv "/tmp/${w}-preview-wrangler.json" "\${dist_wrangler}"
+    fi
     cd workers/${w}
     export WRANGLER_OUTPUT_FILE_PATH=/tmp/wr-${w}.ndjson
     # --var: ship-time version stamping for /__version (mirrors

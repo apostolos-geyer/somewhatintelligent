@@ -89,6 +89,11 @@ export const customerOrder = sqliteTable(
     subtotalCents: integer("subtotal_cents").notNull(),
     shippingCents: integer("shipping_cents").notNull().default(0),
     totalCents: integer("total_cents").notNull(),
+    // Stripe linkage. Nullable so the no-Stripe manual stub remains usable in
+    // keyless dev/CI; populated when Checkout Sessions are enabled.
+    stripeCustomerId: text("stripe_customer_id"),
+    stripeCheckoutSessionId: text("stripe_checkout_session_id").unique(),
+    paymentStatus: text("payment_status").notNull().default("unpaid"),
     // Fulfillment / tracking.
     carrier: text("carrier"), // CarrierKey from lib/config.ts
     trackingNumber: text("tracking_number"),
@@ -101,8 +106,18 @@ export const customerOrder = sqliteTable(
   (t) => [
     index("idx_order_user").on(t.userId, t.createdAt),
     index("idx_order_status").on(t.status),
+    index("idx_order_stripe_customer").on(t.stripeCustomerId),
   ],
 );
+
+// Idempotency ledger for Stripe webhook events processed by the queue
+// consumer. Event ids are globally unique in Stripe and are the only durable
+// replay key we trust.
+export const processedStripeEvent = sqliteTable("processed_stripe_event", {
+  eventId: text("event_id").primaryKey(),
+  eventType: text("event_type").notNull(),
+  processedAt: integer("processed_at", { mode: "timestamp_ms" }).notNull(),
+});
 
 // Line items — snapshot title/size/price at purchase time so later catalog
 // edits never rewrite a customer's order history.
@@ -128,3 +143,4 @@ export type ProductImage = typeof productImage.$inferSelect;
 export type ProductVariant = typeof productVariant.$inferSelect;
 export type CustomerOrder = typeof customerOrder.$inferSelect;
 export type OrderItem = typeof orderItem.$inferSelect;
+export type ProcessedStripeEvent = typeof processedStripeEvent.$inferSelect;

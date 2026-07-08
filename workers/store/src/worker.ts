@@ -4,6 +4,10 @@ import startEntry from "@tanstack/react-start/server-entry";
 import { extractPlatformStartContext } from "@si/kit/react-start";
 import { runWithExecutionContext } from "@si/kit/execution-context";
 import { devEnvelopeStamper } from "./lib/platform";
+import { handleStoreStripeWebhook, STORE_STRIPE_WEBHOOK_PATH } from "./lib/stripe-webhook";
+import { createDb } from "./lib/db";
+import { consumeStripeEventBatch, DLQ_QUEUE_PATTERN, processDlqBatch } from "./lib/stripe-queue";
+import type { StoreStripeEventMessage } from "./lib/stripe-webhook";
 
 declare module "@tanstack/react-start" {
   interface Register {
@@ -12,7 +16,14 @@ declare module "@tanstack/react-start" {
 }
 
 export default {
-  async fetch(request: Request, _env: Env, ctx: ExecutionContext): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    // Webhook ingestion short-circuits before the analytics execution context
+    // and SSR — it only verifies + enqueues, so it needs neither.
+    const url = new URL(request.url);
+    if (url.pathname === STORE_STRIPE_WEBHOOK_PATH) {
+      return handleStoreStripeWebhook(request, env);
+    }
+
     return runWithExecutionContext(ctx, async () => {
       // Dev-direct stamper mints an attestation envelope from the session cookie
       // so the principal (and the admin gate / admin server fns) resolves without
@@ -34,4 +45,12 @@ export default {
       });
     });
   },
-} satisfies ExportedHandler<Env>;
+  async queue(batch: MessageBatch<StoreStripeEventMessage>, env: Env): Promise<void> {
+    const db = createDb(env.DB);
+    if (DLQ_QUEUE_PATTERN.test(batch.queue)) {
+      await processDlqBatch(db, batch, env);
+      return;
+    }
+    await consumeStripeEventBatch(db, batch, env);
+  },
+} satisfies ExportedHandler<Env, StoreStripeEventMessage>;

@@ -25,7 +25,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { ulid } from "@si/kit/ids";
 import { getRequestId } from "@si/kit/request-context";
 import { platformConfig } from "@si/config";
-import { stripePrices } from "@si/stripe";
+import { stripeConfigured, stripePrices } from "@si/stripe";
 
 import type { Database } from "./db";
 import type { GuestlistEnv } from "./guestlist-env";
@@ -72,11 +72,13 @@ function buildSocialProviders(env: GuestlistEnv): PlatformAuthSocialProviders {
 // on `CreatePlatformAuthOptions` (packages/auth/src/server.ts). No env today
 // sets either, so this returns `undefined` and the plugin never enters the
 // `plugins` array.
-function buildStripeOptions(env: GuestlistEnv): CreatePlatformAuthOptions["stripe"] {
-  if (!env.STRIPE_SECRET_KEY || !env.STRIPE_WEBHOOK_SIGNING_SECRET) return undefined;
+export function buildStripeOptions(env: GuestlistEnv): CreatePlatformAuthOptions["stripe"] {
+  if (!stripeConfigured(env.STRIPE_SECRET_KEY, env.STRIPE_WEBHOOK_SIGNING_SECRET)) return undefined;
+  // stripeConfigured guarantees both are non-empty; TS can't narrow across the
+  // two-arg predicate, so assert the presence it just established.
   return {
-    secretKey: env.STRIPE_SECRET_KEY,
-    webhookSecret: env.STRIPE_WEBHOOK_SIGNING_SECRET,
+    secretKey: env.STRIPE_SECRET_KEY!,
+    webhookSecret: env.STRIPE_WEBHOOK_SIGNING_SECRET!,
     memberPriceId: stripePrices.member_monthly,
   };
 }

@@ -8,6 +8,13 @@
       "when": 1781752195587,
       "tag": "0000_soft_ricochet",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1783466690855,
+      "tag": "0001_stripe_ingestion",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { prices, products } from "../src/config";
+import { archived, prices, products } from "../src/config";
 import { CONFIG_KEY, CURRENCY, MANAGED_BY_KEY, MANAGED_BY_VALUE } from "../src/types";
 
 describe("products", () => {
@@ -59,5 +59,28 @@ describe("constants", () => {
     expect(MANAGED_BY_VALUE).toBe("si");
     expect(MANAGED_BY_KEY).toBe("managed_by");
     expect(CONFIG_KEY).toBe("config_key");
+  });
+});
+
+describe("archived resources", () => {
+  test("archive lists are explicit config-key allowlists", () => {
+    expect(archived.products).toEqual([]);
+    expect(archived.prices).toEqual([]);
+  });
+
+  test("archived arrays are readonly — mutation is a compile error", () => {
+    // Type-check-only: never invoked, so this proves the compile-time guarantee
+    // without actually mutating the shared `archived` singleton at runtime
+    // (TS `readonly` has no runtime enforcement — a real `.push()` call here
+    // would permanently pollute the module-level object for every test).
+    function typeCheckOnly() {
+      // @ts-expect-error archived.products is readonly string[]
+      archived.products.push("prod_test");
+      // @ts-expect-error archived.prices is readonly string[]
+      archived.prices.push("price_test");
+    }
+    void typeCheckOnly;
+    expect(archived.products).toEqual([]);
+    expect(archived.prices).toEqual([]);
   });
 });

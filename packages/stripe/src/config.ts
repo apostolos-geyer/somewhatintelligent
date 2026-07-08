@@ -34,3 +34,17 @@ export const prices = {
 
 export type ProductKey = keyof typeof products;
 export type PriceKey = keyof typeof prices;
+
+/**
+ * Managed Stripe resources that intentionally remain in Stripe after being
+ * removed from the active config. Stripe prices are immutable and historic
+ * products/prices can be needed for invoices, so this is the explicit escape
+ * hatch for validate.ts' otherwise-fatal orphan detection.
+ */
+export const archived: {
+  readonly products: readonly string[];
+  readonly prices: readonly string[];
+} = {
+  products: [],
+  prices: [],
+};
