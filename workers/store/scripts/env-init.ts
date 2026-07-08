@@ -26,6 +26,11 @@ const devVars = `${PLATFORM_DEV_VARS}STORE_URL=https://store.somewhatintelligent
 PUBLIC_BASE=/
 BNC_ATT_KID=${LOCAL_BNC_ATT_KID}
 BNC_ATT_PRIV="${LOCAL_BNC_ATT_PRIV.replace(/\n/g, "\\n")}"
+# Stripe webhook ingestion (/hooks/store) — unset until Stripe onboarding.
+# stripeConfigured() needs BOTH or the route returns 503; seed the whsec locally
+# from 'stripe listen --print-secret'. Mirrors workers/guestlist/scripts/env-init.ts.
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SIGNING_SECRET=
 `;
 
 writeDevVarsIfMissing(`${pkgDir}/.dev.vars`, devVars, label);
