@@ -51,7 +51,7 @@ function TwoFactorPage() {
       setLoading(false);
       return;
     }
-    const target = decodeReturnTo(returnTo) ?? "/account";
+    const target = decodeReturnTo(returnTo) ?? "/";
     await router.invalidate();
     await navigate({ href: target });
   }

@@ -59,7 +59,7 @@ export function SidebarUserMenu({ user }: { user: User }) {
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem render={<Link to="/account" />}>Account</DropdownMenuItem>
+              <DropdownMenuItem render={<Link to="/" />}>Account</DropdownMenuItem>
               {isAdminRole(user.role) && (
                 <DropdownMenuItem render={<Link to="/admin" />}>Admin</DropdownMenuItem>
               )}

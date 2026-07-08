@@ -3,7 +3,7 @@
  *
  * Identity is vmf-mounted at `/account` behind bouncer: bouncer STRIPS the mount
  * before the request reaches the worker, so the SERVER always serves at root
- * (`/sign-in`, `/account`, …) and every route definition / `<Link>` / redirect
+ * (`/sign-in`, `/`, …) and every route definition / `<Link>` / redirect
  * in the app stays prefix-free. The one thing bouncer's HTTP-layer rewrite
  * cannot reach is the hydrated client router's history/link state — so the
  * CLIENT router adopts the mount as a TanStack Router `rewrite` pair
@@ -55,6 +55,18 @@ export function resolveBasepath(opts: {
 export function readMountMeta(): string | null {
   if (typeof document === "undefined") return null;
   return document.querySelector('meta[name="si-mount"]')?.getAttribute("content") ?? null;
+}
+
+/** Convert an internal app path into the browser-visible path for callbacks outside the router. */
+export function publicAppPath(pathname: string): string {
+  const mount = resolveBasepath({
+    isServer: typeof window === "undefined",
+    publicBase: null,
+    mountMeta: readMountMeta(),
+  });
+  const path = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  if (mount === "/") return path;
+  return path === "/" ? mount : `${mount}${path}`;
 }
 
 /**

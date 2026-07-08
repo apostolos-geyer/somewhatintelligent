@@ -8,7 +8,7 @@ export const Route = createFileRoute("/_auth/sign-up")({
   }),
   beforeLoad: ({ context, search }) => {
     const returnTo = decodeReturnTo(search.returnTo);
-    if (context.session) throw redirect({ href: returnTo ?? "/account" });
+    if (context.session) throw redirect({ href: returnTo ?? "/" });
   },
   head: () => ({ meta: [{ title: "Sign Up — Identity" }] }),
   component: SignUpPage,

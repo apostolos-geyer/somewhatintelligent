@@ -12,11 +12,11 @@ import {
 type BreadcrumbEntry = { label: string; href?: string };
 
 const routeMap: Record<string, BreadcrumbEntry[]> = {
-  "/account": [{ label: "Account" }],
-  "/account/sessions": [{ label: "Account", href: "/account" }, { label: "Sessions" }],
-  "/account/passkeys": [{ label: "Account", href: "/account" }, { label: "Passkeys" }],
-  "/account/api-keys": [{ label: "Account", href: "/account" }, { label: "API Keys" }],
-  "/account/providers": [{ label: "Account", href: "/account" }, { label: "Providers" }],
+  "/": [{ label: "Account" }],
+  "/sessions": [{ label: "Account", href: "/" }, { label: "Sessions" }],
+  "/passkeys": [{ label: "Account", href: "/" }, { label: "Passkeys" }],
+  "/api-keys": [{ label: "Account", href: "/" }, { label: "API Keys" }],
+  "/providers": [{ label: "Account", href: "/" }, { label: "Providers" }],
   "/connections": [{ label: "Connections" }],
   "/admin": [{ label: "Admin" }, { label: "Dashboard" }],
   "/admin/users": [{ label: "Admin", href: "/admin" }, { label: "Users" }],

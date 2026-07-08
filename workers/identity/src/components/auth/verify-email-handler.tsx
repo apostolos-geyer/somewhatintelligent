@@ -35,9 +35,15 @@ export function VerifyEmailHandler({ token, returnTo }: { token: string; returnT
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <a href={returnTo ?? "/account"} className="block">
-                <Button className="w-full justify-center py-3.5">Continue</Button>
-              </a>
+              {returnTo ? (
+                <a href={returnTo} className="block">
+                  <Button className="w-full justify-center py-3.5">Continue</Button>
+                </a>
+              ) : (
+                <Link to="/" className="block">
+                  <Button className="w-full justify-center py-3.5">Continue</Button>
+                </Link>
+              )}
             </CardContent>
           </>
         )}

@@ -77,7 +77,7 @@ function DeviceApproveActions({ userCode }: { userCode: string }) {
     setError(null);
     try {
       await authClient.device.approve({ userCode });
-      void navigate({ to: "/account" });
+      void navigate({ to: "/" });
     } catch {
       setError("Failed to approve device. Try again, or don't.");
       setLoading(false);
@@ -89,7 +89,7 @@ function DeviceApproveActions({ userCode }: { userCode: string }) {
     setError(null);
     try {
       await authClient.device.deny({ userCode });
-      void navigate({ to: "/account" });
+      void navigate({ to: "/" });
     } catch {
       setError("Failed to deny device. Ironic.");
       setLoading(false);

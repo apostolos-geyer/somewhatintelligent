@@ -2,6 +2,7 @@ import { siGoogle, siMeta } from "simple-icons";
 import { Button } from "@si/ui/components/button";
 import { BrandIcon } from "@si/ui/components/brand-icon";
 import { authClient } from "@/lib/auth-client";
+import { publicAppPath } from "@/lib/basepath";
 import type { SocialProviders } from "@/lib/providers.functions";
 
 // Microsoft and LinkedIn aren't in simple-icons (trademark). Inline the marks.
@@ -36,7 +37,7 @@ export function SocialSignInButtons({
     // (guestlist's domain after the OAuth callback). A relative path would
     // land users on guestlist.platform.example/account instead of
     // identity.platform.example/account — anchor to identity's origin.
-    const target = callbackURL ?? "/account";
+    const target = !callbackURL || callbackURL === "/" ? publicAppPath("/") : callbackURL;
     const absoluteCallback = new URL(target, window.location.origin).toString();
     const result = await authClient.signIn.social({
       provider,

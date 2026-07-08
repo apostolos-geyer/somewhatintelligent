@@ -16,7 +16,7 @@ interface Passkey {
   createdAt: Date | null;
 }
 
-export const Route = createFileRoute("/_dashboard/account/passkeys")({
+export const Route = createFileRoute("/_dashboard/passkeys")({
   head: () => ({ meta: [{ title: "Passkeys — Identity" }] }),
   component: PasskeysPage,
 });
