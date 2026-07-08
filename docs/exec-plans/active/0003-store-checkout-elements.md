@@ -155,7 +155,7 @@ sequenceDiagram
     B->>St: createCheckoutSession({ items, shipping })
     St->>D: SELECT variants + products (re-price, computeOrderTotals — unchanged)
     St->>GL: POST /api/stripe/ensure-customer (forwarded cookie, no client-passed userId)
-    GL->>Api: customers.create (idempotencyKey cust:&lt;userId&gt;) — first call only
+    GL->>Api: customers.create (idempotencyKey cust:userId) — first call only
     GL-->>St: { stripeCustomerId }
     St->>D: db.batch [INSERT customer_order(pending,unpaid,session=NULL),<br/>INSERT order_item ×N, guarded stock DECREMENT ×N]
     alt any line's stock guard failed (changes=0)
