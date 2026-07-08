@@ -1,8 +1,14 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useTransition } from "react";
 import { Badge } from "@si/ui/components/badge";
 import { Button } from "@si/ui/components/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@si/ui/components/card";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@si/ui/components/sheet";
 import { Item, ItemContent, ItemTitle, ItemActions, ItemGroup } from "@si/ui/components/item";
 import { Input } from "@si/ui/components/input";
 import { Field, FieldLabel } from "@si/ui/components/field";
@@ -22,6 +28,7 @@ export const Route = createFileRoute("/_dashboard/account/passkeys")({
 });
 
 function PasskeysPage() {
+  const navigate = useNavigate();
   const [passkeys, setPasskeys] = useState<Passkey[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,17 +78,22 @@ function PasskeysPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col">
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Passkeys</CardTitle>
-          <CardDescription>
+    <Sheet
+      open
+      onOpenChange={(open) => {
+        if (!open) void navigate({ to: "/account" });
+      }}
+    >
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>Your Passkeys</SheetTitle>
+          <SheetDescription>
             Passwordless authentication via biometrics or security keys.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </SheetDescription>
+        </SheetHeader>
+        <div className="flex-1 overflow-y-auto px-4 pb-4">
           <div className="flex flex-col gap-4">
-            {loading && <p className="text-sm text-text-tertiary">Loading{"\u2026"}</p>}
+            {loading && <p className="text-sm text-text-tertiary">Loading{"…"}</p>}
 
             {!loading && passkeys.length === 0 && (
               <p className="text-sm text-text-tertiary">No passkeys registered.</p>
@@ -133,8 +145,8 @@ function PasskeysPage() {
               </Button>
             </Field>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

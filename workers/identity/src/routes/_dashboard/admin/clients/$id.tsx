@@ -1,9 +1,10 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { type } from "arktype";
 import { useAppForm } from "@si/ui/hooks/use-app-form";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@si/ui/components/card";
 import { Button, buttonVariants } from "@si/ui/components/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@si/ui/components/sheet";
 import { cn } from "@si/ui/lib/utils";
 import {
   AlertDialog,
@@ -31,54 +32,66 @@ export const Route = createFileRoute("/_dashboard/admin/clients/$id")({
 });
 
 function ClientDetailPage() {
+  const navigate = useNavigate();
   const { client: c, tokenCount, consentCount } = Route.useLoaderData();
   const managed = isManaged(c.referenceId);
   const redirectUris = c.redirectUris;
 
   return (
-    <div className="flex flex-1 flex-col">
-      <div className="mb-grid flex items-center justify-between">
-        <h1 className="type-page-title">{c.name ?? c.clientId}</h1>
-        <div className="flex items-center gap-2">
-          {managed ? <Badge variant="warning">Managed</Badge> : <Badge variant="ink">Custom</Badge>}
-        </div>
-      </div>
-
-      <div className="grid flex-1 grid-cols-1 gap-grid lg:grid-cols-[1fr_minmax(260px,320px)]">
-        <EditClientForm
-          client={{
-            id: c.id,
-            name: c.name ?? "",
-            redirectUris,
-            skipConsent: c.skipConsent ?? false,
-          }}
-        />
-
-        <div className="flex flex-col gap-grid">
-          {managed && <Alert variant="warning">Managed by IaC. Identity is immutable.</Alert>}
-
-          <div className="rounded-sm bg-surface-sunken px-4 py-3">
-            <div className="type-mono-label mb-1 text-text-tertiary">Client ID</div>
-            <code className="type-code break-all text-foreground">{c.clientId}</code>
+    <Sheet
+      open
+      onOpenChange={(open) => {
+        if (!open) void navigate({ to: "/admin/clients" });
+      }}
+    >
+      <SheetContent size="full">
+        <SheetHeader className="flex-row items-center justify-between gap-2 space-y-0">
+          <SheetTitle>{c.name ?? c.clientId}</SheetTitle>
+          <div className="mr-8 flex items-center gap-2">
+            {managed ? (
+              <Badge variant="warning">Managed</Badge>
+            ) : (
+              <Badge variant="ink">Custom</Badge>
+            )}
           </div>
+        </SheetHeader>
 
-          <div className="grid grid-cols-2 gap-grid">
-            <div className="rounded-sm bg-surface-sunken px-4 py-3">
-              <div className="type-mono-label text-text-tertiary">Tokens</div>
-              <div className="type-stat mt-1">{tokenCount}</div>
+        <div className="grid flex-1 grid-cols-1 gap-grid overflow-y-auto px-4 pb-4 lg:grid-cols-[1fr_minmax(260px,320px)]">
+          <EditClientForm
+            client={{
+              id: c.id,
+              name: c.name ?? "",
+              redirectUris,
+              skipConsent: c.skipConsent ?? false,
+            }}
+          />
+
+          <div className="flex flex-col gap-grid">
+            {managed && <Alert variant="warning">Managed by IaC. Identity is immutable.</Alert>}
+
+            <div className="rounded-sm border border-dashed border-border bg-surface-sunken px-4 py-3">
+              <div className="type-mono-label mb-1 text-text-tertiary">Client ID</div>
+              <code className="type-code break-all text-foreground">{c.clientId}</code>
             </div>
-            <div className="rounded-sm bg-surface-sunken px-4 py-3">
-              <div className="type-mono-label text-text-tertiary">Consents</div>
-              <div className="type-stat mt-1">{consentCount}</div>
+
+            <div className="grid grid-cols-2 gap-grid">
+              <div className="rounded-sm border border-dashed border-border bg-surface-sunken px-4 py-3">
+                <div className="type-mono-label text-text-tertiary">Tokens</div>
+                <div className="type-stat mt-1">{tokenCount}</div>
+              </div>
+              <div className="rounded-sm border border-dashed border-border bg-surface-sunken px-4 py-3">
+                <div className="type-mono-label text-text-tertiary">Consents</div>
+                <div className="type-stat mt-1">{consentCount}</div>
+              </div>
             </div>
+
+            <ClientSecretCard id={c.id} />
+
+            {!managed && <DeleteClientCard id={c.id} />}
           </div>
-
-          <ClientSecretCard id={c.id} />
-
-          {!managed && <DeleteClientCard id={c.id} />}
         </div>
-      </div>
-    </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -239,7 +252,7 @@ function ClientSecretCard({ id }: { id: string }) {
       </CardHeader>
       <CardContent>
         {rotatedSecret ? (
-          <div className="rounded-sm bg-surface-sunken px-3 py-2">
+          <div className="rounded-sm border border-dashed border-border bg-surface-sunken px-3 py-2">
             <code className="type-code break-all text-ink">{rotatedSecret}</code>
             <p className="mt-1.5 text-2xs text-text-tertiary">Will not be shown again.</p>
           </div>
@@ -272,6 +285,10 @@ function DeleteClientCard({ id }: { id: string }) {
     setLoading(true);
     try {
       await deleteClient({ data: { id } });
+      // `admin/clients.tsx` stays mounted as the persistent background list
+      // — invalidate so it no longer shows the deleted row once we navigate
+      // back to it.
+      await router.invalidate();
       await router.navigate({ to: "/admin/clients" });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to delete.");

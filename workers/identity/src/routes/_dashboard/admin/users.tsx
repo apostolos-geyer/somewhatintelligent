@@ -20,6 +20,16 @@ import {
   AlertDialogTitle,
 } from "@si/ui/components/alert-dialog";
 import { toast } from "@si/ui/components/sonner";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableEmpty,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@si/ui/components/table";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@si/ui/components/sheet";
 import { cn } from "@si/ui/lib/utils";
 import { authClient } from "@/lib/auth-client";
 import { getUsers } from "@/lib/admin-users.functions";
@@ -32,83 +42,81 @@ export const Route = createFileRoute("/_dashboard/admin/users")({
 });
 
 function UsersPage() {
+  const navigate = useNavigate();
   const { users } = Route.useLoaderData();
   const { session } = Route.useRouteContext();
   const currentUserId = session!.user.id;
 
   return (
-    <div className="flex flex-1 flex-col">
-      <div className="mb-section">
-        <p className="mt-1 text-sm text-text-secondary">
-          Everyone who has, ostensibly, proven they exist.
-        </p>
-      </div>
-
-      <div className="flex-1 overflow-x-auto rounded-sm border-2 border-border-strong">
-        <table className="w-full min-w-[640px] border-collapse text-sm">
-          <thead>
-            <tr className="border-b-2 border-border-strong bg-surface-sunken">
-              <th className="w-12 px-4 py-3" />
-              <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
-                Name
-              </th>
-              <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
-                Email
-              </th>
-              <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
-                Role
-              </th>
-              <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
-                Status
-              </th>
-              <th className="px-4 py-3 text-right" />
-            </tr>
-          </thead>
-          <tbody>
-            {users.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-text-tertiary">
+    <Sheet
+      open
+      onOpenChange={(open) => {
+        if (!open) void navigate({ to: "/admin" });
+      }}
+    >
+      <SheetContent size="full">
+        <SheetHeader>
+          <SheetTitle>Users</SheetTitle>
+          <p className="text-sm text-text-secondary">
+            Everyone who has, ostensibly, proven they exist.
+          </p>
+        </SheetHeader>
+        <div className="flex-1 overflow-y-auto px-4 pb-4">
+          <Table className="min-w-[640px]">
+            <TableHeader>
+              <TableRow className="border-b-2 border-border-strong bg-surface-sunken">
+                <TableHead className="w-12" />
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {users.length === 0 && (
+                <TableEmpty colSpan={6}>
                   No users yet. One would imagine that will change.
-                </td>
-              </tr>
-            )}
-            {users.map((u) => (
-              <tr key={u.id} className="border-b border-border last:border-0">
-                <td className="px-4 py-3">
-                  <Avatar size="sm">
-                    {u.image ? <AvatarImage src={u.image} alt="" /> : null}
-                    <AvatarFallback>{u.name?.charAt(0).toUpperCase() ?? "?"}</AvatarFallback>
-                  </Avatar>
-                </td>
-                <td className="px-4 py-3 font-medium">{u.name}</td>
-                <td className="px-4 py-3 font-mono text-xs text-text-tertiary">{u.email}</td>
-                <td className="px-4 py-3">
-                  <Badge variant={isAdminRole(u.role) ? "ink" : "secondary"}>
-                    {u.role ?? "user"}
-                  </Badge>
-                </td>
-                <td className="px-4 py-3">
-                  {u.banned ? (
-                    <Badge variant="rust">Banned</Badge>
-                  ) : u.emailVerified ? (
-                    <Badge variant="success">Active</Badge>
-                  ) : (
-                    <Badge variant="warning">Pending</Badge>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <UserActions
-                    userId={u.id}
-                    banned={u.banned ?? false}
-                    currentUserId={currentUserId}
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+                </TableEmpty>
+              )}
+              {users.map((u) => (
+                <TableRow key={u.id}>
+                  <TableCell>
+                    <Avatar size="sm">
+                      {u.image ? <AvatarImage src={u.image} alt="" /> : null}
+                      <AvatarFallback>{u.name?.charAt(0).toUpperCase() ?? "?"}</AvatarFallback>
+                    </Avatar>
+                  </TableCell>
+                  <TableCell className="font-medium">{u.name}</TableCell>
+                  <TableCell className="font-mono text-xs text-text-tertiary">{u.email}</TableCell>
+                  <TableCell>
+                    <Badge variant={isAdminRole(u.role) ? "ink" : "secondary"}>
+                      {u.role ?? "user"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {u.banned ? (
+                      <Badge variant="rust">Banned</Badge>
+                    ) : u.emailVerified ? (
+                      <Badge variant="success">Active</Badge>
+                    ) : (
+                      <Badge variant="warning">Pending</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <UserActions
+                      userId={u.id}
+                      banned={u.banned ?? false}
+                      currentUserId={currentUserId}
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 

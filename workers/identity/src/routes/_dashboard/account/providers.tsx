@@ -1,8 +1,14 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useTransition } from "react";
 import { Badge } from "@si/ui/components/badge";
 import { Button } from "@si/ui/components/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@si/ui/components/card";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@si/ui/components/sheet";
 import { Item, ItemContent, ItemTitle, ItemActions, ItemGroup } from "@si/ui/components/item";
 import { authClient } from "@/lib/auth-client";
 import { loadProviders, type SocialProviders } from "@/lib/providers.functions";
@@ -30,7 +36,14 @@ export const Route = createFileRoute("/_dashboard/account/providers")({
   component: ProvidersPage,
 });
 
+// Rendered as a Sheet child of the `account.tsx` layout — including when
+// this exact URL is reached via a hard top-level load, which is what
+// happens after `handleLink`'s OAuth redirect round-trip (provider ->
+// callbackURL). Structurally this route is always the Sheet's content
+// whenever it matches, regardless of how the browser got here, so the
+// redirect-back case needs no special handling.
 function ProvidersPage() {
+  const navigate = useNavigate();
   const { providers } = Route.useLoaderData();
   const linkableProviders = ALL_LINKABLE.filter((p) => providers[p]);
   const [accounts, setAccounts] = useState<AccountInfo[]>([]);
@@ -81,18 +94,23 @@ function ProvidersPage() {
   const unlinkable = accounts.length > 1;
 
   return (
-    <div className="flex flex-1 flex-col">
-      <Card>
-        <CardHeader>
-          <CardTitle>Linked Providers</CardTitle>
-          <CardDescription>
+    <Sheet
+      open
+      onOpenChange={(open) => {
+        if (!open) void navigate({ to: "/account" });
+      }}
+    >
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>Linked Providers</SheetTitle>
+          <SheetDescription>
             They all lead to the same place. Link or unlink as you see fit.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </SheetDescription>
+        </SheetHeader>
+        <div className="flex-1 overflow-y-auto px-4 pb-4">
           <div className="flex flex-col gap-4">
             {loading ? (
-              <p className="text-sm text-text-tertiary">Loading{"\u2026"}</p>
+              <p className="text-sm text-text-tertiary">Loading{"…"}</p>
             ) : (
               <>
                 {accounts.length > 0 && (
@@ -152,8 +170,8 @@ function ProvidersPage() {
               </>
             )}
           </div>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

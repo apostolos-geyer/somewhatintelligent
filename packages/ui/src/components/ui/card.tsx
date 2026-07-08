@@ -9,8 +9,11 @@ const cardVariants = cva(
   {
     variants: {
       variant: {
-        // Brand default: surface card — 16px radius, hairline border, soft resting shadow.
-        default: "bg-surface-raised border border-border shadow-soft-sm",
+        // Brand default: dashed hairline rule, no rounding, no shadow — the
+        // negative-space grid line. Reuses the `soft` material so Card's
+        // default finally rides the same material system as every other
+        // variant instead of a bespoke solid+shadow string.
+        default: surfaceMaterials.soft,
         soft: surfaceMaterials.soft,
         neo: surfaceMaterials.neo,
         "neo-inset": surfaceMaterials.neoInset,

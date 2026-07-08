@@ -1,11 +1,51 @@
-import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@si/ui/components/sidebar";
-import { AppSidebar } from "@/components/dashboard/app-sidebar";
+import {
+  UserIcon,
+  LinkIcon,
+  LayoutDashboardIcon,
+  UsersIcon,
+  KeyIcon,
+  ActivityIcon,
+  KeyRoundIcon,
+  Building2Icon,
+} from "lucide-react";
+import { AppFrame, type FabMenuGroup } from "@si/ui/components/app-frame";
+import type { PlatformApp } from "@si/ui/components/platform-nav";
+import { useCapture } from "@si/analytics/client";
+import { toast } from "@si/ui/components/sonner";
 import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb";
 import { OrgSwitcher } from "@/components/header/org-switcher";
 import { authClient } from "@/lib/auth-client";
 import { isAdminRole } from "@si/kit/roles";
+
+// Only the apps this fork actually ships. The source template shipped extra
+// demo apps that don't exist here (they had no URL → dead links). "home" is
+// same-host root: bouncer redirects `/` to the (not-yet-built) storefront.
+const APPS: PlatformApp[] = [
+  { id: "home", label: "home", href: "/" },
+  { id: "identity", label: "identity", href: import.meta.env.IDENTITY_URL, current: true },
+];
+
+const accountGroup: FabMenuGroup = {
+  label: "Account",
+  items: [
+    { href: "/account", label: "Account", icon: UserIcon },
+    { href: "/connections", label: "Connections", icon: LinkIcon },
+  ],
+};
+
+const adminGroup: FabMenuGroup = {
+  label: "Administration",
+  items: [
+    { href: "/admin", label: "Dashboard", icon: LayoutDashboardIcon },
+    { href: "/admin/users", label: "Users", icon: UsersIcon },
+    { href: "/admin/orgs", label: "Organizations", icon: Building2Icon },
+    { href: "/admin/clients", label: "OAuth Clients", icon: KeyIcon },
+    { href: "/admin/sessions", label: "Sessions", icon: ActivityIcon },
+    { href: "/admin/api-keys", label: "API Keys", icon: KeyRoundIcon },
+  ],
+};
 
 export const Route = createFileRoute("/_dashboard")({
   component: DashboardLayout,
@@ -15,6 +55,7 @@ function DashboardLayout() {
   const { session: ssrSession } = Route.useRouteContext();
   const { data: liveSession, isPending } = authClient.useSession();
   const navigate = useNavigate();
+  const capture = useCapture();
 
   const session = liveSession ?? ssrSession;
 
@@ -31,21 +72,42 @@ function DashboardLayout() {
 
   if (!session) return null;
 
+  const user = {
+    name: session.user.name ?? "User",
+    email: session.user.email,
+    role: session.user.role ?? null,
+  };
+  const groups = isAdminRole(user.role) ? [accountGroup, adminGroup] : [accountGroup];
+
+  async function handleSignOut() {
+    capture("signed_out", {});
+    const result = await authClient.signOut();
+    if (result.error) {
+      toast.error(result.error.message ?? "Failed to sign out");
+      return;
+    }
+    void navigate({ to: "/sign-in" });
+  }
+
   return (
-    <SidebarProvider>
-      <AppSidebar session={session} />
-      <SidebarInset>
-        <header className="flex h-12 shrink-0 items-center gap-1.5 border-b-2 border-border px-4">
-          <SidebarTrigger />
+    <div className="flex min-h-svh flex-col">
+      <AppFrame>
+        <AppFrame.Brand
+          current={{ id: "identity", label: "identity" }}
+          apps={APPS}
+          linkComponent={Link}
+        />
+        <AppFrame.Title>
           <DashboardBreadcrumb />
-          <div className="ml-auto flex items-center gap-2">
-            <OrgSwitcher isAdmin={isAdminRole(session.user.role)} />
-          </div>
-        </header>
-        <div className="flex min-h-[calc(100svh-3rem)] flex-col p-page">
-          <Outlet />
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+        </AppFrame.Title>
+        <AppFrame.Right>
+          <OrgSwitcher isAdmin={isAdminRole(user.role)} />
+        </AppFrame.Right>
+      </AppFrame>
+      <div className="flex flex-1 flex-col p-page">
+        <Outlet />
+      </div>
+      <AppFrame.Fab groups={groups} user={user} onSignOut={handleSignOut} linkComponent={Link} />
+    </div>
   );
 }

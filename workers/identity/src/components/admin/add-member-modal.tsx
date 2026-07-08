@@ -142,7 +142,7 @@ export function AddMemberModal({
                 </Button>
               )}
               {searchOpen && results.length > 0 && !userId && (
-                <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-sm border-2 border-border-strong bg-surface-raised shadow-soft-md">
+                <div className="absolute z-50 mt-1 w-full overflow-hidden border-2 border-border-strong bg-surface-raised shadow-soft-md">
                   {results.map((u) => (
                     <button
                       key={u.id}

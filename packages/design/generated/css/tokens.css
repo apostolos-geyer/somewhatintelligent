@@ -104,8 +104,8 @@
   --radius-none: 0px;
   --radius-xs: 6px;
   --radius-sm: 10px;
-  --radius-md: 16px;
-  --radius-lg: 22px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
   --radius-xl: 30px;
   --radius-full: 9999px;
 

@@ -25,12 +25,18 @@ surface, and every future agent run is held to it.
    | Treatment | Meaning |
    |---|---|
    | `border-solid` (+ `border-border-strong`, 1.5–2px) | primary surface, strongest emphasis, success/confirmed |
-   | `border-dashed` | secondary surface, interactive affordance, warning/pending |
+   | `border-dashed` | secondary surface, interactive affordance, warning/pending — **Card's default resting state**, not just a named variant, so the negative space of the page reads as visibly drawn |
    | `border-dotted` | tertiary, hints, dividers, informational |
    | `shadow-brutal-*` | a hard ink offset — the drafted "duplicate line" that stands a card/CTA off the paper |
-4. **Rounded.** The radius scale is generous (`sm`=10px is the control
-   default, `md`=16 cards, up to `xl`=30). Crisp rules + soft corners is
-   the signature tension.
+   Solid is reserved for what actually needs the loudest read — data tables,
+   destructive/danger states, floating overlays (dialog/sheet/drawer/popover)
+   — not the default resting state of an ordinary content card.
+4. **Sharp sections, soft controls.** Containers (cards, sheets, dialogs,
+   menus, tables, popovers) are unrounded (`md`/`lg` = 0) — borders are the
+   only structure signal there, square corners like a ruled drawing. Small
+   interactive controls (buttons, badges, avatars, inputs, checkboxes,
+   switches, radios) keep the pill/soft radius (`sm`=10px is the control
+   default, `full` for pills).
 5. **Iosevka is the voice.** `Iosevka Aile` for display/body/editorial,
    `Iosevka` (mono) for code, IDs, timestamps, and uppercase annotation
    labels — the "dimension text" of the drawing. No other typefaces are
@@ -77,8 +83,10 @@ The four generated shadow families survive by name, hard-edged by value:
 
 `surfaceMaterials` / `interactiveMaterials` / `compactMaterials` encode the
 grammar once; components compose them. Key mapping: `brutal` = solid rule +
-drafted offset (signature), `soft` = dashed rule (quiet secondary; dashes
-commit to solid on hover), `neo` = chisel, `glass` = opaque sheet.
+drafted offset (signature, reserved for tables/emphasis), `soft` = dashed
+rule (quiet secondary; dashes commit to solid on hover) — **`Card`'s
+`default` variant is `surfaceMaterials.soft`**, so dashed is what a plain
+card looks like unless a component deliberately reaches for `brutal`, `neo` = chisel, `glass` = opaque sheet.
 
 ## 5. Component conventions
 

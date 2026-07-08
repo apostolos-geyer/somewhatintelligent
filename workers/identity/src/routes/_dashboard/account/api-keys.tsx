@@ -1,8 +1,14 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useTransition } from "react";
 import { Badge } from "@si/ui/components/badge";
 import { Button } from "@si/ui/components/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@si/ui/components/card";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@si/ui/components/sheet";
 import { Item, ItemContent, ItemTitle, ItemActions, ItemGroup } from "@si/ui/components/item";
 import { Input } from "@si/ui/components/input";
 import { Field, FieldLabel } from "@si/ui/components/field";
@@ -15,6 +21,7 @@ export const Route = createFileRoute("/_dashboard/account/api-keys")({
 });
 
 function ApiKeysPage() {
+  const navigate = useNavigate();
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [createdKey, setCreatedKey] = useState<string | null>(null);
@@ -74,19 +81,35 @@ function ApiKeysPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col">
-      <Card>
-        <CardHeader>
-          <CardTitle>Your API Keys</CardTitle>
-          <CardDescription>For programmatic access to your account.</CardDescription>
-        </CardHeader>
-        <CardContent>
+    <Sheet
+      open
+      onOpenChange={(open) => {
+        // A freshly created key is shown once — don't let an accidental
+        // backdrop-click/Escape lose it before the user has copied it.
+        if (!open && createdKey) return;
+        if (!open) void navigate({ to: "/account" });
+      }}
+    >
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>Your API Keys</SheetTitle>
+          <SheetDescription>For programmatic access to your account.</SheetDescription>
+        </SheetHeader>
+        <div className="flex-1 overflow-y-auto px-4 pb-4">
           <div className="flex flex-col gap-4">
             {createdKey && (
-              <div className="rounded-sm bg-surface-sunken px-4 py-3">
+              <div className="rounded-sm border border-dashed border-border bg-surface-sunken px-4 py-3">
                 <div className="type-mono-label mb-1 text-text-tertiary">New Key</div>
                 <code className="type-code break-all text-ink">{createdKey}</code>
                 <p className="mt-2 text-xs text-text-tertiary">This will not be shown again.</p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => setCreatedKey(null)}
+                >
+                  Done
+                </Button>
               </div>
             )}
 
@@ -145,8 +168,8 @@ function ApiKeysPage() {
               </Button>
             </Field>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

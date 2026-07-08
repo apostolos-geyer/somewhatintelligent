@@ -1,9 +1,10 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { type } from "arktype";
 import { useAppForm } from "@si/ui/hooks/use-app-form";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@si/ui/components/card";
 import { Button } from "@si/ui/components/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@si/ui/components/sheet";
 import { Input } from "@si/ui/components/input";
 import { Label } from "@si/ui/components/label";
 import { Field, FieldDescription } from "@si/ui/components/field";
@@ -16,17 +17,31 @@ export const Route = createFileRoute("/_dashboard/admin/clients/new")({
 });
 
 function NewClientPage() {
-  return (
-    <div className="flex flex-1 flex-col">
-      <div className="mb-section">
-        <h1 className="type-page-title">Register Client</h1>
-        <p className="mt-1 text-sm text-text-secondary">
-          A new application wishes to participate in the identity apparatus.
-        </p>
-      </div>
+  const navigate = useNavigate();
+  const [created, setCreated] = useState<CreateClientResult | null>(null);
 
-      <CreateClientForm />
-    </div>
+  return (
+    <Sheet
+      open
+      onOpenChange={(open) => {
+        // A freshly created secret is shown once — don't let an accidental
+        // backdrop-click/Escape lose it before it's copied.
+        if (!open && created) return;
+        if (!open) void navigate({ to: "/admin/clients" });
+      }}
+    >
+      <SheetContent size="full">
+        <SheetHeader>
+          <SheetTitle>Register Client</SheetTitle>
+        </SheetHeader>
+        <div className="flex-1 overflow-y-auto px-4 pb-4">
+          <p className="mb-grid text-sm text-text-secondary">
+            A new application wishes to participate in the identity apparatus.
+          </p>
+          <CreateClientForm created={created} onCreated={setCreated} />
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -36,10 +51,15 @@ const createClientSchema = type({
   skipConsent: "boolean",
 });
 
-function CreateClientForm() {
-  const navigate = useNavigate();
+function CreateClientForm({
+  created,
+  onCreated,
+}: {
+  created: CreateClientResult | null;
+  onCreated: (result: CreateClientResult) => void;
+}) {
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
-  const [created, setCreated] = useState<CreateClientResult | null>(null);
 
   const form = useAppForm({
     defaultValues: {
@@ -66,7 +86,11 @@ function CreateClientForm() {
           },
         });
 
-        setCreated(result);
+        // The list route (`admin/clients.tsx`) stays mounted as the
+        // persistent background — invalidate it now so it's fresh by the
+        // time "Done" navigates back to it.
+        await router.invalidate();
+        onCreated(result);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Something went wrong.");
       }
@@ -83,18 +107,18 @@ function CreateClientForm() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 p-0">
-          <div className="rounded-sm bg-surface-sunken px-4 py-3">
+          <div className="rounded-sm border border-dashed border-border bg-surface-sunken px-4 py-3">
             <div className="type-mono-label mb-1 text-text-tertiary">Client ID</div>
             <code className="type-code break-all text-ink">{created.clientId}</code>
           </div>
-          <div className="rounded-sm bg-surface-sunken px-4 py-3">
+          <div className="rounded-sm border border-dashed border-border bg-surface-sunken px-4 py-3">
             <div className="type-mono-label mb-1 text-text-tertiary">Client Secret</div>
             <code className="type-code break-all text-ink">{created.clientSecret}</code>
           </div>
           <Button
             variant="secondary"
             className="w-full justify-center"
-            onClick={() => navigate({ to: "/admin/clients" })}
+            onClick={() => router.navigate({ to: "/admin/clients" })}
           >
             Done
           </Button>

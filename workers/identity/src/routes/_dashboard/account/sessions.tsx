@@ -1,8 +1,14 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useTransition } from "react";
 import { Badge } from "@si/ui/components/badge";
 import { Button } from "@si/ui/components/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@si/ui/components/card";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@si/ui/components/sheet";
 import {
   Item,
   ItemContent,
@@ -28,6 +34,7 @@ export const Route = createFileRoute("/_dashboard/account/sessions")({
 });
 
 function SessionsPage() {
+  const navigate = useNavigate();
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
@@ -69,15 +76,20 @@ function SessionsPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col">
-      <Card>
-        <CardHeader>
-          <CardTitle>Active Sessions</CardTitle>
-          <CardDescription>
+    <Sheet
+      open
+      onOpenChange={(open) => {
+        if (!open) void navigate({ to: "/account" });
+      }}
+    >
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>Active Sessions</SheetTitle>
+          <SheetDescription>
             Each one a small thread of trust, held open until it expires or is revoked.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </SheetDescription>
+        </SheetHeader>
+        <div className="flex-1 overflow-y-auto px-4 pb-4">
           {loading ? (
             <p className="text-sm text-text-tertiary">Loading sessions{"\u2026"}</p>
           ) : sessions.length === 0 ? (
@@ -131,8 +143,8 @@ function SessionsPage() {
               )}
             </div>
           )}
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

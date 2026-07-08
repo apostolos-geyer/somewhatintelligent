@@ -1,22 +1,28 @@
 /**
  * Shared Material Language Styles — "DRAFT" (blueprint monochrome)
  *
- * Surfaces are technical drawings: flat paper, crisp ink rules, generous
- * rounding. There is NO diffused shadow and NO blur anywhere — depth is
- * drawn with border treatment and hard-offset drafted lines:
+ * Surfaces are technical drawings: flat paper, crisp ink rules, sharp
+ * (unrounded) container corners. There is NO diffused shadow and NO blur
+ * anywhere — depth is drawn with border treatment and hard-offset drafted
+ * lines:
  *
- *   solid rule    — primary surface / strongest emphasis
- *   dashed rule   — secondary / interactive affordance (dashes invite touch)
+ *   solid rule    — reserved for what needs the loudest read: tables,
+ *                   destructive/danger states, floating overlays
+ *   dashed rule   — the DEFAULT resting state for ordinary content
+ *                   surfaces — the visible negative-space grid line
  *   dotted rule   — tertiary / hints / dividers
  *   brutal offset — a hard ink offset (--brutal-*), the drafted "duplicate
  *                   line" that stands a surface off the paper
  *
  * The four material keys (brutal / soft / neo / glass) are kept for
  * backwards compatibility with every consumer:
- *   brutal — the signature: solid rule + drafted offset
- *   soft   — quiet secondary: dashed rule, no offset
+ *   brutal — solid rule + drafted offset, for emphasis (tables, CTAs)
+ *   soft   — the default card look: dashed rule, no offset
  *   neo    — chiseled toggle surfaces (hard 0-blur chisel)
  *   glass  — LEGACY name; renders as an opaque fresh sheet + solid rule
+ *
+ * `Card`'s `default` variant is `surfaceMaterials.soft` — a plain `<Card>`
+ * is dashed unless a caller deliberately opts into `brutal`/`neo`/`glass`.
  *
  * Surface = static containers (cards, alerts).
  * Interactive = elements with hover/active states (buttons, badges).

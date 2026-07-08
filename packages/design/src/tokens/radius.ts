@@ -1,9 +1,11 @@
 /**
  * somewhatintelligent Radius Tokens — "DRAFT" (blueprint monochrome)
  *
- * Rounded AND ruled: generous corner radii soften the crisp ink rules —
- * a drafted drawing with a warm hand. `sm` (10px) is THE default for
- * nearly every surface; larger tokens are for bigger cards and panels.
+ * Sharp sections, soft controls: containers are unrounded — borders alone
+ * carry structure there, the way a blueprint's ruled lines do. Small
+ * interactive controls (buttons, badges, avatars, inputs, checkboxes,
+ * switches, radios) keep their rounding; `sm` (10px) is THE default for
+ * those.
  */
 
 export const radius = {
@@ -11,12 +13,12 @@ export const radius = {
   none: 0,
   /** Tight rounding — chips, tiny controls, inline tags */
   xs: 6,
-  /** THE default. Every component. Buttons, inputs, badges, small cards. */
+  /** THE default. Every control. Buttons, inputs, badges, small chips. */
   sm: 10,
-  /** Cards, sheets, menus */
-  md: 16,
-  /** Large cards, media frames */
-  lg: 22,
+  /** Cards, sheets, menus — sharp. Borders carry structure, not rounding. */
+  md: 0,
+  /** Large cards, media frames — sharp, same as `md`. */
+  lg: 0,
   /** Hero panels, feature backdrops, big CTA blocks */
   xl: 30,
   /** Pills — avatars, toggles, segmented controls, fully-round chips */

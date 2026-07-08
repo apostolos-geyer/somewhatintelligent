@@ -2,7 +2,7 @@ import { HeadContent, Scripts, createRootRouteWithContext } from "@tanstack/reac
 import { AnalyticsProvider } from "@si/analytics/client";
 import type { RouterContext } from "@/router";
 import { AppError, AppNotFound } from "@/components/app-status-pages";
-import { StorefrontHeader } from "@/components/storefront-header";
+import { StoreFrame } from "@/components/store-frame";
 import { Toaster } from "@/components/toaster";
 import { AuthProvider } from "@/lib/auth-context";
 import { loadSession } from "@/lib/session.functions";
@@ -46,7 +46,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <body className="bg-background text-foreground min-h-screen font-sans antialiased">
         <AnalyticsProvider app="store" environment={import.meta.env.ENVIRONMENT} session={session}>
           <AuthProvider initialSession={session}>
-            <StorefrontHeader />
+            <StoreFrame />
             {children}
             <Toaster position="top-right" />
           </AuthProvider>

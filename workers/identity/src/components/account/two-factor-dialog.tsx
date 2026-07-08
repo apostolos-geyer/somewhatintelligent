@@ -86,7 +86,7 @@ export function TwoFactorDialog({ enabled }: { enabled: boolean }) {
           </div>
 
           {totpUri && (
-            <div className="rounded-sm bg-surface-sunken px-4 py-3">
+            <div className="rounded-sm border border-dashed border-border bg-surface-sunken px-4 py-3">
               <div className="type-mono-label mb-2 text-text-tertiary">TOTP URI</div>
               <code className="type-code break-all text-ink">{totpUri}</code>
               <p className="mt-2 text-xs text-text-tertiary">
@@ -96,7 +96,7 @@ export function TwoFactorDialog({ enabled }: { enabled: boolean }) {
           )}
 
           {backupCodes && (
-            <div className="rounded-sm bg-surface-sunken px-4 py-3">
+            <div className="rounded-sm border border-dashed border-border bg-surface-sunken px-4 py-3">
               <div className="type-mono-label mb-2 text-text-tertiary">Backup Codes</div>
               <div className="grid grid-cols-2 gap-1">
                 {backupCodes.map((code) => (

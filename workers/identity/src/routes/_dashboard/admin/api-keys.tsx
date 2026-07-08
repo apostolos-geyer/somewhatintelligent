@@ -1,5 +1,15 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Badge } from "@si/ui/components/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableEmpty,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@si/ui/components/table";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@si/ui/components/sheet";
 import { getApiKeys } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/_dashboard/admin/api-keys")({
@@ -9,67 +19,63 @@ export const Route = createFileRoute("/_dashboard/admin/api-keys")({
 });
 
 function ApiKeysPage() {
+  const navigate = useNavigate();
   const { apiKeys } = Route.useLoaderData();
 
   return (
-    <div className="flex flex-1 flex-col">
-      <div className="mb-section">
-        <p className="mt-1 text-sm text-text-secondary">
-          Every key someone made. Whether they should have is another matter.
-        </p>
-      </div>
-
-      <div className="flex-1 overflow-x-auto rounded-sm border-2 border-border-strong">
-        <table className="w-full min-w-[600px] border-collapse text-sm">
-          <thead>
-            <tr className="border-b-2 border-border-strong bg-surface-sunken">
-              <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
-                Name
-              </th>
-              <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
-                Owner
-              </th>
-              <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
-                Prefix
-              </th>
-              <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
-                Enabled
-              </th>
-              <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
-                Created
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {apiKeys.length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-text-tertiary">
+    <Sheet
+      open
+      onOpenChange={(open) => {
+        if (!open) void navigate({ to: "/admin" });
+      }}
+    >
+      <SheetContent size="full">
+        <SheetHeader>
+          <SheetTitle>API Keys</SheetTitle>
+          <p className="text-sm text-text-secondary">
+            Every key someone made. Whether they should have is another matter.
+          </p>
+        </SheetHeader>
+        <div className="flex-1 overflow-y-auto px-4 pb-4">
+          <Table className="min-w-[600px]">
+            <TableHeader>
+              <TableRow className="border-b-2 border-border-strong bg-surface-sunken">
+                <TableHead>Name</TableHead>
+                <TableHead>Owner</TableHead>
+                <TableHead>Prefix</TableHead>
+                <TableHead>Enabled</TableHead>
+                <TableHead>Created</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {apiKeys.length === 0 && (
+                <TableEmpty colSpan={5}>
                   No API keys yet. One would imagine that will change.
-                </td>
-              </tr>
-            )}
-            {apiKeys.map((k) => (
-              <tr key={k.id} className="border-b border-border last:border-0">
-                <td className="px-4 py-3 font-medium">{k.name ?? "Unnamed"}</td>
-                <td className="px-4 py-3 font-mono text-xs text-text-tertiary">
-                  {k.ownerEmail ?? "Unknown"}
-                </td>
-                <td className="px-4 py-3 font-mono text-xs text-text-tertiary">
-                  {k.prefix ?? "\u2014"}
-                </td>
-                <td className="px-4 py-3">
-                  <Badge variant={k.enabled ? "success" : "secondary"}>
-                    {k.enabled ? "Enabled" : "Disabled"}
-                  </Badge>
-                </td>
-                <td className="px-4 py-3 text-text-tertiary">
-                  {k.createdAt ? new Date(k.createdAt).toLocaleDateString("en-US") : "\u2014"}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+                </TableEmpty>
+              )}
+              {apiKeys.map((k) => (
+                <TableRow key={k.id}>
+                  <TableCell className="font-medium">{k.name ?? "Unnamed"}</TableCell>
+                  <TableCell className="font-mono text-xs text-text-tertiary">
+                    {k.ownerEmail ?? "Unknown"}
+                  </TableCell>
+                  <TableCell className="font-mono text-xs text-text-tertiary">
+                    {k.prefix ?? "—"}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={k.enabled ? "success" : "secondary"}>
+                      {k.enabled ? "Enabled" : "Disabled"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-text-tertiary">
+                    {k.createdAt ? new Date(k.createdAt).toLocaleDateString("en-US") : "—"}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

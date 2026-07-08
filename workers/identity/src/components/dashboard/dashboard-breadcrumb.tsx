@@ -23,6 +23,12 @@ const routeMap: Record<string, BreadcrumbEntry[]> = {
   "/admin/clients": [{ label: "Admin", href: "/admin" }, { label: "OAuth Clients" }],
   "/admin/sessions": [{ label: "Admin", href: "/admin" }, { label: "Sessions" }],
   "/admin/api-keys": [{ label: "Admin", href: "/admin" }, { label: "API Keys" }],
+  "/admin/orgs": [{ label: "Admin", href: "/admin" }, { label: "Organizations" }],
+  "/admin/orgs/new": [
+    { label: "Admin", href: "/admin" },
+    { label: "Organizations", href: "/admin/orgs" },
+    { label: "New Organization" },
+  ],
 };
 
 function getBreadcrumbs(pathname: string): BreadcrumbEntry[] {
@@ -40,6 +46,14 @@ function getBreadcrumbs(pathname: string): BreadcrumbEntry[] {
     return [
       { label: "Admin", href: "/admin" },
       { label: "OAuth Clients", href: "/admin/clients" },
+      { label: "Edit" },
+    ];
+  }
+
+  if (pathname.startsWith("/admin/orgs/")) {
+    return [
+      { label: "Admin", href: "/admin" },
+      { label: "Organizations", href: "/admin/orgs" },
       { label: "Edit" },
     ];
   }

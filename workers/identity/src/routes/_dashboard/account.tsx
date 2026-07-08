@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { Badge } from "@si/ui/components/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@si/ui/components/card";
 import {
@@ -22,12 +22,16 @@ const manageItems = [
   { to: "/account/providers", label: "Providers", description: "Linked sign-in methods" },
 ] as const;
 
-export const Route = createFileRoute("/_dashboard/account/")({
+export const Route = createFileRoute("/_dashboard/account")({
   head: () => ({ meta: [{ title: "Account — Identity" }] }),
-  component: AccountPage,
+  component: AccountLayout,
 });
 
-function AccountPage() {
+// The account hub renders unconditionally as the persistent background;
+// sub-pages (sessions/passkeys/api-keys/providers) match into the `Outlet`
+// below and render themselves inside a `Sheet`, so the hub stays visible
+// (dimmed, behind the overlay) rather than being replaced by a full page.
+function AccountLayout() {
   const { session } = Route.useRouteContext();
   const user = session!.user;
   const twoFactorEnabled = user.twoFactorEnabled ?? false;
@@ -134,6 +138,8 @@ function AccountPage() {
           </ItemGroup>
         </CardContent>
       </Card>
+
+      <Outlet />
     </div>
   );
 }
