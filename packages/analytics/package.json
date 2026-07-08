@@ -1,34 +1,37 @@
 {
-  "name": "@si/kit",
+  "name": "@si/analytics",
   "version": "0.0.1",
   "private": true,
   "type": "module",
   "sideEffects": false,
   "exports": {
-    "./ids": "./src/ids/index.ts",
-    "./roles": "./src/roles.ts",
-    "./log": "./src/log/index.ts",
-    "./request-context": "./src/request-context/index.ts",
-    "./version": "./src/version/index.ts",
-    "./react": "./src/react/index.ts",
-    "./react-start": "./src/react-start/index.ts",
-    "./react-start/client": "./src/react-start/client.ts",
-    "./execution-context": "./src/execution-context/index.ts"
+    "./events": "./src/events.ts",
+    "./client": "./src/client.tsx",
+    "./server": "./src/server/index.ts"
   },
   "scripts": {
+    "typecheck": "tsgo --noEmit",
     "test": "vp test run"
   },
   "dependencies": {
+    "@posthog/react": "catalog:",
     "@si/auth": "workspace:*",
     "@si/config": "workspace:*",
-    "ulidx": "catalog:"
+    "@si/kit": "workspace:*",
+    "posthog-js": "catalog:",
+    "posthog-node": "catalog:"
   },
   "devDependencies": {
-    "@babel/plugin-proposal-decorators": "^7.29.0",
-    "@rolldown/plugin-babel": "^0.2.3",
     "@si/typescript-config": "workspace:*",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.0",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "^6.0.1",
+    "jsdom": "^28.1.0",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "vite-plus": "catalog:"
   },
   "peerDependencies": {

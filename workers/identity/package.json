@@ -1,6 +1,6 @@
 {
   "name": "identity",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "private": true,
   "type": "module",
   "imports": {
@@ -20,6 +20,7 @@
     "test": "vp test run"
   },
   "dependencies": {
+    "@si/analytics": "workspace:*",
     "@si/config": "workspace:*",
     "@si/design": "workspace:*",
     "@si/guestlist-service": "workspace:*",

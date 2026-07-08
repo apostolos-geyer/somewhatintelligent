@@ -1,6 +1,7 @@
 import { HeadContent, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
+import { AnalyticsProvider } from "@si/analytics/client";
 import { platformConfig } from "@si/config";
 import type { RouterContext } from "@/router";
 import { AppError, AppNotFound } from "@/components/app-status-pages";
@@ -66,19 +67,25 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
-        <AuthProvider initialSession={session}>
-          {children}
-          <TanStackDevtools
-            config={{ position: "bottom-right" }}
-            plugins={[
-              {
-                name: "Tanstack Router",
-                render: <TanStackRouterDevtoolsPanel />,
-              },
-            ]}
-          />
-          <Scripts />
-        </AuthProvider>
+        <AnalyticsProvider
+          app="identity"
+          environment={import.meta.env.ENVIRONMENT}
+          session={session}
+        >
+          <AuthProvider initialSession={session}>
+            {children}
+            <TanStackDevtools
+              config={{ position: "bottom-right" }}
+              plugins={[
+                {
+                  name: "Tanstack Router",
+                  render: <TanStackRouterDevtoolsPanel />,
+                },
+              ]}
+            />
+            <Scripts />
+          </AuthProvider>
+        </AnalyticsProvider>
       </body>
     </html>
   );

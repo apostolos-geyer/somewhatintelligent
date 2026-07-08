@@ -187,6 +187,26 @@ tooling, or the RWX deploy. None is a `wrangler.jsonc` var.
 
 ---
 
+## Product analytics (PostHog)
+
+The PostHog **project token and host are code constants, not env vars** —
+`platformAnalyticsConfig` in `packages/config/src/analytics.ts` (a public `phc_`
+write key, safe to commit like `brand.name`). `@si/config` inlines them into
+both the client and SSR bundles from one source, so there is **no**
+`VITE_PUBLIC_POSTHOG_*` or `wrangler.jsonc` var to set in any env. Activation is
+gated only by `ENVIRONMENT` (already a per-worker row above).
+
+| name          | consumed by                                                                                          | dev source                                          | staging + production source                                                                                             |
+| ------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `ENVIRONMENT` | `@si/analytics/client` (dev kill-switch + `environment` stamp), `@si/analytics/server` delivery      | already seeded (`development`) — no-ops all capture | already a wrangler var — any non-`development` value activates capture and stamps `environment`                         |
+| `POSTHOG_KEY` | `@si/analytics/server` (`packages/analytics/src/server/delivery.ts`) — **optional** per-env override | absent (uses the `@si/config` constant)             | **optional** wrangler var/secret — set only to point a fork/env at a separate project or rotate keys without a redeploy |
+
+`POSTHOG_KEY` is not wired into any `wrangler.jsonc` today; the default path is
+the compiled `@si/config` constant. Add it (and this row's staging/prod source)
+only if a fork wants a per-env project.
+
+---
+
 ## Known inconsistencies
 
 - **`MICROSOFT_*` / `FACEBOOK_*` are consumed and manifested but seeded

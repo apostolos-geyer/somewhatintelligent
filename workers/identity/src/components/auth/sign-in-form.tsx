@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { type } from "arktype";
 import { FingerprintIcon } from "lucide-react";
+import { useCapture } from "@si/analytics/client";
 import { useAppForm } from "@si/ui/hooks/use-app-form";
 import { Button } from "@si/ui/components/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@si/ui/components/card";
@@ -34,6 +35,7 @@ export function SignInForm({
 }) {
   const navigate = useNavigate();
   const router = useRouter();
+  const capture = useCapture();
   const [loading, setLoading] = useState(false);
   const [magicLinkSubmitting, setMagicLinkSubmitting] = useState(false);
   const [passkeySubmitting, setPasskeySubmitting] = useState(false);
@@ -125,6 +127,8 @@ export function SignInForm({
         return;
       }
 
+      capture("signed_in", { method: "email" });
+
       // Invalidate re-runs beforeLoad for every matched route. That's the
       // actual navigation: /_auth/sign-in's beforeLoad sees the refreshed
       // context.session and throws redirect({ href: redirectTarget }) on
@@ -160,6 +164,8 @@ export function SignInForm({
       }
       return;
     }
+
+    capture("signed_in", { method: "passkey" });
 
     // See the onSubmit handler above: invalidate()'s beforeLoad-driven
     // redirect is the navigation; an explicit navigate() here would race it.
@@ -203,6 +209,7 @@ export function SignInForm({
       return;
     }
 
+    capture("magic_link_requested", {});
     setSentEmail(email);
     setMode("sent");
   }

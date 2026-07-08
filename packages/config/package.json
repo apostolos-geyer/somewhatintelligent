@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./brand": "./src/brand.ts",
-    "./deploy": "./src/deploy.ts"
+    "./deploy": "./src/deploy.ts",
+    "./analytics": "./src/analytics.ts"
   },
   "scripts": {
     "typecheck": "tsgo --noEmit"
