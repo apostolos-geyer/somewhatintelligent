@@ -11,6 +11,7 @@ import {
   Building2Icon,
 } from "lucide-react";
 import { AppFrame, type FabMenuGroup } from "@si/ui/components/app-frame";
+import { PageFrame } from "@si/ui/components/page-frame";
 import type { PlatformApp } from "@si/ui/components/platform-nav";
 import { useCapture } from "@si/analytics/client";
 import { toast } from "@si/ui/components/sonner";
@@ -104,9 +105,11 @@ function DashboardLayout() {
           <OrgSwitcher isAdmin={isAdminRole(user.role)} />
         </AppFrame.Right>
       </AppFrame>
-      <div className="flex flex-1 flex-col p-page">
-        <Outlet />
-      </div>
+      <PageFrame className="flex flex-col">
+        <div className="flex min-h-[calc(100svh-52px)] flex-1 flex-col p-page">
+          <Outlet />
+        </div>
+      </PageFrame>
       <AppFrame.Fab groups={groups} user={user} onSignOut={handleSignOut} linkComponent={Link} />
     </div>
   );

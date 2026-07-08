@@ -3,6 +3,7 @@ import { AnalyticsProvider } from "@si/analytics/client";
 import type { RouterContext } from "@/router";
 import { AppError, AppNotFound } from "@/components/app-status-pages";
 import { StoreFrame } from "@/components/store-frame";
+import { PageFrame } from "@si/ui/components/page-frame";
 import { Toaster } from "@/components/toaster";
 import { AuthProvider } from "@/lib/auth-context";
 import { loadSession } from "@/lib/session.functions";
@@ -47,7 +48,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <AnalyticsProvider app="store" environment={import.meta.env.ENVIRONMENT} session={session}>
           <AuthProvider initialSession={session}>
             <StoreFrame />
-            {children}
+            <PageFrame className="max-w-6xl">{children}</PageFrame>
             <Toaster position="top-right" />
           </AuthProvider>
           <Scripts />
