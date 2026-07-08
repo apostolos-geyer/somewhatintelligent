@@ -10,6 +10,7 @@ import {
   ItemTitle,
 } from "@si/ui/components/item";
 import { ChevronRightIcon } from "lucide-react";
+import { GridLine } from "@si/ui/components/grid-line";
 import { ChangePasswordDialog } from "@/components/account/change-password-dialog";
 import { DeleteAccountDialog } from "@/components/account/delete-account-dialog";
 import { IdentityCard, type IdentityUser } from "@/components/account/identity-card";
@@ -49,6 +50,8 @@ function AccountLayout() {
   return (
     <div className="flex flex-1 flex-col gap-grid">
       <IdentityCard user={identityUser} />
+
+      <GridLine />
 
       <Card>
         <CardHeader>
@@ -94,6 +97,8 @@ function AccountLayout() {
         </CardContent>
       </Card>
 
+      <GridLine />
+
       <Card>
         <CardHeader>
           <CardTitle>Manage</CardTitle>
@@ -117,6 +122,8 @@ function AccountLayout() {
           </ItemGroup>
         </CardContent>
       </Card>
+
+      <GridLine />
 
       <Card>
         <CardHeader>
