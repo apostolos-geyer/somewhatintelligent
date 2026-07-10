@@ -15,9 +15,9 @@
   },
   "dependencies": {
     "@posthog/react": "catalog:",
-    "@si/auth": "workspace:*",
     "@si/config": "workspace:*",
-    "@si/kit": "workspace:*",
+    "@somewhatintelligent/auth": "0.0.3",
+    "@somewhatintelligent/kit": "0.0.2",
     "posthog-js": "catalog:",
     "posthog-node": "catalog:"
   },

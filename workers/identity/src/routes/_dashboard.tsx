@@ -5,7 +5,7 @@ import { AppSidebar } from "@/components/dashboard/app-sidebar";
 import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb";
 import { OrgSwitcher } from "@/components/header/org-switcher";
 import { authClient } from "@/lib/auth-client";
-import { isAdminRole } from "@si/kit/roles";
+import { isAdminRole } from "@somewhatintelligent/kit/roles";
 
 export const Route = createFileRoute("/_dashboard")({
   component: DashboardLayout,

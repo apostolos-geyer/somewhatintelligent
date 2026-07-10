@@ -92,7 +92,7 @@
     },
   },
   "services": [
-    { "binding": "GUESTLIST", "service": "si-guestlist-staging" },
+    { "binding": "GUESTLIST", "service": "si-guestlist-staging", "entrypoint": "Guestlist" },
     { "binding": "IDENTITY", "service": "si-identity-staging" },
     { "binding": "STORE", "service": "si-store-staging" },
   ],
@@ -204,7 +204,7 @@
         },
       },
       "services": [
-        { "binding": "GUESTLIST", "service": "si-guestlist-production" },
+        { "binding": "GUESTLIST", "service": "si-guestlist-production", "entrypoint": "Guestlist" },
         { "binding": "IDENTITY", "service": "si-identity-production" },
         { "binding": "STORE", "service": "si-store-production" },
       ],

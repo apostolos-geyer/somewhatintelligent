@@ -14,7 +14,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import { createDb } from "../db";
 import { newId } from "../ids";
-import { requireRequestLog } from "@si/kit/log";
+import { requireRequestLog } from "@somewhatintelligent/kit/log";
 import { readCallerApp, type RoadieInstance } from "../log";
 import { validateMeta } from "../meta";
 import { err, ok, type Result } from "../result";

@@ -1,5 +1,5 @@
 import { SELF, env } from "cloudflare:test";
-import { compileRoutes } from "../src/routes";
+import { compileRoutes } from "@somewhatintelligent/bouncer";
 import { LOCAL_BNC_ATT_PRIV } from "../../../scripts/dev-config";
 
 // The store (`/shop`) is vmf-mounted exactly like identity (`/account`):

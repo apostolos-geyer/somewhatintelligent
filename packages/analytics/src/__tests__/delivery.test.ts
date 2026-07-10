@@ -10,12 +10,12 @@ vi.mock("posthog-node", () => {
   };
 });
 
-vi.mock("@si/kit/execution-context", () => ({
+vi.mock("@somewhatintelligent/kit/execution-context", () => ({
   executionContext: { getStore: vi.fn() },
 }));
 
 import * as posthogNode from "posthog-node";
-import { executionContext } from "@si/kit/execution-context";
+import { executionContext } from "@somewhatintelligent/kit/execution-context";
 import { deliverIdentified, deliverAnonymous } from "../server/delivery";
 
 const captureImmediate = (posthogNode as any).__captureImmediate;

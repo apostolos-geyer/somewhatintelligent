@@ -45,8 +45,8 @@ export default defineConfig({
           // upstream-agnostic, so it shares the generic app stub like identity.
           { name: `${wp}store-staging`, modules: true, scriptPath: mock("app-stub") },
           // Test-only fixtures bound via the serviceBindings map above (not real
-          // wrangler.jsonc services): the routing/proxy/template-parity specs
-          // dispatch through them, so they keep fixed, unprefixed names.
+          // wrangler.jsonc services): the version/mount specs dispatch through
+          // them, so they keep fixed, unprefixed names.
           { name: "www", modules: true, scriptPath: mock("www-stub") },
           { name: "worker-a", modules: true, scriptPath: mock("worker-a-stub") },
           { name: "worker-b", modules: true, scriptPath: mock("worker-b-stub") },

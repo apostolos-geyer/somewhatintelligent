@@ -1,6 +1,9 @@
 import { env } from "cloudflare:test";
-import { createBouncerSessionResolver, mergeCookiesIntoRequest } from "../src/session";
-import { withRequestContext } from "@si/kit/request-context";
+import {
+  createBouncerSessionResolver,
+  mergeCookiesIntoRequest,
+} from "@somewhatintelligent/bouncer";
+import { withRequestContext } from "@somewhatintelligent/kit/request-context";
 import { platformConfig } from "@si/config";
 
 const prefix = platformConfig.cookies.prefix;
@@ -12,13 +15,11 @@ const sessionDataRe = new RegExp(`(__Secure-)?${prefix}\\.session_data=NEW_VALUE
 const sessionTokenRe = new RegExp(`(__Secure-)?${prefix}\\.session_token=ORIG`);
 const otherRe = /other=keepme/;
 
-const resolverEnv = () => ({
-  GUESTLIST: env.GUESTLIST as unknown as Fetcher,
-});
+const opts = { cookiePrefix: prefix };
 
-describe("createBouncerSessionResolver", () => {
+describe("createBouncerSessionResolver (over the guestlist RPC binding)", () => {
   test("no cookie → no guestlist call, null session, empty setCookies", async () => {
-    const resolve = createBouncerSessionResolver(resolverEnv());
+    const resolve = createBouncerSessionResolver(env, opts);
     const req = new Request("https://platform.test/");
     const res = await withRequestContext({ requestId: "test" }, () => resolve(req));
     expect(res.session).toBeNull();
@@ -26,18 +27,18 @@ describe("createBouncerSessionResolver", () => {
   });
 
   test("stale cookie → guestlist returns session + Set-Cookie captured", async () => {
-    const resolve = createBouncerSessionResolver(resolverEnv());
+    const resolve = createBouncerSessionResolver(env, opts);
     const req = new Request("https://platform.test/", {
       headers: { cookie: `${SESSION_TOKEN_COOKIE}=STALE` },
     });
     const res = await withRequestContext({ requestId: "test" }, () => resolve(req));
-    expect(res.session?.user.id).toBe("u_42");
+    expect((res.session as { user: { id: string } } | null)?.user.id).toBe("u_42");
     expect(res.setCookies.length).toBeGreaterThan(0);
     expect(res.setCookies[0]).toMatch(sessionDataRe);
   });
 
   test("guestlist throws → fail open with null session, empty setCookies", async () => {
-    const resolve = createBouncerSessionResolver(resolverEnv());
+    const resolve = createBouncerSessionResolver(env, opts);
     const req = new Request("https://platform.test/", {
       headers: { cookie: `${SESSION_TOKEN_COOKIE}=THROW` },
     });

@@ -30,7 +30,6 @@
     "prepare": "vp config && git config core.hooksPath .githooks"
   },
   "dependencies": {
-    "@elysiajs/eden": "^1.4.9",
     "jose": "^6.2.2"
   },
   "devDependencies": {

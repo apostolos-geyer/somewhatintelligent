@@ -3,7 +3,7 @@ import { useEffect, useCallback, type ReactNode } from "react";
 import { PostHogProvider, usePostHog } from "@posthog/react";
 import { platformAnalyticsConfig } from "@si/config";
 import type { AppName, ClientEvent, ClientEventProps } from "./events";
-import type { PlatformSession } from "@si/auth";
+import type { PlatformSession } from "@somewhatintelligent/auth";
 
 export function AnalyticsProvider({
   app,

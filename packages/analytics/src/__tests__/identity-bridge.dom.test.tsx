@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from "vite-plus/test";
 import { render, cleanup } from "@testing-library/react";
-import type { PlatformSession } from "@si/auth";
+import type { PlatformSession } from "@somewhatintelligent/auth";
 
 const posthog = vi.hoisted(() => ({
   get_distinct_id: vi.fn(() => "anon-device-id"),

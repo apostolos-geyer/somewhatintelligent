@@ -127,7 +127,7 @@ tasks:
   # `wrangler deploy` prints its banner and exits 0 WITHOUT uploading. Every
   # lane that runs wrangler must `use` node.
   - key: node
-    call: nodejs/install 1.1.14
+    call: nodejs/install 1.1.15
     if: *reship-gate
     with:
       node-version: 24.16.0

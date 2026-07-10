@@ -24,10 +24,10 @@ import {
   Building2Icon,
 } from "lucide-react";
 import { PlatformNav, type PlatformApp } from "@si/ui/components/platform-nav";
-import type { PlatformSession } from "@si/auth";
+import type { PlatformSession } from "@somewhatintelligent/auth";
 import { SidebarUserMenu } from "@/components/dashboard/sidebar-user-menu";
 import { APP_COMMIT, APP_VERSION } from "@/lib/version";
-import { isAdminRole } from "@si/kit/roles";
+import { isAdminRole } from "@somewhatintelligent/kit/roles";
 
 // Only the apps this fork actually ships. The source template shipped extra
 // demo apps that don't exist here (they had no URL → dead links). "home" is

@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { createRoadieClient } from "@si/roadie-service/client";
-import { createRoadieFactory } from "@si/kit/react-start";
+import { createRoadieFactory } from "@somewhatintelligent/kit/react-start";
 
 // Roadie (R2 blob) client factory for the store — product photos. Wraps
 // `env.ROADIE` so callers do `getRoadie().registerUpload(...)` / `.finalize(...)`

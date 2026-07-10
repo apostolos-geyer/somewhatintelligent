@@ -30,6 +30,11 @@
     {
       "binding": "GUESTLIST",
       "service": "si-guestlist-staging",
+      // Bind the `Guestlist` WorkerEntrypoint so env.GUESTLIST types/serves the
+      // typed RPC surface (admin/org/user-directory/avatar) in addition to the
+      // /api/auth HTTP proxy. Without it env.GUESTLIST is a plain Fetcher and
+      // no RPC method resolves.
+      "entrypoint": "Guestlist",
     },
   ],
   "env": {
@@ -52,6 +57,7 @@
         {
           "binding": "GUESTLIST",
           "service": "si-guestlist-production",
+          "entrypoint": "Guestlist",
         },
       ],
     },

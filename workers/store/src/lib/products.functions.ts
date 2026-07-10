@@ -7,7 +7,7 @@ import { type } from "arktype";
 
 import { product, productImage, productVariant } from "@/db/schema";
 import { getDb } from "@/lib/db";
-import { ulid } from "@si/kit/ids";
+import { ulid } from "@somewhatintelligent/kit/ids";
 import { requireAdminMiddleware } from "@/lib/middleware/auth";
 import { NotFoundError } from "@/lib/errors";
 import { buildProductMaps, skuFor, slugify, sortBySize } from "@/lib/catalog";

@@ -1,5 +1,5 @@
 import { createRouter as createTanStackRouter } from "@tanstack/react-router";
-import type { PlatformSession } from "@si/auth";
+import type { PlatformSession } from "@somewhatintelligent/auth";
 import { routeTree } from "@/routeTree.gen";
 import { mountRewrite, readMountMeta, resolveBasepath } from "@/lib/basepath";
 

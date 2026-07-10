@@ -1,6 +1,6 @@
-import { createAuthContext } from "@si/kit/react";
-import { createReactStartAuthProvider } from "@si/kit/react-start/client";
-import type { PlatformSession } from "@si/auth";
+import { createAuthContext } from "@somewhatintelligent/kit/react";
+import { createReactStartAuthProvider } from "@somewhatintelligent/kit/react-start/client";
+import type { PlatformSession } from "@somewhatintelligent/auth";
 import { loadSession } from "@/lib/session.functions";
 
 const authContext = createAuthContext<PlatformSession>();

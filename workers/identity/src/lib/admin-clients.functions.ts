@@ -1,6 +1,8 @@
 import { notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { getGuestlist } from "@/lib/guestlist";
+import { env } from "cloudflare:workers";
+import { requestCookie } from "@/lib/request-cookie";
+import { rpcErrorMessage } from "@/lib/rpc-error";
 import { requireAdminMiddleware } from "@/lib/middleware/auth";
 import { toStringArray } from "@/lib/normalize";
 
@@ -41,19 +43,31 @@ export interface CreateClientResult {
 export const getClients = createServerFn({ method: "GET" })
   .middleware([requireAdminMiddleware])
   .handler(async () => {
-    const guestlist = getGuestlist();
-    const res = await guestlist.api.admin.clients.get();
-    return { clients: (res.data?.clients ?? []) as OAuthClientRow[] };
+    // The RPC's success arm (drizzle rows) isn't `Rpc.Serializable`, so the
+    // stub type drops it and leaves only the `RpcErr` arms; re-assert the
+    // success shape so the guard narrows to it.
+    const res = (await env.GUESTLIST.adminListClients({ cookie: requestCookie() })) as
+      | { ok: true; clients: OAuthClientRow[] }
+      | { ok: false; error: string };
+    if (!res.ok) throw new Error(res.error);
+    return { clients: res.clients };
   });
 
 export const getClient = createServerFn({ method: "GET" })
   .middleware([requireAdminMiddleware])
   .inputValidator((data: { id: string }) => data)
   .handler(async ({ data }): Promise<ClientDetailPayload> => {
-    const guestlist = getGuestlist();
-    const res = await guestlist.api.admin.clients({ id: data.id }).get();
-    if (!res.data) throw notFound();
-    const raw = res.data.client as Record<string, unknown>;
+    // The RPC's success arm (a drizzle row) isn't `Rpc.Serializable`, so the
+    // stub type drops it and leaves only the `RpcErr` arms; re-assert the
+    // success shape so the guard narrows to it.
+    const res = (await env.GUESTLIST.adminGetClient({ cookie: requestCookie(), id: data.id })) as
+      | { ok: true; client: Record<string, unknown>; tokenCount: number; consentCount: number }
+      | { ok: false; error: string };
+    if (!res.ok) {
+      if (res.error === "not_found") throw notFound();
+      throw new Error(res.error);
+    }
+    const raw = res.client;
     return {
       client: {
         id: raw.id as string,
@@ -63,8 +77,8 @@ export const getClient = createServerFn({ method: "GET" })
         skipConsent: (raw.skipConsent ?? null) as boolean | null,
         referenceId: (raw.referenceId ?? null) as string | null,
       },
-      tokenCount: res.data.tokenCount,
-      consentCount: res.data.consentCount,
+      tokenCount: res.tokenCount,
+      consentCount: res.consentCount,
     };
   });
 
@@ -72,14 +86,14 @@ export const createClient = createServerFn({ method: "POST" })
   .middleware([requireAdminMiddleware])
   .inputValidator((data: CreateClientInput) => data)
   .handler(async ({ data }): Promise<CreateClientResult> => {
-    const guestlist = getGuestlist();
-    const res = await guestlist.api.admin.clients.post({
+    const res = await env.GUESTLIST.adminCreateClient({
+      cookie: requestCookie(),
       name: data.name,
       redirectUris: data.redirectUris,
       skipConsent: data.skipConsent,
     });
-    if (res.error) throw new Error(JSON.stringify(res.error.value));
-    return { clientId: res.data.clientId, clientSecret: res.data.clientSecret };
+    if (!res.ok) throw new Error(rpcErrorMessage(res));
+    return { clientId: res.clientId, clientSecret: res.clientSecret };
   });
 
 export const updateClient = createServerFn({ method: "POST" })
@@ -88,13 +102,14 @@ export const updateClient = createServerFn({ method: "POST" })
     (data: { id: string; name?: string; redirectUris?: string[]; skipConsent?: boolean }) => data,
   )
   .handler(async ({ data }) => {
-    const guestlist = getGuestlist();
-    const res = await guestlist.api.admin.clients({ id: data.id }).patch({
+    const res = await env.GUESTLIST.adminUpdateClient({
+      cookie: requestCookie(),
+      id: data.id,
       ...(data.name !== undefined && { name: data.name }),
       ...(data.redirectUris !== undefined && { redirectUris: data.redirectUris }),
       ...(data.skipConsent !== undefined && { skipConsent: data.skipConsent }),
     });
-    if (res.error) throw new Error(JSON.stringify(res.error.value));
+    if (!res.ok) throw new Error(rpcErrorMessage(res));
     return { success: true as const };
   });
 
@@ -102,24 +117,24 @@ export const rotateSecret = createServerFn({ method: "POST" })
   .middleware([requireAdminMiddleware])
   .inputValidator((data: { id: string }) => data)
   .handler(async ({ data }): Promise<{ clientSecret: string }> => {
-    const guestlist = getGuestlist();
-    const res = await guestlist.api.admin.clients({ id: data.id })["rotate-secret"].post();
-    if (res.error) throw new Error(JSON.stringify(res.error.value));
-    return { clientSecret: res.data.clientSecret };
+    const res = await env.GUESTLIST.adminRotateClientSecret({
+      cookie: requestCookie(),
+      id: data.id,
+    });
+    if (!res.ok) throw new Error(rpcErrorMessage(res));
+    return { clientSecret: res.clientSecret };
   });
 
 export const deleteClient = createServerFn({ method: "POST" })
   .middleware([requireAdminMiddleware])
   .inputValidator((data: { id: string }) => data)
   .handler(async ({ data }) => {
-    const guestlist = getGuestlist();
-    const res = await guestlist.api.admin.clients({ id: data.id }).delete();
-    if (res.error) {
-      const body = res.error.value as { error?: string } | null;
-      if (body?.error === "managed_client") {
+    const res = await env.GUESTLIST.adminDeleteClient({ cookie: requestCookie(), id: data.id });
+    if (!res.ok) {
+      if (res.error === "managed_client") {
         throw new Error("Managed clients cannot be deleted");
       }
-      throw new Error(body?.error ?? "Failed to delete client");
+      throw new Error(res.error ?? "Failed to delete client");
     }
     return { success: true as const };
   });

@@ -12,6 +12,12 @@ export interface RoadieEnv {
   R2_ACCOUNT_ID: string;
   S3_ACCESS_KEY_ID: string;
   S3_SECRET_ACCESS_KEY: string;
+  // Ship-time-injected by scripts/deploy-worker.sh / generate-preview-tasks.sh
+  // (--var flags, not checked into wrangler.jsonc vars); fed to
+  // @somewhatintelligent/kit's version module via `overrides`, since that
+  // module no longer reads deploy vars off env itself.
+  WORKER_VERSION?: string;
+  WORKER_COMMIT?: string;
 }
 
 // Static props configured in every consumer's service-binding block.

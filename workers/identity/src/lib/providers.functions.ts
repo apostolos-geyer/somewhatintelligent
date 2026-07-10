@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getGuestlist } from "./guestlist";
+import { env } from "cloudflare:workers";
 
 export type SocialProviders = {
   google: boolean;
@@ -17,7 +17,7 @@ const DISABLED: SocialProviders = {
 
 export const loadProviders = createServerFn({ method: "GET" }).handler(
   async (): Promise<SocialProviders> => {
-    const { data } = await getGuestlist().api.providers.get();
-    return data?.social ?? DISABLED;
+    const res = await env.GUESTLIST.getProviders();
+    return res.social ?? DISABLED;
   },
 );

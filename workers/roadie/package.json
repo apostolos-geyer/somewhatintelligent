@@ -23,7 +23,7 @@
     "test": "vp test run"
   },
   "dependencies": {
-    "@si/kit": "workspace:*",
+    "@somewhatintelligent/kit": "0.0.2",
     "aws4fetch": "^1.0.20",
     "drizzle-orm": "catalog:"
   },
