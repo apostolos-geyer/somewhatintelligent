@@ -98,26 +98,26 @@ function ProductDetail() {
 
         {/* Details */}
         <div>
-          <h1 className="font-display text-text text-4xl font-light tracking-tight">
+          <h1 className="font-display text-foreground text-4xl font-light tracking-tight">
             {product.title}
           </h1>
-          <p className="text-text-secondary mt-2 font-mono text-2xl">
+          <p className="text-muted-foreground mt-2 font-mono text-2xl">
             {formatCents(product.priceCents)}
           </p>
 
           {product.description && (
-            <p className="text-text-secondary mt-6 whitespace-pre-wrap leading-relaxed">
+            <p className="text-muted-foreground mt-6 whitespace-pre-wrap leading-relaxed">
               {product.description}
             </p>
           )}
 
           <div className="mt-8">
-            <p className="text-text-tertiary mb-2 font-mono text-xs uppercase tracking-wider">
+            <p className="text-muted-foreground mb-2 font-mono text-xs uppercase tracking-wider">
               Size
             </p>
             <div className="flex flex-wrap gap-2">
               {variants.length === 0 && (
-                <span className="text-text-tertiary text-sm">No sizes available.</span>
+                <span className="text-muted-foreground text-sm">No sizes available.</span>
               )}
               {variants.map((v) => {
                 const out = v.stock <= 0;
@@ -130,10 +130,10 @@ function ProductDetail() {
                     className={
                       "min-w-12 rounded-sm border-2 px-3 py-2 text-sm font-medium transition-colors " +
                       (out
-                        ? "border-border text-text-tertiary cursor-not-allowed line-through opacity-50"
+                        ? "border-border text-muted-foreground cursor-not-allowed line-through opacity-50"
                         : active
-                          ? "border-primary text-text"
-                          : "border-input text-text-secondary hover:border-foreground")
+                          ? "border-primary text-foreground"
+                          : "border-input text-muted-foreground hover:border-foreground")
                     }
                   >
                     {v.size}
@@ -151,11 +151,11 @@ function ProductDetail() {
               <ShoppingBagIcon className="size-4" /> Add to cart
             </Button>
             {variants.some((v) => v.stock > 0) ? (
-              <Badge variant="soft">
+              <Badge variant="success">
                 <CheckIcon className="size-3" /> In stock
               </Badge>
             ) : (
-              <Badge variant="contrast">Sold out</Badge>
+              <Badge variant="inverse">Sold out</Badge>
             )}
           </div>
         </div>

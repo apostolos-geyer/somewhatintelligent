@@ -7,8 +7,8 @@ function Frame({ code, title, blurb }: { code: string; title: string; blurb: str
       <div className="font-display text-primary text-7xl font-extralight tracking-tighter">
         {code}
       </div>
-      <h1 className="text-text text-2xl font-semibold">{title}</h1>
-      <p className="text-text-tertiary max-w-md font-mono text-sm">{blurb}</p>
+      <h1 className="text-foreground text-2xl font-semibold">{title}</h1>
+      <p className="text-muted-foreground max-w-md font-mono text-sm">{blurb}</p>
       <Button nativeButton={false} render={<Link to="/" />}>
         Back to the shop
       </Button>

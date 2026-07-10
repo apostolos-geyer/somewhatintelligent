@@ -24,8 +24,8 @@ function AdminLayout() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
       <div className="mb-6 flex items-center justify-between gap-4">
-        <h1 className="font-display text-text text-3xl font-light tracking-tight">Admin</h1>
-        <span className="text-text-tertiary font-mono text-xs">catalog · fulfillment</span>
+        <h1 className="font-display text-foreground text-3xl font-light tracking-tight">Admin</h1>
+        <span className="text-muted-foreground font-mono text-xs">catalog · fulfillment</span>
       </div>
       <nav className="border-border mb-8 flex gap-1 border-b">
         {TABS.map((t) => {
@@ -38,8 +38,8 @@ function AdminLayout() {
               className={
                 "flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors " +
                 (active
-                  ? "border-primary text-text"
-                  : "text-text-tertiary hover:text-text border-transparent")
+                  ? "border-primary text-foreground"
+                  : "text-muted-foreground hover:text-foreground border-transparent")
               }
             >
               <Icon className="size-4" />

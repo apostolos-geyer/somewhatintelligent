@@ -22,7 +22,7 @@ function Dashboard() {
       k: "orders",
       v: String(s.totalOrders),
       d: `${s.awaitingPayment} awaiting payment`,
-      tone: "text-text",
+      tone: "text-foreground",
     },
     {
       k: "to ship",
@@ -34,7 +34,7 @@ function Dashboard() {
       k: "live styles",
       v: String(s.activeProducts),
       d: `${s.totalProducts} total`,
-      tone: "text-text",
+      tone: "text-foreground",
     },
   ];
 
@@ -43,10 +43,10 @@ function Dashboard() {
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {stats.map((st) => (
           <Card key={st.k} variant="soft" className="gap-2 p-4">
-            <span className="text-text-tertiary font-mono text-[10px] uppercase tracking-wider">
+            <span className="text-muted-foreground font-mono text-[10px] uppercase tracking-wider">
               {st.k}
             </span>
-            <div className="font-display text-text text-3xl font-light tracking-tighter">
+            <div className="font-display text-foreground text-3xl font-light tracking-tighter">
               {st.v}
             </div>
             <div className={`font-mono text-xs ${st.tone}`}>{st.d}</div>

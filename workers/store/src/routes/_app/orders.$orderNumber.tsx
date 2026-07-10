@@ -21,12 +21,12 @@ function OrderDetail() {
     <div className="mx-auto max-w-3xl px-4 py-8 md:px-6 md:py-12">
       <Link
         to="/orders"
-        className="text-text-tertiary hover:text-text mb-4 inline-block font-mono text-xs"
+        className="text-muted-foreground hover:text-foreground mb-4 inline-block font-mono text-xs"
       >
         ← all orders
       </Link>
       <div className="mb-6 flex items-center justify-between gap-4">
-        <h1 className="font-display text-text text-3xl font-light tracking-tight">
+        <h1 className="font-display text-foreground text-3xl font-light tracking-tight">
           {order.orderNumber}
         </h1>
         <OrderStatusBadge status={order.status} />
@@ -40,7 +40,7 @@ function OrderDetail() {
           ) : (
             <TruckIcon className="text-primary size-5" />
           )}
-          <h2 className="text-text font-semibold">Shipment</h2>
+          <h2 className="text-foreground font-semibold">Shipment</h2>
         </div>
         {order.status === "shipped" || order.status === "delivered" ? (
           <div className="space-y-1 font-mono text-sm">
@@ -65,7 +65,7 @@ function OrderDetail() {
             )}
           </div>
         ) : (
-          <p className="text-text-tertiary font-mono text-sm">
+          <p className="text-muted-foreground font-mono text-sm">
             {order.status === "cancelled"
               ? "This order was cancelled."
               : "Not shipped yet — we'll add tracking here once it's on the way."}
@@ -78,13 +78,13 @@ function OrderDetail() {
         <div className="divide-border divide-y">
           {items.map((it) => (
             <div key={it.id} className="flex items-center justify-between gap-3 p-4 text-sm">
-              <span className="text-text-secondary">
+              <span className="text-muted-foreground">
                 {it.titleSnapshot}{" "}
-                <span className="text-text-tertiary">
+                <span className="text-muted-foreground">
                   · {it.sizeSnapshot} ×{it.quantity}
                 </span>
               </span>
-              <span className="text-text font-mono">
+              <span className="text-foreground font-mono">
                 {formatCents(it.unitPriceCents * it.quantity)}
               </span>
             </div>
@@ -97,16 +97,16 @@ function OrderDetail() {
             v={order.shippingCents === 0 ? "Free" : formatCents(order.shippingCents)}
           />
           <div className="border-border flex justify-between border-t pt-2 text-base">
-            <span className="text-text font-semibold">Total</span>
-            <span className="text-text font-semibold">{formatCents(order.totalCents)}</span>
+            <span className="text-foreground font-semibold">Total</span>
+            <span className="text-foreground font-semibold">{formatCents(order.totalCents)}</span>
           </div>
         </div>
       </Card>
 
       {/* Address */}
       <Card variant="soft" className="p-5">
-        <h2 className="text-text mb-2 font-semibold">Ship to</h2>
-        <address className="text-text-secondary text-sm not-italic leading-relaxed">
+        <h2 className="text-foreground mb-2 font-semibold">Ship to</h2>
+        <address className="text-muted-foreground text-sm not-italic leading-relaxed">
           {order.shipName}
           <br />
           {order.shipLine1}
@@ -128,9 +128,9 @@ function OrderDetail() {
 
 function Line({ k, v }: { k: string; v: string }) {
   return (
-    <div className="text-text-secondary flex justify-between gap-3">
-      <span className="text-text-tertiary">{k}</span>
-      <span className="text-text">{v}</span>
+    <div className="text-muted-foreground flex justify-between gap-3">
+      <span className="text-muted-foreground">{k}</span>
+      <span className="text-foreground">{v}</span>
     </div>
   );
 }

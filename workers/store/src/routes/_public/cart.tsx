@@ -17,11 +17,13 @@ function CartPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 md:px-6 md:py-12">
-      <h1 className="font-display text-text mb-6 text-3xl font-light tracking-tight">Your cart</h1>
+      <h1 className="font-display text-foreground mb-6 text-3xl font-light tracking-tight">
+        Your cart
+      </h1>
 
       {lines.length === 0 ? (
         <Card variant="soft" className="p-12 text-center">
-          <p className="text-text-tertiary font-mono text-sm">Your cart is empty.</p>
+          <p className="text-muted-foreground font-mono text-sm">Your cart is empty.</p>
           <Button className="mt-4" nativeButton={false} render={<Link to="/" />}>
             Browse the shop
           </Button>
@@ -39,9 +41,9 @@ function CartPage() {
                   <ProductImage refId={l.coverRef} alt={l.title} className="h-full w-full" />
                 </Link>
                 <div className="min-w-0 flex-1">
-                  <div className="text-text truncate text-sm font-medium">{l.title}</div>
-                  <div className="text-text-tertiary font-mono text-xs">Size {l.size}</div>
-                  <div className="text-text-secondary mt-0.5 font-mono text-xs">
+                  <div className="text-foreground truncate text-sm font-medium">{l.title}</div>
+                  <div className="text-muted-foreground font-mono text-xs">Size {l.size}</div>
+                  <div className="text-muted-foreground mt-0.5 font-mono text-xs">
                     {formatCents(l.priceCents)}
                   </div>
                 </div>
@@ -93,11 +95,11 @@ function CartPage() {
           </Card>
 
           <div className="mt-6 flex items-center justify-between">
-            <div className="text-text-tertiary font-mono text-sm">
+            <div className="text-muted-foreground font-mono text-sm">
               {count} item{count === 1 ? "" : "s"}
             </div>
-            <div className="text-text text-right">
-              <div className="text-text-tertiary font-mono text-xs">Subtotal</div>
+            <div className="text-foreground text-right">
+              <div className="text-muted-foreground font-mono text-xs">Subtotal</div>
               <div className="font-display text-2xl font-light">{formatCents(subtotalCents)}</div>
             </div>
           </div>
@@ -107,7 +109,7 @@ function CartPage() {
               Checkout
             </Button>
           </div>
-          <p className="text-text-tertiary mt-2 text-right font-mono text-xs">
+          <p className="text-muted-foreground mt-2 text-right font-mono text-xs">
             Shipping calculated at checkout · free over $75
           </p>
         </>

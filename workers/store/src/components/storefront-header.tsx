@@ -18,9 +18,12 @@ export function StorefrontHeader() {
   )}`;
 
   return (
-    <header className="border-border bg-bg sticky top-0 z-20 border-b">
+    <header className="border-border bg-background sticky top-0 z-20 border-b">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4 md:px-6">
-        <Link to="/" className="text-text flex items-center gap-2 font-semibold tracking-tight">
+        <Link
+          to="/"
+          className="text-foreground flex items-center gap-2 font-semibold tracking-tight"
+        >
           <ShirtIcon className="text-primary size-5" />
           <span className="font-display text-lg">{BRAND_NAME}</span>
         </Link>
@@ -53,13 +56,13 @@ export function StorefrontHeader() {
             <ShoppingBagIcon className="size-4" />
             Cart
             {count > 0 && (
-              <Badge variant="contrast" size="sm" className="ml-1">
+              <Badge variant="inverse" size="sm" className="ml-1">
                 {count}
               </Badge>
             )}
           </Button>
           {session ? (
-            <span className="text-text-tertiary hidden font-mono text-xs sm:inline">
+            <span className="text-muted-foreground hidden font-mono text-xs sm:inline">
               {session.user.name ?? session.user.email}
             </span>
           ) : (

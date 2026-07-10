@@ -26,7 +26,7 @@ function AdminOrders() {
   return (
     <div>
       <div className="mb-5 flex flex-wrap items-center gap-2">
-        <h2 className="text-text mr-2 text-xl font-semibold">Orders</h2>
+        <h2 className="text-foreground mr-2 text-xl font-semibold">Orders</h2>
         {FILTERS.map((f) => (
           <button
             key={f}
@@ -34,8 +34,8 @@ function AdminOrders() {
             className={
               "rounded-sm border px-3 py-1 font-mono text-xs capitalize transition-colors " +
               (status === f
-                ? "border-primary text-text"
-                : "border-border text-text-tertiary hover:text-text")
+                ? "border-primary text-foreground"
+                : "border-border text-muted-foreground hover:text-foreground")
             }
           >
             {f}
@@ -44,7 +44,7 @@ function AdminOrders() {
       </div>
 
       {orders.length === 0 ? (
-        <Card variant="soft" className="text-text-tertiary p-12 text-center font-mono text-sm">
+        <Card variant="soft" className="text-muted-foreground p-12 text-center font-mono text-sm">
           No orders in this view.
         </Card>
       ) : (
@@ -55,7 +55,7 @@ function AdminOrders() {
                 {["Order", "Customer", "Total", "Status", "Placed", ""].map((h) => (
                   <th
                     key={h}
-                    className="text-text-tertiary border-foreground border-b-2 p-3 text-left font-mono text-[10px] font-semibold uppercase tracking-wider"
+                    className="text-muted-foreground border-foreground border-b-2 p-3 text-left font-mono text-[10px] font-semibold uppercase tracking-wider"
                   >
                     {h}
                   </th>
@@ -65,13 +65,17 @@ function AdminOrders() {
             <tbody>
               {orders.map((o, i) => (
                 <tr key={o.id} className={i < orders.length - 1 ? "border-border border-b" : ""}>
-                  <td className="text-text p-3 font-mono text-sm font-semibold">{o.orderNumber}</td>
-                  <td className="text-text-secondary p-3 text-sm">{o.shipName}</td>
-                  <td className="text-text p-3 font-mono text-sm">{formatCents(o.totalCents)}</td>
+                  <td className="text-foreground p-3 font-mono text-sm font-semibold">
+                    {o.orderNumber}
+                  </td>
+                  <td className="text-muted-foreground p-3 text-sm">{o.shipName}</td>
+                  <td className="text-foreground p-3 font-mono text-sm">
+                    {formatCents(o.totalCents)}
+                  </td>
                   <td className="p-3">
                     <OrderStatusBadge status={o.status} />
                   </td>
-                  <td className="text-text-tertiary p-3 font-mono text-xs">
+                  <td className="text-muted-foreground p-3 font-mono text-xs">
                     {new Date(o.createdAt).toLocaleDateString()}
                   </td>
                   <td className="p-3 text-right">
