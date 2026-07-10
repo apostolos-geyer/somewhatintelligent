@@ -1,4 +1,4 @@
-import { defineOg } from "@si/og";
+import { defineOg } from "@somewhatintelligent/og";
 import { LogoIcon } from "@si/ui/components/logo";
 
 export default defineOg({

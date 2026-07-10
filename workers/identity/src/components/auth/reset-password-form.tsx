@@ -43,7 +43,7 @@ function RequestReset() {
   return (
     <>
       <GuestlistBrand className="mb-section flex flex-col items-center text-center" />
-      <div className="mb-section -mt-4 text-center type-editorial-lede text-text-secondary">
+      <div className="mb-section -mt-4 text-center type-editorial-lede text-muted-foreground">
         reset password
       </div>
 
@@ -90,7 +90,7 @@ function RequestReset() {
               </form.AppForm>
             </form>
 
-            <p className="mt-5 text-center text-sm text-text-secondary">
+            <p className="mt-5 text-center text-sm text-muted-foreground">
               <Link to="/sign-in" className="font-semibold text-primary">
                 Back to sign in
               </Link>
@@ -145,7 +145,7 @@ function SetNewPassword({ token }: { token: string }) {
   return (
     <>
       <GuestlistBrand className="mb-section flex flex-col items-center text-center" />
-      <div className="mb-section -mt-4 text-center type-editorial-lede text-text-secondary">
+      <div className="mb-section -mt-4 text-center type-editorial-lede text-muted-foreground">
         new password
       </div>
 
@@ -166,7 +166,7 @@ function SetNewPassword({ token }: { token: string }) {
           </>
         ) : (
           <CardContent className="space-y-0 p-0">
-            <p className="mb-4 text-xs text-text-tertiary">
+            <p className="mb-4 text-xs text-muted-foreground/80">
               Choose something you will not immediately forget. Or do — the reset process is, as you
               have now seen, not especially arduous.
             </p>

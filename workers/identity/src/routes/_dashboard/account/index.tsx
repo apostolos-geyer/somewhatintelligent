@@ -107,7 +107,7 @@ function AccountPage() {
                     <ItemDescription>{item.description}</ItemDescription>
                   </ItemContent>
                   <ItemActions>
-                    <ChevronRightIcon className="size-4 text-text-tertiary" />
+                    <ChevronRightIcon className="size-4 text-muted-foreground/80" />
                   </ItemActions>
                 </Item>
               </Link>

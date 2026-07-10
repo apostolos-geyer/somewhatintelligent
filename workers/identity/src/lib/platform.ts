@@ -6,7 +6,7 @@ import { createServerOnlyFn } from "@tanstack/react-start";
 import { parseRequestCookies } from "@somewhatintelligent/auth";
 import { createPlatformStartApp } from "@somewhatintelligent/kit/react-start";
 import { createGuestlistClient } from "@somewhatintelligent/guestlist/client";
-import { BOUNCER_ATTESTATION_KEYS } from "@si/config";
+import { appConfig } from "@/app.config";
 import { getGuestlist, guestlistFetcher } from "@/lib/guestlist";
 
 export const platform = createPlatformStartApp({
@@ -16,7 +16,7 @@ export const platform = createPlatformStartApp({
   // Kit is brand-free: the bouncer attestation keyset is injected here rather
   // than imported inside the package. Required — an empty/missing keyset makes
   // every envelope-carrying request fail attestation (auth silently broken).
-  attestationKeys: BOUNCER_ATTESTATION_KEYS,
+  attestationKeys: appConfig.attestationKeys,
   getEnvironment: createServerOnlyFn(() => env.ENVIRONMENT),
   // Bouncer service-binding loopback rewrites Host in miniflare; pin to IDENTITY_URL.
   expectedHost: createServerOnlyFn(() => new URL(env.IDENTITY_URL).hostname.toLowerCase()),

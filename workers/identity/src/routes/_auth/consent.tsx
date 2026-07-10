@@ -59,7 +59,7 @@ function ConsentPage() {
     <>
       <div className="mb-section text-center">
         <div className="type-display-title">Authorize</div>
-        <div className="text-sm text-text-secondary">
+        <div className="text-sm text-muted-foreground">
           <strong className="text-foreground">{clientName ?? client_id}</strong> wants access
         </div>
       </div>
@@ -72,12 +72,12 @@ function ConsentPage() {
             </div>
             <div>
               <div className="text-sm font-medium">{user.name}</div>
-              <div className="font-mono text-xs text-text-tertiary">{user.email}</div>
+              <div className="font-mono text-xs text-muted-foreground/80">{user.email}</div>
             </div>
           </div>
 
           <div className="mb-8">
-            <div className="type-mono-label mb-3 text-text-tertiary">Permissions</div>
+            <div className="type-mono-label mb-3 text-muted-foreground/80">Permissions</div>
             <div className="flex flex-col gap-2">
               {requestedScopes.map((s) => (
                 <div
@@ -93,7 +93,7 @@ function ConsentPage() {
 
           <ConsentActions />
 
-          <p className="mt-5 text-center text-xs text-text-tertiary">
+          <p className="mt-5 text-center text-xs text-muted-foreground/80">
             You can revoke this at any time. We will not ask if you are sure.
           </p>
         </CardContent>

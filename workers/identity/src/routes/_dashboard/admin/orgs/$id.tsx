@@ -13,12 +13,15 @@ import {
 import { toast } from "@si/ui/components/sonner";
 import { cn } from "@si/ui/lib/utils";
 import { AddMemberModal } from "@/components/admin/add-member-modal";
+import { EditOrgDialog } from "@/components/admin/edit-org-dialog";
 import { InviteMemberModal } from "@/components/admin/invite-member-modal";
 import { MemberActions } from "@/components/admin/member-actions";
 import {
+  ORG_ADMIN_FEATURES,
   cancelOrgInvitation,
   getOrgForAdmin,
   removeOrgMember,
+  resendOrgInvitation,
   updateOrgMemberRole,
   type OrgInvitation,
   type OrgMember,
@@ -50,6 +53,7 @@ function OrgDetailPage() {
   const router = useRouter();
   const [addOpen, setAddOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const orgId = organization.id;
 
   const themePrimary = parseThemePrimary(organization.metadata);
@@ -91,6 +95,24 @@ function OrgDetailPage() {
     }
   }
 
+  async function handleResendInvitation(inv: OrgInvitation) {
+    try {
+      const result = await resendOrgInvitation({ data: { orgId, invitationId: inv.id } });
+      if (result.ok) {
+        if (result.emailSent) {
+          toast.success("Invitation email resent");
+        } else {
+          toast.warning("Invitation renewed — email delivery unavailable, copy the link instead");
+        }
+      } else {
+        toast.error(result.message);
+      }
+      await refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to resend invitation");
+    }
+  }
+
   async function copyAcceptLink(inv: OrgInvitation) {
     const base = import.meta.env.IDENTITY_URL || window.location.origin;
     const url = `${base}/orgs/accept/${inv.id}`;
@@ -104,9 +126,19 @@ function OrgDetailPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-grid">
-      <div className="mb-grid">
-        <h1 className="type-page-title">{organization.name}</h1>
-        <p className="mt-1 font-mono text-sm text-text-tertiary">{organization.slug}</p>
+      <div className="mb-grid flex items-start justify-between gap-2">
+        <div>
+          <h1 className="type-page-title">{organization.name}</h1>
+          <p className="mt-1 font-mono text-sm text-muted-foreground/80">{organization.slug}</p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={!ORG_ADMIN_FEATURES.updateOrg}
+          onClick={() => setEditOpen(true)}
+        >
+          Edit
+        </Button>
       </div>
 
       <Card>
@@ -116,21 +148,21 @@ function OrgDetailPage() {
         <CardContent>
           <dl className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
             <div>
-              <dt className="type-mono-label text-text-tertiary">Created</dt>
+              <dt className="type-mono-label text-muted-foreground/80">Created</dt>
               <dd className="mt-1">{relativeTime(organization.createdAt)}</dd>
             </div>
             <div>
-              <dt className="type-mono-label text-text-tertiary">Members</dt>
+              <dt className="type-mono-label text-muted-foreground/80">Members</dt>
               <dd className="mt-1 font-mono">{members.length}</dd>
             </div>
             <div>
-              <dt className="type-mono-label text-text-tertiary">Plan</dt>
+              <dt className="type-mono-label text-muted-foreground/80">Plan</dt>
               <dd className="mt-1">
                 <Badge variant="warning">trial</Badge>
               </dd>
             </div>
             <div>
-              <dt className="type-mono-label text-text-tertiary">Theme</dt>
+              <dt className="type-mono-label text-muted-foreground/80">Theme</dt>
               <dd className="mt-1 flex items-center gap-2">
                 {themePrimary ? (
                   <>
@@ -142,7 +174,7 @@ function OrgDetailPage() {
                     <span className="font-mono text-xs">{themePrimary}</span>
                   </>
                 ) : (
-                  <span className="text-text-tertiary">default</span>
+                  <span className="text-muted-foreground/80">default</span>
                 )}
               </dd>
             </div>
@@ -171,16 +203,16 @@ function OrgDetailPage() {
               <thead>
                 <tr className="border-b-2 border-border-strong bg-surface-sunken">
                   <th className="w-12 px-4 py-3" />
-                  <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
+                  <th className="type-mono-label px-4 py-3 text-left font-normal text-muted-foreground/80">
                     Name
                   </th>
-                  <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
+                  <th className="type-mono-label px-4 py-3 text-left font-normal text-muted-foreground/80">
                     Email
                   </th>
-                  <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
+                  <th className="type-mono-label px-4 py-3 text-left font-normal text-muted-foreground/80">
                     Role
                   </th>
-                  <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
+                  <th className="type-mono-label px-4 py-3 text-left font-normal text-muted-foreground/80">
                     Joined
                   </th>
                   <th className="px-4 py-3 text-right" />
@@ -189,7 +221,7 @@ function OrgDetailPage() {
               <tbody>
                 {members.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-text-tertiary">
+                    <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground/80">
                       No members yet.
                     </td>
                   </tr>
@@ -207,13 +239,13 @@ function OrgDetailPage() {
                         </Avatar>
                       </td>
                       <td className="px-4 py-3 font-medium">{m.name ?? "—"}</td>
-                      <td className="px-4 py-3 font-mono text-xs text-text-tertiary">
+                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground/80">
                         {m.email ?? "—"}
                       </td>
                       <td className="px-4 py-3">
                         <RoleBadge role={m.role} />
                       </td>
-                      <td className="px-4 py-3 font-mono text-xs text-text-tertiary">
+                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground/80">
                         {relativeTime(m.joinedAt)}
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -248,16 +280,16 @@ function OrgDetailPage() {
               <table className="w-full min-w-[640px] border-collapse text-sm">
                 <thead>
                   <tr className="border-b-2 border-border-strong bg-surface-sunken">
-                    <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
+                    <th className="type-mono-label px-4 py-3 text-left font-normal text-muted-foreground/80">
                       Email
                     </th>
-                    <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
+                    <th className="type-mono-label px-4 py-3 text-left font-normal text-muted-foreground/80">
                       Role
                     </th>
-                    <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
+                    <th className="type-mono-label px-4 py-3 text-left font-normal text-muted-foreground/80">
                       Expires
                     </th>
-                    <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
+                    <th className="type-mono-label px-4 py-3 text-left font-normal text-muted-foreground/80">
                       Invited by
                     </th>
                     <th className="px-4 py-3 text-right" />
@@ -270,11 +302,11 @@ function OrgDetailPage() {
                       <td className="px-4 py-3">
                         <RoleBadge role={inv.role} />
                       </td>
-                      <td className="px-4 py-3 font-mono text-xs text-text-tertiary">
+                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground/80">
                         {relativeTime(inv.expiresAt)}
                       </td>
                       <td className="px-4 py-3 text-sm">
-                        {inv.inviterName ?? <span className="text-text-tertiary">—</span>}
+                        {inv.inviterName ?? <span className="text-muted-foreground/80">—</span>}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <DropdownMenu>
@@ -285,11 +317,17 @@ function OrgDetailPage() {
                             ⋯
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              disabled={!ORG_ADMIN_FEATURES.resendInvitation}
+                              onClick={() => void handleResendInvitation(inv)}
+                            >
+                              Resend email
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => void copyAcceptLink(inv)}>
                               Copy accept link
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              className="text-text-rust focus:text-text-rust-hover"
+                              className="text-destructive focus:text-destructive-hover"
                               onClick={() => void handleCancelInvitation(inv)}
                             >
                               Cancel
@@ -306,6 +344,17 @@ function OrgDetailPage() {
         </Card>
       )}
 
+      <EditOrgDialog
+        orgId={orgId}
+        currentName={organization.name}
+        currentSlug={organization.slug}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        onSuccess={(org) => {
+          toast.success(`Updated ${org.name}`);
+          void refresh();
+        }}
+      />
       <AddMemberModal
         orgId={orgId}
         open={addOpen}
@@ -326,7 +375,7 @@ function OrgDetailPage() {
 }
 
 function RoleBadge({ role }: { role: string }) {
-  if (role === "owner") return <Badge variant="ink">owner</Badge>;
+  if (role === "owner") return <Badge variant="default">owner</Badge>;
   if (role === "admin") return <Badge variant="warning">admin</Badge>;
   return <Badge variant="secondary">{role}</Badge>;
 }

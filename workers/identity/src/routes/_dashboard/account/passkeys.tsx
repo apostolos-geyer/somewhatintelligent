@@ -85,10 +85,10 @@ function PasskeysPage() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-4">
-            {loading && <p className="text-sm text-text-tertiary">Loading{"\u2026"}</p>}
+            {loading && <p className="text-sm text-muted-foreground/80">Loading{"\u2026"}</p>}
 
             {!loading && passkeys.length === 0 && (
-              <p className="text-sm text-text-tertiary">No passkeys registered.</p>
+              <p className="text-sm text-muted-foreground/80">No passkeys registered.</p>
             )}
 
             {passkeys.length > 0 && (

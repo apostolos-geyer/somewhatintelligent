@@ -215,3 +215,21 @@ Before substantial work:
 - **The logo mark and wordmark** live in `src/components/ui/logo/brand.ts`
   — the one brand-edited file in this package (hex literals there are
   required by the OG/satori pipeline and are allowlisted).
+
+<!-- scaffold:identity -->
+
+# Identity app (scaffolded from platform templates/identity)
+
+- The IdP surface: auth flows (sign-in/up, reset, verify, two-factor,
+  consent, device), account self-service, and the org/user admin group.
+  Data layer is typed RPC on the `GUESTLIST` service binding.
+- **Brand surfaces**: `src/app.config.ts` (names, support email,
+  attestation keys), the ui package's logo `brand.ts`, `og.config.ts`
+  (OG fonts). A reskin touches only these plus the design package.
+- **Analytics is a no-op stub** (`src/lib/analytics.ts`) — swap in your
+  vendor there; event names are typed.
+- Some org-admin actions are feature-flagged off (`ORG_ADMIN_FEATURES`)
+  pending guestlist entrypoint methods (`adminUpdateOrg`,
+  `adminResendOrgInvitation`).
+- Tests: `bun run test` (unit + jsdom DOM suites). `bun run types` after
+  wrangler edits; repoint the GUESTLIST service names to your fleet.

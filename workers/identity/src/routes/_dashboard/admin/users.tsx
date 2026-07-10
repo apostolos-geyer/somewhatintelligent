@@ -40,7 +40,7 @@ function UsersPage() {
     <div className="flex flex-1 flex-col">
       <div className="mb-section">
         <h1 className="type-page-title">Users</h1>
-        <p className="mt-1 text-sm text-text-secondary">
+        <p className="mt-1 text-sm text-muted-foreground">
           Everyone who has, ostensibly, proven they exist.
         </p>
       </div>
@@ -50,16 +50,16 @@ function UsersPage() {
           <thead>
             <tr className="border-b-2 border-border-strong bg-surface-sunken">
               <th className="w-12 px-4 py-3" />
-              <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
+              <th className="type-mono-label px-4 py-3 text-left font-normal text-muted-foreground/80">
                 Name
               </th>
-              <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
+              <th className="type-mono-label px-4 py-3 text-left font-normal text-muted-foreground/80">
                 Email
               </th>
-              <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
+              <th className="type-mono-label px-4 py-3 text-left font-normal text-muted-foreground/80">
                 Role
               </th>
-              <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
+              <th className="type-mono-label px-4 py-3 text-left font-normal text-muted-foreground/80">
                 Status
               </th>
               <th className="px-4 py-3 text-right" />
@@ -68,7 +68,7 @@ function UsersPage() {
           <tbody>
             {users.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-text-tertiary">
+                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground/80">
                   No users yet. One would imagine that will change.
                 </td>
               </tr>
@@ -82,15 +82,15 @@ function UsersPage() {
                   </Avatar>
                 </td>
                 <td className="px-4 py-3 font-medium">{u.name}</td>
-                <td className="px-4 py-3 font-mono text-xs text-text-tertiary">{u.email}</td>
+                <td className="px-4 py-3 font-mono text-xs text-muted-foreground/80">{u.email}</td>
                 <td className="px-4 py-3">
-                  <Badge variant={isAdminRole(u.role) ? "ink" : "secondary"}>
+                  <Badge variant={isAdminRole(u.role) ? "default" : "secondary"}>
                     {u.role ?? "user"}
                   </Badge>
                 </td>
                 <td className="px-4 py-3">
                   {u.banned ? (
-                    <Badge variant="rust">Banned</Badge>
+                    <Badge variant="destructive">Banned</Badge>
                   ) : u.emailVerified ? (
                     <Badge variant="success">Active</Badge>
                   ) : (
@@ -172,7 +172,7 @@ function UserActions({
           <DropdownMenuItem onClick={handleBan}>{banned ? "Unban" : "Ban"}</DropdownMenuItem>
           {userId !== currentUserId && (
             <DropdownMenuItem
-              className="text-text-rust focus:text-text-rust-hover"
+              className="text-destructive focus:text-destructive-hover"
               onClick={() => setDeleteOpen(true)}
             >
               Delete

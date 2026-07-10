@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { type } from "arktype";
-import { useCapture } from "@si/analytics/client";
+import { useCapture } from "@/lib/analytics";
 import { useAppForm } from "@si/ui/hooks/use-app-form";
 import { Card, CardContent } from "@si/ui/components/card";
 import { Alert } from "@si/ui/components/alert";
@@ -69,7 +69,7 @@ export function SignUpForm({
   return (
     <>
       <GuestlistBrand className="mb-section flex flex-col items-center text-center" />
-      <div className="mb-section -mt-4 text-center type-editorial-lede text-text-secondary">
+      <div className="mb-section -mt-4 text-center type-editorial-lede text-muted-foreground">
         create an account
       </div>
 
@@ -122,7 +122,7 @@ export function SignUpForm({
             </form.AppForm>
           </form>
 
-          <p className="mt-5 text-center text-sm text-text-secondary">
+          <p className="mt-5 text-center text-sm text-muted-foreground">
             Already have an account?{" "}
             <Link to="/sign-in" className="font-semibold text-primary">
               Sign in

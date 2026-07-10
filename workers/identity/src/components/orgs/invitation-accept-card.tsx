@@ -121,7 +121,7 @@ function CardBody({
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-6 pt-2">
-            <ul className="flex flex-col gap-2 text-sm text-text-secondary">
+            <ul className="flex flex-col gap-2 text-sm text-muted-foreground">
               <li>You'll be a member of {state.orgName}'s workspace.</li>
               <li>{state.inviterName} can adjust your role at any time.</li>
               <li>You can leave the organization from your account settings.</li>

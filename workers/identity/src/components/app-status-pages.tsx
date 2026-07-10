@@ -2,7 +2,7 @@
 import { Link } from "@tanstack/react-router";
 
 import { Button } from "@si/ui/components/button";
-import { StatusPage } from "@si/ui/components/status-page";
+import { StatusPage } from "@/components/status-page";
 
 function trimMessage(raw: string, max = 200): string {
   const clean = raw.replace(/\s+/g, " ").trim();

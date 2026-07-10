@@ -35,12 +35,12 @@ const vars: Record<string, string> = {
 // LOCAL DEV client bundle. Dev truth lives in ./.dev.vars, which the
 // wrangler-vars define path above never reads — so overlay it here.
 //   • CLOUDFLARE_ENV set → a real staging/prod build: keep the wrangler vars.
-//   • SI_BUILD=1  → marks any real shipped build (see package.json
+//   • APP_BUILD=1  → marks any real shipped build (see package.json
 //     deploy:staging) so CI's seeded .dev.vars can never leak into a shipped
 //     bundle even when CLOUDFLARE_ENV happens to be absent.
 //   • missing .dev.vars  → silent no-op (fresh clone / CI typecheck).
 // The PORTLESS_URL override below still wins — it stays AFTER this overlay.
-if (!cfEnv && !process.env.SI_BUILD) {
+if (!cfEnv && !process.env.APP_BUILD) {
   try {
     for (const line of readFileSync(path.resolve(__dirname, "./.dev.vars"), "utf8").split("\n")) {
       const trimmed = line.trim();
@@ -61,7 +61,7 @@ if (!cfEnv && !process.env.SI_BUILD) {
 
 // Portless prefixes the dev host with the worktree branch name (see
 // `dev` script in package.json), so the wrangler.jsonc dev IDENTITY_URL
-// (https://identity.somewhatintelligent.localhost) doesn't match where the worker is
+// (https://identity.platform.example.localhost) doesn't match where the worker is
 // actually reachable. When PORTLESS_URL is present, prefer it for the
 // client bundle so `import.meta.env.IDENTITY_URL` matches the live origin.
 if (!cfEnv && process.env.PORTLESS_URL) {
@@ -125,9 +125,9 @@ function makePlugins(): PluginOption[] {
     // auto-increment probe races when apps (or worktrees) start
     // simultaneously. Set a number here temporarily when you need DevTools.
     ...cloudflare({ viteEnvironment: { name: "ssr" }, inspectorPort: false }),
-    // Unique server-fn base — see workers/store/vite.config.ts for the full
-    // rationale: vmf-mounted clients call server fns at the apex, so each
-    // app owns a distinct passthrough path in bouncer's ROUTES.
+    // Unique server-fn base: vmf-mounted clients call server fns at the
+    // apex, so each app owns a distinct passthrough path in bouncer's
+    // ROUTES (see `@somewhatintelligent/bouncer`'s route compiler).
     ...tanstackStart({ serverFns: { base: "/_sfn/account" } }),
     ...react(),
   ];
@@ -148,7 +148,7 @@ export default defineConfig({
   server: {
     port: Number(process.env.PORT) || 5173,
     host: "0.0.0.0",
-    allowedHosts: [".somewhatintelligent.localhost"],
+    allowedHosts: [".platform.example.localhost"],
     // HMR direct to identity's port — bypasses portless's miniflare loopback bug.
     hmr: { host: "localhost", clientPort: Number(process.env.PORT) || 5173, protocol: "ws" },
   },
@@ -159,8 +159,27 @@ export default defineConfig({
   test: {
     includeTaskLocation: true,
     globals: true,
-    include: ["__tests__/**/*.test.ts"],
-    environment: "node",
+    // Two idiom-B unit projects sharing this one config file: plain node for
+    // the pure-logic `*.test.ts` suite (return-to.test.ts), jsdom +
+    // @testing-library/react for the `*.dom.test.tsx` component tier (admin
+    // org UI). Naming keeps the two runners from ever colliding. `extends:
+    // true` inherits this root config (the `@/`/`#` aliases, the VITEST-branch
+    // `react()` plugin) so neither project has to restate it.
+    projects: [
+      {
+        extends: true,
+        test: { name: "unit", include: ["__tests__/**/*.test.ts"], environment: "node" },
+      },
+      {
+        extends: true,
+        test: {
+          name: "dom",
+          include: ["__tests__/**/*.dom.test.tsx"],
+          environment: "jsdom",
+          setupFiles: ["./__tests__/setup-dom.ts"],
+        },
+      },
+    ],
   },
   run: {
     tasks: {
@@ -176,7 +195,7 @@ export default defineConfig({
       build: {
         command: "vp build",
         dependsOn: ["og:build"],
-        env: ["CLOUDFLARE_ENV", "SI_BUILD", "NODE_ENV", "VITE_*"],
+        env: ["CLOUDFLARE_ENV", "APP_BUILD", "NODE_ENV", "VITE_*"],
         input: [
           { auto: true },
           "!**/.output/**",

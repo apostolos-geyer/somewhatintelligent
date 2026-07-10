@@ -40,6 +40,7 @@ export function InviteMemberModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [acceptUrl, setAcceptUrl] = useState<string | null>(null);
+  const [emailSent, setEmailSent] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -47,6 +48,7 @@ export function InviteMemberModal({
       setRole("member");
       setError(null);
       setAcceptUrl(null);
+      setEmailSent(false);
     }
   }, [open]);
 
@@ -55,11 +57,12 @@ export function InviteMemberModal({
     setError(null);
     setSubmitting(true);
     try {
-      const { invitationId } = await createOrgInvitation({
+      const { invitationId, emailSent: sent } = await createOrgInvitation({
         data: { orgId, email: email.trim(), role },
       });
       const base = import.meta.env.IDENTITY_URL || window.location.origin;
       setAcceptUrl(`${base}/orgs/accept/${invitationId}`);
+      setEmailSent(sent);
       onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send invitation");
@@ -134,16 +137,22 @@ export function InviteMemberModal({
           </form>
         ) : (
           <div className="flex flex-col gap-4">
-            <Alert variant="success">Invitation created. Send the link below to {email}.</Alert>
+            <Alert variant="success">
+              {emailSent
+                ? "Invitation email sent. You can also copy the link:"
+                : `Invitation created. Send the link below to ${email}.`}
+            </Alert>
             <Field>
               <Label>Accept URL</Label>
               <div className="rounded-sm bg-surface-sunken px-3 py-2">
-                <code className="type-code block break-all text-ink">{acceptUrl}</code>
+                <code className="type-code block break-all text-primary">{acceptUrl}</code>
               </div>
-              <FieldDescription>
-                Email delivery for operator-issued invitations is intentionally manual. The invitee
-                visits this URL to accept.
-              </FieldDescription>
+              {!emailSent && (
+                <FieldDescription>
+                  Email delivery for operator-issued invitations is intentionally manual. The
+                  invitee visits this URL to accept.
+                </FieldDescription>
+              )}
             </Field>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={copyAcceptUrl}>

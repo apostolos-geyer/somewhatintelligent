@@ -51,18 +51,18 @@ export function IdentityCard({ user }: { user: IdentityUser }) {
           <AvatarBlock image={user.image} initial={initial} />
           <div className="flex flex-1 flex-col items-center gap-2 md:items-start">
             <div className="flex w-full items-baseline justify-between gap-3">
-              <span className="type-mono-label text-text-tertiary">Username</span>
+              <span className="type-mono-label text-muted-foreground/80">Username</span>
               <EditUsernameDialog defaultUsername={user.username} />
             </div>
             <span
               className={cn(
                 "type-display-title font-heading break-all",
-                !user.username && "text-text-tertiary italic",
+                !user.username && "text-muted-foreground/80 italic",
               )}
             >
               {user.username ? (
                 <>
-                  <span className="font-light text-text-tertiary" aria-hidden="true">
+                  <span className="font-light text-muted-foreground/80" aria-hidden="true">
                     &amp;
                   </span>
                   <span>{user.username}</span>
@@ -102,8 +102,8 @@ export function IdentityCard({ user }: { user: IdentityUser }) {
           </FieldRow>
         </div>
 
-        <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-border pt-4 text-xs text-text-tertiary">
-          <Badge variant={isAdminRole(user.role) ? "ink" : "secondary"} size="sm">
+        <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-border pt-4 text-xs text-muted-foreground/80">
+          <Badge variant={isAdminRole(user.role) ? "default" : "secondary"} size="sm">
             {user.role ?? "user"}
           </Badge>
           {joined && <span>· joined {joined}</span>}
@@ -172,7 +172,7 @@ function AvatarBlock({ image, initial }: { image: string | null; initial: string
           <Button
             variant="ghost"
             size="sm"
-            className="text-text-tertiary"
+            className="text-muted-foreground/80"
             onClick={() => setRemoveOpen(true)}
           >
             Remove
@@ -216,7 +216,7 @@ function FieldRow({
     <div className="flex flex-col gap-1 py-3 md:flex-row md:items-center md:justify-between md:gap-4">
       <div className="flex items-start justify-between gap-3 md:flex-1 md:items-center">
         <div className="flex flex-1 flex-col">
-          <span className="type-mono-label text-text-tertiary">{label}</span>
+          <span className="type-mono-label text-muted-foreground/80">{label}</span>
           <span className="text-sm break-all md:text-base">{value}</span>
         </div>
         <div className="md:hidden">{children}</div>

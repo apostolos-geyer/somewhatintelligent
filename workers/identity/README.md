@@ -1,5 +1,11 @@
 Welcome to your new TanStack Start app!
 
+This is the **identity** app template: a reskinnable IdP (sign-in, account
+management, and operator admin) built on `@somewhatintelligent/*` and
+`@si/ui`. Rebrand it by editing `src/app.config.ts` (brand name/short/
+support email, bouncer attestation keys) and `src/app-brand.ts` (this app's
+product name); swap in a real analytics vendor by editing `src/lib/analytics.ts`.
+
 # Getting Started
 
 To run this application:
@@ -187,4 +193,5 @@ For TanStack Start specific documentation, visit [TanStack Start](https://tansta
 
 ## Releases
 
-Released independently as component tags `identity-v<x.y.z>` (release-please manifest mode; see `docs/runbooks/PRODUCTION-DEPLOY.md`).
+Versioned and released independently via release-please, same as every other
+package in this monorepo — see `docs/releasing.md` at the repo root.

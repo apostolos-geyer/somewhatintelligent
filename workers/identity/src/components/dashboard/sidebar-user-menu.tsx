@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useCapture } from "@si/analytics/client";
+import { useCapture } from "@/lib/analytics";
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@si/ui/components/sidebar";
 import {
   DropdownMenu,
@@ -48,7 +48,7 @@ export function SidebarUserMenu({ user }: { user: User }) {
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
               <span className="truncate font-semibold">{user.name}</span>
-              <span className="truncate text-xs text-text-tertiary">{user.email}</span>
+              <span className="truncate text-xs text-muted-foreground/80">{user.email}</span>
             </div>
             <ChevronsUpDownIcon className="ml-auto size-4" />
           </DropdownMenuTrigger>

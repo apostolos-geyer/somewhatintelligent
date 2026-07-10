@@ -14,7 +14,7 @@
   "vars": {
     "ENVIRONMENT": "staging",
     // Identity's own PUBLIC address; bouncer vmf-mounts it at `/account` of
-    // the single-host apex (workers/bouncer/wrangler.jsonc) — used for
+    // the single-host apex (bouncer's `wrangler.jsonc`) — used for
     // cross-app links this app renders itself (sidebar "identity" nav item,
     // admin invite-link base). `src/lib/auth-client.ts`'s SSR fallback
     // derives the bare origin from this via `new URL(...).origin` rather

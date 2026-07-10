@@ -62,6 +62,21 @@ export interface UserSearchHit {
 
 type OrgRole = "owner" | "admin" | "member";
 
+/**
+ * Admin-org actions with no backing RPC method yet on the `Guestlist`
+ * WorkerEntrypoint (`@somewhatintelligent/guestlist`'s `src/entrypoint.ts`).
+ * Their server fns below always resolve `{ ok: false, error: "unsupported" }`
+ * and the UI disables the corresponding action while its flag is `false`.
+ * Flip a flag to `true` (and wire the fn to the real RPC call) once the
+ * named entrypoint method ships.
+ */
+export const ORG_ADMIN_FEATURES = {
+  /** Needs an `adminUpdateOrg` method (rename / re-slug an existing org). */
+  updateOrg: false,
+  /** Needs an `adminResendOrgInvitation` method. */
+  resendInvitation: false,
+} as const;
+
 // ------------------------------------------------------------------
 // Server functions — each one wraps a single guestlist operator RPC
 // method on the GUESTLIST WorkerEntrypoint. The inbound Cookie is the
@@ -139,6 +154,27 @@ export const createOrgAsOperator = createServerFn({ method: "POST" })
     },
   );
 
+export const updateOrgAsOperator = createServerFn({ method: "POST" })
+  .middleware([requireAdminMiddleware])
+  .inputValidator((data: { orgId: string; name: string; slug: string }) => data)
+  .handler(
+    async (): Promise<
+      | { ok: true; organization: { id: string; slug: string; name: string } }
+      | { ok: false; error: "slug_taken" | "unsupported"; message: string }
+    > => {
+      // TODO(guestlist): the Guestlist WorkerEntrypoint has no adminUpdateOrg
+      // RPC method yet (only adminCreateOrg/adminGetOrg/adminListOrgs exist).
+      // Wire this to it once added; until then org rename/re-slug is
+      // unsupported and the Edit action stays disabled
+      // (see ORG_ADMIN_FEATURES.updateOrg above).
+      return {
+        ok: false,
+        error: "unsupported",
+        message: "Renaming organizations isn't wired up yet.",
+      };
+    },
+  );
+
 export const addOrgMember = createServerFn({ method: "POST" })
   .middleware([requireAdminMiddleware])
   .inputValidator((data: { orgId: string; userId: string; role: OrgRole }) => data)
@@ -207,7 +243,7 @@ export const removeOrgMember = createServerFn({ method: "POST" })
 export const createOrgInvitation = createServerFn({ method: "POST" })
   .middleware([requireAdminMiddleware])
   .inputValidator((data: { orgId: string; email: string; role: OrgRole }) => data)
-  .handler(async ({ data }): Promise<{ invitationId: string }> => {
+  .handler(async ({ data }): Promise<{ invitationId: string; emailSent: boolean }> => {
     const res = await env.GUESTLIST.adminCreateOrgInvitation({
       cookie: requestCookie(),
       orgId: data.orgId,
@@ -217,8 +253,38 @@ export const createOrgInvitation = createServerFn({ method: "POST" })
     if (!res.ok) throw new Error(rpcErrorMessage(res));
     const inv = res.invitation as { id: string } | undefined;
     if (!inv) throw new Error("No invitation returned from server");
-    return { invitationId: inv.id };
+    // guestlist's operator-issued invitations never send email (see
+    // adminCreateOrgInvitation / ops/orgs.ts createInvitation) — emailSent is
+    // always false. Kept as a real field so the UI's "email sent" branch is
+    // ready the moment guestlist adds delivery.
+    return { invitationId: inv.id, emailSent: false };
   });
+
+export const resendOrgInvitation = createServerFn({ method: "POST" })
+  .middleware([requireAdminMiddleware])
+  .inputValidator((data: { orgId: string; invitationId: string }) => data)
+  .handler(
+    async (): Promise<
+      | { ok: true; emailSent: boolean; expiresAt: number }
+      | {
+          ok: false;
+          error: "invitation_not_found" | "invitation_not_pending" | "unsupported";
+          message: string;
+        }
+    > => {
+      // TODO(guestlist): the Guestlist WorkerEntrypoint has no
+      // adminResendOrgInvitation RPC method yet (only
+      // adminCreateOrgInvitation/adminCancelOrgInvitation exist). Wire this
+      // to it once added; until then resend is unsupported and the "Resend
+      // email" action stays disabled (see ORG_ADMIN_FEATURES.resendInvitation
+      // above).
+      return {
+        ok: false,
+        error: "unsupported",
+        message: "Resending invitations isn't wired up yet.",
+      };
+    },
+  );
 
 export const cancelOrgInvitation = createServerFn({ method: "POST" })
   .middleware([requireAdminMiddleware])

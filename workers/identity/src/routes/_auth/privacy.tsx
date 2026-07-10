@@ -21,7 +21,7 @@ function PrivacyPage() {
         <CardHeader>
           <CardTitle>Privacy</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4 text-sm text-text-secondary">
+        <CardContent className="space-y-4 text-sm text-muted-foreground">
           <p>
             This is a personal identity provider. It stores your email, your name if you give one, a
             hashed password, and session data. That is the inventory. There is no hidden annex.
@@ -46,8 +46,8 @@ function PrivacyPage() {
         </CardContent>
       </Card>
 
-      <div className="mt-section flex justify-center text-xs text-text-tertiary">
-        <Link to="/sign-in" className="hover:text-text-secondary">
+      <div className="mt-section flex justify-center text-xs text-muted-foreground/80">
+        <Link to="/sign-in" className="hover:text-muted-foreground">
           Back to sign in
         </Link>
       </div>

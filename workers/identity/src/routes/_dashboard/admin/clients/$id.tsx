@@ -40,7 +40,11 @@ function ClientDetailPage() {
       <div className="mb-grid flex items-center justify-between">
         <h1 className="type-page-title">{c.name ?? c.clientId}</h1>
         <div className="flex items-center gap-2">
-          {managed ? <Badge variant="warning">Managed</Badge> : <Badge variant="ink">Custom</Badge>}
+          {managed ? (
+            <Badge variant="warning">Managed</Badge>
+          ) : (
+            <Badge variant="default">Custom</Badge>
+          )}
         </div>
       </div>
 
@@ -58,17 +62,17 @@ function ClientDetailPage() {
           {managed && <Alert variant="warning">Managed by IaC. Identity is immutable.</Alert>}
 
           <div className="rounded-sm bg-surface-sunken px-4 py-3">
-            <div className="type-mono-label mb-1 text-text-tertiary">Client ID</div>
+            <div className="type-mono-label mb-1 text-muted-foreground/80">Client ID</div>
             <code className="type-code break-all text-foreground">{c.clientId}</code>
           </div>
 
           <div className="grid grid-cols-2 gap-grid">
             <div className="rounded-sm bg-surface-sunken px-4 py-3">
-              <div className="type-mono-label text-text-tertiary">Tokens</div>
+              <div className="type-mono-label text-muted-foreground/80">Tokens</div>
               <div className="type-stat mt-1">{tokenCount}</div>
             </div>
             <div className="rounded-sm bg-surface-sunken px-4 py-3">
-              <div className="type-mono-label text-text-tertiary">Consents</div>
+              <div className="type-mono-label text-muted-foreground/80">Consents</div>
               <div className="type-stat mt-1">{consentCount}</div>
             </div>
           </div>
@@ -240,8 +244,8 @@ function ClientSecretCard({ id }: { id: string }) {
       <CardContent>
         {rotatedSecret ? (
           <div className="rounded-sm bg-surface-sunken px-3 py-2">
-            <code className="type-code break-all text-ink">{rotatedSecret}</code>
-            <p className="mt-1.5 text-2xs text-text-tertiary">Will not be shown again.</p>
+            <code className="type-code break-all text-primary">{rotatedSecret}</code>
+            <p className="mt-1.5 text-2xs text-muted-foreground/80">Will not be shown again.</p>
           </div>
         ) : (
           <Button
@@ -282,7 +286,7 @@ function DeleteClientCard({ id }: { id: string }) {
   return (
     <Card size="sm">
       <CardHeader>
-        <CardTitle className="text-rust">Danger Zone</CardTitle>
+        <CardTitle className="text-destructive">Danger Zone</CardTitle>
         <CardDescription>Permanently delete this client and revoke all tokens.</CardDescription>
       </CardHeader>
       <CardContent>

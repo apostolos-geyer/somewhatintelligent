@@ -11,8 +11,8 @@ import { getSession } from "@/lib/session";
  *
  * We deliberately do NOT route through the auth client here: the
  * `organizationClient()` plugin isn't registered in
- * `workers/guestlist/src/client/plugins.ts`, and the O-9 scope forbids
- * touching `workers/guestlist/`. Server-side fetch is the equivalent path.
+ * `@somewhatintelligent/guestlist`'s `src/client/plugins.ts`. Server-side
+ * fetch against the service binding is the equivalent path.
  */
 
 const GUESTLIST_INTERNAL = "http://guestlist.internal";

@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@si/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@si/ui/components/card";
 import { Input } from "@si/ui/components/input";
@@ -7,6 +7,7 @@ import { Label } from "@si/ui/components/label";
 import { Field, FieldDescription, FieldError } from "@si/ui/components/field";
 import { Alert } from "@si/ui/components/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@si/ui/components/avatar";
+import { SearchCombobox } from "@si/ui/components/search-combobox";
 import { toast } from "@si/ui/components/sonner";
 import {
   createOrgAsOperator,
@@ -42,10 +43,8 @@ function NewOrgPage() {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
-  const [ownerEmail, setOwnerEmail] = useState("");
-  const [ownerUserId, setOwnerUserId] = useState<string | null>(null);
-  const [searchResults, setSearchResults] = useState<UserSearchHit[]>([]);
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [pickedOwner, setPickedOwner] = useState<UserSearchHit | null>(null);
+  const ownerUserId = pickedOwner?.id ?? null;
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [slugError, setSlugError] = useState<string | null>(null);
@@ -58,45 +57,6 @@ function NewOrgPage() {
       setSlug(kebabize(name));
     }
   }, [name, slugTouched]);
-
-  // Debounced email autocomplete.
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    if (ownerEmail.trim().length < 2) {
-      setSearchResults([]);
-      return;
-    }
-    if (ownerUserId) {
-      // User picked a result — don't keep searching while they look at it.
-      return;
-    }
-    searchTimerRef.current = setTimeout(async () => {
-      try {
-        const res = await searchUsersByEmail({ data: { email: ownerEmail.trim() } });
-        setSearchResults(res.users);
-        setSearchOpen(true);
-      } catch {
-        // Silent — the autocomplete is non-essential.
-      }
-    }, 250);
-    return () => {
-      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    };
-  }, [ownerEmail, ownerUserId]);
-
-  function selectUser(u: UserSearchHit) {
-    setOwnerUserId(u.id);
-    setOwnerEmail(u.email);
-    setSearchOpen(false);
-    setEmailError(null);
-  }
-
-  function clearUser() {
-    setOwnerUserId(null);
-    setOwnerEmail("");
-    setSearchResults([]);
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -143,7 +103,7 @@ function NewOrgPage() {
     <div className="flex flex-1 flex-col">
       <div className="mb-section">
         <h1 className="type-page-title">New organization</h1>
-        <p className="mt-1 text-sm text-text-secondary">
+        <p className="mt-1 text-sm text-muted-foreground">
           Provision a new brand on this platform. The owner must already have a user account.
         </p>
       </div>
@@ -195,67 +155,32 @@ function NewOrgPage() {
 
             <Field>
               <Label htmlFor="owner-email">Owner email</Label>
-              <div className="relative">
-                <Input
-                  id="owner-email"
-                  type="email"
-                  value={ownerEmail}
-                  onChange={(e) => {
-                    setOwnerUserId(null);
-                    setOwnerEmail(e.target.value);
-                    setEmailError(null);
-                  }}
-                  onFocus={() => {
-                    if (searchResults.length > 0) setSearchOpen(true);
-                  }}
-                  onBlur={() => {
-                    // Defer hiding so a click on a result still fires.
-                    setTimeout(() => setSearchOpen(false), 150);
-                  }}
-                  placeholder="owner@brand.com"
-                  required
-                  aria-invalid={emailError ? true : undefined}
-                  disabled={!!ownerUserId}
-                />
-                {ownerUserId && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute top-1/2 right-1 -translate-y-1/2"
-                    onClick={clearUser}
-                  >
-                    Change
-                  </Button>
-                )}
-                {searchOpen && searchResults.length > 0 && !ownerUserId && (
-                  <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-sm border-2 border-border-strong bg-surface-raised shadow-soft-md">
-                    {searchResults.map((u) => (
-                      <button
-                        key={u.id}
-                        type="button"
-                        onMouseDown={(e) => {
-                          // Prevent input blur from firing before click.
-                          e.preventDefault();
-                          selectUser(u);
-                        }}
-                        className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-surface-sunken"
-                      >
-                        <Avatar size="sm">
-                          {u.image ? <AvatarImage src={u.image} alt="" /> : null}
-                          <AvatarFallback>
-                            {(u.name ?? u.email).charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <div className="text-sm font-medium">{u.name ?? "—"}</div>
-                          <div className="font-mono text-xs text-text-tertiary">{u.email}</div>
-                        </div>
-                      </button>
-                    ))}
+              <SearchCombobox<UserSearchHit>
+                id="owner-email"
+                inputType="email"
+                value={pickedOwner}
+                onSelect={(u) => {
+                  setPickedOwner(u);
+                  setEmailError(null);
+                }}
+                search={async (q) => (await searchUsersByEmail({ data: { email: q } })).users}
+                itemToKey={(u) => u.id}
+                itemToLabel={(u) => u.email}
+                renderItem={(u) => (
+                  <div className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-surface-sunken">
+                    <Avatar size="sm">
+                      {u.image ? <AvatarImage src={u.image} alt="" /> : null}
+                      <AvatarFallback>{(u.name ?? u.email).charAt(0).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="text-sm font-medium">{u.name ?? "—"}</div>
+                      <div className="font-mono text-xs text-muted-foreground/80">{u.email}</div>
+                    </div>
                   </div>
                 )}
-              </div>
+                placeholder="owner@brand.com"
+                aria-invalid={emailError ? true : undefined}
+              />
               <FieldDescription>
                 Type to search existing users by email. They must sign up first; only matched users
                 can be promoted to owner.
