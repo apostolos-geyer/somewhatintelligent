@@ -3,7 +3,7 @@ import { ShoppingBagIcon, ShirtIcon } from "lucide-react";
 import { Badge } from "@si/ui/components/badge";
 import { Button } from "@si/ui/components/button";
 import { ThemeToggle } from "@si/ui/components/theme-toggle";
-import { isAdminRole } from "@si/kit/roles";
+import { isAdminRole } from "@somewhatintelligent/kit/roles";
 import { useAuth } from "@/lib/auth-context";
 import { useCart } from "@/lib/cart";
 import { BRAND_NAME } from "@/lib/config";

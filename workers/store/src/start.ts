@@ -1,5 +1,8 @@
 import { createStart } from "@tanstack/react-start";
-import { createLoggingFunctionMiddleware, createRequestLogger } from "@si/kit/react-start";
+import {
+  createLoggingFunctionMiddleware,
+  createRequestLogger,
+} from "@somewhatintelligent/kit/react-start";
 
 const requestLogger = createRequestLogger({ service: "store" });
 const functionLogger = createLoggingFunctionMiddleware({ service: "store" });

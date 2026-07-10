@@ -1,4 +1,4 @@
-import { compileRoutes, matchRoute } from "../src/routes";
+import { compileRoutes, matchRoute } from "@somewhatintelligent/bouncer";
 import { platformDeployConfig } from "@si/config";
 
 // Base domain is config-derived so a rebrand never leaves these matcher

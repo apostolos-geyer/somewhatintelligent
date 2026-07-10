@@ -4,7 +4,7 @@ import {
   extractCookies,
   getRawSetCookies,
   uniqueEmail,
-  GUESTLIST_DEV_ORIGIN,
+  GUESTLIST_ORIGIN,
   COOKIE_PREFIX,
 } from "./helpers";
 
@@ -21,13 +21,9 @@ describe("SSO Cookie Behavior", () => {
 
   beforeAll(async () => {
     await signUpVerified({ name: "Cookie User", email, password });
-
     signInResponse = await SELF.fetch("http://localhost/api/auth/sign-in/email", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Origin: GUESTLIST_DEV_ORIGIN,
-      },
+      headers: { "Content-Type": "application/json", Origin: GUESTLIST_ORIGIN },
       body: JSON.stringify({ email, password }),
     });
     sessionCookies = extractCookies(signInResponse);
@@ -56,11 +52,8 @@ describe("SSO Cookie Behavior", () => {
   test("cookie cache is a JWT with HS256 strategy", () => {
     const match = sessionCookies.match(sessionDataRe);
     expect(match).not.toBeNull();
-    const token = match![1]!;
-
-    const parts = token.split(".");
+    const parts = match![1]!.split(".");
     expect(parts.length).toBe(3);
-
     const header = JSON.parse(atob(parts[0]!.replace(/-/g, "+").replace(/_/g, "/"))) as Record<
       string,
       unknown
@@ -71,14 +64,11 @@ describe("SSO Cookie Behavior", () => {
   test("cookie payload includes role from user.additionalFields", () => {
     const match = sessionCookies.match(sessionDataRe);
     expect(match).not.toBeNull();
-    const token = match![1]!;
-    const parts = token.split(".");
-
+    const parts = match![1]!.split(".");
     const payload = JSON.parse(atob(parts[1]!.replace(/-/g, "+").replace(/_/g, "/"))) as Record<
       string,
       unknown
     >;
-
     const user = payload.user as Record<string, unknown>;
     expect(user).toBeDefined();
     expect(user).toHaveProperty("role");

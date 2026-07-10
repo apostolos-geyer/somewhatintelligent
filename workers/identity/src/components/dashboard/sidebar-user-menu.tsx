@@ -14,7 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@si/ui/components/avatar";
 import { ChevronsUpDownIcon } from "lucide-react";
 import { toast } from "@si/ui/components/sonner";
 import { authClient } from "@/lib/auth-client";
-import { isAdminRole } from "@si/kit/roles";
+import { isAdminRole } from "@somewhatintelligent/kit/roles";
 
 type User = {
   name: string;

@@ -18,7 +18,8 @@ import { Slider } from "@si/ui/components/slider";
 import { toast } from "@si/ui/components/sonner";
 import { cn } from "@si/ui/lib/utils";
 import { cropImageToBlob } from "@si/ui/lib/crop";
-import { guestlist } from "@/lib/auth-client";
+import { setAvatar } from "@somewhatintelligent/guestlist/client";
+import { avatarTransport } from "@/lib/avatar-transport";
 
 const ACCEPT = "image/jpeg,image/png,image/webp";
 const MAX_BYTES = 8 * 1024 * 1024;
@@ -111,7 +112,7 @@ export function AvatarUploadDialog({
         mimeType: OUTPUT_TYPE,
         quality: OUTPUT_QUALITY,
       });
-      await guestlist.setAvatar(blob, { contentType: OUTPUT_TYPE });
+      await setAvatar(avatarTransport, blob, { contentType: OUTPUT_TYPE });
       toast.success("Avatar updated");
       setOpen(false);
       void router.invalidate();

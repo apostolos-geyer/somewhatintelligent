@@ -1,8 +1,8 @@
 // Hand-written entry; do not wrap in a kit factory. Mirrors
 // workers/identity/src/worker.ts (docs/ARCHITECTURE.md §3.3 + §4.4).
 import startEntry from "@tanstack/react-start/server-entry";
-import { extractPlatformStartContext } from "@si/kit/react-start";
-import { runWithExecutionContext } from "@si/kit/execution-context";
+import { extractPlatformStartContext } from "@somewhatintelligent/kit/react-start";
+import { runWithExecutionContext } from "@somewhatintelligent/kit/execution-context";
 import { devEnvelopeStamper } from "./lib/platform";
 import { handleStoreStripeWebhook, STORE_STRIPE_WEBHOOK_PATH } from "./lib/stripe-webhook";
 import { createDb } from "./lib/db";

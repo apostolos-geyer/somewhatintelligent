@@ -54,10 +54,14 @@ export interface AccessCredentials {
 }
 
 /** Resolves Access service-token creds: CLI flags > env vars > .provision/access/si-smoke.json. */
-export function resolveAccessCredentials(args: {
-  clientId?: string;
-  clientSecret?: string;
-}): AccessCredentials | undefined {
+export function resolveAccessCredentials(
+  args: {
+    clientId?: string;
+    clientSecret?: string;
+  },
+  // Injectable for hermetic tests; defaults to the real .provision reader.
+  readFile: (relPath: string) => string | undefined = readProvisionFile,
+): AccessCredentials | undefined {
   if (args.clientId && args.clientSecret)
     return { clientId: args.clientId, clientSecret: args.clientSecret };
   if (process.env.CF_ACCESS_CLIENT_ID && process.env.CF_ACCESS_CLIENT_SECRET) {
@@ -66,7 +70,7 @@ export function resolveAccessCredentials(args: {
       clientSecret: process.env.CF_ACCESS_CLIENT_SECRET,
     };
   }
-  const raw = readProvisionFile("access/si-smoke.json");
+  const raw = readFile("access/si-smoke.json");
   if (!raw) return undefined;
   try {
     const parsed = JSON.parse(raw);

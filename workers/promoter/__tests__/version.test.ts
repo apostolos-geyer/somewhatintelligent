@@ -5,15 +5,21 @@
  * organization-invitation.test.ts: promoter's entry module extends
  * `WorkerEntrypoint` from `cloudflare:workers` (runtime-only), so the worker
  * itself can't be imported outside workerd. The default fetch is a one-liner
- * delegating to `handleVersionRequest` from @si/kit/version — these tests
- * exercise that exact call shape (same options object src/index.ts passes),
- * which is the whole HTTP surface promoter exposes.
+ * delegating to `handleVersionRequest` from @somewhatintelligent/kit/version —
+ * these tests exercise that exact call shape (same options object
+ * src/index.ts passes, including the `overrides` forwarding of
+ * WORKER_VERSION/WORKER_COMMIT — the kit version module no longer reads
+ * those off env itself), which is the whole HTTP surface promoter exposes.
  */
 import { describe, expect, test } from "vite-plus/test";
-import { handleVersionRequest } from "@si/kit/version";
+import { handleVersionRequest } from "@somewhatintelligent/kit/version";
 
-const fetchLike = (request: Request, env: unknown) =>
-  handleVersionRequest(request, { worker: "promoter", env }) ?? new Response(null, { status: 404 });
+const fetchLike = (request: Request, env: Record<string, string | undefined>) =>
+  handleVersionRequest(request, {
+    worker: "promoter",
+    env,
+    overrides: { version: env.WORKER_VERSION, commit: env.WORKER_COMMIT },
+  }) ?? new Response(null, { status: 404 });
 
 describe("promoter /__version", () => {
   test("GET /__version answers with the promoter payload", async () => {

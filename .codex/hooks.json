@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun scripts/setup-browsers.ts --ensure",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}

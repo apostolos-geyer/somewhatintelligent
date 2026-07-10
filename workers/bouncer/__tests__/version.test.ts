@@ -24,9 +24,12 @@ describe("GET /__version", () => {
     expect(res.headers.get("content-type")).toContain("application/json");
     const body = (await res.json()) as Record<string, string>;
     expect(body.worker).toBe("bouncer");
-    // Un-injected in tests — the safe fallbacks are the contract here.
-    expect(body.version).toBe("0.0.0-dev");
-    expect(body.commit).toBe("unknown");
+    // Un-injected in tests, the version endpoint now falls back to the
+    // published @somewhatintelligent/bouncer package's release stamp
+    // (version.gen.ts's PKG, pinned at 0.0.2) rather than the old
+    // "0.0.0-dev"/"unknown" placeholders — the package IS the versioned artifact.
+    expect(body.version).toBe("0.0.2");
+    expect(body.commit).toBe("b9ad956b1d8f20f8f619df9ad3246592a09aec45");
     expect(typeof body.environment).toBe("string");
     expect(body.environment.length).toBeGreaterThan(0);
   });

@@ -2,7 +2,9 @@
 // Must be JS — vitest-pool-workers cannot bundle TS for aux workers.
 // Matches workers/promoter/src/index.ts Promoter surface; return shape
 // mirrors what the real worker returns when RESEND_API_KEY is unset.
-export class Promoter {
+import { WorkerEntrypoint } from "cloudflare:workers";
+
+export class Promoter extends WorkerEntrypoint {
   async sendVerification() {
     return { data: null, error: null };
   }

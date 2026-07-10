@@ -3,15 +3,20 @@
 // See ARCHITECTURE.md §3.3 / §4.2 / §4.5 (dev-envelope stamper).
 import { env } from "cloudflare:workers";
 import { createServerOnlyFn } from "@tanstack/react-start";
-import { parseRequestCookies } from "@si/auth";
-import { createPlatformStartApp } from "@si/kit/react-start";
-import { createGuestlistClient } from "@si/guestlist-service/client";
+import { parseRequestCookies } from "@somewhatintelligent/auth";
+import { createPlatformStartApp } from "@somewhatintelligent/kit/react-start";
+import { createGuestlistClient } from "@somewhatintelligent/guestlist/client";
+import { BOUNCER_ATTESTATION_KEYS } from "@si/config";
 import { getGuestlist, guestlistFetcher } from "@/lib/guestlist";
 
 export const platform = createPlatformStartApp({
   name: "identity",
   getGuestlist,
   guestlistFetcher: guestlistFetcher as () => typeof fetch,
+  // Kit is brand-free: the bouncer attestation keyset is injected here rather
+  // than imported inside the package. Required — an empty/missing keyset makes
+  // every envelope-carrying request fail attestation (auth silently broken).
+  attestationKeys: BOUNCER_ATTESTATION_KEYS,
   getEnvironment: createServerOnlyFn(() => env.ENVIRONMENT),
   // Bouncer service-binding loopback rewrites Host in miniflare; pin to IDENTITY_URL.
   expectedHost: createServerOnlyFn(() => new URL(env.IDENTITY_URL).hostname.toLowerCase()),

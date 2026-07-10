@@ -69,7 +69,9 @@ describe("resolveAccessCredentials", () => {
     delete process.env.CF_ACCESS_CLIENT_ID;
     delete process.env.CF_ACCESS_CLIENT_SECRET;
     try {
-      expect(resolveAccessCredentials({})).toBeUndefined();
+      // Inject a reader that finds no .provision file, so the assertion holds
+      // even on a machine where real Access creds are provisioned locally.
+      expect(resolveAccessCredentials({}, () => undefined)).toBeUndefined();
     } finally {
       if (prevId !== undefined) process.env.CF_ACCESS_CLIENT_ID = prevId;
       if (prevSecret !== undefined) process.env.CF_ACCESS_CLIENT_SECRET = prevSecret;

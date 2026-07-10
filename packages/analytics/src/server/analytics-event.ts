@@ -1,7 +1,7 @@
 // packages/analytics/src/server/analytics-event.ts   —  INTERNAL; re-exported by index.ts
 import { createMiddleware } from "@tanstack/react-start";
 import type { AnyFunctionMiddleware } from "@tanstack/react-start"; // verified export (1.168.18)
-import type { PlatformSession } from "@si/auth";
+import type { PlatformSession } from "@somewhatintelligent/auth";
 import type { AppName, ServerEvent, ServerEventProps } from "../events";
 
 export type Derived<E extends ServerEvent> = {

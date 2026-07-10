@@ -1,17 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
-import { getActorId, getActorKind, getCallerApp, getRequestId } from "@si/kit/request-context";
+import {
+  getActorId,
+  getActorKind,
+  getCallerApp,
+  getRequestId,
+} from "@somewhatintelligent/kit/request-context";
 
 // Catch-all proxy for every `/api/*` route on identity. Forwards to guestlist
 // over the service binding so requests stay same-origin from the browser's
-// perspective: no CORS preflight, cookies attach automatically, and
-// browser-side helpers (BA client, `guestlist.setAvatar`, etc.) only ever
-// need `${origin}/api/...` URLs. Guestlist is never reached cross-origin
-// from this app.
+// perspective: no CORS preflight, cookies attach automatically, and the
+// browser BA client only ever needs `${origin}/api/auth/...` URLs. Guestlist
+// is never reached cross-origin from this app.
 //
-// Sits at `/api/$` so the same passthrough covers `/api/auth/*`,
-// `/api/avatar/*`, and any future guestlist-native API surfaces without
-// per-prefix duplication.
+// Sits at `/api/$` so the same passthrough covers `/api/auth/*` (better-auth's
+// own HTTP routes, incl. the org invitation endpoints) and the OIDC
+// well-known metadata. Admin, org, user-directory, and avatar *mutations* are
+// WorkerEntrypoint RPC now (see the `*.functions.ts` server fns), not HTTP —
+// nothing routes them through here. The public avatar READ (`<img
+// src=.../u/avatar/:refId>`) targets guestlist's own public origin directly
+// (bouncer-fronted in prod), not this `/api/*` proxy.
 async function proxy(request: Request): Promise<Response> {
   const url = new URL(request.url);
   url.protocol = "http:";

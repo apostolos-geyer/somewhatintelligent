@@ -1,18 +1,14 @@
-import { env, SELF } from "cloudflare:test";
-import { platformConfig, platformDeployConfig } from "@si/config";
-
 /**
- * Dev origin used as the `Origin` header on auth requests in tests, derived
- * from config so a rebrand keeps it in sync. Preserves the http:// scheme the
- * tests have always used for the guestlist subdomain.
+ * Test helpers. Fixture values mirror si's config: cookiePrefix
+ * `platformConfig.cookies.prefix` ("si") and AUTH_DOMAIN
+ * `.somewhatintelligent.ca` (from wrangler.jsonc).
  */
-export const GUESTLIST_DEV_ORIGIN = `http://guestlist.${platformDeployConfig.devDomain}`;
+import { env, SELF } from "cloudflare:test";
 
-/** Config-derived base domain for example/test emails (e.g. `user@test.<baseDomain>`). */
-export const TEST_EMAIL_DOMAIN = `test.${platformDeployConfig.baseDomain}`;
-
-/** Config-derived cookie prefix; wire names are `${prefix}.session_token` / `${prefix}.session_data`. */
-export const COOKIE_PREFIX = platformConfig.cookies.prefix;
+/** A subdomain of the apex — inside better-auth's trustedOrigins. */
+export const GUESTLIST_ORIGIN = "https://guestlist.somewhatintelligent.ca";
+export const TEST_EMAIL_DOMAIN = "test.somewhatintelligent.ca";
+export const COOKIE_PREFIX = "si";
 
 /**
  * Sign up a user, auto-verify their email via D1, then sign in.
@@ -25,17 +21,9 @@ export async function signUpVerified(opts: {
 }): Promise<{ cookies: string; userId: string }> {
   const signUpRes = await SELF.fetch("http://localhost/api/auth/sign-up/email", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Origin: GUESTLIST_DEV_ORIGIN,
-    },
-    body: JSON.stringify({
-      name: opts.name,
-      email: opts.email,
-      password: opts.password,
-    }),
+    headers: { "Content-Type": "application/json", Origin: GUESTLIST_ORIGIN },
+    body: JSON.stringify({ name: opts.name, email: opts.email, password: opts.password }),
   });
-
   const signUpBody = (await signUpRes.json()) as Record<string, unknown>;
   const userId =
     (signUpBody.user as Record<string, unknown>)?.id ?? (signUpBody as Record<string, unknown>).id;
@@ -43,65 +31,19 @@ export async function signUpVerified(opts: {
     throw new Error(`Sign-up failed for ${opts.email}: ${JSON.stringify(signUpBody)}`);
   }
 
-  // Auto-verify email directly in D1
   await env.DB.prepare("UPDATE user SET email_verified = 1 WHERE id = ?")
     .bind(userId as string)
     .run();
 
-  // Sign in to get valid session cookies
   const signInRes = await SELF.fetch("http://localhost/api/auth/sign-in/email", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Origin: GUESTLIST_DEV_ORIGIN,
-    },
-    body: JSON.stringify({
-      email: opts.email,
-      password: opts.password,
-    }),
+    headers: { "Content-Type": "application/json", Origin: GUESTLIST_ORIGIN },
+    body: JSON.stringify({ email: opts.email, password: opts.password }),
   });
-
-  const cookies = extractCookies(signInRes);
-  return { cookies, userId: userId as string };
+  return { cookies: extractCookies(signInRes), userId: userId as string };
 }
 
-/**
- * Extract Set-Cookie values joined into a single Cookie header string.
- */
-export function extractCookies(res: Response): string {
-  const setCookies = res.headers.getAll
-    ? res.headers.getAll("Set-Cookie")
-    : (res.headers.get("Set-Cookie")?.split(/,(?=\s*\w+=)/) ?? []);
-  return setCookies
-    .map((c) => c.split(";")[0]!.trim())
-    .filter(Boolean)
-    .join("; ");
-}
-
-/**
- * Extract raw Set-Cookie header strings (for domain/attribute parsing).
- */
-export function getRawSetCookies(res: Response): string[] {
-  if (res.headers.getAll) {
-    return res.headers.getAll("Set-Cookie");
-  }
-  return res.headers.get("Set-Cookie")?.split(/,(?=\s*\w+=)/) ?? [];
-}
-
-let counter = 0;
-
-/**
- * Generate a unique test email to avoid collisions between tests.
- */
-export function uniqueEmail(prefix = "test"): string {
-  counter += 1;
-  return `${prefix}-${counter}-${Date.now()}@${TEST_EMAIL_DOMAIN}`;
-}
-
-/**
- * Sign up a verified user and promote them to admin via D1.
- * Returns session cookies and userId.
- */
+/** Sign up a verified user and promote them to admin via D1 (fresh session after). */
 export async function signUpAdmin(opts: {
   name: string;
   email: string;
@@ -109,17 +51,34 @@ export async function signUpAdmin(opts: {
 }): Promise<{ cookies: string; userId: string }> {
   const result = await signUpVerified(opts);
   await env.DB.prepare("UPDATE user SET role = 'admin' WHERE id = ?").bind(result.userId).run();
-  // Re-sign in so the fresh session reflects the updated role
   const signInRes = await SELF.fetch("http://localhost/api/auth/sign-in/email", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Origin: GUESTLIST_DEV_ORIGIN,
-    },
+    headers: { "Content-Type": "application/json", Origin: GUESTLIST_ORIGIN },
     body: JSON.stringify({ email: opts.email, password: opts.password }),
   });
-  const cookies = extractCookies(signInRes);
-  return { cookies, userId: result.userId };
+  return { cookies: extractCookies(signInRes), userId: result.userId };
+}
+
+/** Set-Cookie values folded into a single Cookie header string. */
+export function extractCookies(res: Response): string {
+  return res.headers
+    .getSetCookie()
+    .map((c) => c.split(";")[0]!.trim())
+    .filter(Boolean)
+    .join("; ");
+}
+
+/** Raw Set-Cookie header strings (for domain/attribute parsing). */
+export function getRawSetCookies(res: Response): string[] {
+  return res.headers.getSetCookie();
+}
+
+let counter = 0;
+
+/** Unique test email to avoid collisions between tests. */
+export function uniqueEmail(prefix = "test"): string {
+  counter += 1;
+  return `${prefix}-${counter}-${Date.now()}@${TEST_EMAIL_DOMAIN}`;
 }
 
 /**
@@ -163,9 +122,7 @@ export async function createOAuthClient(opts: {
   return { id, clientId };
 }
 
-/**
- * Insert an OAuth consent directly into D1 for test arrangement.
- */
+/** Insert an OAuth consent directly into D1. */
 export async function createOAuthConsent(opts: {
   id?: string;
   clientId: string;
@@ -184,9 +141,7 @@ export async function createOAuthConsent(opts: {
   return { id };
 }
 
-/**
- * Insert an OAuth access token directly into D1.
- */
+/** Insert an OAuth access token directly into D1. */
 export async function createOAuthAccessToken(opts: {
   clientId: string;
   userId: string;
@@ -196,12 +151,11 @@ export async function createOAuthAccessToken(opts: {
   const id = `at-${counter}-${Date.now()}`;
   const token = `tok-${counter}-${Date.now()}`;
   const now = Date.now();
-  const expires = now + 3600_000;
   await env.DB.prepare(
     `INSERT INTO oauth_access_token (id, token, client_id, user_id, expires_at, created_at, scopes)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
   )
-    .bind(id, token, opts.clientId, opts.userId, expires, now, JSON.stringify(opts.scopes))
+    .bind(id, token, opts.clientId, opts.userId, now + 3600_000, now, JSON.stringify(opts.scopes))
     .run();
   return { id };
 }

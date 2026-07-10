@@ -14,7 +14,7 @@
   "vars": {
     "ENVIRONMENT": "staging",
     // Origin only — NOT `/account`. Better-auth appends its own `/api/auth`
-    // basePath (packages/auth/src/server.ts) to this, and identity's browser
+    // basePath (@somewhatintelligent/auth's server config) to this, and identity's browser
     // client always calls same-origin `/api/...` (window.location.origin has
     // no path component), which bouncer's `/api` passthrough route serves
     // straight off this same host. Also the base `formatAvatarUrl` in
@@ -49,6 +49,15 @@
       "entrypoint": "Roadie",
       "props": { "callerApp": "guestlist" },
     },
+    // Self-referencing binding onto the named entrypoint so integration
+    // tests exercise the real RPC surface a consumer app would call
+    // (env.GL_RPC.getSession/searchUsers/admin*/…). Resolves to SELF under
+    // vitest-pool-workers.
+    {
+      "binding": "GL_RPC",
+      "service": "si-guestlist-staging",
+      "entrypoint": "Guestlist",
+    },
   ],
   "env": {
     "production": {
@@ -81,6 +90,11 @@
           "service": "si-roadie-production",
           "entrypoint": "Roadie",
           "props": { "callerApp": "guestlist" },
+        },
+        {
+          "binding": "GL_RPC",
+          "service": "si-guestlist-production",
+          "entrypoint": "Guestlist",
         },
       ],
       "observability": {

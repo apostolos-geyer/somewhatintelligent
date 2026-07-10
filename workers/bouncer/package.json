@@ -17,10 +17,8 @@
   },
   "dependencies": {
     "@si/config": "workspace:*",
-    "@si/guestlist-service": "workspace:*",
-    "@si/kit": "workspace:*",
-    "arktype": "catalog:",
-    "cookie-es": "^3.1.1"
+    "@somewhatintelligent/auth": "0.0.3",
+    "@somewhatintelligent/bouncer": "0.0.2"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.14.6",

@@ -1,7 +1,7 @@
 // Typed errors + session/role assertions. The server functions translate
 // these into result objects or let them bubble to TanStack's error boundary.
-import type { PlatformSession } from "@si/auth";
-import { isAdminRole } from "@si/kit/roles";
+import type { PlatformSession } from "@somewhatintelligent/auth";
+import { isAdminRole } from "@somewhatintelligent/kit/roles";
 
 export class UnauthorizedError extends Error {
   constructor() {

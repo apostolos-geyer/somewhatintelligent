@@ -8,7 +8,6 @@ describe("Plugin Compatibility", () => {
     expect(body).toHaveProperty("keys");
     expect(Array.isArray(body.keys)).toBe(true);
     expect(body.keys.length).toBeGreaterThanOrEqual(1);
-
     const key = body.keys[0] as Record<string, unknown>;
     expect(key).toHaveProperty("kty");
     expect(key).toHaveProperty("kid");

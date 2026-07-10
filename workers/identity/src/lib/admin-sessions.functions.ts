@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getGuestlist } from "@/lib/guestlist";
+import { env } from "cloudflare:workers";
+import { requestCookie } from "@/lib/request-cookie";
 import { requireAdminMiddleware } from "@/lib/middleware/auth";
 
 export interface AdminSession {
@@ -17,7 +18,7 @@ export interface AdminSession {
 export const getSessions = createServerFn({ method: "GET" })
   .middleware([requireAdminMiddleware])
   .handler(async () => {
-    const guestlist = getGuestlist();
-    const res = await guestlist.api.admin.sessions.get();
-    return { sessions: (res.data?.sessions ?? []) as AdminSession[] };
+    const res = await env.GUESTLIST.adminListSessions({ cookie: requestCookie() });
+    if (!res.ok) throw new Error(res.error);
+    return { sessions: res.sessions as AdminSession[] };
   });

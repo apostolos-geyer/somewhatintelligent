@@ -13,10 +13,10 @@
  *   await roadie.getReadUrl({ referenceId, ... });               // ambient
  *   await roadie.signPart({ ... }, { kind: "anonymous", label }); // override
  */
-import type { Actor } from "@si/kit/request-context";
+import type { Actor } from "@somewhatintelligent/kit/request-context";
 import type { Roadie } from "../index";
 
-export type { Actor } from "@si/kit/request-context";
+export type { Actor } from "@somewhatintelligent/kit/request-context";
 export { ok, err, type Result } from "../result";
 
 /** Actor at the consumer boundary. Anonymous is folded to a service actor on the way out. */

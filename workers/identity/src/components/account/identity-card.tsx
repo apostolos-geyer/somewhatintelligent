@@ -18,12 +18,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@si/u
 import { DialogTrigger } from "@si/ui/components/dialog";
 import { toast } from "@si/ui/components/sonner";
 import { cn } from "@si/ui/lib/utils";
-import { guestlist } from "@/lib/auth-client";
+import { removeAvatarFn } from "@/lib/avatar.functions";
 import { AvatarUploadDialog } from "@/components/account/avatar-upload-dialog";
 import { ChangeEmailDialog } from "@/components/account/change-email-dialog";
 import { EditNameDialog } from "@/components/account/edit-name-dialog";
 import { EditUsernameDialog } from "@/components/account/edit-username-dialog";
-import { isAdminRole } from "@si/kit/roles";
+import { isAdminRole } from "@somewhatintelligent/kit/roles";
 
 export type IdentityUser = {
   name: string;
@@ -121,7 +121,7 @@ function AvatarBlock({ image, initial }: { image: string | null; initial: string
   async function handleRemove() {
     setRemoving(true);
     try {
-      await guestlist.removeAvatar();
+      await removeAvatarFn();
       toast.success("Avatar removed");
       setRemoveOpen(false);
       void router.invalidate();

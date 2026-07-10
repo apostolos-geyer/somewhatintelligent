@@ -1,9 +1,9 @@
 // Hand-written entry; do not wrap in a kit factory. Rationale in
 // docs/ARCHITECTURE.md §3.3 + §4.4.
 import startEntry from "@tanstack/react-start/server-entry";
-import { extractPlatformStartContext } from "@si/kit/react-start";
-import { runWithExecutionContext } from "@si/kit/execution-context";
-import { handleVersionRequest } from "@si/kit/version";
+import { extractPlatformStartContext } from "@somewhatintelligent/kit/react-start";
+import { runWithExecutionContext } from "@somewhatintelligent/kit/execution-context";
+import { handleVersionRequest } from "@somewhatintelligent/kit/version";
 import { devEnvelopeStamper } from "./lib/platform";
 import { APP_COMMIT, APP_VERSION } from "./lib/version";
 

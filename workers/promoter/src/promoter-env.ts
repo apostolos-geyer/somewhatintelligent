@@ -15,4 +15,10 @@ export interface PromoterEnv {
   /** Cloudflare Email Service `send_email` binding — used when EMAIL_PROVIDER
    *  is "cloudflare". Only bound in environments that enable Email Service. */
   EMAIL?: CfEmailBinding;
+  // Ship-time-injected by scripts/deploy-worker.sh / generate-preview-tasks.sh
+  // (--var flags, not checked into wrangler.jsonc vars); fed to
+  // @somewhatintelligent/kit's version module via `overrides`, since that
+  // module no longer reads deploy vars off env itself.
+  WORKER_VERSION?: string;
+  WORKER_COMMIT?: string;
 }

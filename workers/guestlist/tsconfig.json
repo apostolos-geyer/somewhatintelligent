@@ -11,6 +11,11 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*.ts", "worker-configuration.d.ts"],
+  "include": [
+    "src/**/*.ts",
+    "guestlist.codegen.ts",
+    "drizzle.config.ts",
+    "worker-configuration.d.ts"
+  ],
   "exclude": ["node_modules", "dist", "__tests__"]
 }

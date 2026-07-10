@@ -1,10 +1,12 @@
 import { notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { getGuestlist } from "@/lib/guestlist";
+import { env } from "cloudflare:workers";
+import { requestCookie } from "@/lib/request-cookie";
+import { rpcErrorMessage, rpcMessage } from "@/lib/rpc-error";
 import { requireAdminMiddleware } from "@/lib/middleware/auth";
 
 // ------------------------------------------------------------------
-// Shapes returned to the client. We narrow the loose Eden responses
+// Shapes returned to the client. We narrow the loose RPC row shapes
 // (which include `unknown`-typed nested fields from the Drizzle row
 // shape) into typed payloads the routes can rely on.
 // ------------------------------------------------------------------
@@ -61,47 +63,45 @@ export interface UserSearchHit {
 type OrgRole = "owner" | "admin" | "member";
 
 // ------------------------------------------------------------------
-// Server functions — each one wraps a single guestlist operator route.
-// Cookies flow through the kit factory automatically; the admin gate
-// runs in middleware before the handler.
+// Server functions — each one wraps a single guestlist operator RPC
+// method on the GUESTLIST WorkerEntrypoint. The inbound Cookie is the
+// sole credential (threaded explicitly); the admin gate runs both in
+// middleware here AND inside the entrypoint's own `#admin` check.
 // ------------------------------------------------------------------
 
 export const listOrgsForAdmin = createServerFn({ method: "GET" })
   .middleware([requireAdminMiddleware])
   .handler(async (): Promise<{ orgs: OrgRow[] }> => {
-    const guestlist = getGuestlist();
-    const res = await guestlist.api.admin.orgs.get();
-    if (res.error) throw new Error(JSON.stringify(res.error.value));
-    return { orgs: (res.data?.organizations ?? []) as OrgRow[] };
+    const res = await env.GUESTLIST.adminListOrgs({ cookie: requestCookie() });
+    if (!res.ok) throw new Error(res.error);
+    return { orgs: res.organizations as OrgRow[] };
   });
 
 export const searchUsersByEmail = createServerFn({ method: "GET" })
   .middleware([requireAdminMiddleware])
   .inputValidator((data: { email: string }) => data)
   .handler(async ({ data }): Promise<{ users: UserSearchHit[] }> => {
-    const guestlist = getGuestlist();
-    const res = await guestlist.api.admin.users.search.get({ query: { email: data.email } });
-    if (res.error) throw new Error(JSON.stringify(res.error.value));
-    return { users: (res.data?.users ?? []) as UserSearchHit[] };
+    const res = await env.GUESTLIST.adminSearchUsersByEmail({
+      cookie: requestCookie(),
+      email: data.email,
+    });
+    if (!res.ok) throw new Error(res.error);
+    return { users: res.users as UserSearchHit[] };
   });
 
 export const getOrgForAdmin = createServerFn({ method: "GET" })
   .middleware([requireAdminMiddleware])
   .inputValidator((data: { orgId: string }) => data)
   .handler(async ({ data }): Promise<OrgDetailPayload> => {
-    const guestlist = getGuestlist();
-    const res = await guestlist.api.admin.orgs({ id: data.orgId }).get();
-    if (res.error) {
-      const body = res.error.value as { error?: string } | null;
-      if (body?.error === "not_found") throw notFound();
-      throw new Error(JSON.stringify(res.error.value));
+    const res = await env.GUESTLIST.adminGetOrg({ cookie: requestCookie(), id: data.orgId });
+    if (!res.ok) {
+      if (res.error === "not_found") throw notFound();
+      throw new Error(res.error);
     }
-    const raw = res.data;
-    if (!raw) throw notFound();
     return {
-      organization: raw.organization as OrgDetailPayload["organization"],
-      members: (raw.members ?? []) as OrgMember[],
-      invitations: (raw.invitations ?? []) as OrgInvitation[],
+      organization: res.organization as OrgDetailPayload["organization"],
+      members: (res.members ?? []) as OrgMember[],
+      invitations: (res.invitations ?? []) as OrgInvitation[],
     };
   });
 
@@ -115,24 +115,23 @@ export const createOrgAsOperator = createServerFn({ method: "POST" })
       | { ok: true; organization: { id: string; slug: string; name: string } }
       | { ok: false; error: "slug_taken" | "unknown"; message: string }
     > => {
-      const guestlist = getGuestlist();
-      const res = await guestlist.api.admin.orgs.create.post({
+      const res = await env.GUESTLIST.adminCreateOrg({
+        cookie: requestCookie(),
         name: data.name,
         slug: data.slug,
         ownerUserId: data.ownerUserId,
       });
-      if (res.error) {
-        const body = res.error.value as { error?: string; message?: string } | null;
-        if (body?.error === "slug_taken") {
-          return { ok: false, error: "slug_taken", message: body.message ?? "Slug already taken" };
+      if (!res.ok) {
+        if (res.error === "slug_taken") {
+          return {
+            ok: false,
+            error: "slug_taken",
+            message: rpcMessage(res) ?? "Slug already taken",
+          };
         }
-        return {
-          ok: false,
-          error: "unknown",
-          message: body?.message ?? JSON.stringify(res.error.value),
-        };
+        return { ok: false, error: "unknown", message: rpcErrorMessage(res) };
       }
-      const org = res.data?.organization as { id: string; slug: string; name: string } | undefined;
+      const org = res.organization as { id: string; slug: string; name: string } | undefined;
       if (!org) {
         return { ok: false, error: "unknown", message: "No org returned from server" };
       }
@@ -144,20 +143,20 @@ export const addOrgMember = createServerFn({ method: "POST" })
   .middleware([requireAdminMiddleware])
   .inputValidator((data: { orgId: string; userId: string; role: OrgRole }) => data)
   .handler(async ({ data }) => {
-    const guestlist = getGuestlist();
-    const res = await guestlist.api.admin.orgs({ id: data.orgId }).members.post({
+    const res = await env.GUESTLIST.adminAddOrgMember({
+      cookie: requestCookie(),
+      orgId: data.orgId,
       userId: data.userId,
       role: data.role,
     });
-    if (res.error) {
-      const body = res.error.value as { error?: string; message?: string } | null;
-      if (body?.error === "already_member") {
+    if (!res.ok) {
+      if (res.error === "already_member") {
         throw new Error("This user is already a member of this org.");
       }
-      if (body?.error === "not_found") {
+      if (res.error === "not_found") {
         throw new Error("User not found.");
       }
-      throw new Error(body?.message ?? JSON.stringify(res.error.value));
+      throw new Error(rpcErrorMessage(res));
     }
     return { success: true as const };
   });
@@ -166,20 +165,20 @@ export const updateOrgMemberRole = createServerFn({ method: "POST" })
   .middleware([requireAdminMiddleware])
   .inputValidator((data: { orgId: string; userId: string; role: OrgRole }) => data)
   .handler(async ({ data }) => {
-    const guestlist = getGuestlist();
-    const res = await guestlist.api.admin
-      .orgs({ id: data.orgId })
-      .members({ userId: data.userId })
-      ["update-role"].post({ role: data.role });
-    if (res.error) {
-      const body = res.error.value as { error?: string } | null;
-      if (body?.error === "cannot_demote_last_owner") {
+    const res = await env.GUESTLIST.adminUpdateOrgMemberRole({
+      cookie: requestCookie(),
+      orgId: data.orgId,
+      userId: data.userId,
+      role: data.role,
+    });
+    if (!res.ok) {
+      if (res.error === "cannot_demote_last_owner") {
         throw new Error("Cannot demote the only owner of this org.");
       }
-      if (body?.error === "member_not_found") {
+      if (res.error === "member_not_found") {
         throw new Error("Member not found.");
       }
-      throw new Error(JSON.stringify(res.error.value));
+      throw new Error(res.error);
     }
     return { success: true as const };
   });
@@ -188,20 +187,19 @@ export const removeOrgMember = createServerFn({ method: "POST" })
   .middleware([requireAdminMiddleware])
   .inputValidator((data: { orgId: string; userId: string }) => data)
   .handler(async ({ data }) => {
-    const guestlist = getGuestlist();
-    const res = await guestlist.api.admin
-      .orgs({ id: data.orgId })
-      .members({ userId: data.userId })
-      .remove.post();
-    if (res.error) {
-      const body = res.error.value as { error?: string } | null;
-      if (body?.error === "cannot_remove_last_owner") {
+    const res = await env.GUESTLIST.adminRemoveOrgMember({
+      cookie: requestCookie(),
+      orgId: data.orgId,
+      userId: data.userId,
+    });
+    if (!res.ok) {
+      if (res.error === "cannot_remove_last_owner") {
         throw new Error("Cannot remove the only owner of this org.");
       }
-      if (body?.error === "member_not_found") {
+      if (res.error === "member_not_found") {
         throw new Error("Member not found.");
       }
-      throw new Error(JSON.stringify(res.error.value));
+      throw new Error(res.error);
     }
     return { success: true as const };
   });
@@ -210,16 +208,14 @@ export const createOrgInvitation = createServerFn({ method: "POST" })
   .middleware([requireAdminMiddleware])
   .inputValidator((data: { orgId: string; email: string; role: OrgRole }) => data)
   .handler(async ({ data }): Promise<{ invitationId: string }> => {
-    const guestlist = getGuestlist();
-    const res = await guestlist.api.admin.orgs({ id: data.orgId }).invitations.post({
+    const res = await env.GUESTLIST.adminCreateOrgInvitation({
+      cookie: requestCookie(),
+      orgId: data.orgId,
       email: data.email,
       role: data.role,
     });
-    if (res.error) {
-      const body = res.error.value as { error?: string; message?: string } | null;
-      throw new Error(body?.message ?? JSON.stringify(res.error.value));
-    }
-    const inv = res.data?.invitation as { id: string } | undefined;
+    if (!res.ok) throw new Error(rpcErrorMessage(res));
+    const inv = res.invitation as { id: string } | undefined;
     if (!inv) throw new Error("No invitation returned from server");
     return { invitationId: inv.id };
   });
@@ -228,14 +224,11 @@ export const cancelOrgInvitation = createServerFn({ method: "POST" })
   .middleware([requireAdminMiddleware])
   .inputValidator((data: { orgId: string; invitationId: string }) => data)
   .handler(async ({ data }) => {
-    const guestlist = getGuestlist();
-    const res = await guestlist.api.admin
-      .orgs({ id: data.orgId })
-      .invitations({ invitationId: data.invitationId })
-      .cancel.post();
-    if (res.error) {
-      const body = res.error.value as { error?: string } | null;
-      throw new Error(body?.error ?? JSON.stringify(res.error.value));
-    }
+    const res = await env.GUESTLIST.adminCancelOrgInvitation({
+      cookie: requestCookie(),
+      orgId: data.orgId,
+      invitationId: data.invitationId,
+    });
+    if (!res.ok) throw new Error(res.error);
     return { success: true as const };
   });

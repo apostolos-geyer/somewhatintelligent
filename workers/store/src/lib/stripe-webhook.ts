@@ -1,9 +1,5 @@
 import Stripe from "stripe";
-// Subpath import (not the "@si/stripe" barrel): the barrel re-exports
-// `./generated`, a gitignored codegen-on-demand stub the store's worker build
-// doesn't materialize. `@si/stripe/gate` pulls only the dependency-free
-// predicate, keeping the store bundle independent of Stripe codegen.
-import { stripeConfigured } from "@si/stripe/gate";
+import { stripeConfigured } from "@somewhatintelligent/stripe";
 
 export const STORE_STRIPE_WEBHOOK_PATH = "/hooks/store";
 

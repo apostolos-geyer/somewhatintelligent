@@ -1,9 +1,9 @@
 // packages/analytics/src/server/delivery.ts   —  INTERNAL to @si/analytics (NOT in "exports")
 // The only place in the platform that supplies a PostHog distinctId.
 import { PostHog } from "posthog-node";
-import { executionContext } from "@si/kit/execution-context";
+import { executionContext } from "@somewhatintelligent/kit/execution-context";
 import { platformAnalyticsConfig } from "@si/config";
-import { ulid } from "@si/kit/ids";
+import { ulid } from "@somewhatintelligent/kit/ids";
 import type { AppName, ServerEvent, ServerEventProps } from "../events";
 
 let client: PostHog | null = null;

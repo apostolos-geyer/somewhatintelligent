@@ -1,7 +1,7 @@
 // Per-call audit + trace context. Required second argument on every RPC
 // method. See spec §API Contract — Conventions and RFC ADR-RD-011.
-export type { Actor } from "@si/kit/request-context";
-import type { Actor } from "@si/kit/request-context";
+export type { Actor } from "@somewhatintelligent/kit/request-context";
+import type { Actor } from "@somewhatintelligent/kit/request-context";
 
 export type CallMeta = {
   actor: Actor;

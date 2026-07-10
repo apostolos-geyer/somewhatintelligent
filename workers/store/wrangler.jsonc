@@ -58,7 +58,7 @@
     ],
   },
   "services": [
-    { "binding": "GUESTLIST", "service": "si-guestlist-staging" },
+    { "binding": "GUESTLIST", "service": "si-guestlist-staging", "entrypoint": "Guestlist" },
     {
       "binding": "ROADIE",
       "service": "si-roadie-staging",
@@ -103,7 +103,11 @@
         ],
       },
       "services": [
-        { "binding": "GUESTLIST", "service": "si-guestlist-production" },
+        {
+          "binding": "GUESTLIST",
+          "service": "si-guestlist-production",
+          "entrypoint": "Guestlist",
+        },
         {
           "binding": "ROADIE",
           "service": "si-roadie-production",

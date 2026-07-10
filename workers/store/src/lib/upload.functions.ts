@@ -8,7 +8,7 @@ import { type } from "arktype";
 
 import { product, productImage } from "@/db/schema";
 import { getDb } from "@/lib/db";
-import { ulid } from "@si/kit/ids";
+import { ulid } from "@somewhatintelligent/kit/ids";
 import { getRoadie } from "@/lib/roadie";
 import { requireAdminMiddleware } from "@/lib/middleware/auth";
 import { NotFoundError } from "@/lib/errors";

@@ -23,7 +23,7 @@ import { toast } from "@si/ui/components/sonner";
 import { cn } from "@si/ui/lib/utils";
 import { authClient } from "@/lib/auth-client";
 import { getUsers } from "@/lib/admin-users.functions";
-import { isAdminRole } from "@si/kit/roles";
+import { isAdminRole } from "@somewhatintelligent/kit/roles";
 
 export const Route = createFileRoute("/_dashboard/admin/users")({
   loader: () => getUsers(),

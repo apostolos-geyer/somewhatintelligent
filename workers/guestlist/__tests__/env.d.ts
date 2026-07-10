@@ -1,9 +1,15 @@
-declare module "cloudflare:workers" {
-  interface ProvidedEnv extends Env {}
-}
+import type { D1Migration } from "cloudflare:test";
+import type { GuestlistRpc } from "@somewhatintelligent/guestlist";
 
-declare namespace Cloudflare {
-  interface Env {
-    TEST_MIGRATIONS: import("cloudflare:test").D1Migration[];
+declare module "cloudflare:test" {
+  interface ProvidedEnv {
+    DB: D1Database;
+    TEST_MIGRATIONS: D1Migration[];
+    GL_RPC: Service<GuestlistRpc>;
+    ENVIRONMENT: string;
+    BETTER_AUTH_URL: string;
+    IDENTITY_URL: string;
+    AUTH_DOMAIN: string;
+    BETTER_AUTH_SECRET: string;
   }
 }

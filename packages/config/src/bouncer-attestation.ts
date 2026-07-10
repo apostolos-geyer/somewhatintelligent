@@ -3,7 +3,7 @@
  *
  * Maps `kid` → base64-encoded SPKI Ed25519 public key (the X.509 SPKI body
  * between the PEM `-----BEGIN PUBLIC KEY-----` / `-----END PUBLIC KEY-----`
- * markers, with newlines stripped). The verifier in `@si/auth` imports
+ * markers, with newlines stripped). The verifier in `@somewhatintelligent/auth` imports
  * this map and accepts any envelope whose JWS header `kid` matches one of
  * these entries — supports rolling rotation with overlap.
  *

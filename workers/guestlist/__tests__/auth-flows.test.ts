@@ -3,11 +3,10 @@ import {
   signUpVerified,
   extractCookies,
   uniqueEmail,
-  GUESTLIST_DEV_ORIGIN,
+  GUESTLIST_ORIGIN,
   COOKIE_PREFIX,
 } from "./helpers";
 
-const sessionDataName = `${COOKIE_PREFIX}.session_data`;
 const sessionDataRe = new RegExp(`${COOKIE_PREFIX}\\.session_data=([^;]+)`);
 
 describe("Auth Flows", () => {
@@ -25,15 +24,8 @@ describe("Auth Flows", () => {
     const newEmail = uniqueEmail("signup");
     const res = await SELF.fetch("http://localhost/api/auth/sign-up/email", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Origin: GUESTLIST_DEV_ORIGIN,
-      },
-      body: JSON.stringify({
-        name: "Signup Test",
-        email: newEmail,
-        password: "Password123!",
-      }),
+      headers: { "Content-Type": "application/json", Origin: GUESTLIST_ORIGIN },
+      body: JSON.stringify({ name: "Signup Test", email: newEmail, password: "Password123!" }),
     });
     expect(res.status).toBe(200);
     const body = (await res.json()) as Record<string, unknown>;
@@ -46,15 +38,11 @@ describe("Auth Flows", () => {
   test("sign-in returns session cookies", async () => {
     const res = await SELF.fetch("http://localhost/api/auth/sign-in/email", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Origin: GUESTLIST_DEV_ORIGIN,
-      },
+      headers: { "Content-Type": "application/json", Origin: GUESTLIST_ORIGIN },
       body: JSON.stringify({ email, password }),
     });
     expect(res.status).toBe(200);
-    const cookies = extractCookies(res);
-    expect(cookies).toContain(sessionDataName);
+    expect(extractCookies(res)).toContain(`${COOKIE_PREFIX}.session_data`);
   });
 
   test("get-session returns user data with valid cookies", async () => {
@@ -69,15 +57,13 @@ describe("Auth Flows", () => {
     expect(user.name).toBe(name);
   });
 
-  test("tampered cookies are rejected", async () => {
-    const tampered = sessionCookies.replace(
-      new RegExp(`${COOKIE_PREFIX}\\.session_data=[^;]+`),
-      `${sessionDataName}=tampered.invalid.value`,
-    );
+  test("a tampered session_data cache alone grants no session", async () => {
+    // A valid session_token alongside a tampered cache correctly falls
+    // back to the DB session, so the forgery-relevant case is the cache
+    // being the ONLY credential presented.
     const res = await SELF.fetch("http://localhost/api/auth/get-session", {
-      headers: { Cookie: tampered },
+      headers: { Cookie: `${COOKIE_PREFIX}.session_data=tampered.invalid.value` },
     });
-    // Better Auth returns null session (200 with null body) or 401
     const body = (await res.json()) as Record<string, unknown> | null;
     const isRejected = res.status === 401 || !body || body.user === null || body.session === null;
     expect(isRejected).toBe(true);
@@ -86,20 +72,14 @@ describe("Auth Flows", () => {
   test("cookie cache JWT payload contains expected fields", () => {
     const match = sessionCookies.match(sessionDataRe);
     expect(match).not.toBeNull();
-    const token = match![1]!;
-
-    // JWT is base64url-encoded: header.payload.signature
-    const parts = token.split(".");
+    const parts = match![1]!.split(".");
     expect(parts.length).toBe(3);
-
     const payload = JSON.parse(atob(parts[1]!.replace(/-/g, "+").replace(/_/g, "/"))) as Record<
       string,
       unknown
     >;
-
     expect(payload).toHaveProperty("session");
     expect(payload).toHaveProperty("user");
-
     const user = payload.user as Record<string, unknown>;
     expect(user).toHaveProperty("id");
     expect(user).toHaveProperty("name");

@@ -2,7 +2,7 @@
 // (`.somewhatintelligent.ca`). This is the SAME string guestlist uses as the
 // cross-subdomain cookie `Domain` (workers/guestlist AUTH_DOMAIN) and that the
 // auth server turns into its `*.{apex}` trustedOrigins
-// (packages/auth/src/server.ts). It is set per environment as the AUTH_DOMAIN
+// (@somewhatintelligent/auth's server config). It is set per environment as the AUTH_DOMAIN
 // var in identity's wrangler.jsonc (`.somewhatintelligent.ca` for staging/production),
 // with `.somewhatintelligent.localhost` supplied by `.dev.vars` in local dev, and
 // exposed to the bundle by the vite `define` allowlist (see vite.config.ts

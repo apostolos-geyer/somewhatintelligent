@@ -1,9 +1,10 @@
-import { createGuestlistAuthClient } from "@si/guestlist-service/client/react";
+import { createGuestlistAuthClient } from "@somewhatintelligent/guestlist/client/react";
 
-// `baseURL` here is the **app root** the guestlist client will hit — BA's
-// handler URL (`${baseURL}/api/auth`) and the eden treaty's typed RPC
-// paths (`${baseURL}/users/lookup`, `${baseURL}/api/avatar/...`, etc.)
-// are both derived from this single value inside `createGuestlistAuthClient`.
+// `baseURL` here is the **app root** the guestlist client will hit. The new
+// package client derives ONLY better-auth's handler URL (`${baseURL}/api/auth`)
+// from this value — there is no eden treaty and no `setAvatar`/`removeAvatar`
+// on it anymore. Avatar mutations go through server fns that forward to the
+// guestlist WorkerEntrypoint RPC (see @/lib/avatar.functions + avatar-transport).
 //
 // We pass the bare origin (no path) so every request stays same-origin from
 // the browser's perspective and lands on `/api/*` at the origin ROOT — same
@@ -22,4 +23,4 @@ const baseURL =
 
 export const guestlist = createGuestlistAuthClient({ baseURL });
 
-export const authClient = guestlist.auth;
+export const authClient = guestlist;

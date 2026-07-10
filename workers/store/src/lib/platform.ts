@@ -1,8 +1,9 @@
 import { env } from "cloudflare:workers";
 import { createServerOnlyFn } from "@tanstack/react-start";
-import { parseRequestCookies } from "@si/auth";
-import { createPlatformStartApp } from "@si/kit/react-start";
-import { createGuestlistClient } from "@si/guestlist-service/client";
+import { parseRequestCookies } from "@somewhatintelligent/auth";
+import { createPlatformStartApp } from "@somewhatintelligent/kit/react-start";
+import { createGuestlistClient } from "@somewhatintelligent/guestlist/client";
+import { BOUNCER_ATTESTATION_KEYS } from "@si/config";
 import { getGuestlist, guestlistFetcher } from "@/lib/guestlist";
 
 // Composes the bouncer Ed25519-envelope verifier with a guestlist RPC fallback
@@ -14,6 +15,7 @@ export const platform = createPlatformStartApp({
   name: "store",
   getGuestlist,
   guestlistFetcher: guestlistFetcher as () => typeof fetch,
+  attestationKeys: BOUNCER_ATTESTATION_KEYS,
   getEnvironment: createServerOnlyFn(() => env.ENVIRONMENT),
   // Bouncer stamps the envelope with the served (public) host; the store's own
   // public host is STORE_URL's host. Bouncer's service-binding loopback

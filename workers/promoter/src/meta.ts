@@ -4,8 +4,8 @@
 // Promoter mirrors Roadie's meta shape but doesn't carry binding-pinned
 // `props.callerApp` (no consumer-side wrangler config sets it today),
 // so caller_app comes exclusively from `meta.callerApp`.
-export type { Actor } from "@si/kit/request-context";
-import type { Actor } from "@si/kit/request-context";
+export type { Actor } from "@somewhatintelligent/kit/request-context";
+import type { Actor } from "@somewhatintelligent/kit/request-context";
 
 export type CallMeta = {
   actor: Actor;

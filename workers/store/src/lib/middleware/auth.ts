@@ -4,15 +4,15 @@
 // (not principal gates) so the ported server fns keep reading
 // `context.session.user.{id,email,role}` unchanged.
 //
-// Admin gating uses `isAdminRole` (@si/kit/roles) — `user.role` is a
+// Admin gating uses `isAdminRole` (@somewhatintelligent/kit/roles) — `user.role` is a
 // comma-separated string/array, never compared with `=== "admin"`. Every
 // mutating admin server fn attaches `requireAdminMiddleware`, mirrored by a
 // route-level `beforeLoad` gate (src/routes/_app/admin.tsx) — enforced in BOTH
 // places, as the source did.
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
-import { isAdminRole } from "@si/kit/roles";
-import type { PlatformSession } from "@si/auth";
+import { isAdminRole } from "@somewhatintelligent/kit/roles";
+import type { PlatformSession } from "@somewhatintelligent/auth";
 import { getSession } from "@/lib/platform";
 import { ForbiddenError, UnauthorizedError } from "@/lib/errors";
 

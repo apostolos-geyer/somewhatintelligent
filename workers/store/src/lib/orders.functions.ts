@@ -9,15 +9,15 @@ import { type } from "arktype";
 
 import { customerOrder, orderItem, product, productVariant } from "@/db/schema";
 import { getDb } from "@/lib/db";
-import { ulid } from "@si/kit/ids";
+import { ulid } from "@somewhatintelligent/kit/ids";
 import { analyticsEvent } from "@/lib/middleware/analytics";
 import {
   authMiddleware,
   requireAdminMiddleware,
   requireAuthMiddleware,
 } from "@/lib/middleware/auth";
-import { isAdminRole } from "@si/kit/roles";
-import type { PlatformSession } from "@si/auth";
+import { isAdminRole } from "@somewhatintelligent/kit/roles";
+import type { PlatformSession } from "@somewhatintelligent/auth";
 import { ForbiddenError, NotFoundError } from "@/lib/errors";
 import { CARRIER_KEYS } from "@/lib/config";
 import { computeOrderTotals } from "@/lib/pricing";

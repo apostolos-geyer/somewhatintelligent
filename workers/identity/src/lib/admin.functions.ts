@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getGuestlist } from "@/lib/guestlist";
+import { env } from "cloudflare:workers";
+import { requestCookie } from "@/lib/request-cookie";
 import { requireAdminMiddleware } from "@/lib/middleware/auth";
 
 export interface AdminStats {
@@ -11,9 +12,9 @@ export interface AdminStats {
 export const getStats = createServerFn({ method: "GET" })
   .middleware([requireAdminMiddleware])
   .handler(async (): Promise<AdminStats> => {
-    const guestlist = getGuestlist();
-    const res = await guestlist.api.admin.stats.get();
-    return res.data ?? { users: 0, sessions: 0, clients: 0 };
+    const res = await env.GUESTLIST.adminStats({ cookie: requestCookie() });
+    if (!res.ok) return { users: 0, sessions: 0, clients: 0 };
+    return { users: res.users, sessions: res.sessions, clients: res.clients };
   });
 
 export interface AdminApiKey {
@@ -28,7 +29,7 @@ export interface AdminApiKey {
 export const getApiKeys = createServerFn({ method: "GET" })
   .middleware([requireAdminMiddleware])
   .handler(async () => {
-    const guestlist = getGuestlist();
-    const res = await guestlist.api.admin["api-keys"].get();
-    return { apiKeys: (res.data?.apiKeys ?? []) as AdminApiKey[] };
+    const res = await env.GUESTLIST.adminListApiKeys({ cookie: requestCookie() });
+    if (!res.ok) throw new Error(res.error);
+    return { apiKeys: res.apiKeys as AdminApiKey[] };
   });
