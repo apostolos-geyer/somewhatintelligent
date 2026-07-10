@@ -18,8 +18,8 @@ html {
 }
 
 body {
-  background: var(--color-bg);
-  color: var(--color-text);
+  background: var(--color-background);
+  color: var(--color-foreground);
   line-height: 1.5;
   min-height: 100vh;
 }

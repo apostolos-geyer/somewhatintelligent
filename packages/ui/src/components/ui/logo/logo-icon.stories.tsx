@@ -10,14 +10,14 @@ const DETAILS: LogoDetail[] = ["bare", "serifs", "crossbars", "brackets", "full"
 const COLOR_SCHEMES: LogoColorScheme[] = [
   "primary",
   "light",
-  "mono-paper",
-  "mono-void",
-  "on-rust",
+  "mono-light",
+  "mono-dark",
+  "on-destructive",
   "on-success",
 ];
 
 function isDarkScheme(cs: LogoColorScheme) {
-  return !["light", "mono-void"].includes(cs);
+  return !["light", "mono-dark"].includes(cs);
 }
 
 function SchemeBg({ scheme, children }: { scheme: LogoColorScheme; children: React.ReactNode }) {
@@ -81,7 +81,7 @@ export const AllAngles: Story = {
       {ANGLES.map((a) => (
         <div key={a} className="flex flex-col items-center gap-2">
           <LogoIcon {...args} angle={a} />
-          <span className="text-mono-label text-ink uppercase">{a}</span>
+          <span className="text-mono-label text-foreground uppercase">{a}</span>
         </div>
       ))}
     </div>
@@ -97,7 +97,7 @@ export const AllWeights: Story = {
       {WEIGHTS.map((w) => (
         <div key={w} className="flex flex-col items-center gap-2">
           <LogoIcon {...args} weight={w} />
-          <span className="text-mono-label text-ink uppercase">{w}</span>
+          <span className="text-mono-label text-foreground uppercase">{w}</span>
         </div>
       ))}
     </div>
@@ -113,7 +113,7 @@ export const AllDetails: Story = {
       {DETAILS.map((d) => (
         <div key={d} className="flex flex-col items-center gap-2">
           <LogoIcon {...args} detail={d} />
-          <span className="text-mono-label text-ink uppercase">{d}</span>
+          <span className="text-mono-label text-foreground uppercase">{d}</span>
         </div>
       ))}
     </div>
@@ -132,7 +132,7 @@ export const AllColorSchemes: Story = {
           <SchemeBg scheme={cs}>
             <LogoIcon {...args} colorScheme={cs} />
           </SchemeBg>
-          <span className="text-mono-label text-ink uppercase">{cs}</span>
+          <span className="text-mono-label text-foreground uppercase">{cs}</span>
         </div>
       ))}
     </div>
@@ -148,7 +148,7 @@ export const ScaleCheck: Story = {
       {[128, 64, 48, 32, 24, 16].map((s) => (
         <div key={s} className="flex flex-col items-center gap-1.5">
           <LogoIcon {...args} size={s} />
-          <span className="text-mono-label text-ink">{s}px</span>
+          <span className="text-mono-label text-foreground">{s}px</span>
         </div>
       ))}
     </div>
@@ -177,7 +177,7 @@ export const HiddenElements: Story = {
 export const CustomElementColors: Story = {
   name: "Overrides / Custom Element Colors",
   args: {
-    rotatedA: { stroke: "var(--color-rust)" },
+    rotatedA: { stroke: "var(--color-destructive)" },
     hCrossbar: { stroke: "var(--color-success)" },
     vCrossbar: { stroke: "var(--color-success)" },
   },
@@ -314,7 +314,7 @@ function ReplayButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       type="button"
-      className="text-2xs uppercase tracking-caps text-text-tertiary bg-surface-raised border border-border px-4 py-2 rounded-sm hover:text-ink hover:border-ink transition-colors"
+      className="text-2xs uppercase tracking-caps text-muted-foreground/80 bg-surface-raised border border-border px-4 py-2 rounded-sm hover:text-foreground hover:border-foreground transition-colors"
       onClick={onClick}
     >
       Replay
@@ -361,7 +361,7 @@ export const StrokeDrawInGrid: Story = {
                 weight={args.weight}
                 colorScheme={args.colorScheme}
               />
-              <span className="text-mono-label text-ink uppercase">{d}</span>
+              <span className="text-mono-label text-foreground uppercase">{d}</span>
             </div>
           ))}
         </div>
@@ -389,7 +389,7 @@ export const StrokeDrawInAngles: Story = {
                 detail={args.detail}
                 colorScheme={args.colorScheme}
               />
-              <span className="text-mono-label text-ink uppercase">{a}</span>
+              <span className="text-mono-label text-foreground uppercase">{a}</span>
             </div>
           ))}
         </div>
@@ -411,7 +411,7 @@ export const CartesianSizeColorDetail: Story = {
         const dark = isDarkScheme(cs);
         return (
           <div key={cs} className="flex flex-col gap-3">
-            <span className="text-mono-label text-ink uppercase">{cs}</span>
+            <span className="text-mono-label text-foreground uppercase">{cs}</span>
             <div
               className={`rounded-sm border p-6 ${dark ? "bg-bg border-border" : "bg-[hsl(40_15%_93%)] border-border"}`}
               data-theme={dark ? "dark" : "light"}
@@ -423,7 +423,7 @@ export const CartesianSizeColorDetail: Story = {
                     {SIZES.map((s) => (
                       <th
                         key={s}
-                        className="px-3 pb-2 text-mono-label text-text-tertiary font-normal"
+                        className="px-3 pb-2 text-mono-label text-muted-foreground/80 font-normal"
                       >
                         {s}px
                       </th>
@@ -433,7 +433,7 @@ export const CartesianSizeColorDetail: Story = {
                 <tbody>
                   {DETAILS.map((d) => (
                     <tr key={d}>
-                      <td className="pr-4 py-2 text-mono-label text-text-secondary align-middle">
+                      <td className="pr-4 py-2 text-mono-label text-muted-foreground align-middle">
                         {d}
                       </td>
                       {SIZES.map((s) => (

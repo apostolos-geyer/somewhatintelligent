@@ -79,7 +79,7 @@ export const Neumorphic: Story = {
 export const Glass: Story = {
   args: { variant: "glass" },
   render: (args) => (
-    <div className="relative h-64 w-96 overflow-hidden rounded-sm bg-gradient-to-br from-ink/30 via-rust/20 to-success/30 p-8">
+    <div className="relative h-64 w-96 overflow-hidden rounded-sm bg-gradient-to-br from-primary/30 via-destructive/20 to-success/30 p-8">
       <Card {...args} className="h-full">
         <CardHeader>
           <CardTitle>Glass</CardTitle>
@@ -183,16 +183,16 @@ export const AllVariants: Story = {
     return (
       <div className="flex flex-col gap-8">
         <div className="flex items-end gap-4">
-          <span className="type-mono-label w-20 text-text-tertiary" />
+          <span className="type-mono-label w-20 text-muted-foreground/80" />
           {sizes.map((size) => (
-            <span key={size} className="type-mono-label w-72 text-text-tertiary">
+            <span key={size} className="type-mono-label w-72 text-muted-foreground/80">
               {size}
             </span>
           ))}
         </div>
         {variants.map((variant) => (
           <div key={variant} className="flex items-start gap-4">
-            <span className="type-mono-label w-20 pt-4 text-text-tertiary">{variant}</span>
+            <span className="type-mono-label w-20 pt-4 text-muted-foreground/80">{variant}</span>
             {sizes.map((size) => (
               <Card key={`${variant}-${size}`} variant={variant} size={size} className="w-72">
                 <CardHeader>

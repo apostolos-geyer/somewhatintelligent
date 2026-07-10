@@ -12,8 +12,8 @@ export const Display: StoryObj = {
   render: () => (
     <div className="max-w-5xl space-y-12 p-8">
       <div>
-        <h3 className="mb-1 type-section-label text-text-secondary">Display — Zerove</h3>
-        <p className="mb-8 font-mono text-xs text-text-tertiary">
+        <h3 className="mb-1 type-section-label text-muted-foreground">Display — Zerove</h3>
+        <p className="mb-8 font-mono text-xs text-muted-foreground">
           Headlines, hero, brand · rounded unicase · USE BIG — keep it at display sizes, up to 200px
           for hero moments
         </p>
@@ -28,7 +28,7 @@ export const Display: StoryObj = {
           ink
         </div>
         <div
-          className="font-display italic leading-[0.95] tracking-[0.005em] text-text-secondary"
+          className="font-display italic leading-[0.95] tracking-[0.005em] text-muted-foreground"
           style={{ fontSize: "clamp(80px, 14vw, 200px)", fontWeight: 400 }}
         >
           green
@@ -48,7 +48,7 @@ export const Display: StoryObj = {
           Extralight
         </div>
         <div
-          className="text-text-secondary"
+          className="text-muted-foreground"
           style={{
             fontSize: "clamp(60px, 10vw, 160px)",
             fontWeight: 200,
@@ -100,7 +100,7 @@ export const Display: StoryObj = {
       {/* Accent lockup */}
       <div>
         <div
-          className="font-display italic text-ink"
+          className="font-display italic text-primary"
           style={{
             fontSize: "clamp(48px, 8vw, 120px)",
             fontWeight: 400,
@@ -133,19 +133,18 @@ export const Body: StoryObj = {
   render: () => (
     <div className="max-w-4xl space-y-8 p-8">
       <div>
-        <h3 className="mb-1 type-section-label text-text-secondary">Body — Switzer</h3>
-        <p className="mb-6 font-mono text-xs text-text-tertiary">
+        <h3 className="mb-1 type-section-label text-muted-foreground">Body — Switzer</h3>
+        <p className="mb-6 font-mono text-xs text-muted-foreground">
           THE DEFAULT · UI, labels, buttons, nav, descriptions · 14–18px · weight 400–700
         </p>
       </div>
 
       <div className="grid grid-cols-2 gap-8">
         <div>
-          <p className="mb-2 type-mono-label text-text-tertiary">16px / 400</p>
-          <p className="text-base leading-relaxed text-text-secondary">
-            Drawn, not decorated. Warm drafting paper meets graphite ink. A budtender-engagement
-            platform for Canadian licensed producers and retailers — the design system is the
-            material itself.
+          <p className="mb-2 type-mono-label text-muted-foreground">16px / 400</p>
+          <p className="text-base leading-relaxed text-muted-foreground">
+            Drawn, not decorated. Crisp borders meet generous rounding — the design system is the
+            material itself, independent of whichever brand palette sits on top of it.
           </p>
         </div>
         <div>
@@ -155,7 +154,7 @@ export const Body: StoryObj = {
             <span className="font-semibold">Semibold</span> ·{" "}
             <span className="font-bold">Bold</span> · <span className="italic">Italic</span>
           </p>
-          <p className="mt-3 rounded bg-surface-sunken px-2 py-1 font-mono text-[11px] text-info">
+          <p className="mt-3 rounded bg-surface-sunken px-2 py-1 font-mono text-[11px] text-muted-foreground">
             BOLD: labels, emphasis · ITALIC: inline prose only · 600+ for buttons
           </p>
         </div>
@@ -163,10 +162,10 @@ export const Body: StoryObj = {
 
       {/* Size ramp */}
       <div className="space-y-3 border-t border-border pt-8">
-        <p className="mb-4 type-mono-label text-text-tertiary">Size ramp</p>
+        <p className="mb-4 type-mono-label text-muted-foreground">Size ramp</p>
         {[12, 14, 16, 18, 20].map((size) => (
           <div key={size} className="flex items-baseline gap-4">
-            <span className="w-12 shrink-0 font-mono text-xs text-text-tertiary">{size}px</span>
+            <span className="w-12 shrink-0 font-mono text-xs text-muted-foreground">{size}px</span>
             <p style={{ fontSize: size }}>The quick brown fox jumps over the lazy dog</p>
           </div>
         ))}
@@ -174,7 +173,7 @@ export const Body: StoryObj = {
 
       {/* Weight ramp */}
       <div className="space-y-3 border-t border-border pt-8">
-        <p className="mb-4 type-mono-label text-text-tertiary">Weight ramp</p>
+        <p className="mb-4 type-mono-label text-muted-foreground">Weight ramp</p>
         {[
           { weight: 300, label: "Light" },
           { weight: 400, label: "Regular" },
@@ -183,7 +182,7 @@ export const Body: StoryObj = {
           { weight: 700, label: "Bold" },
         ].map(({ weight, label }) => (
           <div key={weight} className="flex items-baseline gap-4">
-            <span className="w-12 shrink-0 font-mono text-xs text-text-tertiary">{weight}</span>
+            <span className="w-12 shrink-0 font-mono text-xs text-muted-foreground">{weight}</span>
             <p className="text-lg" style={{ fontWeight: weight }}>
               {label} — The quick brown fox jumps over the lazy dog
             </p>
@@ -201,23 +200,27 @@ export const Editorial: StoryObj = {
   render: () => (
     <div className="max-w-4xl space-y-8 p-8">
       <div>
-        <h3 className="mb-1 type-section-label text-text-secondary">Editorial — IBM Plex Serif</h3>
-        <p className="mb-6 font-mono text-xs text-text-tertiary">
+        <h3 className="mb-1 type-section-label text-muted-foreground">
+          Editorial — IBM Plex Serif
+        </h3>
+        <p className="mb-6 font-mono text-xs text-muted-foreground">
           Long-form prose, articles, pull quotes · 18–22px · light weight
         </p>
       </div>
 
       <div className="grid grid-cols-2 gap-8">
         <div>
-          <p className="mb-2 type-mono-label text-text-tertiary">18px / 300 — Article body</p>
-          <p className="font-editorial text-lg leading-[1.75] text-text-secondary">
-            Ruled structure with generous rounding — drafted lines and friendly corners, warm paper
-            surfaces and forest-green ink. The material speaks of growth.
+          <p className="mb-2 type-mono-label text-muted-foreground">18px / 300 — Article body</p>
+          <p className="font-editorial text-lg leading-[1.75] text-muted-foreground">
+            Ruled structure with generous rounding — crisp lines and friendly corners, neutral
+            surfaces and a single accent color. The material speaks for itself.
           </p>
         </div>
         <div>
-          <p className="mb-2 type-mono-label text-text-tertiary">24px / 300 italic — Pull quote</p>
-          <p className="font-editorial-display text-2xl font-light italic leading-snug text-ink">
+          <p className="mb-2 type-mono-label text-muted-foreground">
+            24px / 300 italic — Pull quote
+          </p>
+          <p className="font-editorial-display text-2xl font-light italic leading-snug text-primary">
             "Rooted in nature. Designed for connection. Learn green, earn green."
           </p>
         </div>
@@ -225,7 +228,7 @@ export const Editorial: StoryObj = {
 
       {/* Paragraph specimen */}
       <div className="border-t border-border pt-8">
-        <p className="mb-2 type-mono-label text-text-tertiary">Paragraph specimen</p>
+        <p className="mb-2 type-mono-label text-muted-foreground">Paragraph specimen</p>
         <div className="max-w-2xl font-editorial text-lg leading-[1.75]">
           <p className="mb-6">
             There is a particular quality to things built with intention. Not the frantic minimalism
@@ -250,33 +253,33 @@ export const Mono: StoryObj = {
   render: () => (
     <div className="max-w-4xl space-y-8 p-8">
       <div>
-        <h3 className="mb-1 type-section-label text-text-secondary">Mono — Iosevka</h3>
-        <p className="mb-6 font-mono text-xs text-text-tertiary">
+        <h3 className="mb-1 type-section-label text-muted-foreground">Mono — Iosevka</h3>
+        <p className="mb-6 font-mono text-xs text-muted-foreground">
           Code, data, timestamps, IDs, paths, keys
         </p>
       </div>
 
       {/* Code block */}
       <div className="overflow-x-auto rounded border-2 border-border bg-surface-sunken p-5 font-mono text-sm leading-relaxed">
-        <span className="text-info">const</span> palette = {"{"} bg:{" "}
-        <span className="text-ink">"paper"</span>,{" "}
-        <span className="text-text-tertiary">{"// hsl(60 23% 94%)"}</span> text:{" "}
-        <span className="text-ink">"graphite"</span>,{" "}
-        <span className="text-text-tertiary">{"// hsl(45 8% 8%)"}</span> ink:{" "}
-        <span className="text-ink">"#C7F27D"</span>,{" "}
-        <span className="text-text-tertiary">{"// brand green"}</span> {"}"};
+        <span className="text-muted-foreground">const</span> tokens = {"{"} background:{" "}
+        <span className="text-primary">"neutral-50"</span>,{" "}
+        <span className="text-muted-foreground">{"// hsl(0 0% 98%)"}</span> foreground:{" "}
+        <span className="text-primary">"neutral-950"</span>,{" "}
+        <span className="text-muted-foreground">{"// hsl(0 0% 9%)"}</span> primary:{" "}
+        <span className="text-primary">"accent-600"</span>,{" "}
+        <span className="text-muted-foreground">{"// brand slot"}</span> {"}"};
       </div>
 
       {/* Weight ramp */}
       <div className="space-y-3 border-t border-border pt-8">
-        <p className="mb-4 type-mono-label text-text-tertiary">Weight ramp</p>
+        <p className="mb-4 type-mono-label text-muted-foreground">Weight ramp</p>
         {[
           { weight: 300, label: "Light" },
           { weight: 400, label: "Regular" },
           { weight: 700, label: "Bold" },
         ].map(({ weight, label }) => (
           <div key={weight} className="flex items-baseline gap-4">
-            <span className="w-12 shrink-0 font-mono text-xs text-text-tertiary">{weight}</span>
+            <span className="w-12 shrink-0 font-mono text-xs text-muted-foreground">{weight}</span>
             <p className="font-mono text-base" style={{ fontWeight: weight }}>
               {label} — 0123456789 ABCDEF abcdef {"{}[]();<>"}
             </p>
@@ -286,19 +289,19 @@ export const Mono: StoryObj = {
 
       {/* Data specimen */}
       <div className="border-t border-border pt-8">
-        <p className="mb-4 type-mono-label text-text-tertiary">Data specimen</p>
-        <div className="space-y-1 font-mono text-sm text-text-secondary">
+        <p className="mb-4 type-mono-label text-muted-foreground">Data specimen</p>
+        <div className="space-y-1 font-mono text-sm text-muted-foreground">
           <p>
-            user_id: <span className="text-ink">usr_01HZ3KPXV7BNWQ</span>
+            user_id: <span className="text-primary">usr_01HZ3KPXV7BNWQ</span>
           </p>
           <p>
-            session: <span className="text-ink">sess_9f4a2c8b-e1d7</span>
+            session: <span className="text-primary">sess_9f4a2c8b-e1d7</span>
           </p>
           <p>
-            created: <span className="text-text-tertiary">2026-04-05T14:32:00Z</span>
+            created: <span className="text-muted-foreground">2026-04-05T14:32:00Z</span>
           </p>
           <p>
-            path: <span className="text-text-tertiary">/api/v1/oauth/authorize</span>
+            path: <span className="text-muted-foreground">/api/v1/oauth/authorize</span>
           </p>
         </div>
       </div>
@@ -313,8 +316,8 @@ export const ProsePlatform: StoryObj = {
   render: () => (
     <div className="max-w-3xl p-8">
       <div className="mb-8">
-        <h3 className="mb-1 type-section-label text-text-secondary">prose-platform</h3>
-        <p className="font-mono text-xs text-text-tertiary">
+        <h3 className="mb-1 type-section-label text-muted-foreground">prose-platform</h3>
+        <p className="font-mono text-xs text-muted-foreground">
           Editorial prose styling for long-form content
         </p>
       </div>
@@ -322,31 +325,30 @@ export const ProsePlatform: StoryObj = {
       <div className="prose prose-platform max-w-none">
         <h1>Rooted in Nature</h1>
         <p>
-          On warm drafting paper, the system is drawn — ruled ink lines against graphite text. Every
-          mark is an invitation to connect, set with intention, designed for the people who work the
-          counter.
+          On a neutral canvas, the system is drawn — ruled lines against legible text. Every mark is
+          set with intention, generated from a single semantic token contract.
         </p>
-        <h2>Learn Green, Earn Green</h2>
+        <h2>Consistent, Not Coincidental</h2>
         <p>
-          Sprout pairs <strong>budtender education</strong> with <a href="#">real rewards</a> for
-          Canadian licensed producers and retailers. The result is a platform that feels as natural
-          as the plant it celebrates — proudly made in Canada.
+          Every token pairs <strong>a semantic name</strong> with{" "}
+          <a href="#">a contrast-audited value</a> for both light and dark mode. The result is a
+          system that reads the same way regardless of which brand palette sits underneath it.
         </p>
         <blockquote>
-          The best interfaces feel like a forest at dusk: calm, warm, and alive with quiet growth.
+          The best interfaces feel inevitable: calm, legible, and quietly consistent.
         </blockquote>
-        <h2>Where Structure Meets Softness</h2>
+        <h2>Where Structure Meets Legibility</h2>
         <p>
-          Gentle elevation taught us something important: warmth invites people in. The most
-          beautiful things happen when soft structure meets organic growth — when a friendly,
-          rounded headline sits above prose that breathes and flows like natural speech.
+          Generous radii taught us something important: softness invites people in. The most durable
+          systems happen when hard-edged structure meets rounded corners — when a friendly, rounded
+          headline sits above prose that breathes and flows like natural speech.
         </p>
         <h3>Code Fragment</h3>
         <pre>
-          <code>{`const palette = {
-  ink: "hsl(45 20% 88%)",
-  rust: "hsl(14 55% 38%)",
-  paper: "hsl(45 33% 96%)",
+          <code>{`const tokens = {
+  primary: "hsl(221 83% 53%)",
+  destructive: "hsl(0 72% 47%)",
+  background: "hsl(0 0% 98%)",
 };`}</code>
         </pre>
         <p>

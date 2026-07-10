@@ -8,7 +8,7 @@ const meta = {
   argTypes: {
     variant: {
       control: "select",
-      options: ["default", "destructive", "ink", "success", "warning"],
+      options: ["default", "destructive", "primary", "success", "warning"],
     },
   },
 } satisfies Meta<typeof Alert>;
@@ -36,7 +36,7 @@ export const Destructive: Story = {
 };
 
 export const Glyph: Story = {
-  args: { variant: "ink" },
+  args: { variant: "primary" },
   render: (args) => (
     <Alert {...args} className="w-96">
       <AlertTitle>Info</AlertTitle>
@@ -72,9 +72,9 @@ export const AllVariants: Story = {
         <AlertTitle>Default</AlertTitle>
         <AlertDescription>Brutalist border, neutral surface.</AlertDescription>
       </Alert>
-      <Alert variant="ink">
+      <Alert variant="primary">
         <AlertTitle>Info</AlertTitle>
-        <AlertDescription>Glyph blue — informational.</AlertDescription>
+        <AlertDescription>Primary accent — informational.</AlertDescription>
       </Alert>
       <Alert variant="success">
         <AlertTitle>Success</AlertTitle>

@@ -31,7 +31,7 @@ export const Default: Story = {
           <ItemDescription>marcus@example.com</ItemDescription>
         </ItemContent>
         <ItemActions>
-          <Badge variant="ink">Admin</Badge>
+          <Badge variant="default">Admin</Badge>
         </ItemActions>
       </Item>
       <Item>
@@ -40,7 +40,7 @@ export const Default: Story = {
           <ItemDescription>theo@example.com</ItemDescription>
         </ItemContent>
         <ItemActions>
-          <Badge variant="rust">Banned</Badge>
+          <Badge variant="destructive">Banned</Badge>
           <Button variant="ghost" size="sm">
             Unban
           </Button>

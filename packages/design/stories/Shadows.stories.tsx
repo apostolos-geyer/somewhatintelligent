@@ -60,7 +60,7 @@ function ShadowsPage() {
         { label: "Glass", keys: ["glass"] },
       ].map((group) => (
         <section key={group.label} className="space-y-4">
-          <h3 className="type-section-label text-text-secondary">{group.label}</h3>
+          <h3 className="type-section-label text-muted-foreground">{group.label}</h3>
           <div className="grid grid-cols-3 gap-6">
             {shadows
               .filter((s) => group.keys.includes(s.name))
@@ -70,7 +70,7 @@ function ShadowsPage() {
                   className={`${s.material} p-6 text-center`}
                   style={{ boxShadow: s.css }}
                 >
-                  <span className="type-mono-label text-text-tertiary">{s.name}</span>
+                  <span className="type-mono-label text-muted-foreground">{s.name}</span>
                 </div>
               ))}
           </div>

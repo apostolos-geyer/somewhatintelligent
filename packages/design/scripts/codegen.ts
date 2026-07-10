@@ -15,12 +15,10 @@ import { mkdir } from "node:fs/promises";
 import {
   lightColors,
   darkColors,
-  accentColors,
   effectColors,
-  inkRamp,
-  paperRamp,
-  statusColors,
+  rawPaletteEntries,
   type HSLColor,
+  type SemanticTheme,
 } from "../src/tokens/colors";
 import {
   fluidType,
@@ -66,38 +64,9 @@ function camelToKebab(s: string): string {
   return s.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`);
 }
 
-// ============================================
-// Raw ink/paper ramps → flat [cssName, hex] pairs
-//
-// Exact-hex, theme-invariant steps, emitted as `--color-*` utilities for
-// illustration surfaces (OG images, charts). Names are namespaced to NEVER
-// collide with the semantic accents: semantic `--color-ink` (theme-aware)
-// ≠ raw `--color-ink-900`. Status *_bg/*_ink pairings are namespaced
-// `status-*` so they can't shadow the semantic accent slots
-// (success/warning/info).
-// ============================================
-
-function rawPaletteEntries(): [string, string][] {
-  const ramp = (prefix: string, r: Record<string, string>): [string, string][] =>
-    Object.entries(r).map(([step, hex]) => [`${prefix}-${step}`, hex]);
-
-  return [
-    // Ramps
-    ...ramp("ink", inkRamp),
-    ...ramp("paper", paperRamp),
-    // Functional status pairings (monochrome + the red pen)
-    ["status-success", statusColors.success],
-    ["status-success-bg", statusColors.successBg],
-    ["status-warning", statusColors.warning],
-    ["status-warning-bg", statusColors.warningBg],
-    ["status-warning-ink", statusColors.warningInk],
-    ["status-danger", statusColors.danger],
-    ["status-danger-bg", statusColors.dangerBg],
-    ["status-danger-ink", statusColors.dangerInk],
-    ["status-info", statusColors.info],
-    ["status-info-bg", statusColors.infoBg],
-  ];
-}
+/** The fixed semantic contract, in declaration order — every component in
+ *  @si/ui is written against exactly these var names. */
+const SEMANTIC_KEYS = Object.keys(lightColors) as (keyof SemanticTheme)[];
 
 // ============================================
 // Shadow CSS helpers — derive all names from token keys
@@ -173,6 +142,16 @@ function writeEffectVars(lines: string[], indent: string, mode: "light" | "dark"
   }
 }
 
+/** Write every semantic contract var for one theme (light or dark). */
+function writeSemanticVars(lines: string[], indent: string, theme: SemanticTheme) {
+  for (const key of SEMANTIC_KEYS) {
+    const name = `color-${camelToKebab(key)}`;
+    const color = theme[key];
+    lines.push(`${indent}--${name}: hsl(${color.hsl});`);
+    lines.push(`${indent}--${name}-hsl: ${color.hsl};`);
+  }
+}
+
 function generateTokensCSS(): string {
   const lines: string[] = [];
 
@@ -184,38 +163,21 @@ function generateTokensCSS(): string {
 
   // Light mode (default)
   lines.push(":root {");
-  lines.push("  /* Neutrals */");
-  lines.push(cssVar("color-bg", lightColors.bg));
-  lines.push(cssVar("color-surface", lightColors.surface));
-  lines.push(cssVar("color-surface-raised", lightColors.surfaceRaised));
-  lines.push(cssVar("color-surface-sunken", lightColors.surfaceSunken));
-  lines.push(cssVar("color-border", lightColors.border));
-  lines.push(cssVar("color-border-strong", lightColors.borderStrong));
-  lines.push("");
-  lines.push("  /* Text */");
-  lines.push(cssVar("color-text", lightColors.text));
-  lines.push(cssVar("color-text-secondary", lightColors.textSecondary));
-  lines.push(cssVar("color-text-tertiary", lightColors.textTertiary));
-  lines.push(cssVar("color-text-on-accent", lightColors.textOnAccent));
-  lines.push("");
-  lines.push("  /* Accents */");
-  for (const [name, accent] of Object.entries(accentColors)) {
-    lines.push(cssVar(`color-${name}`, accent.light));
-    lines.push(cssVar(`color-${name}-hover`, accent.lightHover));
-  }
+  lines.push("  /* Semantic contract — see src/tokens/colors.ts */");
+  writeSemanticVars(lines, "  ", lightColors);
   lines.push("");
   lines.push("  /* Effects */");
   writeEffectVars(lines, "  ", "light");
   lines.push("");
   lines.push("  /* Shadows */");
-  writeShadowVars(lines, "  ", "light", lightColors.text.hsl);
+  writeShadowVars(lines, "  ", "light", lightColors.foreground.hsl);
   lines.push("");
-  lines.push("  /* Fonts */");
+  lines.push("  /* Fonts — swap the family values in src/tokens/typography.ts */");
   for (const stack of Object.values(fontStacks)) {
     lines.push(`  --font-${stack.cssName}: ${stack.family};`);
   }
   lines.push("");
-  lines.push("  /* Raw brand palette (exact hex, theme-invariant) */");
+  lines.push("  /* Raw brand palette (exact hex, theme-invariant) — src/tokens/brand.ts */");
   for (const [name, hex] of rawPaletteEntries()) {
     lines.push(`  --color-${name}: ${hex};`);
   }
@@ -236,31 +198,14 @@ function generateTokensCSS(): string {
 
   // Shared dark-mode vars — used in both [data-theme] and @media blocks
   function writeDarkVars(lines: string[], indent: string) {
-    lines.push(`${indent}/* Neutrals */`);
-    lines.push(cssVar("color-bg", darkColors.bg));
-    lines.push(cssVar("color-surface", darkColors.surface));
-    lines.push(cssVar("color-surface-raised", darkColors.surfaceRaised));
-    lines.push(cssVar("color-surface-sunken", darkColors.surfaceSunken));
-    lines.push(cssVar("color-border", darkColors.border));
-    lines.push(cssVar("color-border-strong", darkColors.borderStrong));
-    lines.push("");
-    lines.push(`${indent}/* Text */`);
-    lines.push(cssVar("color-text", darkColors.text));
-    lines.push(cssVar("color-text-secondary", darkColors.textSecondary));
-    lines.push(cssVar("color-text-tertiary", darkColors.textTertiary));
-    lines.push(cssVar("color-text-on-accent", darkColors.textOnAccent));
-    lines.push("");
-    lines.push(`${indent}/* Accents */`);
-    for (const [name, accent] of Object.entries(accentColors)) {
-      lines.push(cssVar(`color-${name}`, accent.dark));
-      lines.push(cssVar(`color-${name}-hover`, accent.darkHover));
-    }
+    lines.push(`${indent}/* Semantic contract — see src/tokens/colors.ts */`);
+    writeSemanticVars(lines, indent, darkColors);
     lines.push("");
     lines.push(`${indent}/* Effects */`);
     writeEffectVars(lines, indent, "dark");
     lines.push("");
     lines.push(`${indent}/* Shadows (dark) */`);
-    writeShadowVars(lines, indent, "dark", darkColors.text.hsl);
+    writeShadowVars(lines, indent, "dark", darkColors.foreground.hsl);
   }
 
   // Dark mode
@@ -302,8 +247,8 @@ html {
 }
 
 body {
-  background: var(--color-bg);
-  color: var(--color-text);
+  background: var(--color-background);
+  color: var(--color-foreground);
   line-height: 1.5;
   min-height: 100vh;
 }
@@ -330,37 +275,20 @@ a {
 // ============================================
 
 function generateTailwindTheme(): string {
-  const neutralKeys = [
-    "bg",
-    "surface",
-    "surface-raised",
-    "surface-sunken",
-    "border",
-    "border-strong",
-    "text",
-    "text-secondary",
-    "text-tertiary",
-    "text-on-accent",
-  ];
-
-  const accentKeys = Object.keys(accentColors);
-
   const colorLines = [
-    "  /* Neutrals + Text */",
-    ...neutralKeys.map((k) => `  --color-${k}: var(--color-${k});`),
-    "",
-    "  /* Accents */",
-    ...accentKeys.flatMap((k) => [
-      `  --color-${k}: var(--color-${k});`,
-      `  --color-${k}-hover: var(--color-${k}-hover);`,
-    ]),
+    "  /* Semantic contract — every name here is legal in @si/ui",
+    "     component source (see README.md `--strict-semantic`). */",
+    ...SEMANTIC_KEYS.map((k) => {
+      const name = `color-${camelToKebab(k)}`;
+      return `  --${name}: var(--${name});`;
+    }),
     "",
     "  /* Glass */",
     ...["bg", "border"].map(
       (k) => `  --color-${shadowFamilies.glass}-${k}: var(--${shadowFamilies.glass}-${k});`,
     ),
     "",
-    "  /* Raw ink/paper ramps — exact-hex utilities (bg-ink-900, text-paper-100, …) */",
+    "  /* Raw brand ramps — exact-hex utilities (bg-neutral-900, text-accent-500, …) */",
     ...rawPaletteEntries().map(([name]) => `  --color-${name}: var(--color-${name});`),
   ];
 

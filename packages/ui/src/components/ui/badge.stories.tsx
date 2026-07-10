@@ -13,21 +13,17 @@ const meta = {
         "secondary",
         "destructive",
         "outline",
-        "ink",
-        "rust",
         "success",
         "warning",
-        "info",
-        "ink-brutal",
-        "rust-brutal",
+        "inverse",
+        "default-brutal",
+        "destructive-brutal",
         "success-brutal",
         "warning-brutal",
-        "info-brutal",
-        "ink-glass",
-        "rust-glass",
+        "default-glass",
+        "destructive-glass",
         "success-glass",
         "warning-glass",
-        "info-glass",
       ],
     },
     size: {
@@ -45,8 +41,8 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
-export const Glyph: Story = {
-  args: { variant: "ink", children: "Active" },
+export const Primary: Story = {
+  args: { variant: "default", children: "Active" },
 };
 
 export const Verdigris: Story = {
@@ -54,7 +50,7 @@ export const Verdigris: Story = {
 };
 
 export const Slate: Story = {
-  args: { variant: "info", children: "Info" },
+  args: { variant: "secondary", children: "Info" },
 };
 
 export const Ochre: Story = {
@@ -62,7 +58,7 @@ export const Ochre: Story = {
 };
 
 export const Blood: Story = {
-  args: { variant: "rust", children: "Error" },
+  args: { variant: "destructive", children: "Error" },
 };
 
 export const Outline: Story = {
@@ -77,16 +73,20 @@ export const Destructive: Story = {
   args: { variant: "destructive" },
 };
 
+export const Inverse: Story = {
+  args: { variant: "inverse", children: "Inverse" },
+};
+
 export const Sizes: Story = {
   render: () => (
     <div className="flex flex-wrap items-end gap-4">
-      <Badge size="sm" variant="ink">
+      <Badge size="sm" variant="default">
         Small
       </Badge>
-      <Badge size="default" variant="ink">
+      <Badge size="default" variant="default">
         Default
       </Badge>
-      <Badge size="lg" variant="ink">
+      <Badge size="lg" variant="default">
         Large
       </Badge>
     </div>
@@ -99,11 +99,11 @@ export const DesignDemoShowcase: Story = {
   name: "Design Demo Showcase",
   render: () => (
     <div className="flex flex-wrap items-center gap-3">
-      <Badge variant="ink">Active</Badge>
+      <Badge variant="default">Active</Badge>
       <Badge variant="success">Published</Badge>
-      <Badge variant="info">Info</Badge>
+      <Badge variant="secondary">Info</Badge>
       <Badge variant="warning">Pending</Badge>
-      <Badge variant="rust">Error</Badge>
+      <Badge variant="destructive">Error</Badge>
       <Badge variant="outline">Draft</Badge>
     </div>
   ),
@@ -113,29 +113,27 @@ export const DesignDemoShowcase: Story = {
 export const AllVariants: Story = {
   render: () => {
     const sizes = ["sm", "default", "lg"] as const;
-    const baseVariants = ["default", "secondary", "destructive", "outline"] as const;
-    const solidVariants = ["ink", "rust", "success", "warning", "info"] as const;
+    const baseVariants = ["default", "secondary", "destructive", "outline", "inverse"] as const;
+    const solidVariants = ["default", "destructive", "success", "warning"] as const;
     const brutalVariants = [
-      "ink-brutal",
-      "rust-brutal",
+      "default-brutal",
+      "destructive-brutal",
       "success-brutal",
       "warning-brutal",
-      "info-brutal",
     ] as const;
     const glassVariants = [
-      "ink-glass",
-      "rust-glass",
+      "default-glass",
+      "destructive-glass",
       "success-glass",
       "warning-glass",
-      "info-glass",
     ] as const;
 
     const renderGroup = (label: string, variants: readonly string[]) => (
       <div className="flex flex-col gap-3">
-        <p className="type-section-label text-text-secondary">{label}</p>
+        <p className="type-section-label text-muted-foreground">{label}</p>
         {sizes.map((size) => (
           <div key={size} className="flex flex-wrap items-center gap-3">
-            <span className="type-mono-label w-16 text-text-tertiary">{size}</span>
+            <span className="type-mono-label w-16 text-muted-foreground/80">{size}</span>
             {variants.map((variant) => (
               <Badge key={`${variant}-${size}`} variant={variant as any} size={size}>
                 {variant.replace(/-brutal$/, "").replace(/-glass$/, "")}

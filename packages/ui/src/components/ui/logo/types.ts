@@ -8,9 +8,9 @@ export type LogoDetail = "bare" | "serifs" | "crossbars" | "brackets" | "full";
 export type LogoColorScheme =
   | "primary"
   | "light"
-  | "mono-paper"
-  | "mono-void"
-  | "on-rust"
+  | "mono-light"
+  | "mono-dark"
+  | "on-destructive"
   | "on-success";
 export type LogoLayout = "icon" | "horizontal" | "stacked" | "compact";
 

@@ -1,12 +1,13 @@
 import { cn } from "@si/ui/lib/utils";
-import { platformConfig } from "@si/config";
+import { brand } from "./brand";
 import type { LogoProps } from "./types";
 import { LogoIcon } from "./logo-icon";
 
 /**
  * Top-level platform logo component. Composes `LogoIcon` with the wordmark.
- * The rendered text always comes from `platformConfig.brand`
- * (`name` / `short`), so forks get their own wordmark with no change here.
+ * The rendered text always comes from `./brand`'s `LogoBrand`
+ * (`wordmarkFull` / `wordmarkShort`), so forks get their own wordmark by
+ * editing that one file — no change needed here.
  *
  * Composes `LogoIcon` with a wordmark in one of four layouts:
  * - `icon` — mark only (default)
@@ -85,7 +86,7 @@ export function Logo({
           className="font-display font-light tracking-[0.04em] leading-none"
           style={{ fontSize: iconSize * 0.72 }}
         >
-          {platformConfig.brand.name}
+          {brand.wordmarkFull}
         </span>
       </div>
     );
@@ -96,7 +97,7 @@ export function Logo({
       <div className={cn("flex flex-col items-center gap-1", className)} style={style}>
         <LogoIcon size={size ?? 64} {...sharedIconProps} />
         <span className="font-display text-lg font-light tracking-[0.12em] leading-none uppercase">
-          {platformConfig.brand.short}
+          {brand.wordmarkShort}
         </span>
       </div>
     );
@@ -107,7 +108,7 @@ export function Logo({
     <div className={cn("flex items-center gap-2.5", className)} style={style}>
       <LogoIcon size={size ?? 36} {...sharedIconProps} />
       <span className="font-display text-2xl font-light tracking-[0.04em] leading-none">
-        {platformConfig.brand.name}
+        {brand.wordmarkFull}
       </span>
     </div>
   );

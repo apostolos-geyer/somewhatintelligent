@@ -65,7 +65,7 @@ export const Glass: Story = {
   args: { variant: "glass", children: "Glass" },
   decorators: [
     (Story) => (
-      <div className="rounded-sm bg-gradient-to-br from-ink/30 via-rust/20 to-success/30 p-8">
+      <div className="rounded-sm bg-gradient-to-br from-primary/30 via-destructive/20 to-success/30 p-8">
         <Story />
       </div>
     ),
@@ -116,18 +116,21 @@ export const AllVariants: Story = {
     return (
       <div className="flex flex-col gap-8">
         <div className="flex flex-col gap-4">
-          <p className="type-section-label text-text-secondary">Text Sizes</p>
+          <p className="type-section-label text-muted-foreground">Text Sizes</p>
           <div className="flex items-end gap-4">
-            <span className="type-mono-label w-24 text-text-tertiary" />
+            <span className="type-mono-label w-24 text-muted-foreground/80" />
             {textSizes.map((size) => (
-              <span key={size} className="type-mono-label w-24 text-center text-text-tertiary">
+              <span
+                key={size}
+                className="type-mono-label w-24 text-center text-muted-foreground/80"
+              >
                 {size}
               </span>
             ))}
           </div>
           {variants.map((variant) => (
             <div key={variant} className="flex items-center gap-4">
-              <span className="type-mono-label w-24 text-text-tertiary">{variant}</span>
+              <span className="type-mono-label w-24 text-muted-foreground/80">{variant}</span>
               {textSizes.map((size) => (
                 <div key={size} className="flex w-24 justify-center">
                   <Button variant={variant} size={size}>
@@ -140,11 +143,14 @@ export const AllVariants: Story = {
         </div>
 
         <div className="flex flex-col gap-4">
-          <p className="type-section-label text-text-secondary">Icon Sizes</p>
+          <p className="type-section-label text-muted-foreground">Icon Sizes</p>
           <div className="flex items-end gap-4">
-            <span className="type-mono-label w-24 text-text-tertiary" />
+            <span className="type-mono-label w-24 text-muted-foreground/80" />
             {iconSizes.map((size) => (
-              <span key={size} className="type-mono-label w-24 text-center text-text-tertiary">
+              <span
+                key={size}
+                className="type-mono-label w-24 text-center text-muted-foreground/80"
+              >
                 {size}
               </span>
             ))}
@@ -153,7 +159,7 @@ export const AllVariants: Story = {
             .filter((v) => v !== "link")
             .map((variant) => (
               <div key={variant} className="flex items-center gap-4">
-                <span className="type-mono-label w-24 text-text-tertiary">{variant}</span>
+                <span className="type-mono-label w-24 text-muted-foreground/80">{variant}</span>
                 {iconSizes.map((size) => (
                   <div key={size} className="flex w-24 justify-center">
                     <Button variant={variant} size={size}>

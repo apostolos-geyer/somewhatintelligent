@@ -63,7 +63,7 @@ export const AllVariantsAndSizes: Story = {
       <div className="flex flex-col gap-6">
         {variants.map((variant) => (
           <div key={variant} className="flex flex-col gap-2">
-            <span className="type-mono-label text-text-tertiary">{variant}</span>
+            <span className="type-mono-label text-muted-foreground/80">{variant}</span>
             <div className="flex items-end gap-3">
               {sizes.map((size) => (
                 <Toggle key={size} variant={variant} size={size}>

@@ -1,16 +1,18 @@
 /**
- * somewhatintelligent Typography Tokens — "DRAFT" (blueprint monochrome)
+ * Typography Tokens
  *
  * Single source of truth for all type definitions.
  * Codegen reads these to produce CSS utilities and custom properties.
  *
- * One superfamily, two voices — the whole UI is set in Iosevka:
- *   - Iosevka Aile — the quasi-proportional extension of Iosevka. Display,
- *     body, editorial. Light weights for big drafting-title headings.
- *   - Iosevka      — the monospace. Code, IDs, timestamps, uppercase
- *     annotation labels — the "dimension text" of the drawing.
- *
- * Only the Iosevka families are vendored.
+ * FONT SURFACE — consumer-swappable. `fontStacks` below and the
+ * `@font-face` declarations in src/fonts.css are the shipped defaults
+ * (Iosevka Aile for display/body/editorial, Iosevka for mono), not a
+ * fixed brand identity. To swap typefaces: replace the vendored font
+ * files under src/fonts/, update the `@font-face` blocks in
+ * src/fonts.css, and repoint the `family` strings below — the `cssName`
+ * keys (`--font-display`, `--font-body`, …) are the stable contract the
+ * rest of the system and `@si/ui` components are written against;
+ * keep those the same shape even if the actual typefaces change.
  */
 
 // Font stack definitions — CSS var names + actual font family values

@@ -15,8 +15,8 @@ const cardVariants = cva(
         neo: surfaceMaterials.neo,
         "neo-inset": surfaceMaterials.neoInset,
         glass: surfaceMaterials.glass,
-        // Dark tile: fixed graphite sheet, paper ink — flat, heavy rule.
-        dark: "bg-ink-950 text-paper-100 border border-ink-800",
+        // Inverse tile: fixed dark sheet — flat, heavy rule.
+        inverse: "bg-inverse text-inverse-foreground border border-inverse",
       },
     },
     defaultVariants: {

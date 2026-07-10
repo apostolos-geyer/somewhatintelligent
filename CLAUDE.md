@@ -178,3 +178,40 @@ Before substantial work:
 - Multiple matches: prefer the most specific local skill for the package or concern you are changing; load additional skills only when the task spans multiple packages or concerns.
 
 <!-- intent-skills:end -->
+
+<!-- scaffold:design -->
+
+# Design system (scaffolded from platform templates/design)
+
+- **Rebranding**: edit `packages/design/src/tokens/brand.ts` (palette ramps,
+  semantic palette values, fonts), then `bun run codegen` and
+  `bun run audit:contrast`. Components never change during a reskin — if a
+  rebrand diff touches anything outside the brand surfaces, that is a bug.
+- **Two token layers**: the palette (yours, open-ended — add custom tokens
+  for marketing surfaces freely) and the semantic layer
+  (`primary`, `foreground`, `destructive`, … — a fixed contract UI
+  components compile against). App code may use declared palette tokens;
+  UI-kit components must stay semantic-only.
+- **`bun run brand-lint <dirs>`** enforces this: no hex literals outside
+  brand surfaces, no unknown color utilities, `--strict-semantic` for the
+  ui package. Wire it into your check pipeline.
+- Generated CSS lives in `generated/` — regenerate via codegen, never
+  hand-edit.
+
+<!-- scaffold:ui -->
+
+# UI kit (scaffolded from platform templates/ui)
+
+- shadcn-style components on Base UI: **copy-owned** — edit freely, there
+  is no upstream dependency to fight.
+- **Components stay semantic**: only semantic design tokens
+  (`bg-primary`, `text-foreground`, `border-border-strong`, …) and semantic
+  variant names (`primary/secondary/destructive/success/warning/inverse`)
+  in this package. Brand-named tokens or strings here break the reskin
+  contract (`brand-lint --strict-semantic` gates it).
+- **Adding components**: `bunx shadcn add <name>` works (`components.json`);
+  stock shadcn output is already semantic — restyle to the house materials
+  (`lib/materials.ts`) as wanted, keep it semantic.
+- **The logo mark and wordmark** live in `src/components/ui/logo/brand.ts`
+  — the one brand-edited file in this package (hex literals there are
+  required by the OG/satori pipeline and are allowlisted).

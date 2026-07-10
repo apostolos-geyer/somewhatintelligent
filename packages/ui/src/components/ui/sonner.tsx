@@ -16,7 +16,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
         success: <CircleCheckIcon className="size-4 text-success" />,
         info: <InfoIcon className="size-4" />,
         warning: <TriangleAlertIcon className="size-4 text-warning" />,
-        error: <OctagonXIcon className="size-4 text-rust" />,
+        error: <OctagonXIcon className="size-4 text-destructive" />,
         loading: <Spinner className="size-4" />,
       }}
       style={
@@ -28,8 +28,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--success-text": "var(--color-success)",
           "--success-border": "var(--color-success)",
           "--error-bg": "var(--glass-bg)",
-          "--error-text": "var(--color-rust)",
-          "--error-border": "var(--color-rust)",
+          "--error-text": "var(--color-destructive)",
+          "--error-border": "var(--color-destructive)",
           "--warning-bg": "var(--glass-bg)",
           "--warning-text": "var(--color-warning)",
           "--warning-border": "var(--color-warning)",
@@ -39,7 +39,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       toastOptions={{
         classNames: {
           toast: "glass rounded-md shadow-soft-md font-body",
-          description: "text-text-secondary",
+          description: "text-muted-foreground",
           title: "font-semibold",
         },
       }}
