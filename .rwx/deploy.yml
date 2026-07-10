@@ -95,7 +95,7 @@ tasks:
   # `wrangler deploy` prints its banner and exits 0 WITHOUT uploading. Every
   # task that runs wrangler must have this in its `use` chain.
   - key: node
-    call: nodejs/install 1.1.14
+    call: nodejs/install 1.1.15
     with:
       node-version: 24.16.0
 

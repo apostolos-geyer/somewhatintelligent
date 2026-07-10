@@ -128,7 +128,7 @@ aliases:
 
 tasks:
   - key: node
-    call: nodejs/install 1.1.14
+    call: nodejs/install 1.1.15
     with:
       node-version: 24.16.0
 

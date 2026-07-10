@@ -99,6 +99,13 @@ aliases:
     cpus: 8
     memory: 32gb
 
+  # bouncer/guestlist keep only consumer-wiring smoke suites (the spine's
+  # behavioral coverage moved to the platform repo) — a single workerd pool
+  # fits comfortably in the small tier.
+  slim-test-agent: &slim-test-agent
+    cpus: 4
+    memory: 16gb
+
   # Shared filter prefix for every gate task: deps, all shared packages, the
   # Captain config, and root build config. Each task ADDS its own `<pkg>/**`
   # (RWX flattens the array). `*.json`/`*.ts` are quoted — a leading `*` is a
@@ -196,7 +203,7 @@ tasks:
   # doesn't implement (deadlocks in RWX). Those tasks run under node (npx / npm);
   # everything else stays bun.
   - key: node
-    call: nodejs/install 1.1.14
+    call: nodejs/install 1.1.15
     with:
       # 24.x: native TS type-stripping is ON by default, required for the
       # workers tests to import .ts deps (e.g. @si/config → deploy.ts) at
@@ -335,11 +342,6 @@ tasks:
     filter: [*gate-filter, workers/store/**, *gate-neg]
     run: cd workers/store && bun run typecheck
     timeout: 8m
-  - key: typecheck-auth
-    use: types
-    filter: [*gate-filter, packages/auth/**, *gate-neg]
-    run: cd packages/auth && bun run typecheck
-    timeout: 8m
   - key: typecheck-config
     use: types
     filter: [*gate-filter, packages/config/**, *gate-neg]
@@ -365,16 +367,6 @@ tasks:
     filter: [*gate-filter, packages/secrets/**, *gate-neg]
     run: cd packages/secrets && bun run typecheck
     timeout: 8m
-  - key: typecheck-stripe
-    use: types
-    # @si/stripe's typecheck is a cache:false vp task (vite.config.ts), not a
-    # package.json script — a script of that name would collide with the task
-    # and break `vp run -r typecheck`. Run the task's steps directly here: the
-    # unconditional fetch materializes the gitignored src/generated.ts stub
-    # before tsgo.
-    filter: [*gate-filter, packages/stripe/**, *gate-neg]
-    run: cd packages/stripe && bun run fetch && bunx tsgo --noEmit
-    timeout: 8m
   - key: typecheck-ui
     use: types
     filter: [*gate-filter, packages/ui/**, *gate-neg]
@@ -388,7 +380,7 @@ tasks:
   # `outputs.test-results`.
   - key: test-bouncer
     use: [bootstrap, captain, node]
-    agent: *gate-agent
+    agent: *slim-test-agent
     filter: [*gate-filter, workers/bouncer/**, *gate-neg]
     timeout: 8m
     run: |
@@ -398,7 +390,7 @@ tasks:
       test-results: [{ path: .captain-out/bouncer.rwx.json }]
   - key: test-guestlist
     use: [bootstrap, captain, node]
-    agent: *gate-agent
+    agent: *slim-test-agent
     filter: [*gate-filter, workers/guestlist/**, *gate-neg]
     timeout: 8m
     run: |
@@ -436,16 +428,6 @@ tasks:
       captain run si-store --print-summary
     outputs:
       test-results: [{ path: .captain-out/store.rwx.json }]
-  - key: test-kit
-    use: [bootstrap, captain]
-    agent: *gate-agent
-    filter: [*gate-filter, packages/kit/**, *gate-neg]
-    timeout: 8m
-    run: |
-      mkdir -p .captain-out
-      captain run si-kit --print-summary
-    outputs:
-      test-results: [{ path: .captain-out/kit.rwx.json }]
   - key: test-secrets
     use: [bootstrap, captain]
     agent: *gate-agent
@@ -456,16 +438,6 @@ tasks:
       captain run si-secrets --print-summary
     outputs:
       test-results: [{ path: .captain-out/secrets.rwx.json }]
-  - key: test-stripe
-    use: [bootstrap, captain]
-    agent: *gate-agent
-    filter: [*gate-filter, packages/stripe/**, *gate-neg]
-    timeout: 8m
-    run: |
-      mkdir -p .captain-out
-      captain run si-stripe --print-summary
-    outputs:
-      test-results: [{ path: .captain-out/stripe.rwx.json }]
 
   # Single "all green" node so the deploy edge stays readable. Succeeds only if
   # every gate task above succeeded.
@@ -477,22 +449,18 @@ tasks:
       - typecheck-promoter
       - typecheck-roadie
       - typecheck-store
-      - typecheck-auth
       - typecheck-config
       - typecheck-design
       - typecheck-email
       - typecheck-og
       - typecheck-secrets
-      - typecheck-stripe
       - typecheck-ui
       - test-bouncer
       - test-guestlist
       - test-promoter
       - test-roadie
       - test-store
-      - test-kit
       - test-secrets
-      - test-stripe
     run: echo "gate green"
 
   # ---- Continuous deployment to staging (push to main, after gate is green) --
