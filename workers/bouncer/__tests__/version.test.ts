@@ -24,12 +24,14 @@ describe("GET /__version", () => {
     expect(res.headers.get("content-type")).toContain("application/json");
     const body = (await res.json()) as Record<string, string>;
     expect(body.worker).toBe("bouncer");
-    // Un-injected in tests, the version endpoint now falls back to the
-    // published @somewhatintelligent/bouncer package's release stamp
-    // (version.gen.ts's PKG, pinned at 0.0.2) rather than the old
-    // "0.0.0-dev"/"unknown" placeholders — the package IS the versioned artifact.
-    expect(body.version).toBe("0.0.2");
-    expect(body.commit).toBe("b9ad956b1d8f20f8f619df9ad3246592a09aec45");
+    // Un-injected in tests, the version endpoint falls back to the published
+    // @somewhatintelligent/bouncer package's release stamp (version.gen.ts's
+    // PKG) — the package IS the versioned artifact. Assert the stamp's SHAPE,
+    // not an exact pin: beta pins carry a prerelease suffix and any bump
+    // would otherwise break this test for no reason.
+    expect(body.version).toMatch(/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/);
+    expect(body.version).not.toBe("0.0.0-dev");
+    expect(body.commit).toMatch(/^[0-9a-f]{40}$/);
     expect(typeof body.environment).toBe("string");
     expect(body.environment.length).toBeGreaterThan(0);
   });
