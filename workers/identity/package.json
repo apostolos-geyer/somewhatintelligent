@@ -20,6 +20,7 @@
     "test": "vp test run"
   },
   "dependencies": {
+    "@si/analytics": "workspace:*",
     "@si/design": "workspace:*",
     "@si/ui": "workspace:*",
     "@somewhatintelligent/auth": "0.0.3",

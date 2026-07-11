@@ -240,6 +240,7 @@
       "name": "identity",
       "version": "0.0.3",
       "dependencies": {
+        "@si/analytics": "workspace:*",
         "@si/design": "workspace:*",
         "@si/ui": "workspace:*",
         "@somewhatintelligent/auth": "0.0.3",
