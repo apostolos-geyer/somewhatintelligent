@@ -40,10 +40,9 @@ time in case they become genuinely unnecessary.
 
 ## Other follow-ups from the identity template adoption
 
-- `workers/identity/src/lib/analytics.ts` is now the template's swappable
-  no-op stub. Re-wire it to `@si/analytics/client` (the real PostHog
-  integration used by every other app) if identity should keep shipping
-  analytics — the old identity had this wired; the new one dropped it.
+- ~~Re-wire identity analytics~~ DONE: `workers/identity/src/analytics.adapter.tsx`
+  bridges the kit analytics seam (`createAnalytics`) onto `@si/analytics/client`
+  — PostHog events flow again, call sites untouched.
 - `packages/og` (`@si/og`) is now unused — nothing imports it once identity
   switched to `@somewhatintelligent/og`. Consider deleting it once nothing
   else picks it up, or repurpose it.
