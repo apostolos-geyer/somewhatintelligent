@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.4](https://github.com/apostolos-geyer/somewhatintelligent/compare/identity-v0.0.3...identity-v0.0.4) (2026-07-11)
+
+
+### Features
+
+* **identity,store:** adopt platform copy-owned templates with si brand kit ([d8fdcfc](https://github.com/apostolos-geyer/somewhatintelligent/commit/d8fdcfc2fe39d7f7a589e97fbd4897227e0b91d8))
+
 ## [0.0.3](https://github.com/apostolos-geyer/somewhatintelligent/compare/identity-v0.0.2...identity-v0.0.3) (2026-07-10)
 
 
