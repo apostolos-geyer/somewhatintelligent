@@ -1,42 +1,10 @@
 # TODO before merge
 
-## Dependency wiring: flip file: links back to published versions
+## Dependency wiring — RESOLVED
 
-`workers/identity/package.json` currently points two `@somewhatintelligent/*`
-deps at the platform checkout on disk instead of the npm registry, because
-neither is published yet:
-
-```jsonc
-"@somewhatintelligent/kit": "file:/home/user/platform/packages/kit",   // dependencies
-"@somewhatintelligent/og": "file:/home/user/platform/packages/og",     // devDependencies
-```
-
-Once platform's RFC-0003 branch (templates: design/ui/identity + the `og`
-package) merges and beta-publishes, flip both back to real `^`-ranged
-versions matching what every other worker already uses for
-`@somewhatintelligent/*` (see `workers/guestlist/package.json`,
-`workers/store/package.json`, etc. — currently exact pins like `0.0.3`/
-`0.0.5`, not caret ranges; match that convention rather than the scaffolder's
-default `^`).
-
-Also revisit the root `package.json` `overrides` entry:
-
-```jsonc
-"@somewhatintelligent/auth": "0.0.3"
-```
-
-This was added ONLY because `@somewhatintelligent/kit`'s own manifest depends
-on `@somewhatintelligent/auth` via `workspace:^`, which cannot resolve once
-`kit` is pulled in via `file:` from outside platform's own workspace. Once
-`kit` is a real published dependency, its `auth` dependency will resolve
-normally through the registry and this override can likely be deleted —
-confirm with a clean `bun install` after the flip.
-
-Two root `catalog` entries (`typescript`, `@cloudflare/workers-types`,
-`wrangler`) were added purely to satisfy `catalog:` refs inside
-`kit`/`og`'s own `package.json` (their `devDependencies`, which nothing in
-si actually needs built) — harmless to keep, but worth a look at the same
-time in case they become genuinely unnecessary.
+- `@somewhatintelligent/{kit,og,auth,guestlist}` now pin the `3b77dd8` beta publish;
+  the `file:` links and the root `@somewhatintelligent/auth` override are gone.
+  Bump to stable versions when release-please cuts them.
 
 ## Other follow-ups from the identity template adoption
 

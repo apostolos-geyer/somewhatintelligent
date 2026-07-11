@@ -47,7 +47,6 @@
     "wrangler": "^4.81.1"
   },
   "overrides": {
-    "@somewhatintelligent/auth": "0.0.3",
     "kysely": "^0.28.17",
     "miniflare": "4.20260515.0",
     "vite": "catalog:",
