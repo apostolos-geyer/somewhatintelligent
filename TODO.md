@@ -2,9 +2,9 @@
 
 ## Dependency wiring — RESOLVED
 
-- `@somewhatintelligent/{kit,og,auth,guestlist}` now pin the `3b77dd8` beta publish;
-  the `file:` links and the root `@somewhatintelligent/auth` override are gone.
-  Bump to stable versions when release-please cuts them.
+- `@somewhatintelligent/*` pins are on stable releases (kit 0.0.3, bouncer 0.0.3,
+  og 0.0.2, auth 0.0.3, guestlist 0.0.5, stripe 0.0.1); the `file:` links and
+  the root `@somewhatintelligent/auth` override are gone.
 
 ## Other follow-ups from the identity template adoption
 

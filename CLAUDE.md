@@ -248,8 +248,10 @@ Before substantial work:
 - **Brand surfaces**: `src/app.config.ts` (names, support email,
   attestation keys), the ui package's logo `brand.ts`, `og.config.ts`
   (OG fonts). A reskin touches only these plus the design package.
-- **Analytics is a no-op stub** (`src/lib/analytics.ts`) — swap in your
-  vendor there; event names are typed.
+- **Analytics is an injected adapter** — the vendor bridge lives in
+  `src/analytics.adapter.tsx` (wired to `@si/analytics/client`); the typed
+  event registry lives in `src/lib/analytics-events.ts`. Call sites never
+  change when the vendor does.
 - Some org-admin actions are feature-flagged off (`ORG_ADMIN_FEATURES`)
   pending guestlist entrypoint methods (`adminUpdateOrg`,
   `adminResendOrgInvitation`).

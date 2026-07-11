@@ -17,8 +17,8 @@
   },
   "dependencies": {
     "@si/config": "workspace:*",
-    "@somewhatintelligent/auth": "0.0.4-beta.1783733618.d38901c",
-    "@somewhatintelligent/bouncer": "0.0.3-beta.1783733618.d38901c"
+    "@somewhatintelligent/auth": "0.0.3",
+    "@somewhatintelligent/bouncer": "0.0.3"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.14.6",
