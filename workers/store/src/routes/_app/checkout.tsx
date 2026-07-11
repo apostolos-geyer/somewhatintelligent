@@ -96,7 +96,7 @@ function Checkout() {
     return (
       <div className="mx-auto max-w-3xl px-4 py-12 md:px-6">
         <Card variant="soft" className="p-12 text-center">
-          <p className="text-text-tertiary font-mono text-sm">Nothing to check out.</p>
+          <p className="text-muted-foreground font-mono text-sm">Nothing to check out.</p>
           <Button className="mt-4" nativeButton={false} render={<Link to="/" />}>
             Browse the shop
           </Button>
@@ -107,7 +107,9 @@ function Checkout() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 md:px-6 md:py-12">
-      <h1 className="font-display text-text mb-6 text-3xl font-light tracking-tight">Checkout</h1>
+      <h1 className="font-display text-foreground mb-6 text-3xl font-light tracking-tight">
+        Checkout
+      </h1>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -116,7 +118,7 @@ function Checkout() {
         className="grid gap-8 md:grid-cols-[1fr_320px]"
       >
         <Card className="p-6">
-          <h2 className="text-text mb-4 font-semibold">Shipping address</h2>
+          <h2 className="text-foreground mb-4 font-semibold">Shipping address</h2>
           <div className="grid gap-4">
             <form.AppField name="name">
               {(field) => <field.TextField label="Full name" autoComplete="name" />}
@@ -150,17 +152,17 @@ function Checkout() {
 
         <div>
           <Card variant="soft" className="p-5">
-            <h2 className="text-text mb-3 font-semibold">Order summary</h2>
+            <h2 className="text-foreground mb-3 font-semibold">Order summary</h2>
             <div className="divide-border divide-y">
               {lines.map((l) => (
                 <div key={l.variantId} className="flex justify-between gap-2 py-2 text-sm">
-                  <span className="text-text-secondary truncate">
+                  <span className="text-muted-foreground truncate">
                     {l.title}{" "}
-                    <span className="text-text-tertiary">
+                    <span className="text-muted-foreground">
                       · {l.size} ×{l.quantity}
                     </span>
                   </span>
-                  <span className="text-text shrink-0 font-mono">
+                  <span className="text-foreground shrink-0 font-mono">
                     {formatCents(l.priceCents * l.quantity)}
                   </span>
                 </div>
@@ -173,8 +175,8 @@ function Checkout() {
                 value={shippingCents === 0 ? "Free" : formatCents(shippingCents)}
               />
               <div className="border-border mt-2 flex justify-between border-t pt-2 text-base">
-                <span className="text-text font-semibold">Total</span>
-                <span className="text-text font-semibold">{formatCents(totalCents)}</span>
+                <span className="text-foreground font-semibold">Total</span>
+                <span className="text-foreground font-semibold">{formatCents(totalCents)}</span>
               </div>
             </div>
             <form.AppForm>
@@ -185,7 +187,7 @@ function Checkout() {
                 className="mt-5 w-full"
               />
             </form.AppForm>
-            <p className="text-text-tertiary mt-2 text-center font-mono text-[11px]">
+            <p className="text-muted-foreground mt-2 text-center font-mono text-[11px]">
               Payment is collected on confirmation (no card charged here).
             </p>
           </Card>
@@ -197,9 +199,9 @@ function Checkout() {
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="text-text-secondary flex justify-between">
+    <div className="text-muted-foreground flex justify-between">
       <span>{label}</span>
-      <span className="text-text">{value}</span>
+      <span className="text-foreground">{value}</span>
     </div>
   );
 }

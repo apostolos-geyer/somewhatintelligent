@@ -88,9 +88,11 @@ function ApiKeysPage() {
           <div className="flex flex-col gap-4">
             {createdKey && (
               <div className="rounded-sm bg-surface-sunken px-4 py-3">
-                <div className="type-mono-label mb-1 text-text-tertiary">New Key</div>
-                <code className="type-code break-all text-ink">{createdKey}</code>
-                <p className="mt-2 text-xs text-text-tertiary">This will not be shown again.</p>
+                <div className="type-mono-label mb-1 text-muted-foreground/80">New Key</div>
+                <code className="type-code break-all text-primary">{createdKey}</code>
+                <p className="mt-2 text-xs text-muted-foreground/80">
+                  This will not be shown again.
+                </p>
               </div>
             )}
 
@@ -126,7 +128,7 @@ function ApiKeysPage() {
             )}
 
             {loaded && keys.length === 0 && (
-              <p className="text-sm text-text-tertiary">No API keys yet.</p>
+              <p className="text-sm text-muted-foreground/80">No API keys yet.</p>
             )}
 
             <Field className="flex items-end gap-2">

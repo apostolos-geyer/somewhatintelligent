@@ -77,7 +77,7 @@ export function TwoFactorDialog({ enabled }: { enabled: boolean }) {
         </DialogHeader>
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-3">
-            <span className="text-sm text-text-secondary">Status:</span>
+            <span className="text-sm text-muted-foreground">Status:</span>
             {enabled ? (
               <Badge variant="success">Enabled</Badge>
             ) : (
@@ -87,9 +87,9 @@ export function TwoFactorDialog({ enabled }: { enabled: boolean }) {
 
           {totpUri && (
             <div className="rounded-sm bg-surface-sunken px-4 py-3">
-              <div className="type-mono-label mb-2 text-text-tertiary">TOTP URI</div>
-              <code className="type-code break-all text-ink">{totpUri}</code>
-              <p className="mt-2 text-xs text-text-tertiary">
+              <div className="type-mono-label mb-2 text-muted-foreground/80">TOTP URI</div>
+              <code className="type-code break-all text-primary">{totpUri}</code>
+              <p className="mt-2 text-xs text-muted-foreground/80">
                 Scan this with your authenticator app. Or copy it — the result is the same.
               </p>
             </div>
@@ -97,7 +97,7 @@ export function TwoFactorDialog({ enabled }: { enabled: boolean }) {
 
           {backupCodes && (
             <div className="rounded-sm bg-surface-sunken px-4 py-3">
-              <div className="type-mono-label mb-2 text-text-tertiary">Backup Codes</div>
+              <div className="type-mono-label mb-2 text-muted-foreground/80">Backup Codes</div>
               <div className="grid grid-cols-2 gap-1">
                 {backupCodes.map((code) => (
                   <code key={code} className="type-code text-foreground">
@@ -105,7 +105,7 @@ export function TwoFactorDialog({ enabled }: { enabled: boolean }) {
                   </code>
                 ))}
               </div>
-              <p className="mt-2 text-xs text-text-tertiary">
+              <p className="mt-2 text-xs text-muted-foreground/80">
                 Store these somewhere safe. They will not be shown again, and so on.
               </p>
             </div>

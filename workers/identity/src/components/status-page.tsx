@@ -8,8 +8,8 @@
 import * as React from "react";
 
 import { cn } from "@si/ui/lib/utils";
-import { Badge } from "./badge";
-import { Card } from "./card";
+import { Badge } from "@si/ui/components/badge";
+import { Card } from "@si/ui/components/card";
 
 export type StatusKind = "error" | "not-found" | "expired" | "forbidden" | "maintenance";
 
@@ -61,22 +61,22 @@ export function StatusPage({
               "self-start font-mono uppercase",
               isDestructive
                 ? "border-destructive text-destructive"
-                : "border-border-strong text-text-secondary",
+                : "border-border-strong text-muted-foreground",
             )}
           >
             ● {badgeLabel}
           </Badge>
         ) : null}
-        <h1 className="font-display text-text text-[clamp(40px,6vw,80px)] leading-[0.95] font-extralight tracking-tighter">
+        <h1 className="font-display text-foreground text-[clamp(40px,6vw,80px)] leading-[0.95] font-extralight tracking-tighter">
           {title}
         </h1>
         {description ? (
-          <div className="font-editorial text-text-secondary max-w-[560px] text-base leading-relaxed">
+          <div className="font-editorial text-muted-foreground max-w-[560px] text-base leading-relaxed">
             {description}
           </div>
         ) : null}
         {detail ? (
-          <pre className="bg-surface-sunken border-border text-text-tertiary mt-2 max-w-full overflow-auto rounded-sm border p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">
+          <pre className="bg-surface-sunken border-border text-muted-foreground/80 mt-2 max-w-full overflow-auto rounded-sm border p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">
             {detail}
           </pre>
         ) : null}

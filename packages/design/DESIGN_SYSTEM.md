@@ -1,4 +1,4 @@
-# somewhatintelligent Design System — "DRAFT"
+# Design System — "DRAFT"
 
 **The UI is a technical drawing.** Warm drafting paper, graphite ink,
 ruled lines, generous rounding. Nothing glows, nothing blurs, nothing
@@ -12,11 +12,11 @@ surface, and every future agent run is held to it.
 
 ## 1. The five rules
 
-1. **Monochrome ink on paper.** One warm graphite ramp on warm drafting
-   paper (inverted for dark mode). The only functional colors: **rust**
-   (`--color-rust`) for destructive/danger — the red pen — and a muted
-   **approval green** (`--color-success`) for positive outcomes. Process
-   states (warning, info) stay ink-gray and are carried by border style.
+1. **Neutral by default, one accent slot.** A grayscale ramp for
+   backgrounds/surfaces/text, plus a single `primary` accent (the brand
+   slot — see README.md) and the conventional `destructive` / `success` /
+   `warning` triad. See src/tokens/brand.ts for the literal values and
+   src/tokens/colors.ts for the full semantic token contract.
 2. **No soft shadows. No blur. Ever.** `box-shadow` blur radii are 0
    everywhere (the generated `--soft-*`/`--neo-*` variables resolve to
    hard lines), `backdrop-filter` does not exist, and the legacy `glass`
@@ -38,24 +38,17 @@ surface, and every future agent run is held to it.
 
 ## 2. Palette
 
-Semantic tokens (theme-aware, from `src/tokens/colors.ts` → codegen):
+The full semantic token contract (theme-aware, from `src/tokens/colors.ts`
+→ codegen) is documented in README.md — background/foreground, card,
+popover, primary(+hover), secondary, muted, accent, destructive(+hover),
+success, warning, border(+strong), input, ring, surface-sunken/-raised,
+inverse, chart-1..5, and the sidebar set. Every name in that contract is
+the only vocabulary component source (`@si/ui`) may use for color.
 
-| Token                                       | Light                                     | Dark                           | Use                                   |
-| ------------------------------------------- | ----------------------------------------- | ------------------------------ | ------------------------------------- |
-| `--color-bg`                                | drafting paper `hsl(45 33% 96%)`          | graphite board `hsl(45 7% 8%)` | page                                  |
-| `--color-surface` / `-raised` / `-sunken`   | white sheet / fresh sheet / recessed well | lifted graphite steps          | containers                            |
-| `--color-border`                            | `hsl(45 6% 52%)` (3.4:1)                  | `hsl(45 5% 40%)`               | the standard rule                     |
-| `--color-border-strong`                     | `hsl(45 8% 30%)`                          | `hsl(45 7% 58%)`               | heavy rule, inputs                    |
-| `--color-text` / `-secondary` / `-tertiary` | ink / annotation / faint pencil           | chalk equivalents              | type                                  |
-| `--color-ink` (+`-hover`)                   | near-black                                | chalk-white                    | PRIMARY accent: buttons, links, focus |
-| `--color-rust` (+`-hover`)                  | `hsl(14 55% 38%)`                         | brightened                     | destructive ONLY                      |
-| `--color-success` (+`-hover`)               | approval green `hsl(140 32% 27%)`         | brightened                     | positive outcomes, solid border       |
-| `--color-warning` (+`-hover`)               | ink-600 gray                              | chalk                          | pending/attention, DASHED border      |
-| `--color-info` (+`-hover`)                  | ink-500 gray                              | chalk                          | informational, DOTTED border          |
-
-Raw theme-invariant ramps for illustration/OG surfaces: `--color-ink-950…200`,
-`--color-paper-0…300`, and `--color-status-*` pairings. Never use raw steps
-for product UI chrome — semantic tokens only.
+Raw theme-invariant ramps for illustration/OG surfaces: `--color-neutral-*`,
+`--color-accent-*` (src/tokens/brand.ts). Never use raw steps for product
+UI chrome — semantic tokens only (enforced by `bun run brand-lint
+--strict-semantic` on ui component directories).
 
 Contrast is enforced: `bun run audit:contrast` in `packages/design` must
 report zero WCAG-AA failures (run automatically by `bun run build`).
@@ -82,41 +75,40 @@ commit to solid on hover), `neo` = chisel, `glass` = opaque sheet.
 
 ## 5. Component conventions
 
-- **Buttons**: full pill. `default`/`strong` = solid ink fill (strong adds
-  the drafted offset); `outline` = 1.5px heavy rule; `link` = dotted
-  underline that commits to solid on hover; `destructive` = rust. Focus is
-  a 2px solid ink ring, offset — a drafted focus rectangle, never a glow.
-- **Badges**: status stamps carry state by border style — `soft` (success,
-  solid green rule), `warn` (dashed), `info` (dotted), `danger` (solid
-  rust), `contrast` (graphite fill). Accent fills: `ink|rust|success|warning`
-  (+`-brutal`, `-glass` compounds).
-- **Alerts**: same grammar — success solid, warning dashed, info dotted,
-  destructive rust.
+- **Buttons**: full pill. `default`/`strong` = solid primary fill (strong
+  adds the drafted offset); `outline` = 1.5px heavy rule; `link` = dotted
+  underline that commits to solid on hover; `destructive` = the destructive
+  token. Focus is a 2px solid ring, offset — a drafted focus rectangle,
+  never a glow.
+- **Badges / Alerts**: status carries by border style — solid (success),
+  dashed (warning), solid (destructive) — never by hue alone.
 - **Overlays** (dialog/sheet/drawer): opaque sheet + rule + hard offset;
   scrim is plain translucent black (`bg-black/20`), never blurred.
-- **Tooltips**: solid ink chip, paper text.
-- **The mark**: a drafting registration mark (circle, cardinal ticks,
-  plotted center) — single hook-free SVG in
-  `packages/ui/src/components/ui/logo/logo-icon.tsx`, satori-safe, used by
-  app and OG images alike. Wordmark: lowercase `somewhatintelligent` in
-  Aile Light.
+- **Tooltips**: solid `inverse` chip, `inverse-foreground` text.
+- **The mark**: the wordmark/logo module is a per-consumer brand surface
+  (see `@si/ui`'s logo component) — this package only supplies the
+  color/type tokens it's drawn with.
 
 ## 6. Do / Don't
 
-- DO communicate hierarchy with ink weight (border width + lightness step)
-  before reaching for a new token.
-- DO use `type-mono-label` (uppercase Iosevka, tracked) for metadata — it
+- DO communicate hierarchy with border width + lightness step before
+  reaching for a new token.
+- DO use `type-mono-label` (uppercase, tracked mono) for metadata — it
   reads as a dimension annotation.
 - DON'T add `box-shadow` with a blur radius, `backdrop-filter`, gradients,
   or translucency on content surfaces. If a diff introduces one, it's wrong.
-- DON'T add chromatic accents. New states must map onto the border grammar.
-  (Exception already spent: rust for danger, green for success.)
-- DON'T reference raw `--color-ink-*`/`--color-paper-*` steps in product UI.
-- DON'T reintroduce typefaces. Iosevka Aile + Iosevka only.
+- DON'T add chromatic accents beyond the fixed contract (primary/
+  destructive/success/warning). New states must map onto the border
+  grammar instead.
+- DON'T reference raw `--color-neutral-*`/`--color-accent-*` steps in
+  product UI — semantic tokens only (see README.md).
+- DON'T hardcode a hex/HSL literal or a brand string in component source —
+  it belongs in `src/tokens/brand.ts`. `bun run brand-lint` enforces this.
 
 ## 7. Editing the system
 
-Tokens live in `packages/design/src/tokens/*` (TS source of truth) →
-`bun run codegen` regenerates `generated/css/*` → `bun run audit:contrast`
-gates. Never hand-edit `generated/css`. After token changes, run
-`bun run build` in `packages/design` and commit the regenerated CSS.
+See README.md for the full palette → semantic → component architecture
+and the rebrand workflow. Short version: tokens live in `src/tokens/*` (TS
+source of truth) → `bun run codegen` regenerates `generated/css/*` →
+`bun run audit:contrast` gates. Never hand-edit `generated/css`. After
+token changes, run `bun run build` and commit the regenerated CSS.

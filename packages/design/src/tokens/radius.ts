@@ -1,9 +1,9 @@
 /**
- * somewhatintelligent Radius Tokens — "DRAFT" (blueprint monochrome)
+ * Radius Tokens
  *
- * Rounded AND ruled: generous corner radii soften the crisp ink rules —
- * a drafted drawing with a warm hand. `sm` (10px) is THE default for
- * nearly every surface; larger tokens are for bigger cards and panels.
+ * Generous corner radii soften the system's crisp, hard-edged borders and
+ * shadows (see shadows.ts). `sm` (10px) is THE default for nearly every
+ * surface; larger tokens are for bigger cards and panels.
  */
 
 export const radius = {

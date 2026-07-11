@@ -20,7 +20,7 @@ const meta = {
     detail: { control: "select", options: ["bare", "serifs", "crossbars", "brackets", "full"] },
     colorScheme: {
       control: "select",
-      options: ["primary", "light", "mono-paper", "mono-void", "on-rust", "on-success"],
+      options: ["primary", "light", "mono-light", "mono-dark", "on-destructive", "on-success"],
     },
   },
   args: {
@@ -34,10 +34,10 @@ const meta = {
   },
   decorators: [
     (Story, { args }) => {
-      const dark = !["light", "mono-void"].includes(args.colorScheme ?? "primary");
+      const dark = !["light", "mono-dark"].includes(args.colorScheme ?? "primary");
       return (
         <div
-          className={`p-12 rounded-sm border ${dark ? "bg-bg border-border text-text" : "bg-[hsl(40_15%_93%)] border-border text-[hsl(30_30%_8%)]"}`}
+          className={`p-12 rounded-sm border ${dark ? "bg-bg border-border text-foreground" : "bg-[hsl(40_15%_93%)] border-border text-[hsl(30_30%_8%)]"}`}
           data-theme={dark ? "dark" : "light"}
         >
           <Story />
@@ -92,14 +92,14 @@ export const AllAnimations: Story = {
       <div className="flex flex-col gap-10">
         <button
           type="button"
-          className="self-start text-2xs uppercase tracking-caps text-text-tertiary bg-surface-raised border border-border px-4 py-2 rounded-sm hover:text-ink hover:border-ink transition-colors"
+          className="self-start text-2xs uppercase tracking-caps text-muted-foreground/80 bg-surface-raised border border-border px-4 py-2 rounded-sm hover:text-foreground hover:border-foreground transition-colors"
           onClick={() => setKey((k) => k + 1)}
         >
           Replay all
         </button>
         {ANIMATIONS.map((a) => (
           <div key={a} className="flex flex-col gap-2">
-            <span className="text-mono-label text-text-tertiary uppercase">{a}</span>
+            <span className="text-mono-label text-muted-foreground/80 uppercase">{a}</span>
             <LogoAnimated animation={a} layout="horizontal" triggerKey={key} />
           </div>
         ))}
@@ -108,7 +108,7 @@ export const AllAnimations: Story = {
   },
   decorators: [
     (Story) => (
-      <div className="bg-bg p-12 rounded-sm border border-border text-text" data-theme="dark">
+      <div className="bg-bg p-12 rounded-sm border border-border text-foreground" data-theme="dark">
         <Story />
       </div>
     ),
@@ -154,7 +154,7 @@ export const LightScramble: Story = {
 
 export const BloodGlitch: Story = {
   name: "Color / Blood + Glitch",
-  args: { animation: "glitch", colorScheme: "on-rust" },
+  args: { animation: "glitch", colorScheme: "on-destructive" },
 };
 
 // ── Matrix: Animation × Layout ──
@@ -163,7 +163,7 @@ export const AnimationLayoutMatrix: Story = {
   name: "Matrix / Animation × Layout",
   decorators: [
     (Story) => (
-      <div className="bg-bg p-12 rounded-sm border border-border text-text" data-theme="dark">
+      <div className="bg-bg p-12 rounded-sm border border-border text-foreground" data-theme="dark">
         <Story />
       </div>
     ),
@@ -175,7 +175,7 @@ export const AnimationLayoutMatrix: Story = {
       <div className="flex flex-col gap-6">
         <button
           type="button"
-          className="self-start text-2xs uppercase tracking-caps text-text-tertiary bg-surface-raised border border-border px-4 py-2 rounded-sm hover:text-ink hover:border-ink transition-colors"
+          className="self-start text-2xs uppercase tracking-caps text-muted-foreground/80 bg-surface-raised border border-border px-4 py-2 rounded-sm hover:text-foreground hover:border-foreground transition-colors"
           onClick={() => setKey((k) => k + 1)}
         >
           Replay all
@@ -185,7 +185,10 @@ export const AnimationLayoutMatrix: Story = {
             <tr>
               <th />
               {layouts.map((l) => (
-                <th key={l} className="px-6 pb-3 text-mono-label text-text-tertiary font-normal">
+                <th
+                  key={l}
+                  className="px-6 pb-3 text-mono-label text-muted-foreground/80 font-normal"
+                >
                   {l}
                 </th>
               ))}
@@ -194,7 +197,9 @@ export const AnimationLayoutMatrix: Story = {
           <tbody>
             {ANIMATIONS.map((a) => (
               <tr key={a}>
-                <td className="pr-6 py-4 text-mono-label text-text-secondary align-middle">{a}</td>
+                <td className="pr-6 py-4 text-mono-label text-muted-foreground align-middle">
+                  {a}
+                </td>
                 {layouts.map((l) => (
                   <td key={l} className="px-6 py-4 align-middle">
                     <LogoAnimated

@@ -23,7 +23,7 @@
     "test": "vp test run"
   },
   "dependencies": {
-    "@somewhatintelligent/kit": "0.0.2",
+    "@somewhatintelligent/kit": "0.0.3-beta.1783733618.d38901c",
     "aws4fetch": "^1.0.20",
     "drizzle-orm": "catalog:"
   },

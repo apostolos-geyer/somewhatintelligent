@@ -13,7 +13,7 @@ describe("Version endpoint", () => {
     expect(res.headers.get("content-type")).toContain("application/json");
     const body = (await res.json()) as Record<string, string>;
     expect(body.worker).toBe("guestlist");
-    expect(body.version).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(body.version).toMatch(/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/);
     expect(body.version).not.toBe("0.0.0-dev");
     expect(body.commit).toMatch(/^[0-9a-f]{40}$/);
     expect(typeof body.environment).toBe("string");

@@ -1,5 +1,11 @@
-/* Iosevka Aile — the quasi-proportional voice of the blueprint system.
-   Display, body, editorial. */
+/* FONT SURFACE — consumer-swappable (see the doc comment atop
+   src/tokens/typography.ts). Iosevka Aile / Iosevka are the shipped
+   defaults, not a fixed brand identity: swap the vendored files under
+   src/fonts/, replace the @font-face blocks below, and repoint
+   `fontStacks` in typography.ts. Keep the `font-family` names used here
+   in sync with the `family` strings in typography.ts.
+
+   Iosevka Aile — the quasi-proportional voice. Display, body, editorial. */
 @font-face {
   font-family: "Iosevka Aile";
   src: url("./fonts/iosevka-aile/IosevkaAile-Light.woff2") format("woff2");

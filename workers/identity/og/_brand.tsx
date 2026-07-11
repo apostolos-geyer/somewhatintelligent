@@ -1,5 +1,5 @@
 import { LogoIcon } from "@si/ui/components/logo";
-import { platformConfig } from "@si/config";
+import { appConfig } from "../src/app.config";
 import { APP_PRODUCT_NAME } from "../src/app-brand";
 
 /**
@@ -9,10 +9,10 @@ import { APP_PRODUCT_NAME } from "../src/app-brand";
  */
 export function OgBrand({ iconSize, maxWidth = 1040 }: { iconSize: number; maxWidth?: number }) {
   const gap = iconSize * 0.12;
-  // The wordmark is long ("somewhatintelligent") and Iosevka Aile is wide —
-  // clamp the size so mark + gap + wordmark always fit the canvas width.
-  // 0.62em is a safe average advance for Aile Light incl. tracking.
-  const name = platformConfig.brand.name;
+  // Brand names can be long and Iosevka Aile is wide — clamp the size so
+  // mark + gap + wordmark always fit the canvas width. 0.62em is a safe
+  // average advance for Aile Light incl. tracking.
+  const name = appConfig.brand.name;
   const fitSize = (maxWidth - iconSize - gap) / (name.length * 0.62);
   const wordmarkSize = Math.min(iconSize * 0.72, fitSize);
   const subtitleSize = Math.max(7, iconSize * 0.15);
@@ -37,7 +37,7 @@ export function OgBrand({ iconSize, maxWidth = 1040 }: { iconSize: number; maxWi
             lineHeight: 1,
           }}
         >
-          {platformConfig.brand.name}
+          {appConfig.brand.name}
         </span>
       </div>
       <span

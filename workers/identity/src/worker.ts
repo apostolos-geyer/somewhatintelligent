@@ -1,5 +1,7 @@
-// Hand-written entry; do not wrap in a kit factory. Rationale in
-// docs/ARCHITECTURE.md §3.3 + §4.4.
+// Hand-written entry; do not wrap in a kit factory — this is the one place
+// that must own the raw request/response lifecycle (execution-context setup,
+// the /__version short-circuit) before handing off to TanStack Start's
+// server entry.
 import startEntry from "@tanstack/react-start/server-entry";
 import { extractPlatformStartContext } from "@somewhatintelligent/kit/react-start";
 import { runWithExecutionContext } from "@somewhatintelligent/kit/execution-context";
@@ -7,7 +9,7 @@ import { handleVersionRequest } from "@somewhatintelligent/kit/version";
 import { devEnvelopeStamper } from "./lib/platform";
 import { APP_COMMIT, APP_VERSION } from "./lib/version";
 
-declare module "@tanstack/react-start" {
+declare module "@tanstack/react-router" {
   interface Register {
     server: { requestContext: { requestId: string; callerApp?: string } };
   }
@@ -29,8 +31,10 @@ export default {
       if (version) return version;
 
       // Dev-direct stamper mints an attestation envelope from the session cookie
-      // so the principal (and the admin gate / admin server fns) resolves without
-      // a bouncer in front. Hard no-op outside dev — see ARCHITECTURE.md §4.5.
+      // so the principal (and the admin gate / admin server fns) resolves
+      // without a bouncer in front. Hard no-op outside dev (see
+      // `createPlatformStartApp`'s `devEnvelopeSigner`/`devEnvelopeStamper` in
+      // `@somewhatintelligent/kit/react-start`).
       const { request: stamped, setCookies } = devEnvelopeStamper
         ? await devEnvelopeStamper(request)
         : { request, setCookies: [] as string[] };

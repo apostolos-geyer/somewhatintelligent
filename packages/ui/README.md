@@ -1,6 +1,6 @@
 # @si/ui
 
-Component library for the platform, built on [Base UI](https://base-ui.com) primitives and styled per the design system in `packages/design/DESIGN_SYSTEM.md`.
+Component library for the platform, built on [Base UI](https://base-ui.com) primitives and styled per the design system in `templates/design/DESIGN_SYSTEM.md`.
 
 ## Quick start
 
@@ -38,11 +38,11 @@ Stories live next to their components (`*.stories.tsx`).
 
 ## Design system
 
-Every component follows the design system defined in `packages/design/DESIGN_SYSTEM.md`. The key principles:
+Every component follows the design system defined in `templates/design/DESIGN_SYSTEM.md`. The key principles:
 
-- **Monochrome ink on paper** — one warm graphite ramp on warm drafting paper (inverted for dark mode); rust for destructive, muted green for success
+- **Monochrome foreground on background** — one neutral ramp, inverted for dark mode; `destructive` for danger, `success` for confirmation
 - **No soft shadows, no blur** — depth is drawn with border treatment and hard-offset lines, never a diffused shadow or `backdrop-filter`
-- **Depth is border treatment** — solid / dashed / dotted rules carry emphasis and state; `shadow-brutal-*` adds a hard ink offset
+- **Depth is border treatment** — solid / dashed / dotted rules carry emphasis and state; `shadow-brutal-*` adds a hard offset
 - **Generous rounding** — `rounded-sm` (10px) is the control default, scaling up to `rounded-xl` (30px) for large surfaces
 - **Iosevka is the voice** — `Iosevka Aile` for display/body/editorial, `Iosevka` (mono) for code, IDs, and uppercase annotation labels
 
@@ -54,12 +54,12 @@ Components accept material variants through their existing `variant` props. The 
 import { surfaceMaterials, interactiveMaterials } from "@si/ui/lib/materials";
 ```
 
-| Material | Surface use                                                          | Interactive use                                                  |
-| -------- | -------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `brutal` | Cards, alerts — solid rule + drafted ink offset (`shadow-brutal-sm`) | Buttons, badges — offset grows on hover, collapses on press      |
-| `soft`   | Secondary containers — dashed rule, flat                             | Secondary buttons/badges — dashed rule commits to solid on hover |
-| `neo`    | Neumorphic raised/inset                                              | Toggle-like — flips raised to inset                              |
-| `glass`  | Legacy name — opaque sheet + solid rule (no blur)                    | Legacy name — rule strengthens on hover                          |
+| Material | Surface use                                                      | Interactive use                                                  |
+| -------- | ---------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `brutal` | Cards, alerts — solid rule + drafted offset (`shadow-brutal-sm`) | Buttons, badges — offset grows on hover, collapses on press      |
+| `soft`   | Secondary containers — dashed rule, flat                         | Secondary buttons/badges — dashed rule commits to solid on hover |
+| `neo`    | Neumorphic raised/inset                                          | Toggle-like — flips raised to inset                              |
+| `glass`  | Legacy name — opaque sheet + solid rule (no blur)                | Legacy name — rule strengthens on hover                          |
 
 ---
 
@@ -82,12 +82,12 @@ import { surfaceMaterials, interactiveMaterials } from "@si/ui/lib/materials";
 
 ### Actions
 
-| Component     | Description                                                                                                             |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `Button`      | Primary action — variants: `default`, `secondary`, `outline`, `ghost`, `destructive`, `neo`, `glass`, `success`, `link` |
-| `ButtonGroup` | Group buttons with separators                                                                                           |
-| `Toggle`      | Pressable on/off button                                                                                                 |
-| `ToggleGroup` | Exclusive or multi-select toggle set                                                                                    |
+| Component     | Description                                                                                                                                  |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Button`      | Primary action — variants: `default`, `strong`, `secondary`, `outline`, `ghost`, `inverse`, `destructive`, `neo`, `glass`, `success`, `link` |
+| `ButtonGroup` | Group buttons with separators                                                                                                                |
+| `Toggle`      | Pressable on/off button                                                                                                                      |
+| `ToggleGroup` | Exclusive or multi-select toggle set                                                                                                         |
 
 ### Overlays
 
@@ -103,14 +103,15 @@ import { surfaceMaterials, interactiveMaterials } from "@si/ui/lib/materials";
 
 ### Data display
 
-| Component | Description                                       |
-| --------- | ------------------------------------------------- |
-| `Avatar`  | User image with fallback                          |
-| `Badge`   | Status/label indicator with accent color variants |
-| `Kbd`     | Keyboard shortcut display                         |
-| `Item`    | Rich list item with media, content, actions       |
-| `Spinner` | Pulsing loading indicator                         |
-| `Alert`   | Inline notification with optional action          |
+| Component        | Description                                                  |
+| ---------------- | ------------------------------------------------------------ |
+| `Avatar`         | User image with fallback                                     |
+| `Badge`          | Status/label indicator with accent color variants            |
+| `Kbd`            | Keyboard shortcut display                                    |
+| `Item`           | Rich list item with media, content, actions                  |
+| `Spinner`        | Pulsing loading indicator                                    |
+| `Alert`          | Inline notification with optional action                     |
+| `SearchCombobox` | Debounced async search input with keyboard-navigable results |
 
 ### Form primitives
 
@@ -222,7 +223,7 @@ Each field component is accessed via `field.<Component>` inside `form.AppField`'
 <field.TextareaField label="Bio" placeholder="..." rows={4} description="Max 280 chars." />
 
 // EmailField — auto mail icon, type="email", autoComplete="email"
-<field.EmailField label="Email" suffix="@si.example" />
+<field.EmailField label="Email" suffix="@example.com" />
 
 // PasswordField — lock icon, eye toggle, password/text type switch
 <field.PasswordField label="Password" autoComplete="new-password" showLockIcon showToggle />

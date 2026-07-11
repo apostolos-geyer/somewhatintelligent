@@ -98,7 +98,7 @@ export const AllSizes: Story = {
       <div className="flex flex-col gap-4">
         {sizes.map((size) => (
           <div key={size} className="flex items-center gap-3">
-            <span className="type-mono-label w-20 text-text-tertiary">{size}</span>
+            <span className="type-mono-label w-20 text-muted-foreground/80">{size}</span>
             <ToggleGroup size={size}>
               <ToggleGroupItem value="left" aria-label="Align left">
                 <AlignLeft className="size-4" />

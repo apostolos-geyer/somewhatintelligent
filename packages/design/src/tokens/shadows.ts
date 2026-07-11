@@ -1,16 +1,18 @@
 /**
- * Platform Shadow Tokens — "DRAFT" (blueprint monochrome)
+ * Shadow Tokens
  *
  * There are NO soft shadows and NO blur anywhere in this system. Depth is
- * drawn, not diffused: every former shadow family now resolves to crisp,
- * zero-blur ink lines, and real elevation should be expressed with border
- * treatment (solid / dashed / dotted — see DESIGN_SYSTEM.md).
+ * drawn, not diffused: every shadow family resolves to crisp, zero-blur
+ * lines, and real elevation should be expressed with border treatment
+ * (solid / dashed / dotted — see DESIGN_SYSTEM.md). This is a structural
+ * choice of the template's material language, independent of brand color —
+ * retinting src/tokens/brand.ts does not change it.
  *
- * The families keep their historical names/keys so the generated CSS
- * variable surface (--brutal-*, --soft-*, --neo-*, --glass-*) stays stable
- * for consumers, but their VALUES are all hard-edged:
- * - Brutal: hard ink offset — a drafted duplicate line. The primary
- *   "elevation" effect for cards/CTAs that want weight.
+ * The families keep their names so the generated CSS variable surface
+ * (--brutal-*, --soft-*, --neo-*, --glass-*) stays stable for consumers,
+ * but their VALUES are all hard-edged:
+ * - Brutal: hard offset duplicate line. The primary "elevation" effect
+ *   for cards/CTAs that want weight.
  * - Soft: a single hard rule under the element (blur 0). Legacy slots;
  *   prefer borders.
  * - Neo: hard chisel for toggle-like elements (blur 0).
@@ -21,7 +23,7 @@
  */
 
 // ============================================
-// Brutal — hard offset ink lines (the blueprint elevation)
+// Brutal — hard offset lines (the primary elevation effect)
 // Keys become CSS vars: --{familyPrefix}-{key}
 // ============================================
 
@@ -54,9 +56,10 @@ export const softShadows = {
 // ============================================
 
 export const neoShadows = {
-  /** HSL base colors for the two directions */
+  /** HSL base colors for the two directions — achromatic by design so
+   *  retinting src/tokens/brand.ts never has to touch this file. */
   colors: {
-    light: { darkHsl: "45 8% 8%", lightHsl: "0 0% 100%" },
+    light: { darkHsl: "0 0% 8%", lightHsl: "0 0% 100%" },
     dark: { darkHsl: "0 0% 0%", lightHsl: "0 0% 100%" },
   },
   light: {

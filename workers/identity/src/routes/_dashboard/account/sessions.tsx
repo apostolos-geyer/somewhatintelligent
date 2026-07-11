@@ -83,9 +83,9 @@ function SessionsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-text-tertiary">Loading sessions{"\u2026"}</p>
+            <p className="text-sm text-muted-foreground/80">Loading sessions{"\u2026"}</p>
           ) : sessions.length === 0 ? (
-            <p className="text-sm text-text-tertiary">
+            <p className="text-sm text-muted-foreground/80">
               No active sessions. One would imagine you are a ghost.
             </p>
           ) : (
@@ -98,7 +98,7 @@ function SessionsPage() {
                         <span className="flex items-center gap-2">
                           {s.userAgent?.slice(0, 40) ?? "Unknown device"}
                           {s.isCurrent && (
-                            <Badge variant="ink" size="sm">
+                            <Badge variant="default" size="sm">
                               Current
                             </Badge>
                           )}

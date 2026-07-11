@@ -1,21 +1,21 @@
 // The platform apex we control, carried with a leading dot
-// (`.somewhatintelligent.ca`). This is the SAME string guestlist uses as the
-// cross-subdomain cookie `Domain` (workers/guestlist AUTH_DOMAIN) and that the
+// (e.g. `.platform.example.com`). This is the SAME string guestlist uses as
+// the cross-subdomain cookie `Domain` (guestlist's AUTH_DOMAIN) and that the
 // auth server turns into its `*.{apex}` trustedOrigins
-// (@somewhatintelligent/auth's server config). It is set per environment as the AUTH_DOMAIN
-// var in identity's wrangler.jsonc (`.somewhatintelligent.ca` for staging/production),
-// with `.somewhatintelligent.localhost` supplied by `.dev.vars` in local dev, and
-// exposed to the bundle by the vite `define` allowlist (see vite.config.ts
-// CLIENT_VARS).
+// (`@somewhatintelligent/auth`'s server config). It is set per environment as
+// the AUTH_DOMAIN var in identity's wrangler.jsonc (the apex for
+// staging/production), with a `.localhost` variant supplied by `.dev.vars` in
+// local dev, and exposed to the bundle by the vite `define` allowlist (see
+// vite.config.ts CLIENT_VARS).
 const AUTH_DOMAIN = import.meta.env.AUTH_DOMAIN as string | undefined;
 
 /**
  * Is `host` inside the platform's controlled domain — the apex itself or any
  * subdomain of it, at any depth? `authDomain` carries a leading dot
- * (`.somewhatintelligent.ca`), so the apex is `authDomain` without that dot and every
- * subdomain ends with it (`acme.somewhatintelligent.ca` →
- * `.somewhatintelligent.ca`). We own every host under the apex, so this is the whole
- * trust decision — no per-app allowlist to keep in sync.
+ * (e.g. `.platform.example.com`), so the apex is `authDomain` without that
+ * dot and every subdomain ends with it (`acme.platform.example.com` →
+ * `.platform.example.com`). We own every host under the apex, so this is the
+ * whole trust decision — no per-app allowlist to keep in sync.
  */
 export function isPlatformHost(host: string, authDomain: string | undefined): boolean {
   if (!authDomain) return false;
@@ -62,7 +62,7 @@ export function resolveReturnTo(
  * to that exact URL only when it lives under our own apex.
  *
  * The trust rule is "any host we control" — the apex plus every subdomain, in
- * every environment (`.somewhatintelligent.localhost` locally, `.somewhatintelligent.ca` in
+ * every environment (a `.localhost` apex locally, the real apex in
  * staging/prod). Because we own the whole zone, a new app on a new subdomain
  * is trusted by construction, with nothing to add here. It deliberately mirrors better-auth's
  * `*.{apex}` trustedOrigins so this client-side guard and the server-side

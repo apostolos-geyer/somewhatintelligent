@@ -1,9 +1,11 @@
-import type { LogoColorScheme, LogoIconProps } from "./types";
+import { MARK_STROKE, markPaths, brand } from "./brand";
+import type { LogoIconProps } from "./types";
 
 /**
- * The somewhatintelligent brand mark — a drafting REGISTRATION MARK:
- * a circle with four tick lines crossing its cardinal points and a plotted
- * center. The symbol printers and drafters use to line a drawing up.
+ * The mark — a drafting REGISTRATION MARK: a circle with four tick lines
+ * crossing its cardinal points and a plotted center, the symbol printers
+ * and drafters use to line a drawing up. Its geometry lives in `./brand`
+ * (`markPaths`) so a consumer can swap the shape without touching this file.
  *
  * This is the SINGLE source of the mark, used by the app AND by satori/OG
  * image generation, so it must stay a hook-free SVG (no lucide components —
@@ -11,17 +13,10 @@ import type { LogoColorScheme, LogoIconProps } from "./types";
  * definition that works in both worlds.
  *
  * Recolors by `colorScheme` with concrete hex (CSS custom properties don't
- * resolve in satori). The legacy parametric "dual-A" props are accepted for
- * API compatibility but ignored — the mark is a single-stroke symbol.
+ * resolve in satori) — see `./brand`'s `MARK_STROKE`. The legacy parametric
+ * "dual-A" props are accepted for API compatibility but ignored — the mark
+ * is a single-stroke symbol.
  */
-const SCHEME_STROKE: Record<LogoColorScheme, string> = {
-  primary: "#F8F7F1", // paper ink — for dark surfaces
-  light: "#171613", // graphite ink — for light surfaces
-  "mono-paper": "#F8F7F1", // paper
-  "mono-void": "#171613", // ink
-  "on-rust": "#F8F7F1", // paper on rust
-  "on-success": "#F8F7F1", // paper on success
-};
 
 export function LogoIcon({
   ref,
@@ -54,7 +49,7 @@ export function LogoIcon({
   rightOuterHairline: _rightOuterHairline,
   ...svgProps
 }: LogoIconProps) {
-  const stroke = colors?.stroke ?? SCHEME_STROKE[colorScheme] ?? "currentColor";
+  const stroke = colors?.stroke ?? MARK_STROKE[colorScheme] ?? "currentColor";
   // Mirror lucide's `absoluteStrokeWidth` (constant ~1.75px regardless of size):
   // strokeWidth is in viewBox units, so scale it by 24/size.
   const strokeWidth = (1.75 * 24) / Number(size);
@@ -70,20 +65,19 @@ export function LogoIcon({
       strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
-      aria-label="somewhatintelligent"
+      aria-label={brand.ariaLabel}
       className={className}
       style={style}
       {...svgProps}
     >
       {/* Registration circle */}
-      <circle cx="12" cy="12" r="6.5" />
+      <circle cx="12" cy="12" r={markPaths.circleRadius} />
       {/* Cardinal tick lines — crossing the circle's edge like plot marks */}
-      <path d="M12 2.5v4" />
-      <path d="M12 17.5v4" />
-      <path d="M2.5 12h4" />
-      <path d="M17.5 12h4" />
+      {markPaths.ticks.map((d) => (
+        <path key={d} d={d} />
+      ))}
       {/* Plotted center point */}
-      <circle cx="12" cy="12" r="0.9" fill={stroke} stroke="none" />
+      <circle cx="12" cy="12" r={markPaths.centerRadius} fill={stroke} stroke="none" />
     </svg>
   );
 }

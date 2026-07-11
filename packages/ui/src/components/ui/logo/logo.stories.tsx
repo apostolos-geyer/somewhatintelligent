@@ -5,7 +5,7 @@ import type { LogoColorScheme, LogoLayout } from "./types";
 const LAYOUTS: LogoLayout[] = ["icon", "horizontal", "stacked", "compact"];
 
 function SchemeBg({ scheme, children }: { scheme: LogoColorScheme; children: React.ReactNode }) {
-  const dark = !["light", "mono-void"].includes(scheme);
+  const dark = !["light", "mono-dark"].includes(scheme);
   return (
     <div
       className={`inline-flex p-8 rounded-sm border ${dark ? "bg-bg border-border" : "bg-[hsl(40_15%_93%)] border-border"}`}
@@ -36,7 +36,7 @@ const meta = {
     },
     colorScheme: {
       control: "select",
-      options: ["primary", "light", "mono-paper", "mono-void", "on-rust", "on-success"],
+      options: ["primary", "light", "mono-light", "mono-dark", "on-destructive", "on-success"],
     },
     size: { control: { type: "range", min: 16, max: 256, step: 8 } },
   },
@@ -50,7 +50,7 @@ const meta = {
   decorators: [
     (Story, { args }) => (
       <SchemeBg scheme={args.colorScheme ?? "primary"}>
-        <div className="text-text">
+        <div className="text-foreground">
           <Story />
         </div>
       </SchemeBg>
@@ -71,7 +71,7 @@ export const AllLayouts: Story = {
     <div className="flex flex-col gap-10 items-start">
       {LAYOUTS.map((l) => (
         <div key={l} className="flex flex-col gap-2">
-          <span className="text-mono-label text-text-secondary uppercase">{l}</span>
+          <span className="text-mono-label text-muted-foreground uppercase">{l}</span>
           <Logo {...args} layout={l} />
         </div>
       ))}
@@ -107,13 +107,13 @@ export const NavHeader: Story = {
   decorators: [
     (Story) => (
       <div
-        className="flex items-center gap-6 bg-surface px-4 py-2 border-b border-border"
+        className="flex items-center gap-6 bg-surface-raised px-4 py-2 border-b border-border"
         data-theme="dark"
       >
-        <div className="text-text">
+        <div className="text-foreground">
           <Story />
         </div>
-        <nav className="flex gap-4 text-sm text-text-secondary">
+        <nav className="flex gap-4 text-sm text-muted-foreground">
           <span>Blog</span>
           <span>Projects</span>
           <span>About</span>
@@ -137,20 +137,20 @@ export const ColorLayoutMatrix: Story = {
   decorators: [],
   render: () => (
     <div className="flex flex-col gap-8">
-      {(["primary", "light", "mono-paper", "mono-void", "on-rust", "on-success"] as const).map(
-        (cs) => (
-          <div key={cs} className="flex flex-col gap-2">
-            <span className="text-mono-label text-ink uppercase">{cs}</span>
-            <SchemeBg scheme={cs}>
-              <div className="flex gap-8 items-center text-text">
-                <Logo layout="icon" size={48} colorScheme={cs} />
-                <Logo layout="horizontal" colorScheme={cs} />
-                <Logo layout="compact" colorScheme={cs} />
-              </div>
-            </SchemeBg>
-          </div>
-        ),
-      )}
+      {(
+        ["primary", "light", "mono-light", "mono-dark", "on-destructive", "on-success"] as const
+      ).map((cs) => (
+        <div key={cs} className="flex flex-col gap-2">
+          <span className="text-mono-label text-foreground uppercase">{cs}</span>
+          <SchemeBg scheme={cs}>
+            <div className="flex gap-8 items-center text-foreground">
+              <Logo layout="icon" size={48} colorScheme={cs} />
+              <Logo layout="horizontal" colorScheme={cs} />
+              <Logo layout="compact" colorScheme={cs} />
+            </div>
+          </SchemeBg>
+        </div>
+      ))}
     </div>
   ),
 };

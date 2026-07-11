@@ -23,7 +23,7 @@ import {
   KeyRoundIcon,
   Building2Icon,
 } from "lucide-react";
-import { PlatformNav, type PlatformApp } from "@si/ui/components/platform-nav";
+import { PlatformNav, type PlatformApp } from "@/components/platform-nav";
 import type { PlatformSession } from "@somewhatintelligent/auth";
 import { SidebarUserMenu } from "@/components/dashboard/sidebar-user-menu";
 import { APP_COMMIT, APP_VERSION } from "@/lib/version";

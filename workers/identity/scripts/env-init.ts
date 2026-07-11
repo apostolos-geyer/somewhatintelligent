@@ -10,7 +10,7 @@ import {
 const pkgDir = resolve(dirname(import.meta.path), "..");
 const label = "workers/identity";
 
-// identity runs dev-direct on `identity.somewhatintelligent.localhost`: bouncer is not
+// identity runs dev-direct on `identity.platform.example.localhost`: bouncer is not
 // in the path, so the app self-mints attestation envelopes with the well-known
 // dev key via kit's dev-envelope stamper (needs BNC_ATT_KID + BNC_ATT_PRIV;
 // src/lib/platform.ts reads both). wrangler.jsonc's top level is staging, so

@@ -3,6 +3,7 @@ import { buttonVariants } from "@si/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -63,33 +64,37 @@ export function MemberActions({
           ⋯
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Change role</DropdownMenuLabel>
-          <DropdownMenuItem
-            disabled={currentRole === "owner"}
-            onClick={() => void onChangeRole("owner")}
-          >
-            Owner
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            disabled={currentRole === "admin" || isOnlyOwner}
-            onClick={() => void onChangeRole("admin")}
-          >
-            Admin
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            disabled={currentRole === "member" || isOnlyOwner}
-            onClick={() => void onChangeRole("member")}
-          >
-            Member
-          </DropdownMenuItem>
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>Change role</DropdownMenuLabel>
+            <DropdownMenuItem
+              disabled={currentRole === "owner"}
+              onClick={() => void onChangeRole("owner")}
+            >
+              Owner
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={currentRole === "admin" || isOnlyOwner}
+              onClick={() => void onChangeRole("admin")}
+            >
+              Admin
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={currentRole === "member" || isOnlyOwner}
+              onClick={() => void onChangeRole("member")}
+            >
+              Member
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
           <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className="text-text-rust focus:text-text-rust-hover"
-            disabled={isOnlyOwner}
-            onClick={() => setRemoveOpen(true)}
-          >
-            Remove from org
-          </DropdownMenuItem>
+          <DropdownMenuGroup>
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive-hover"
+              disabled={isOnlyOwner}
+              onClick={() => setRemoveOpen(true)}
+            >
+              Remove from org
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
       <AlertDialogContent>

@@ -1,230 +1,208 @@
 /**
- * somewhatintelligent Color Tokens — "DRAFT" (blueprint monochrome)
+ * Semantic Color Tokens
  *
- * The UI is a technical drawing: warm drafting-paper surfaces, near-black
- * ink, and NO chromatic accents. Depth and state are communicated by ink
- * weight and border treatment (solid / dashed / dotted), never by color or
- * soft shadow. The single permitted functional color is `rust` — destructive
- * actions only — because "delete" must never be ambiguous.
+ * This file is the palette→semantic mapping layer: it reads the literal
+ * color values from src/tokens/brand.ts (the only file with hex/HSL
+ * literals) and shapes them into the fixed semantic contract every
+ * component in `@si/ui` is written against — background/foreground,
+ * card, popover, primary(+hover), secondary, muted, accent,
+ * destructive(+hover), success, warning, border(+strong), input, ring,
+ * surface-sunken/raised, inverse, chart-1..5, and the sidebar set.
  *
- * Two layers live here:
- *   1. SEMANTIC tokens (bg/surface/text/border + 5 accents) that product
- *      surfaces and codegen consume. This is the source of truth.
- *   2. RAW ink/paper ramps exported for illustration surfaces that need a
- *      literal step (e.g. OG images, charts) without re-deriving it.
- *
- * Accent slots (names are load-bearing — Tailwind utilities derive from them):
- *   ink     — primary interactive: buttons, links, focus, active states
- *   rust    — destructive / danger (the one functional color)
- *   success — positive / confirmation (dark ink-gray; pair with solid border)
- *   warning — attention / pending    (mid ink-gray; pair with dashed border)
- *   info    — informational          (light ink-gray; pair with dotted border)
- *
- * Light mode is the primary identity (ink on paper); dark mode is the
- * inverted drafting board (paper-ink lines on graphite). Both hand-authored.
+ * Retinting a brand means editing src/tokens/brand.ts ONLY — this file
+ * has no literals to touch. If you add a new semantic slot, add its field
+ * to both `lightTheme` and `darkTheme` (never one without the other) and
+ * teach scripts/codegen.ts + scripts/audit-contrast.ts about it.
  */
 
-export interface HSLColor {
-  hsl: string;
-  h: number;
-  s: number;
-  l: number;
-  hex: string;
+import {
+  hsl,
+  lightPalette,
+  darkPalette,
+  functionalColors,
+  neutralRamp,
+  accentRamp,
+  type HSLColor,
+} from "./brand";
+
+export type { HSLColor };
+export { hsl, neutralRamp, accentRamp };
+
+export interface SemanticTheme {
+  background: HSLColor;
+  foreground: HSLColor;
+  card: HSLColor;
+  cardForeground: HSLColor;
+  popover: HSLColor;
+  popoverForeground: HSLColor;
+  primary: HSLColor;
+  primaryForeground: HSLColor;
+  primaryHover: HSLColor;
+  secondary: HSLColor;
+  secondaryForeground: HSLColor;
+  muted: HSLColor;
+  mutedForeground: HSLColor;
+  accent: HSLColor;
+  accentForeground: HSLColor;
+  destructive: HSLColor;
+  destructiveForeground: HSLColor;
+  destructiveHover: HSLColor;
+  success: HSLColor;
+  successForeground: HSLColor;
+  warning: HSLColor;
+  warningForeground: HSLColor;
+  border: HSLColor;
+  borderStrong: HSLColor;
+  input: HSLColor;
+  ring: HSLColor;
+  surfaceSunken: HSLColor;
+  surfaceRaised: HSLColor;
+  inverse: HSLColor;
+  inverseForeground: HSLColor;
+  chart1: HSLColor;
+  chart2: HSLColor;
+  chart3: HSLColor;
+  chart4: HSLColor;
+  chart5: HSLColor;
+  sidebar: HSLColor;
+  sidebarForeground: HSLColor;
+  sidebarPrimary: HSLColor;
+  sidebarPrimaryForeground: HSLColor;
+  sidebarAccent: HSLColor;
+  sidebarAccentForeground: HSLColor;
+  sidebarBorder: HSLColor;
+  sidebarRing: HSLColor;
 }
 
-function hsl(h: number, s: number, l: number): HSLColor {
-  return { hsl: `${h} ${s}% ${l}%`, h, s, l, hex: hslToHex(h, s, l) };
-}
+export const lightColors: SemanticTheme = {
+  background: lightPalette.bg,
+  foreground: lightPalette.text,
+  card: lightPalette.surfaceRaised,
+  cardForeground: lightPalette.text,
+  popover: lightPalette.surfaceRaised,
+  popoverForeground: lightPalette.text,
+  primary: functionalColors.primary.light,
+  primaryForeground: lightPalette.textOnDark,
+  primaryHover: functionalColors.primary.lightHover,
+  secondary: lightPalette.surfaceSunken,
+  secondaryForeground: lightPalette.text,
+  muted: lightPalette.surfaceSunken,
+  mutedForeground: lightPalette.textSecondary,
+  accent: lightPalette.surfaceSunken,
+  accentForeground: lightPalette.text,
+  destructive: functionalColors.destructive.light,
+  destructiveForeground: lightPalette.textOnDark,
+  destructiveHover: functionalColors.destructive.lightHover,
+  success: functionalColors.success.light,
+  successForeground: lightPalette.textOnDark,
+  warning: functionalColors.warning.light,
+  warningForeground: lightPalette.textOnLight,
+  border: lightPalette.border,
+  borderStrong: lightPalette.borderStrong,
+  input: lightPalette.border,
+  ring: functionalColors.primary.light,
+  surfaceSunken: lightPalette.surfaceSunken,
+  surfaceRaised: lightPalette.surfaceRaised,
+  inverse: lightPalette.text,
+  inverseForeground: lightPalette.bg,
+  chart1: functionalColors.primary.light,
+  chart2: functionalColors.success.light,
+  chart3: functionalColors.warning.light,
+  chart4: functionalColors.destructive.light,
+  chart5: lightPalette.textSecondary,
+  sidebar: lightPalette.surface,
+  sidebarForeground: lightPalette.text,
+  sidebarPrimary: functionalColors.primary.light,
+  sidebarPrimaryForeground: lightPalette.textOnDark,
+  sidebarAccent: lightPalette.surfaceSunken,
+  sidebarAccentForeground: lightPalette.text,
+  sidebarBorder: lightPalette.border,
+  sidebarRing: functionalColors.primary.light,
+};
 
-function hslToHex(h: number, s: number, l: number): string {
-  const sN = s / 100;
-  const lN = l / 100;
-  const a = sN * Math.min(lN, 1 - lN);
-  const f = (n: number) => {
-    const k = (n + h / 30) % 12;
-    const color = lN - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-    return Math.round(255 * color)
-      .toString(16)
-      .padStart(2, "0");
-  };
-  return `#${f(0)}${f(8)}${f(4)}`;
-}
-
-// ============================================
-// RAW RAMPS — exact hex, theme-invariant
-//
-// Ink = warm near-black graphite. Paper = warm drafting white.
-// These are the only raw ramps; there is no chromatic brand palette.
-// ============================================
-
-/** Warm graphite ink ramp — text, lines, fills. */
-export const inkRamp = {
-  950: "#171613", // primary ink — the pen
-  900: "#23221E",
-  800: "#35342E",
-  700: "#4A4841",
-  600: "#5F5D54",
-  500: "#757268",
-  400: "#8E8B80",
-  300: "#A8A599",
-  200: "#C4C1B6",
-} as const;
-
-/** Warm drafting-paper ramp — surfaces. */
-export const paperRamp = {
-  0: "#FFFFFF",
-  50: "#FCFBF7",
-  100: "#F8F7F1", // the paper itself
-  200: "#EFEDE4",
-  300: "#E2E0D4",
-} as const;
-
-/**
- * Functional status — monochrome by design. Success/warning/info are ink
- * steps (state is carried by border treatment at the component layer);
- * danger is the single functional color, a desaturated drafting-red.
- */
-export const statusColors = {
-  success: "#2F5C41", // approval-stamp green
-  successBg: "#E7EFE8",
-  warning: "#5F5D54", // ink-600 — process state, carried by DASHED border
-  warningBg: "#EFEDE4",
-  warningInk: "#35342E",
-  danger: "#96432B", // rust — red pen
-  dangerBg: "#F3E6E0",
-  dangerInk: "#6E2F1D",
-  info: "#757268", // ink-500 — carried by DOTTED border
-  infoBg: "#F3F1EA",
-} as const;
-
-// ============================================
-// LIGHT MODE — primary identity
-// Ink on warm drafting paper.
-// ============================================
-
-export const lightColors = {
-  // ── Paper surfaces ──
-  bg: hsl(45, 33, 96), // drafting paper (#F8F7F1)
-  surface: hsl(0, 0, 100), // white sheet
-  surfaceRaised: hsl(48, 45, 99), // fresh sheet on top
-  surfaceSunken: hsl(45, 20, 92), // recessed well — inset rows, code
-
-  // ── Ruled lines ── (drafting lines are PROMINENT — they are the design)
-  border: hsl(45, 6, 52), // standard rule — 3.4:1 on paper
-  borderStrong: hsl(45, 8, 30), // heavy rule — inputs, emphasis
-
-  // ── Ink ──
-  text: hsl(45, 8, 8), // primary ink (#171613-ish)
-  textSecondary: hsl(45, 6, 29), // annotations
-  textTertiary: hsl(45, 4, 42), // faint pencil — metadata, captions
-  textOnAccent: hsl(45, 33, 96), // paper — text ON ink fills
-} as const;
-
-// ============================================
-// DARK MODE — the inverted drafting board
-// Paper-ink lines on warm graphite.
-// ============================================
-
-export const darkColors = {
-  // ── Graphite surfaces ──
-  bg: hsl(45, 7, 8), // board
-  surface: hsl(45, 6, 11), // sheet
-  surfaceRaised: hsl(45, 7, 14), // lifted sheet
-  surfaceSunken: hsl(45, 9, 5), // carved well
-
-  // ── Chalk lines ──
-  border: hsl(45, 5, 40), // standard rule — ~3:1 on board
-  borderStrong: hsl(45, 7, 58), // heavy rule
-
-  // ── Chalk ink ──
-  text: hsl(45, 22, 91), // paper-white ink
-  textSecondary: hsl(45, 11, 71),
-  textTertiary: hsl(45, 7, 55),
-  textOnAccent: hsl(45, 7, 9), // graphite — text ON chalk fills
-} as const;
+export const darkColors: SemanticTheme = {
+  background: darkPalette.bg,
+  foreground: darkPalette.text,
+  card: darkPalette.surfaceRaised,
+  cardForeground: darkPalette.text,
+  popover: darkPalette.surfaceRaised,
+  popoverForeground: darkPalette.text,
+  primary: functionalColors.primary.dark,
+  primaryForeground: darkPalette.textOnLight,
+  primaryHover: functionalColors.primary.darkHover,
+  secondary: darkPalette.surfaceRaised,
+  secondaryForeground: darkPalette.text,
+  muted: darkPalette.surfaceRaised,
+  mutedForeground: darkPalette.textSecondary,
+  accent: darkPalette.surfaceRaised,
+  accentForeground: darkPalette.text,
+  destructive: functionalColors.destructive.dark,
+  destructiveForeground: darkPalette.textOnLight,
+  destructiveHover: functionalColors.destructive.darkHover,
+  success: functionalColors.success.dark,
+  successForeground: darkPalette.textOnLight,
+  warning: functionalColors.warning.dark,
+  warningForeground: darkPalette.textOnLight,
+  border: darkPalette.border,
+  borderStrong: darkPalette.borderStrong,
+  input: darkPalette.border,
+  ring: functionalColors.primary.dark,
+  surfaceSunken: darkPalette.surfaceSunken,
+  surfaceRaised: darkPalette.surfaceRaised,
+  inverse: darkPalette.text,
+  inverseForeground: darkPalette.bg,
+  chart1: functionalColors.primary.dark,
+  chart2: functionalColors.success.dark,
+  chart3: functionalColors.warning.dark,
+  chart4: functionalColors.destructive.dark,
+  chart5: darkPalette.textSecondary,
+  sidebar: darkPalette.surface,
+  sidebarForeground: darkPalette.text,
+  sidebarPrimary: functionalColors.primary.dark,
+  sidebarPrimaryForeground: darkPalette.textOnLight,
+  sidebarAccent: darkPalette.surfaceRaised,
+  sidebarAccentForeground: darkPalette.text,
+  sidebarBorder: darkPalette.border,
+  sidebarRing: functionalColors.primary.dark,
+};
 
 // ============================================
-// Accents — ink weights + the red pen
-//
-// Light-mode accents are DEEP (paper text reads on their fills); dark-mode
-// accents are CHALK-BRIGHT (graphite text reads on them). Success/warning/
-// info are deliberately monochrome — components MUST pair them with their
-// border treatment (solid/dashed/dotted) so state never depends on hue.
-// ============================================
-
-export const accentColors = {
-  /** Primary interactive — the pen itself. Links, CTAs, focus rings,
-   *  active states. Solid ink fill with paper text. */
-  ink: {
-    light: hsl(45, 9, 12),
-    lightHover: hsl(45, 10, 3),
-    dark: hsl(45, 20, 88),
-    darkHover: hsl(45, 24, 97),
-  },
-  /** The red pen. Destructive actions, critical alerts, errors.
-   *  The ONLY functional color in the system. */
-  rust: {
-    light: hsl(14, 55, 38), // 5.0:1 with paper text
-    lightHover: hsl(14, 60, 31),
-    dark: hsl(14, 52, 63),
-    darkHover: hsl(13, 58, 71),
-  },
-  /** Positive / confirmation — the approval stamp. A muted drafting green
-   *  (functional color #2 by owner decree: outcomes may be colored; process
-   *  states stay ink). Pair with SOLID border. */
-  success: {
-    light: hsl(140, 32, 27),
-    lightHover: hsl(140, 36, 21),
-    dark: hsl(140, 28, 66),
-    darkHover: hsl(139, 32, 74),
-  },
-  /** Attention / pending. Mid ink — pair with DASHED border. */
-  warning: {
-    light: hsl(45, 6, 34),
-    lightHover: hsl(45, 7, 27),
-    dark: hsl(45, 10, 66),
-    darkHover: hsl(45, 12, 74),
-  },
-  /** Informational. Light ink — pair with DOTTED border. */
-  info: {
-    light: hsl(45, 4, 40),
-    lightHover: hsl(45, 5, 33),
-    dark: hsl(45, 7, 58),
-    darkHover: hsl(45, 8, 66),
-  },
-} as const;
-
-// ============================================
-// Effects — flat. No translucency, no blur.
-// The "glass" slot survives for API compatibility but renders as an
-// opaque sheet with a solid rule; blur is 0 (see shadows.ts + theme.css).
+// Effects — flat, zero-blur "glass" slot kept for API compatibility.
+// Derived from the theme surfaces above rather than its own literals.
 // ============================================
 
 export const effectColors = {
   glass: {
     light: {
-      bg: "hsl(48 45% 99%)", // opaque fresh sheet
-      border: "hsl(45 6% 52%)", // standard rule
+      bg: `hsl(${lightColors.surfaceRaised.hsl})`,
+      border: `hsl(${lightColors.border.hsl})`,
     },
     dark: {
-      bg: "hsl(45 7% 14%)", // opaque lifted sheet
-      border: "hsl(45 5% 40%)",
+      bg: `hsl(${darkColors.surfaceRaised.hsl})`,
+      border: `hsl(${darkColors.border.hsl})`,
     },
     blur: "0px",
   },
 } as const;
 
 // ============================================
-// Exports
+// Raw ramp → flat [cssName, hex] pairs for illustration/OG utilities
+// (bg-neutral-900, text-accent-500, …). Never used by the semantic theme
+// objects above — theme-invariant, exact-hex only.
 // ============================================
+
+export function rawPaletteEntries(): [string, string][] {
+  const ramp = (prefix: string, r: Record<string, string>): [string, string][] =>
+    Object.entries(r).map(([step, hex]) => [`${prefix}-${step}`, hex]);
+
+  return [...ramp("neutral", neutralRamp), ...ramp("accent", accentRamp)];
+}
 
 /**
  * Deterministic light-from-dark inversion, kept for tooling/back-compat.
  */
-function invertForLight(color: HSLColor): HSLColor {
+export function invertForLight(color: HSLColor): HSLColor {
   const l = Math.min(97, Math.max(3, 100 - color.l));
   const s = Math.round(color.s * 0.9);
   return hsl(color.h, s, l);
 }
-
-export { invertForLight };

@@ -60,7 +60,7 @@ export const WithForm: Story = {
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" defaultValue="hello@si.example" />
+            <Input id="email" type="email" defaultValue="hello@example.com" />
           </div>
         </div>
         <DialogFooter showCloseButton>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useCapture } from "@si/analytics/client";
+import { useCapture } from "@/lib/analytics";
 import { buttonVariants } from "@si/ui/components/button";
 import { cn } from "@si/ui/lib/utils";
 import {

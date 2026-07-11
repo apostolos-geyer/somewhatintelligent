@@ -8,7 +8,7 @@ import {
   type Transition,
   useReducedMotion,
 } from "motion/react";
-import { platformConfig } from "@si/config";
+import { brand } from "./brand";
 import { cn } from "@si/ui/lib/utils";
 import type { LogoIconProps } from "./types";
 import { LogoIcon } from "./logo-icon";
@@ -41,19 +41,19 @@ const LAYOUT_CONFIG = {
   horizontal: {
     container: "flex items-center gap-3",
     iconSize: 56,
-    text: platformConfig.brand.name,
+    text: brand.wordmarkFull,
     textClass: "font-display text-[40px] font-light tracking-[0.04em] leading-none",
   },
   stacked: {
     container: "flex flex-col items-center gap-1",
     iconSize: 64,
-    text: platformConfig.brand.short,
+    text: brand.wordmarkShort,
     textClass: "font-display text-lg font-light tracking-[0.12em] leading-none uppercase",
   },
   compact: {
     container: "flex items-center gap-2.5",
     iconSize: 36,
-    text: platformConfig.brand.name,
+    text: brand.wordmarkFull,
     textClass: "font-display text-2xl font-light tracking-[0.04em] leading-none",
   },
 } as const;

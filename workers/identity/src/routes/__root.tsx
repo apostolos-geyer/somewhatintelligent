@@ -1,15 +1,15 @@
 import { HeadContent, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
-import { AnalyticsProvider } from "@si/analytics/client";
-import { platformConfig } from "@si/config";
+import { AnalyticsProvider } from "@/lib/analytics";
+import { appConfig } from "@/app.config";
 import type { RouterContext } from "@/router";
 import { AppError, AppNotFound } from "@/components/app-status-pages";
 import { AuthProvider } from "@/lib/auth-context";
 import { loadSession } from "@/lib/session.functions";
 
-const SITE_TITLE = `Identity — ${platformConfig.brand.name}`;
-const SITE_DESCRIPTION = `Sign in, manage your account, and control access across ${platformConfig.brand.name}'s platform.`;
+const SITE_TITLE = `Identity — ${appConfig.brand.name}`;
+const SITE_DESCRIPTION = `Sign in, manage your account, and control access across ${appConfig.brand.name}'s platform.`;
 
 import appCss from "@/styles.css?url";
 

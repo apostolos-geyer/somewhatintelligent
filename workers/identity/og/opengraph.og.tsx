@@ -1,4 +1,4 @@
-import { defineOg } from "@si/og";
+import { defineOg } from "@somewhatintelligent/og";
 import { OgBrand } from "./_brand.tsx";
 
 export default defineOg({

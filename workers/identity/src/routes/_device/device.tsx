@@ -55,7 +55,7 @@ function DevicePage() {
     <>
       <div className="mb-section text-center">
         <div className="type-display-title">Device</div>
-        <div className="type-editorial-lede mt-grid text-text-secondary">
+        <div className="type-editorial-lede mt-grid text-muted-foreground">
           Enter the code displayed on your device. It knows what it means, even if you do not.
         </div>
       </div>
@@ -64,7 +64,10 @@ function DevicePage() {
         <CardContent className="space-y-0 p-0">
           <form method="post" className="flex flex-col gap-4" onSubmit={handleSubmit}>
             <div>
-              <Label htmlFor="user-code" className="type-mono-label mb-2 block text-text-tertiary">
+              <Label
+                htmlFor="user-code"
+                className="type-mono-label mb-2 block text-muted-foreground/80"
+              >
                 Device Code
               </Label>
               <Input

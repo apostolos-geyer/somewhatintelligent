@@ -215,10 +215,10 @@ function PickStage({
           <Avatar size="lg" className="size-16">
             <AvatarFallback>{fallbackInitial}</AvatarFallback>
           </Avatar>
-          <UploadCloudIcon className="size-6 text-text-tertiary" />
+          <UploadCloudIcon className="size-6 text-muted-foreground/80" />
           <div className="flex flex-col gap-1 text-sm">
             <span className="font-medium">Drag an image here, or click to browse</span>
-            <span className="text-xs text-text-tertiary">JPEG, PNG, WebP — up to 8 MB</span>
+            <span className="text-xs text-muted-foreground/80">JPEG, PNG, WebP — up to 8 MB</span>
           </div>
         </button>
         <input
@@ -279,7 +279,7 @@ function CropStage({
           onCropComplete={onCropComplete}
         />
         <div className="flex items-center gap-3">
-          <CameraIcon className="size-3.5 text-text-tertiary" />
+          <CameraIcon className="size-3.5 text-muted-foreground/80" />
           <Slider
             value={[zoom]}
             min={1}
@@ -293,7 +293,7 @@ function CropStage({
           />
         </div>
         <div className="flex items-end gap-3">
-          <span className="type-mono-label mr-2 self-center text-text-tertiary">Preview</span>
+          <span className="type-mono-label mr-2 self-center text-muted-foreground/80">Preview</span>
           {[
             { px: 32, label: "32" },
             { px: 64, label: "64" },
@@ -313,12 +313,12 @@ function CropStage({
                     height={p.px}
                   />
                 ) : (
-                  <div className="flex size-full items-center justify-center text-xs text-text-tertiary">
+                  <div className="flex size-full items-center justify-center text-xs text-muted-foreground/80">
                     {fallbackInitial}
                   </div>
                 )}
               </div>
-              <span className="type-mono-label text-xs text-text-tertiary">{p.label}</span>
+              <span className="type-mono-label text-xs text-muted-foreground/80">{p.label}</span>
             </div>
           ))}
         </div>

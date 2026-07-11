@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { type } from "arktype";
 import { FingerprintIcon } from "lucide-react";
-import { useCapture } from "@si/analytics/client";
+import { useCapture } from "@/lib/analytics";
 import { useAppForm } from "@si/ui/hooks/use-app-form";
 import { Button } from "@si/ui/components/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@si/ui/components/card";
@@ -250,11 +250,11 @@ export function SignInForm({
     <>
       <GuestlistBrand className="mb-section flex flex-col items-center text-center" />
       {clientName ? (
-        <div className="mb-section -mt-4 text-center type-editorial-lede text-text-secondary">
+        <div className="mb-section -mt-4 text-center type-editorial-lede text-muted-foreground">
           continue to <strong className="text-foreground">{clientName}</strong>
         </div>
       ) : (
-        <div className="mb-section -mt-4 text-center type-editorial-lede text-text-secondary">
+        <div className="mb-section -mt-4 text-center type-editorial-lede text-muted-foreground">
           sign in to continue
         </div>
       )}
@@ -299,7 +299,7 @@ export function SignInForm({
           {showDivider && (
             <div className="mb-8 flex items-center gap-4">
               <Separator className="flex-1" />
-              <span className="type-mono-label text-text-tertiary">or</span>
+              <span className="type-mono-label text-muted-foreground/80">or</span>
               <Separator className="flex-1" />
             </div>
           )}
@@ -330,7 +330,7 @@ export function SignInForm({
             <div className="text-right">
               <Link
                 to="/reset-password"
-                className="text-xs text-text-tertiary hover:text-text-secondary"
+                className="text-xs text-muted-foreground/80 hover:text-muted-foreground"
               >
                 Forgot Password
               </Link>
@@ -358,7 +358,7 @@ export function SignInForm({
             </Button>
           </form>
 
-          <p className="mt-5 text-center text-sm text-text-secondary">
+          <p className="mt-5 text-center text-sm text-muted-foreground">
             No account?{" "}
             <Link
               to="/sign-up"
@@ -371,11 +371,11 @@ export function SignInForm({
         </CardContent>
       </Card>
 
-      <div className="mt-section flex justify-center gap-grid text-xs text-text-tertiary">
-        <Link to="/privacy" className="hover:text-text-secondary">
+      <div className="mt-section flex justify-center gap-grid text-xs text-muted-foreground/80">
+        <Link to="/privacy" className="hover:text-muted-foreground">
           Privacy
         </Link>
-        <Link to="/terms" className="hover:text-text-secondary">
+        <Link to="/terms" className="hover:text-muted-foreground">
           Terms
         </Link>
       </div>

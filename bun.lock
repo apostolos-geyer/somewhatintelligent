@@ -28,8 +28,8 @@
       "dependencies": {
         "@posthog/react": "catalog:",
         "@si/config": "workspace:*",
-        "@somewhatintelligent/auth": "0.0.3",
-        "@somewhatintelligent/kit": "0.0.2",
+        "@somewhatintelligent/auth": "0.0.4-beta.1783733618.d38901c",
+        "@somewhatintelligent/kit": "0.0.3-beta.1783733618.d38901c",
         "posthog-js": "catalog:",
         "posthog-node": "catalog:",
       },
@@ -83,16 +83,13 @@
       "name": "@si/design",
       "version": "0.0.1",
       "devDependencies": {
-        "@si/typescript-config": "workspace:*",
         "@storybook/react": "^10",
         "@tailwindcss/typography": "catalog:",
-        "@tailwindcss/vite": "catalog:",
         "@types/react": "catalog:",
+        "bun-types": "^1.3.14",
         "shadcn": "^4.1.2",
         "tailwindcss": "catalog:",
         "tw-animate-css": "^1.4.0",
-        "vite": "catalog:",
-        "vite-plus": "catalog:",
       },
     },
     "packages/email": {
@@ -165,8 +162,6 @@
       "version": "0.0.1",
       "dependencies": {
         "@base-ui/react": "^1.3.0",
-        "@si/audio": "workspace:*",
-        "@si/config": "workspace:*",
         "@tanstack/react-form": "^1.28.6",
         "arktype": "catalog:",
         "class-variance-authority": "^0.7.1",
@@ -180,12 +175,19 @@
       },
       "devDependencies": {
         "@storybook/react": "^10",
+        "@testing-library/dom": "^10.4.1",
+        "@testing-library/jest-dom": "^6.9.1",
+        "@testing-library/react": "^16.3.0",
         "@types/react": "catalog:",
         "@types/react-dom": "catalog:",
+        "@vitejs/plugin-react": "^6.0.1",
+        "jsdom": "^28.1.0",
         "next-themes": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
+        "vite": "catalog:",
         "vite-plus": "catalog:",
+        "vitest": "catalog:",
       },
       "peerDependencies": {
         "next-themes": ">=0.4.0",
@@ -195,11 +197,11 @@
     },
     "workers/bouncer": {
       "name": "@si/bouncer-service",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "dependencies": {
         "@si/config": "workspace:*",
-        "@somewhatintelligent/auth": "0.0.3",
-        "@somewhatintelligent/bouncer": "0.0.2",
+        "@somewhatintelligent/auth": "0.0.4-beta.1783733618.d38901c",
+        "@somewhatintelligent/bouncer": "0.0.3-beta.1783733618.d38901c",
       },
       "devDependencies": {
         "@cloudflare/vitest-pool-workers": "^0.14.6",
@@ -212,14 +214,14 @@
     },
     "workers/guestlist": {
       "name": "@si/guestlist-service",
-      "version": "0.0.2",
+      "version": "0.0.3",
       "dependencies": {
         "@si/config": "workspace:*",
         "@si/promoter-service": "workspace:*",
         "@si/roadie-service": "workspace:*",
-        "@somewhatintelligent/guestlist": "0.0.5",
-        "@somewhatintelligent/kit": "0.0.2",
-        "@somewhatintelligent/stripe": "0.0.1",
+        "@somewhatintelligent/guestlist": "0.0.6-beta.1783733618.d38901c",
+        "@somewhatintelligent/kit": "0.0.3-beta.1783733618.d38901c",
+        "@somewhatintelligent/stripe": "0.0.2-beta.1783733618.d38901c",
         "better-auth": "catalog:",
         "drizzle-orm": "catalog:",
       },
@@ -236,15 +238,15 @@
     },
     "workers/identity": {
       "name": "identity",
-      "version": "0.0.2",
+      "version": "0.0.3",
       "dependencies": {
         "@si/analytics": "workspace:*",
-        "@si/config": "workspace:*",
         "@si/design": "workspace:*",
         "@si/ui": "workspace:*",
-        "@somewhatintelligent/auth": "0.0.3",
-        "@somewhatintelligent/guestlist": "0.0.5",
-        "@somewhatintelligent/kit": "0.0.2",
+        "@somewhatintelligent/auth": "0.0.4-beta.1783733618.d38901c",
+        "@somewhatintelligent/guestlist": "0.0.6-beta.1783733618.d38901c",
+        "@somewhatintelligent/kit": "0.0.3-beta.1783733618.d38901c",
+        "@somewhatintelligent/og": "0.0.2-beta.1783733618.d38901c",
         "@tailwindcss/vite": "catalog:",
         "@tanstack/react-devtools": "latest",
         "@tanstack/react-router": "1.170.10",
@@ -260,9 +262,9 @@
       },
       "devDependencies": {
         "@cloudflare/vite-plugin": "1.37.1",
-        "@si/og": "workspace:*",
         "@tanstack/devtools-vite": "latest",
         "@testing-library/dom": "^10.4.1",
+        "@testing-library/jest-dom": "^6.9.1",
         "@testing-library/react": "^16.3.0",
         "@types/node": "catalog:",
         "@types/react": "catalog:",
@@ -270,19 +272,20 @@
         "@vitejs/plugin-react": "^6.0.1",
         "jsdom": "^28.1.0",
         "jsonc-parser": "^3.3.1",
-        "typescript": "^5.7.2",
+        "typescript": "catalog:",
         "vite": "catalog:",
         "vite-plus": "catalog:",
         "vitest": "catalog:",
+        "wrangler": "catalog:",
       },
     },
     "workers/promoter": {
       "name": "@si/promoter-service",
-      "version": "0.0.0",
+      "version": "0.0.1",
       "dependencies": {
         "@si/config": "workspace:*",
         "@si/email": "workspace:*",
-        "@somewhatintelligent/kit": "0.0.2",
+        "@somewhatintelligent/kit": "0.0.3-beta.1783733618.d38901c",
       },
       "devDependencies": {
         "@cloudflare/workers-types": "^4",
@@ -296,9 +299,9 @@
     },
     "workers/roadie": {
       "name": "@si/roadie-service",
-      "version": "0.0.0",
+      "version": "0.0.1",
       "dependencies": {
-        "@somewhatintelligent/kit": "0.0.2",
+        "@somewhatintelligent/kit": "0.0.3-beta.1783733618.d38901c",
         "aws4fetch": "^1.0.20",
         "drizzle-orm": "catalog:",
       },
@@ -318,17 +321,17 @@
     },
     "workers/store": {
       "name": "store",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "dependencies": {
         "@si/analytics": "workspace:*",
         "@si/config": "workspace:*",
         "@si/design": "workspace:*",
         "@si/roadie-service": "workspace:*",
         "@si/ui": "workspace:*",
-        "@somewhatintelligent/auth": "0.0.3",
-        "@somewhatintelligent/guestlist": "0.0.5",
-        "@somewhatintelligent/kit": "0.0.2",
-        "@somewhatintelligent/stripe": "0.0.1",
+        "@somewhatintelligent/auth": "0.0.4-beta.1783733618.d38901c",
+        "@somewhatintelligent/guestlist": "0.0.6-beta.1783733618.d38901c",
+        "@somewhatintelligent/kit": "0.0.3-beta.1783733618.d38901c",
+        "@somewhatintelligent/stripe": "0.0.2-beta.1783733618.d38901c",
         "@tailwindcss/vite": "catalog:",
         "@tanstack/react-devtools": "latest",
         "@tanstack/react-router": "1.170.10",
@@ -370,6 +373,7 @@
     "wrangler": "4.92.0",
   },
   "catalog": {
+    "@cloudflare/workers-types": "^4",
     "@libsql/client": "^0.17.2",
     "@posthog/react": "1.10.3",
     "@t3-oss/env-nextjs": "^0.13.11",
@@ -399,10 +403,12 @@
     "sonner": "^2.0.7",
     "stripe": "^20.4.1",
     "tailwindcss": "^4",
+    "typescript": "5.9.2",
     "ulidx": "^2.4.1",
     "vite": "npm:@voidzero-dev/vite-plus-core@0.1.24",
     "vite-plus": "0.1.24",
     "vitest": "npm:@voidzero-dev/vite-plus-test@0.1.24",
+    "wrangler": "^4.81.1",
     "zustand": "^5.0.12",
   },
   "packages": {
@@ -506,7 +512,7 @@
 
     "@better-auth/prisma-adapter": ["@better-auth/prisma-adapter@1.6.23", "", { "peerDependencies": { "@better-auth/core": "^1.6.23", "@better-auth/utils": "0.4.2", "@prisma/client": "^5.0.0 || ^6.0.0 || ^7.0.0", "prisma": "^5.0.0 || ^6.0.0 || ^7.0.0" }, "optionalPeers": ["@prisma/client", "prisma"] }, "sha512-2qSdzidq4tkb1eS5TTqb4Nzg0mdZWm3Qky9SYeXeb8PpVQbC2sxqJhEM5mK7y12uU6I8hc64wO9f7AFVNL+6UQ=="],
 
-    "@better-auth/stripe": ["@better-auth/stripe@1.6.13", "", { "dependencies": { "defu": "^6.1.5", "zod": "^4.3.6" }, "peerDependencies": { "@better-auth/core": "^1.6.13", "better-auth": "^1.6.13", "better-call": "1.3.5", "stripe": "^18 || ^19 || ^20 || ^21 || ^22" } }, "sha512-T++Tki8X+tdHGkGr6SLsq/SKFSMxHunoKT+RPOsGDXoBF8oHch/X6xSOM2y5T7/ztN4Xi/B4e8nfp0/SFG4xnA=="],
+    "@better-auth/stripe": ["@better-auth/stripe@1.6.23", "", { "dependencies": { "defu": "^6.1.5", "zod": "^4.3.6" }, "peerDependencies": { "@better-auth/core": "^1.6.23", "better-auth": "^1.6.23", "better-call": "1.3.7", "stripe": "^18 || ^19 || ^20 || ^21 || ^22" } }, "sha512-hsMGJQ947k82ZRP5ULWXbNiHLSs57XeVdZ1n2XoWFgRX4ilnvRsQwLTWnwvde4eCIV4x/aT+GEoN8T42t4KlSg=="],
 
     "@better-auth/telemetry": ["@better-auth/telemetry@1.6.23", "", { "peerDependencies": { "@better-auth/core": "^1.6.23", "@better-auth/utils": "0.4.2", "@better-fetch/fetch": "1.3.1" } }, "sha512-/R2Kb+z2BpDOOWwVHqOk+c0VNpuwfCv4Hp5Yr9003WIZPax/zyNraGLB9CFE8qF2gZW8Dsz419k4I8CPrGzpDA=="],
 
@@ -1156,15 +1162,17 @@
 
     "@solid-primitives/utils": ["@solid-primitives/utils@6.4.1", "", { "peerDependencies": { "solid-js": "^1.6.12" } }, "sha512-ISSB5QX1qP2ynrheIpYwc4oKR5Ny4siNuUyf1qZniy+Il+p/PtDB0QK1Dnle8noiHpwRD3gpPdubOC3qI/Zamg=="],
 
-    "@somewhatintelligent/auth": ["@somewhatintelligent/auth@0.0.3", "", { "dependencies": { "@better-auth/api-key": "^1.6.0", "@better-auth/oauth-provider": "^1.6.0", "@better-auth/passkey": "^1.6.0", "@better-auth/stripe": "^1.6.0", "better-auth": "^1.6.0", "cookie-es": "^3.1.1", "stripe": "^20.4.1" } }, "sha512-MrZG0fpWxNHUJUKdIZoefhOxMls/LW4hiykv8QomQ7ySp918v77vf0ZrZtr02uF2wptHDvMM11Sb8A3pwwU1ng=="],
+    "@somewhatintelligent/auth": ["@somewhatintelligent/auth@0.0.4-beta.1783733618.d38901c", "", { "dependencies": { "@better-auth/api-key": "^1.6.0", "@better-auth/oauth-provider": "^1.6.0", "@better-auth/passkey": "^1.6.0", "@better-auth/stripe": "^1.6.0", "better-auth": "^1.6.0", "cookie-es": "^3.1.1", "stripe": "^20.4.1" } }, "sha512-yWpiiHRX1ScmX6ax5i95dUYeaeg3yLVlqaR+RuOve+zAm3V5BvRx5WM9eZKeXFZLO5QHE4DqRCytMefvx18RIg=="],
 
-    "@somewhatintelligent/bouncer": ["@somewhatintelligent/bouncer@0.0.2", "", { "dependencies": { "@somewhatintelligent/auth": "^0.0.2", "@somewhatintelligent/kit": "^0.0.2", "arktype": "^2.2.0", "cookie-es": "^3.1.1" } }, "sha512-aTd8r7UYQWR3IQkFJnaw5GCwWXtcGpXiWygzecPx5Q5WzxQE+UiWHmrPYxkSz7NO3qECpWqqZB+Pf8O++vmIdg=="],
+    "@somewhatintelligent/bouncer": ["@somewhatintelligent/bouncer@0.0.3-beta.1783733618.d38901c", "", { "dependencies": { "@somewhatintelligent/auth": "^0.0.4-beta.1783733618.d38901c", "@somewhatintelligent/kit": "^0.0.3-beta.1783733618.d38901c", "arktype": "^2.2.0", "cookie-es": "^3.1.1" } }, "sha512-yjB09AKkLnDiM4b7BD8sa2ncaGyx1R29l9hL9PMiOwgOrUOxuvhhvn4+ZlPuNpT4m668uEoSIvp9MXP3OLWmZg=="],
 
-    "@somewhatintelligent/guestlist": ["@somewhatintelligent/guestlist@0.0.5", "", { "dependencies": { "@better-auth/api-key": "^1.6.0", "@better-auth/core": "^1.6.9", "@better-auth/oauth-provider": "^1.6.0", "@better-auth/passkey": "^1.6.0", "@somewhatintelligent/auth": "^0.0.3", "@somewhatintelligent/kit": "^0.0.2", "better-auth": "^1.6.0", "cookie-es": "^3.1.1", "drizzle-orm": "^0.45.2", "ulidx": "^2.4.1" }, "peerDependencies": { "react": "19.2.4" }, "optionalPeers": ["react"] }, "sha512-G+sUKZKm++7q+7r4Vboj/4AkE+9sF+whOSruTOUYBMXGnQFdoOciA4zQWi031ntNCgfNuOM/kejC5T5Kjj/GIQ=="],
+    "@somewhatintelligent/guestlist": ["@somewhatintelligent/guestlist@0.0.6-beta.1783733618.d38901c", "", { "dependencies": { "@better-auth/api-key": "^1.6.0", "@better-auth/core": "^1.6.9", "@better-auth/oauth-provider": "^1.6.0", "@better-auth/passkey": "^1.6.0", "@somewhatintelligent/auth": "^0.0.4-beta.1783733618.d38901c", "@somewhatintelligent/kit": "^0.0.3-beta.1783733618.d38901c", "better-auth": "^1.6.0", "cookie-es": "^3.1.1", "drizzle-orm": "^0.45.2", "ulidx": "^2.4.1" }, "peerDependencies": { "react": "19.2.4" }, "optionalPeers": ["react"] }, "sha512-KvIsjHw5w+I4msq1ZDXqGXNMuVDsUg7DpFRr1LasVQ+JNyb8J6Qu2vd5aHA+91U9cbBFT+A2+wyLm/wk5Y48/g=="],
 
-    "@somewhatintelligent/kit": ["@somewhatintelligent/kit@0.0.2", "", { "dependencies": { "@somewhatintelligent/auth": "^0.0.2", "ulidx": "^2.4.1" }, "peerDependencies": { "@tanstack/react-start": "1.168.18", "react": "19.2.4" }, "optionalPeers": ["@tanstack/react-start", "react"] }, "sha512-HdVIGgZbCCFp/pTEEU5oSyMvu4bw9CAsV5rf7o5GgsJeh8sWwpQ1S8unVqs1/Wjz1cLMAIPjmC/O6DadBH2Ohg=="],
+    "@somewhatintelligent/kit": ["@somewhatintelligent/kit@0.0.3-beta.1783733618.d38901c", "", { "dependencies": { "@somewhatintelligent/auth": "^0.0.4-beta.1783733618.d38901c", "ulidx": "^2.4.1" }, "peerDependencies": { "@tanstack/react-start": "1.168.18", "react": "19.2.4" }, "optionalPeers": ["@tanstack/react-start", "react"] }, "sha512-s75iIEEtnGiL6kKZHNdI3LXGcsMdM08uNKMIFdNdEG+2ryFINj+nDNk/BT+gjaEiBGmMhGNnuL01wt7X07dLPA=="],
 
-    "@somewhatintelligent/stripe": ["@somewhatintelligent/stripe@0.0.1", "", { "dependencies": { "stripe": "^20.4.1" } }, "sha512-jWA7FJu3QGT3aJLGJ4QEEiJwqPB0Jzmxh4uaGB5+DOK934jC04otoLt1K97B3KllCsSZmhSIo7ex1nawMP7Yng=="],
+    "@somewhatintelligent/og": ["@somewhatintelligent/og@0.0.2-beta.1783733618.d38901c", "", { "dependencies": { "@resvg/resvg-js": "^2.6.2", "satori": "^0.26.0", "tinyglobby": "^0.2.16" }, "peerDependencies": { "react": "19.2.4" }, "optionalPeers": ["react"], "bin": { "platform-og": "src/cli.ts" } }, "sha512-Z+tlh+Q2gkdZzT0sb+IL2XogoI6LtntSDqo5i6L+0RoXKQ5b4tYQSfe9UF6T81u/W0WYyhoRVLCMAasaFZuBEw=="],
+
+    "@somewhatintelligent/stripe": ["@somewhatintelligent/stripe@0.0.2-beta.1783733618.d38901c", "", { "dependencies": { "stripe": "^20.4.1" } }, "sha512-eT93KfzCvpTJEjQ84ygDztn2eL0toFhE2NBNFcWbztmMb90e4CLFS+8ajvmxc+BA5U9JQH/E4juzyqJlaithCw=="],
 
     "@speed-highlight/core": ["@speed-highlight/core@1.2.17", "", {}, "sha512-Z92FwKpCtfaW1V0jTU/fh3QzYEZN8wDwrzRIBoADCJfn4mJCNcJN/XegifX7BDrQ8/h9Xh/JnbyMchL0FqXrkg=="],
 
@@ -1232,7 +1240,7 @@
 
     "@tanstack/react-devtools": ["@tanstack/react-devtools@0.10.8", "", { "dependencies": { "@tanstack/devtools": "0.12.5" }, "peerDependencies": { "@types/react": ">=16.8", "@types/react-dom": ">=16.8", "react": ">=16.8", "react-dom": ">=16.8" } }, "sha512-YJV6YttQf9lhhPbPBLULgy1eScEvJUMsCS26mjg9hfBKgAJQA5sF9zvzorDzW9Ob6o/asoXikO81JnRUVuFX0Q=="],
 
-    "@tanstack/react-form": ["@tanstack/react-form@1.33.1", "", { "dependencies": { "@tanstack/form-core": "1.33.1", "@tanstack/react-store": "^0.11.0" }, "peerDependencies": { "@tanstack/react-start": "*", "react": "^17.0.0 || ^18.0.0 || ^19.0.0" }, "optionalPeers": ["@tanstack/react-start"] }, "sha512-BF2fQtd0uEZxoki1cDlcG6KLkEthofmVRJMrpd5GWRtoRlxvm4iiLFRpoQR///qD16002+rKdH1kBBAUZDEQhw=="],
+    "@tanstack/react-form": ["@tanstack/react-form@1.33.1", "", { "dependencies": { "@tanstack/form-core": "1.33.1", "@tanstack/react-store": "^0.11.0" }, "peerDependencies": { "react": "^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-BF2fQtd0uEZxoki1cDlcG6KLkEthofmVRJMrpd5GWRtoRlxvm4iiLFRpoQR///qD16002+rKdH1kBBAUZDEQhw=="],
 
     "@tanstack/react-router": ["@tanstack/react-router@1.170.10", "", { "dependencies": { "@tanstack/history": "1.162.0", "@tanstack/react-store": "^0.9.3", "@tanstack/router-core": "1.171.8", "isbot": "^5.1.22" }, "peerDependencies": { "react": ">=18.0.0 || >=19.0.0", "react-dom": ">=18.0.0 || >=19.0.0" } }, "sha512-gVmWYq0ucWr+OB97Nud0YhKa9NOipB7/QrWI7wRZJJWEL0qUS8WPqAs0vA1f3IBXZpXmf8xxzf/tl5cmo4tlmA=="],
 
@@ -1594,7 +1602,7 @@
 
     "drizzle-kit": ["drizzle-kit@0.31.10", "", { "dependencies": { "@drizzle-team/brocli": "^0.10.2", "@esbuild-kit/esm-loader": "^2.5.5", "esbuild": "^0.25.4", "tsx": "^4.21.0" }, "bin": { "drizzle-kit": "bin.cjs" } }, "sha512-7OZcmQUrdGI+DUNNsKBn1aW8qSoKuTH7d0mYgSP8bAzdFzKoovxEFnoGQp2dVs82EOJeYycqRtciopszwUf8bw=="],
 
-    "drizzle-orm": ["drizzle-orm@0.45.2", "", { "peerDependencies": { "@aws-sdk/client-rds-data": ">=3", "@cloudflare/workers-types": ">=4", "@electric-sql/pglite": ">=0.2.0", "@libsql/client": ">=0.10.0", "@libsql/client-wasm": ">=0.10.0", "@neondatabase/serverless": ">=0.10.0", "@op-engineering/op-sqlite": ">=2", "@opentelemetry/api": "^1.4.1", "@planetscale/database": ">=1.13", "@prisma/client": "*", "@tidbcloud/serverless": "*", "@types/better-sqlite3": "*", "@types/pg": "*", "@types/sql.js": "*", "@upstash/redis": ">=1.34.7", "@vercel/postgres": ">=0.8.0", "@xata.io/client": "*", "better-sqlite3": ">=7", "bun-types": "*", "expo-sqlite": ">=14.0.0", "gel": ">=2", "knex": "*", "kysely": "*", "mysql2": ">=2", "pg": ">=8", "postgres": ">=3", "prisma": "*", "sql.js": ">=1", "sqlite3": ">=5" }, "optionalPeers": ["@aws-sdk/client-rds-data", "@cloudflare/workers-types", "@electric-sql/pglite", "@libsql/client", "@libsql/client-wasm", "@neondatabase/serverless", "@op-engineering/op-sqlite", "@opentelemetry/api", "@planetscale/database", "@prisma/client", "@tidbcloud/serverless", "@types/better-sqlite3", "@types/pg", "@types/sql.js", "@upstash/redis", "@vercel/postgres", "@xata.io/client", "better-sqlite3", "bun-types", "expo-sqlite", "gel", "knex", "kysely", "mysql2", "pg", "postgres", "prisma", "sql.js", "sqlite3"] }, "sha512-kY0BSaTNYWnoDMVoyY8uxmyHjpJW1geOmBMdSSicKo9CIIWkSxMIj2rkeSR51b8KAPB7m+qysjuHme5nKP+E5Q=="],
+    "drizzle-orm": ["drizzle-orm@0.45.2", "", { "peerDependencies": { "@aws-sdk/client-rds-data": ">=3", "@cloudflare/workers-types": ">=4", "@electric-sql/pglite": ">=0.2.0", "@libsql/client": ">=0.10.0", "@libsql/client-wasm": ">=0.10.0", "@neondatabase/serverless": ">=0.10.0", "@op-engineering/op-sqlite": ">=2", "@opentelemetry/api": "^1.4.1", "@planetscale/database": ">=1.13", "@prisma/client": "*", "@tidbcloud/serverless": "*", "@types/better-sqlite3": "*", "@types/pg": "*", "@types/sql.js": "*", "@upstash/redis": ">=1.34.7", "@vercel/postgres": ">=0.8.0", "@xata.io/client": "*", "better-sqlite3": ">=7", "bun-types": "*", "expo-sqlite": ">=14.0.0", "gel": ">=2", "knex": "*", "kysely": "*", "mysql2": ">=2", "pg": ">=8", "postgres": ">=3", "sql.js": ">=1", "sqlite3": ">=5" }, "optionalPeers": ["@aws-sdk/client-rds-data", "@cloudflare/workers-types", "@electric-sql/pglite", "@libsql/client", "@libsql/client-wasm", "@neondatabase/serverless", "@op-engineering/op-sqlite", "@opentelemetry/api", "@planetscale/database", "@prisma/client", "@tidbcloud/serverless", "@types/better-sqlite3", "@types/pg", "@types/sql.js", "@upstash/redis", "@vercel/postgres", "@xata.io/client", "better-sqlite3", "bun-types", "expo-sqlite", "gel", "knex", "kysely", "mysql2", "pg", "postgres", "sql.js", "sqlite3"] }, "sha512-kY0BSaTNYWnoDMVoyY8uxmyHjpJW1geOmBMdSSicKo9CIIWkSxMIj2rkeSR51b8KAPB7m+qysjuHme5nKP+E5Q=="],
 
     "dunder-proto": ["dunder-proto@1.0.1", "", { "dependencies": { "call-bind-apply-helpers": "^1.0.1", "es-errors": "^1.3.0", "gopd": "^1.2.0" } }, "sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A=="],
 
@@ -2172,7 +2180,7 @@
 
     "shebang-regex": ["shebang-regex@3.0.0", "", {}, "sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A=="],
 
-    "shell-quote": ["shell-quote@1.9.0", "", {}, "sha512-Iov+JwFv/2HcTpcwNMKd8+IWNb8tboQJNQTkAY/LLVK7gGH9jy+LGkVqPxfekHl+yMmiqXszdGWXgkfml7hjqA=="],
+    "shell-quote": ["shell-quote@1.10.0", "", {}, "sha512-w1aiOKwKuRgtwAReIIj89puqg+I7GvX4IbLrvmhXbzQsj1+Zwi4VO3+fa6ZF91TWSjIxoEkKnMeHcLEODK5ZXA=="],
 
     "side-channel": ["side-channel@1.1.1", "", { "dependencies": { "es-errors": "^1.3.0", "object-inspect": "^1.13.4", "side-channel-list": "^1.0.1", "side-channel-map": "^1.0.1", "side-channel-weakmap": "^1.0.2" } }, "sha512-6x6dK6zJdpTzF4sQeNYxwtvBzf6Eg4GtlesS94HOvTudUeyK2WXAaIfmDgsyslYrRBeFIlsi54AYsFGUuhmvrQ=="],
 
@@ -2348,7 +2356,7 @@
 
     "vite": ["@voidzero-dev/vite-plus-core@0.1.24", "", { "dependencies": { "@oxc-project/runtime": "=0.133.0", "@oxc-project/types": "=0.133.0", "lightningcss": "^1.30.2", "postcss": "^8.5.6" }, "optionalDependencies": { "fsevents": "~2.3.3" }, "peerDependencies": { "@arethetypeswrong/core": "^0.18.1", "@tsdown/css": "0.22.1", "@tsdown/exe": "0.22.1", "@types/node": "^20.19.0 || >=22.12.0", "@vitejs/devtools": "^0.1.18", "esbuild": "^0.27.0 || ^0.28.0", "jiti": ">=1.21.0", "less": "^4.0.0", "publint": "^0.3.8", "sass": "^1.70.0", "sass-embedded": "^1.70.0", "stylus": ">=0.54.8", "sugarss": "^5.0.0", "terser": "^5.16.0", "tsx": "^4.8.1", "typescript": "^5.0.0 || ^6.0.0", "unplugin-unused": "^0.5.0", "unrun": "*", "yaml": "^2.4.2" }, "optionalPeers": ["@arethetypeswrong/core", "@tsdown/css", "@tsdown/exe", "@types/node", "@vitejs/devtools", "esbuild", "jiti", "less", "publint", "sass", "sass-embedded", "stylus", "sugarss", "terser", "tsx", "typescript", "unplugin-unused", "unrun", "yaml"] }, "sha512-iXPGBABnQnrDMx89H6MOCGcTZp+QW+3rY4YMVKdE6ydchSvPk2O3MI2vgaRVfOtWJ2IjnxSnf1n2yjP67ZBRFQ=="],
 
-    "vite-plus": ["vite-plus@0.1.24", "", { "dependencies": { "@oxc-project/types": "=0.133.0", "@oxlint/plugins": "=1.61.0", "@voidzero-dev/vite-plus-core": "0.1.24", "@voidzero-dev/vite-plus-test": "0.1.24", "oxfmt": "=0.52.0", "oxlint": "=1.67.0", "oxlint-tsgolint": "=0.23.0" }, "optionalDependencies": { "@voidzero-dev/vite-plus-darwin-arm64": "0.1.24", "@voidzero-dev/vite-plus-darwin-x64": "0.1.24", "@voidzero-dev/vite-plus-linux-arm64-gnu": "0.1.24", "@voidzero-dev/vite-plus-linux-arm64-musl": "0.1.24", "@voidzero-dev/vite-plus-linux-x64-gnu": "0.1.24", "@voidzero-dev/vite-plus-linux-x64-musl": "0.1.24", "@voidzero-dev/vite-plus-win32-arm64-msvc": "0.1.24", "@voidzero-dev/vite-plus-win32-x64-msvc": "0.1.24" }, "bin": { "oxfmt": "bin/oxfmt", "oxlint": "bin/oxlint", "vp": "bin/vp" } }, "sha512-b3fr6WtCiEhetjuzW/4KcEMOAMuZxoxZATWaXKmPzOLf1upG+pzKJOFZTb94D6wiPBlwcjxoaUtF7C3uAN+VjQ=="],
+    "vite-plus": ["vite-plus@0.1.24", "", { "dependencies": { "@oxc-project/types": "=0.133.0", "@oxlint/plugins": "=1.61.0", "@voidzero-dev/vite-plus-core": "0.1.24", "@voidzero-dev/vite-plus-test": "0.1.24", "oxfmt": "=0.52.0", "oxlint": "=1.67.0", "oxlint-tsgolint": "=0.23.0" }, "optionalDependencies": { "@voidzero-dev/vite-plus-darwin-arm64": "0.1.24", "@voidzero-dev/vite-plus-darwin-x64": "0.1.24", "@voidzero-dev/vite-plus-linux-arm64-gnu": "0.1.24", "@voidzero-dev/vite-plus-linux-arm64-musl": "0.1.24", "@voidzero-dev/vite-plus-linux-x64-gnu": "0.1.24", "@voidzero-dev/vite-plus-linux-x64-musl": "0.1.24", "@voidzero-dev/vite-plus-win32-arm64-msvc": "0.1.24", "@voidzero-dev/vite-plus-win32-x64-msvc": "0.1.24" }, "bin": { "vp": "bin/vp", "oxfmt": "bin/oxfmt", "oxlint": "bin/oxlint" } }, "sha512-b3fr6WtCiEhetjuzW/4KcEMOAMuZxoxZATWaXKmPzOLf1upG+pzKJOFZTb94D6wiPBlwcjxoaUtF7C3uAN+VjQ=="],
 
     "vitefu": ["vitefu@1.1.3", "", { "peerDependencies": { "vite": "^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0" }, "optionalPeers": ["vite"] }, "sha512-ub4okH7Z5KLjb6hDyjqrGXqWtWvoYdU3IGm/NorpgHncKoLTCfRIbvlhBm7r0YstIaQRYlp4yEbFqDcKSzXSSg=="],
 
@@ -2455,10 +2463,6 @@
     "@react-email/preview-server/esbuild": ["esbuild@0.27.4", "", { "optionalDependencies": { "@esbuild/aix-ppc64": "0.27.4", "@esbuild/android-arm": "0.27.4", "@esbuild/android-arm64": "0.27.4", "@esbuild/android-x64": "0.27.4", "@esbuild/darwin-arm64": "0.27.4", "@esbuild/darwin-x64": "0.27.4", "@esbuild/freebsd-arm64": "0.27.4", "@esbuild/freebsd-x64": "0.27.4", "@esbuild/linux-arm": "0.27.4", "@esbuild/linux-arm64": "0.27.4", "@esbuild/linux-ia32": "0.27.4", "@esbuild/linux-loong64": "0.27.4", "@esbuild/linux-mips64el": "0.27.4", "@esbuild/linux-ppc64": "0.27.4", "@esbuild/linux-riscv64": "0.27.4", "@esbuild/linux-s390x": "0.27.4", "@esbuild/linux-x64": "0.27.4", "@esbuild/netbsd-arm64": "0.27.4", "@esbuild/netbsd-x64": "0.27.4", "@esbuild/openbsd-arm64": "0.27.4", "@esbuild/openbsd-x64": "0.27.4", "@esbuild/openharmony-arm64": "0.27.4", "@esbuild/sunos-x64": "0.27.4", "@esbuild/win32-arm64": "0.27.4", "@esbuild/win32-ia32": "0.27.4", "@esbuild/win32-x64": "0.27.4" }, "bin": { "esbuild": "bin/esbuild" } }, "sha512-Rq4vbHnYkK5fws5NF7MYTU68FPRE1ajX7heQ/8QXXWqNgqqJ/GkmmyxIzUnf2Sr/bakf8l54716CcMGHYhMrrQ=="],
 
     "@shuding/opentype.js/fflate": ["fflate@0.7.4", "", {}, "sha512-5u2V/CDW15QM1XbbgS+0DfPxVB+jUKhWEKuuFuHncbk3tEEqzmoXL+2KyOFuKGqOnmdIy0/davWF1CkuwtibCw=="],
-
-    "@somewhatintelligent/bouncer/@somewhatintelligent/auth": ["@somewhatintelligent/auth@0.0.2", "", { "dependencies": { "@better-auth/api-key": "^1.6.0", "@better-auth/oauth-provider": "^1.6.0", "@better-auth/passkey": "^1.6.0", "@better-auth/stripe": "^1.6.0", "better-auth": "^1.6.0", "cookie-es": "^3.1.1", "stripe": "^20.4.1" } }, "sha512-SUyicF6GYdRrv2fvoS5z6m+tdAo89DnftEi95/8IiRdfP8gPrNebAkcTkv7jo+dB65py4O/xR2pE9BL2m95d8w=="],
-
-    "@somewhatintelligent/kit/@somewhatintelligent/auth": ["@somewhatintelligent/auth@0.0.2", "", { "dependencies": { "@better-auth/api-key": "^1.6.0", "@better-auth/oauth-provider": "^1.6.0", "@better-auth/passkey": "^1.6.0", "@better-auth/stripe": "^1.6.0", "better-auth": "^1.6.0", "cookie-es": "^3.1.1", "stripe": "^20.4.1" } }, "sha512-SUyicF6GYdRrv2fvoS5z6m+tdAo89DnftEi95/8IiRdfP8gPrNebAkcTkv7jo+dB65py4O/xR2pE9BL2m95d8w=="],
 
     "@tailwindcss/node/jiti": ["jiti@2.7.0", "", { "bin": { "jiti": "lib/jiti-cli.mjs" } }, "sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ=="],
 

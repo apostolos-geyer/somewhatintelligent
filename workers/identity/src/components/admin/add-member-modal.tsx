@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,11 +8,11 @@ import {
   DialogTitle,
 } from "@si/ui/components/dialog";
 import { Button } from "@si/ui/components/button";
-import { Input } from "@si/ui/components/input";
 import { Label } from "@si/ui/components/label";
 import { Field, FieldDescription } from "@si/ui/components/field";
 import { Alert } from "@si/ui/components/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@si/ui/components/avatar";
+import { SearchCombobox } from "@si/ui/components/search-combobox";
 import {
   Select,
   SelectContent,
@@ -35,51 +35,20 @@ export function AddMemberModal({
   onOpenChange: (next: boolean) => void;
   onSuccess: () => void;
 }) {
-  const [email, setEmail] = useState("");
-  const [userId, setUserId] = useState<string | null>(null);
+  const [pickedUser, setPickedUser] = useState<UserSearchHit | null>(null);
+  const userId = pickedUser?.id ?? null;
   const [role, setRole] = useState<Role>("member");
-  const [results, setResults] = useState<UserSearchHit[]>([]);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Reset when the modal opens.
   useEffect(() => {
     if (open) {
-      setEmail("");
-      setUserId(null);
+      setPickedUser(null);
       setRole("member");
-      setResults([]);
       setError(null);
     }
   }, [open]);
-
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    if (email.trim().length < 2 || userId) {
-      setResults([]);
-      return;
-    }
-    searchTimerRef.current = setTimeout(async () => {
-      try {
-        const res = await searchUsersByEmail({ data: { email: email.trim() } });
-        setResults(res.users);
-        setSearchOpen(true);
-      } catch {
-        /* silent */
-      }
-    }, 250);
-    return () => {
-      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    };
-  }, [email, userId]);
-
-  function selectUser(u: UserSearchHit) {
-    setUserId(u.id);
-    setEmail(u.email);
-    setSearchOpen(false);
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -113,61 +82,28 @@ export function AddMemberModal({
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <Field>
             <Label htmlFor="add-member-email">Email</Label>
-            <div className="relative">
-              <Input
-                id="add-member-email"
-                type="email"
-                value={email}
-                onChange={(e) => {
-                  setUserId(null);
-                  setEmail(e.target.value);
-                }}
-                onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
-                placeholder="user@example.com"
-                disabled={!!userId}
-                autoFocus
-              />
-              {userId && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute top-1/2 right-1 -translate-y-1/2"
-                  onClick={() => {
-                    setUserId(null);
-                    setEmail("");
-                  }}
-                >
-                  Change
-                </Button>
-              )}
-              {searchOpen && results.length > 0 && !userId && (
-                <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-sm border-2 border-border-strong bg-surface-raised shadow-soft-md">
-                  {results.map((u) => (
-                    <button
-                      key={u.id}
-                      type="button"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        selectUser(u);
-                      }}
-                      className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-surface-sunken"
-                    >
-                      <Avatar size="sm">
-                        {u.image ? <AvatarImage src={u.image} alt="" /> : null}
-                        <AvatarFallback>
-                          {(u.name ?? u.email).charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <div className="text-sm font-medium">{u.name ?? "—"}</div>
-                        <div className="font-mono text-xs text-text-tertiary">{u.email}</div>
-                      </div>
-                    </button>
-                  ))}
+            <SearchCombobox<UserSearchHit>
+              id="add-member-email"
+              inputType="email"
+              value={pickedUser}
+              onSelect={setPickedUser}
+              search={async (q) => (await searchUsersByEmail({ data: { email: q } })).users}
+              itemToKey={(u) => u.id}
+              itemToLabel={(u) => u.email}
+              renderItem={(u) => (
+                <div className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-surface-sunken">
+                  <Avatar size="sm">
+                    {u.image ? <AvatarImage src={u.image} alt="" /> : null}
+                    <AvatarFallback>{(u.name ?? u.email).charAt(0).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <div className="text-sm font-medium">{u.name ?? "—"}</div>
+                    <div className="font-mono text-xs text-muted-foreground/80">{u.email}</div>
+                  </div>
                 </div>
               )}
-            </div>
+              placeholder="user@example.com"
+            />
             <FieldDescription>Only existing users are eligible.</FieldDescription>
           </Field>
 

@@ -32,7 +32,7 @@ function DeviceApprovePage() {
     <>
       <div className="mb-section text-center">
         <div className="type-display-title">Authorize</div>
-        <div className="type-editorial-lede mt-grid text-text-secondary">
+        <div className="type-editorial-lede mt-grid text-muted-foreground">
           Something is asking to be you. Whether you should let it is, I suppose, your decision.
         </div>
       </div>
@@ -45,12 +45,12 @@ function DeviceApprovePage() {
             </div>
             <div>
               <div className="text-sm font-medium">{user.name}</div>
-              <div className="font-mono text-xs text-text-tertiary">{user.email}</div>
+              <div className="font-mono text-xs text-muted-foreground/80">{user.email}</div>
             </div>
           </div>
 
           <div className="mb-8">
-            <div className="type-mono-label mb-3 text-text-tertiary">Device Code</div>
+            <div className="type-mono-label mb-3 text-muted-foreground/80">Device Code</div>
             <Badge variant="secondary" className="font-mono text-sm tracking-widest">
               {userCode.slice(0, 4)}-{userCode.slice(4)}
             </Badge>
@@ -58,7 +58,7 @@ function DeviceApprovePage() {
 
           <DeviceApproveActions userCode={userCode} />
 
-          <p className="mt-5 text-center text-xs text-text-tertiary">
+          <p className="mt-5 text-center text-xs text-muted-foreground/80">
             You can revoke this at any time. We will not ask if you are sure.
           </p>
         </CardContent>

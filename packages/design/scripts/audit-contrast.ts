@@ -1,16 +1,17 @@
 /**
  * WCAG Contrast Ratio Audit
  *
- * Checks all foreground/background color combinations against WCAG guidelines:
+ * Checks every semantic contract pair (see src/tokens/colors.ts) against
+ * WCAG guidelines:
  * - AA Normal text: 4.5:1
- * - AA Large text (18px+ bold or 24px+): 3:1
+ * - AA Large text / non-text UI (border, ring, …): 3:1
  * - AAA Normal text: 7:1
  * - AAA Large text: 4.5:1
  *
  * Run: bun run audit:contrast
  */
 
-import { lightColors, darkColors, accentColors, type HSLColor } from "../src/tokens/colors";
+import { lightColors, darkColors, type HSLColor, type SemanticTheme } from "../src/tokens/colors";
 
 // --- WCAG relative luminance + contrast ratio ---
 
@@ -42,7 +43,7 @@ function grade(ratio: number): string {
   return "FAIL";
 }
 
-// --- Define pairs ---
+// --- Define pairs, driven by the semantic contract itself ---
 
 interface CheckPair {
   label: string;
@@ -51,76 +52,63 @@ interface CheckPair {
   context: "normal" | "large";
 }
 
+/** Text-on-fill pairs: [foreground key, background key][] */
+const TEXT_PAIRS: [keyof SemanticTheme, keyof SemanticTheme][] = [
+  ["foreground", "background"],
+  ["mutedForeground", "background"],
+  ["cardForeground", "card"],
+  ["popoverForeground", "popover"],
+  ["secondaryForeground", "secondary"],
+  ["mutedForeground", "muted"],
+  ["accentForeground", "accent"],
+  ["primaryForeground", "primary"],
+  ["destructiveForeground", "destructive"],
+  ["successForeground", "success"],
+  ["warningForeground", "warning"],
+  ["inverseForeground", "inverse"],
+  ["sidebarForeground", "sidebar"],
+  ["sidebarAccentForeground", "sidebarAccent"],
+  ["sidebarPrimaryForeground", "sidebarPrimary"],
+];
+
+/** Non-text UI pairs (borders, rings, chart marks) — WCAG 1.4.11, 3:1 floor */
+const UI_PAIRS: [keyof SemanticTheme, keyof SemanticTheme][] = [
+  ["border", "background"],
+  ["borderStrong", "background"],
+  ["input", "background"],
+  ["ring", "background"],
+  ["sidebarBorder", "sidebar"],
+  ["chart1", "background"],
+  ["chart2", "background"],
+  ["chart3", "background"],
+  ["chart4", "background"],
+  ["chart5", "background"],
+];
+
 function buildPairs(): CheckPair[] {
   const pairs: CheckPair[] = [];
 
-  function addMode(
-    modeName: string,
-    colors: typeof lightColors | typeof darkColors,
-    accentMode: "light" | "dark",
-  ) {
-    const backgrounds = [
-      { name: "bg", color: colors.bg },
-      { name: "surface", color: colors.surface },
-      { name: "surfaceRaised", color: colors.surfaceRaised },
-      { name: "surfaceSunken", color: colors.surfaceSunken },
-    ];
-
-    const texts = [
-      { name: "text", color: colors.text, context: "normal" as const },
-      { name: "textSecondary", color: colors.textSecondary, context: "normal" as const },
-      { name: "textTertiary", color: colors.textTertiary, context: "large" as const },
-    ];
-
-    for (const bg of backgrounds) {
-      for (const text of texts) {
-        pairs.push({
-          label: `[${modeName}] ${text.name} on ${bg.name}`,
-          fg: text.color,
-          bg: bg.color,
-          context: text.context,
-        });
-      }
-    }
-
-    for (const [accentName, accent] of Object.entries(accentColors)) {
-      const accentColor = accent[accentMode];
-      for (const bg of backgrounds) {
-        pairs.push({
-          label: `[${modeName}] ${accentName} on ${bg.name}`,
-          fg: accentColor,
-          bg: bg.color,
-          context: "large",
-        });
-      }
-    }
-
-    for (const [accentName, accent] of Object.entries(accentColors)) {
-      const accentColor = accent[accentMode];
+  function addMode(modeName: string, theme: SemanticTheme) {
+    for (const [fgKey, bgKey] of TEXT_PAIRS) {
       pairs.push({
-        label: `[${modeName}] textOnAccent on ${accentName}`,
-        fg: colors.textOnAccent,
-        bg: accentColor,
+        label: `[${modeName}] ${fgKey} on ${bgKey}`,
+        fg: theme[fgKey],
+        bg: theme[bgKey],
         context: "normal",
       });
     }
-
-    pairs.push({
-      label: `[${modeName}] border on bg`,
-      fg: colors.border,
-      bg: colors.bg,
-      context: "large",
-    });
-    pairs.push({
-      label: `[${modeName}] borderStrong on bg`,
-      fg: colors.borderStrong,
-      bg: colors.bg,
-      context: "large",
-    });
+    for (const [fgKey, bgKey] of UI_PAIRS) {
+      pairs.push({
+        label: `[${modeName}] ${fgKey} on ${bgKey}`,
+        fg: theme[fgKey],
+        bg: theme[bgKey],
+        context: "large",
+      });
+    }
   }
 
-  addMode("Light", lightColors, "light");
-  addMode("Dark", darkColors, "dark");
+  addMode("Light", lightColors);
+  addMode("Dark", darkColors);
 
   return pairs;
 }
@@ -175,7 +163,7 @@ for (const pair of pairs) {
 
 console.log("");
 console.log("╔══════════════════════════════════════════════════╗");
-console.log("║     PLATFORM DESIGN SYSTEM — CONTRAST AUDIT     ║");
+console.log("║   DESIGN TOKEN ENGINE — SEMANTIC CONTRAST AUDIT   ║");
 console.log("╚══════════════════════════════════════════════════╝");
 console.log("");
 
@@ -204,7 +192,7 @@ console.log(
 console.log("─".repeat(52));
 
 if (failCount > 0) {
-  console.log("\n  Fix: adjust H/S/L in src/tokens/colors.ts, re-run.\n");
+  console.log("\n  Fix: adjust H/S/L in src/tokens/brand.ts, re-run.\n");
   process.exit(1);
 } else if (warnCount > 0) {
   console.log("\n  ✅ All pairs meet WCAG AA. Some don't reach AAA.\n");

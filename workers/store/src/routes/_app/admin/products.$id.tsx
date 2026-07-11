@@ -127,7 +127,10 @@ function EditProduct() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
-        <Link to="/admin/products" className="text-text-tertiary hover:text-text font-mono text-xs">
+        <Link
+          to="/admin/products"
+          className="text-muted-foreground hover:text-foreground font-mono text-xs"
+        >
           ← catalog
         </Link>
         {product.status === "active" && (
@@ -145,7 +148,7 @@ function EditProduct() {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Details */}
         <Card className="p-6">
-          <h2 className="text-text mb-4 font-semibold">Details</h2>
+          <h2 className="text-foreground mb-4 font-semibold">Details</h2>
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -175,8 +178,8 @@ function EditProduct() {
 
         {/* Images */}
         <Card className="p-6">
-          <h2 className="text-text mb-1 font-semibold">Images</h2>
-          <p className="text-text-tertiary mb-4 font-mono text-xs">
+          <h2 className="text-foreground mb-1 font-semibold">Images</h2>
+          <p className="text-muted-foreground mb-4 font-mono text-xs">
             Uploaded to R2 via the roadie binding. First image is the cover.
           </p>
           <div className="grid grid-cols-3 gap-3">
@@ -206,7 +209,7 @@ function EditProduct() {
             <button
               onClick={() => fileInput.current?.click()}
               disabled={uploading}
-              className="border-border text-text-tertiary hover:border-foreground hover:text-text flex aspect-square flex-col items-center justify-center gap-1 rounded border-2 border-dashed text-xs transition-colors disabled:opacity-50"
+              className="border-border text-muted-foreground hover:border-foreground hover:text-foreground flex aspect-square flex-col items-center justify-center gap-1 rounded border-2 border-dashed text-xs transition-colors disabled:opacity-50"
             >
               <UploadIcon className="size-5" />
               {uploading ? "Uploading…" : "Add"}
@@ -225,16 +228,16 @@ function EditProduct() {
 
       {/* Variants / sizes */}
       <Card className="p-6">
-        <h2 className="text-text mb-4 font-semibold">Sizes & stock</h2>
+        <h2 className="text-foreground mb-4 font-semibold">Sizes & stock</h2>
         <div className="space-y-2">
           {variants.length === 0 && (
-            <p className="text-text-tertiary font-mono text-sm">No sizes yet — add one below.</p>
+            <p className="text-muted-foreground font-mono text-sm">No sizes yet — add one below.</p>
           )}
           {variants.map((v) => (
             <div key={v.id} className="border-border flex items-center gap-3 rounded border p-2.5">
-              <span className="text-text w-12 font-mono text-sm font-semibold">{v.size}</span>
-              <span className="text-text-tertiary flex-1 font-mono text-xs">{v.sku}</span>
-              <Label className="text-text-tertiary font-mono text-xs">stock</Label>
+              <span className="text-foreground w-12 font-mono text-sm font-semibold">{v.size}</span>
+              <span className="text-muted-foreground flex-1 font-mono text-xs">{v.sku}</span>
+              <Label className="text-muted-foreground font-mono text-xs">stock</Label>
               <Input
                 type="number"
                 min={0}
@@ -274,7 +277,7 @@ function EditProduct() {
             <sizeForm.SubmitButton label="Add size" variant="outline" />
           </sizeForm.AppForm>
         </form>
-        <p className="text-text-tertiary mt-4 font-mono text-xs">
+        <p className="text-muted-foreground mt-4 font-mono text-xs">
           Listed price: {formatCents(product.priceCents)}
         </p>
       </Card>

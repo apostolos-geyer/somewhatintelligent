@@ -15,7 +15,7 @@ function SessionsPage() {
     <div className="flex flex-1 flex-col">
       <div className="mb-section">
         <h1 className="type-page-title">Sessions</h1>
-        <p className="mt-1 text-sm text-text-secondary">
+        <p className="mt-1 text-sm text-muted-foreground">
           Active sessions. Each one a small thread of trust, held open until it expires or is
           revoked.
         </p>
@@ -25,16 +25,16 @@ function SessionsPage() {
         <table className="w-full min-w-[700px] border-collapse text-sm">
           <thead>
             <tr className="border-b-2 border-border-strong bg-surface-sunken">
-              <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
+              <th className="type-mono-label px-4 py-3 text-left font-normal text-muted-foreground/80">
                 User
               </th>
-              <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
+              <th className="type-mono-label px-4 py-3 text-left font-normal text-muted-foreground/80">
                 IP
               </th>
-              <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
+              <th className="type-mono-label px-4 py-3 text-left font-normal text-muted-foreground/80">
                 Created
               </th>
-              <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
+              <th className="type-mono-label px-4 py-3 text-left font-normal text-muted-foreground/80">
                 Expires
               </th>
             </tr>
@@ -42,7 +42,7 @@ function SessionsPage() {
           <tbody>
             {sessions.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-text-tertiary">
+                <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground/80">
                   No active sessions. It follows that nobody is currently authenticated.
                 </td>
               </tr>
@@ -57,17 +57,19 @@ function SessionsPage() {
                     </Avatar>
                     <div>
                       <div className="font-medium">{s.userName ?? "Unknown"}</div>
-                      <div className="font-mono text-xs text-text-tertiary">{s.userEmail}</div>
+                      <div className="font-mono text-xs text-muted-foreground/80">
+                        {s.userEmail}
+                      </div>
                     </div>
                   </div>
                 </td>
-                <td className="px-4 py-3 font-mono text-xs text-text-tertiary">
+                <td className="px-4 py-3 font-mono text-xs text-muted-foreground/80">
                   {s.ipAddress ?? "\u2014"}
                 </td>
-                <td className="px-4 py-3 font-mono text-xs text-text-tertiary">
+                <td className="px-4 py-3 font-mono text-xs text-muted-foreground/80">
                   {s.createdAt ? new Date(s.createdAt).toLocaleDateString("en-US") : "\u2014"}
                 </td>
-                <td className="px-4 py-3 font-mono text-xs text-text-tertiary">
+                <td className="px-4 py-3 font-mono text-xs text-muted-foreground/80">
                   {s.expiresAt ? new Date(s.expiresAt).toLocaleDateString("en-US") : "\u2014"}
                 </td>
               </tr>

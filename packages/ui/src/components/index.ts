@@ -61,9 +61,6 @@ export {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-export { FileIcon, inferMimeFromName, isAudio, isDocument, isImage, isVideo } from "./ui/file-icon";
-export { FileItem } from "./ui/file-item";
-export type { FileItemFile, FileItemProps } from "./ui/file-item";
 export { Input } from "./ui/input";
 export {
   Item,
@@ -98,9 +95,7 @@ export {
   PopoverTitle,
   PopoverTrigger,
 } from "./ui/popover";
-export { AppShell } from "./ui/app-shell";
-export { HeaderUserMenu } from "./ui/header-user-menu";
+export { SearchCombobox, type SearchComboboxProps } from "./ui/search-combobox";
 export { Separator } from "./ui/separator";
-export { SiteHeader } from "./ui/site-header";
 export { Textarea } from "./ui/textarea";
 export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";

@@ -55,7 +55,7 @@ export const WithContent: Story = {
           </div>
           <div className="space-y-1">
             <p className="text-sm font-medium">Email</p>
-            <p className="text-sm text-muted-foreground">user@si.example</p>
+            <p className="text-sm text-muted-foreground">user@example.com</p>
           </div>
           <div className="space-y-1">
             <p className="text-sm font-medium">Language</p>

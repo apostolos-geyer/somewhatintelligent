@@ -16,7 +16,7 @@ export function ProductImage({
     return (
       <div
         className={
-          "bg-surface-sunken text-text-tertiary flex items-center justify-center " +
+          "bg-surface-sunken text-muted-foreground flex items-center justify-center " +
           (className ?? "")
         }
         aria-label={alt}

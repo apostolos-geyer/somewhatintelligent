@@ -96,7 +96,7 @@ function ProvidersPage() {
         <CardContent>
           <div className="flex flex-col gap-4">
             {loading ? (
-              <p className="text-sm text-text-tertiary">Loading{"\u2026"}</p>
+              <p className="text-sm text-muted-foreground/80">Loading{"\u2026"}</p>
             ) : (
               <>
                 {accounts.length > 0 && (
@@ -131,12 +131,14 @@ function ProvidersPage() {
                 )}
 
                 {accounts.length === 0 && (
-                  <p className="text-sm text-text-tertiary">No linked providers.</p>
+                  <p className="text-sm text-muted-foreground/80">No linked providers.</p>
                 )}
 
                 {linkableProviders.some((p) => !linkedProviderIds.includes(p)) && (
                   <div>
-                    <div className="type-mono-label mb-2 text-text-tertiary">Link a provider</div>
+                    <div className="type-mono-label mb-2 text-muted-foreground/80">
+                      Link a provider
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {linkableProviders
                         .filter((p) => !linkedProviderIds.includes(p))

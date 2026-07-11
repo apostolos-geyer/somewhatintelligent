@@ -56,12 +56,12 @@ export const AllSizes: Story = {
   render: () => (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-3">
-        <span className="type-mono-label w-20 text-text-tertiary">sm</span>
+        <span className="type-mono-label w-20 text-muted-foreground/80">sm</span>
         <Switch size="sm" />
         <Switch size="sm" defaultChecked />
       </div>
       <div className="flex items-center gap-3">
-        <span className="type-mono-label w-20 text-text-tertiary">default</span>
+        <span className="type-mono-label w-20 text-muted-foreground/80">default</span>
         <Switch size="default" />
         <Switch size="default" defaultChecked />
       </div>

@@ -195,7 +195,7 @@ export const WithTextSuffix: Story = {
     <InputGroup className="w-72">
       <InputGroupInput placeholder="username" />
       <InputGroupAddon align="inline-end">
-        <InputGroupText>@si.example</InputGroupText>
+        <InputGroupText>@example.com</InputGroupText>
       </InputGroupAddon>
     </InputGroup>
   ),

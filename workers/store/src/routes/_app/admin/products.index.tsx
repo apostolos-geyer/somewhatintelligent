@@ -17,11 +17,11 @@ export const Route = createFileRoute("/_app/admin/products/")({
 });
 
 const STATUS_VARIANT: Record<string, React.ComponentProps<typeof Badge>["variant"]> = {
-  // DRAFT status stamps: soft = solid-green (live), warn = dashed (draft),
-  // info = dotted (archived).
-  active: "soft",
-  draft: "warn",
-  archived: "info",
+  // DRAFT status stamps: success (live), warning (draft), secondary — no
+  // semantic "info" token in the new contract (archived).
+  active: "success",
+  draft: "warning",
+  archived: "secondary",
 };
 
 const newProductSchema = type({
@@ -63,7 +63,7 @@ function AdminProducts() {
   return (
     <div>
       <div className="mb-5 flex items-center justify-between">
-        <h2 className="text-text text-xl font-semibold">Catalog</h2>
+        <h2 className="text-foreground text-xl font-semibold">Catalog</h2>
         <Button onClick={() => setOpen((v) => !v)}>
           <PlusIcon className="size-4" /> New product
         </Button>
@@ -106,7 +106,7 @@ function AdminProducts() {
       )}
 
       {products.length === 0 ? (
-        <Card variant="soft" className="text-text-tertiary p-12 text-center font-mono text-sm">
+        <Card variant="soft" className="text-muted-foreground p-12 text-center font-mono text-sm">
           No products yet. Create your first above.
         </Card>
       ) : (
@@ -118,14 +118,14 @@ function AdminProducts() {
                   <ProductImage refId={p.coverRef} alt={p.title} className="h-full w-full" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-text truncate text-sm font-medium">{p.title}</div>
-                  <div className="text-text-tertiary font-mono text-xs">/{p.slug}</div>
+                  <div className="text-foreground truncate text-sm font-medium">{p.title}</div>
+                  <div className="text-muted-foreground font-mono text-xs">/{p.slug}</div>
                 </div>
                 <Badge variant={STATUS_VARIANT[p.status] ?? "outline"}>{p.status}</Badge>
-                <span className="text-text-tertiary w-20 text-right font-mono text-xs">
+                <span className="text-muted-foreground w-20 text-right font-mono text-xs">
                   {p.totalStock} in stock
                 </span>
-                <span className="text-text w-20 text-right font-mono text-sm">
+                <span className="text-foreground w-20 text-right font-mono text-sm">
                   {formatCents(p.priceCents)}
                 </span>
               </Card>

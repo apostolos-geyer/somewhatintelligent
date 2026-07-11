@@ -67,12 +67,12 @@ function ManageOrder() {
       <Link
         to="/admin/orders"
         search={{ status: "all" }}
-        className="text-text-tertiary hover:text-text mb-4 inline-block font-mono text-xs"
+        className="text-muted-foreground hover:text-foreground mb-4 inline-block font-mono text-xs"
       >
         ← all orders
       </Link>
       <div className="mb-6 flex items-center justify-between gap-4">
-        <h2 className="font-display text-text text-2xl font-light tracking-tight">
+        <h2 className="font-display text-foreground text-2xl font-light tracking-tight">
           {order.orderNumber}
         </h2>
         <OrderStatusBadge status={order.status} />
@@ -80,7 +80,7 @@ function ManageOrder() {
 
       {/* Fulfillment actions */}
       <Card variant="soft" className="mb-6 p-5">
-        <h3 className="text-text mb-3 font-semibold">Fulfillment</h3>
+        <h3 className="text-foreground mb-3 font-semibold">Fulfillment</h3>
 
         {order.status === "pending" && (
           <div className="flex flex-wrap gap-2">
@@ -122,7 +122,7 @@ function ManageOrder() {
             }}
             className="grid gap-4"
           >
-            <p className="text-text-tertiary font-mono text-xs">
+            <p className="text-muted-foreground font-mono text-xs">
               Attach a carrier + tracking number to ship. The customer sees the tracking link on
               their order page.
             </p>
@@ -167,7 +167,7 @@ function ManageOrder() {
         )}
 
         {(order.status === "delivered" || order.status === "cancelled") && (
-          <p className="text-text-tertiary font-mono text-sm">
+          <p className="text-muted-foreground font-mono text-sm">
             {order.status === "delivered"
               ? "Delivered — nothing left to do."
               : "This order was cancelled."}
@@ -180,13 +180,13 @@ function ManageOrder() {
         <div className="divide-border divide-y">
           {items.map((it) => (
             <div key={it.id} className="flex justify-between gap-3 p-3 text-sm">
-              <span className="text-text-secondary">
+              <span className="text-muted-foreground">
                 {it.titleSnapshot}{" "}
-                <span className="text-text-tertiary">
+                <span className="text-muted-foreground">
                   · {it.sizeSnapshot} ×{it.quantity}
                 </span>
               </span>
-              <span className="text-text font-mono">
+              <span className="text-foreground font-mono">
                 {formatCents(it.unitPriceCents * it.quantity)}
               </span>
             </div>
@@ -199,16 +199,16 @@ function ManageOrder() {
             v={order.shippingCents === 0 ? "Free" : formatCents(order.shippingCents)}
           />
           <div className="border-border flex justify-between border-t pt-2 text-base">
-            <span className="text-text font-semibold">Total</span>
-            <span className="text-text font-semibold">{formatCents(order.totalCents)}</span>
+            <span className="text-foreground font-semibold">Total</span>
+            <span className="text-foreground font-semibold">{formatCents(order.totalCents)}</span>
           </div>
         </div>
       </Card>
 
       {/* Customer */}
       <Card variant="soft" className="p-5">
-        <h3 className="text-text mb-2 font-semibold">Ship to</h3>
-        <address className="text-text-secondary text-sm not-italic leading-relaxed">
+        <h3 className="text-foreground mb-2 font-semibold">Ship to</h3>
+        <address className="text-muted-foreground text-sm not-italic leading-relaxed">
           {order.shipName}
           <br />
           {order.email}
@@ -226,9 +226,9 @@ function ManageOrder() {
 
 function Line({ k, v }: { k: string; v: string }) {
   return (
-    <div className="text-text-secondary flex justify-between gap-3">
-      <span className="text-text-tertiary">{k}</span>
-      <span className="text-text">{v}</span>
+    <div className="text-muted-foreground flex justify-between gap-3">
+      <span className="text-muted-foreground">{k}</span>
+      <span className="text-foreground">{v}</span>
     </div>
   );
 }

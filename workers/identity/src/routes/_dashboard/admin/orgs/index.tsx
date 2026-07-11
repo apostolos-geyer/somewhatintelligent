@@ -17,7 +17,7 @@ function OrgsPage() {
       <div className="mb-section flex items-baseline justify-between">
         <div>
           <h1 className="type-page-title">Organizations</h1>
-          <p className="mt-1 text-sm text-text-secondary">
+          <p className="mt-1 text-sm text-muted-foreground">
             The customer brands provisioned on this platform. Each is its own tenant of the identity
             apparatus.
           </p>
@@ -31,19 +31,19 @@ function OrgsPage() {
         <table className="w-full min-w-[700px] border-collapse text-sm">
           <thead>
             <tr className="border-b-2 border-border-strong bg-surface-sunken">
-              <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
+              <th className="type-mono-label px-4 py-3 text-left font-normal text-muted-foreground/80">
                 Slug
               </th>
-              <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
+              <th className="type-mono-label px-4 py-3 text-left font-normal text-muted-foreground/80">
                 Name
               </th>
-              <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
+              <th className="type-mono-label px-4 py-3 text-left font-normal text-muted-foreground/80">
                 Members
               </th>
-              <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
+              <th className="type-mono-label px-4 py-3 text-left font-normal text-muted-foreground/80">
                 Created
               </th>
-              <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
+              <th className="type-mono-label px-4 py-3 text-left font-normal text-muted-foreground/80">
                 Owner
               </th>
             </tr>
@@ -51,7 +51,7 @@ function OrgsPage() {
           <tbody>
             {orgs.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-text-tertiary">
+                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground/80">
                   No organizations yet.{" "}
                   <Link to="/admin/orgs/new" className="text-primary hover:underline">
                     Onboard your first brand →
@@ -71,12 +71,14 @@ function OrgsPage() {
                   </Link>
                 </td>
                 <td className="px-4 py-3 font-medium">{o.name}</td>
-                <td className="px-4 py-3 font-mono text-xs text-text-tertiary">{o.memberCount}</td>
-                <td className="px-4 py-3 font-mono text-xs text-text-tertiary">
+                <td className="px-4 py-3 font-mono text-xs text-muted-foreground/80">
+                  {o.memberCount}
+                </td>
+                <td className="px-4 py-3 font-mono text-xs text-muted-foreground/80">
                   {relativeTime(o.createdAt)}
                 </td>
                 <td className="px-4 py-3 text-sm">
-                  {o.ownerName ?? <span className="text-text-tertiary">—</span>}
+                  {o.ownerName ?? <span className="text-muted-foreground/80">—</span>}
                 </td>
               </tr>
             ))}

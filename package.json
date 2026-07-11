@@ -92,6 +92,9 @@
     "partysocket": "^1",
     "@posthog/react": "1.10.3",
     "posthog-js": "1.398.1",
-    "posthog-node": "5.39.4"
+    "posthog-node": "5.39.4",
+    "wrangler": "^4.81.1",
+    "typescript": "5.9.2",
+    "@cloudflare/workers-types": "^4"
   }
 }

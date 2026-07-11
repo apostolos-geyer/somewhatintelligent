@@ -5,14 +5,14 @@ import type { LogoColorScheme } from "./types";
 const COLOR_SCHEMES: LogoColorScheme[] = [
   "primary",
   "light",
-  "mono-paper",
-  "mono-void",
-  "on-rust",
+  "mono-light",
+  "mono-dark",
+  "on-destructive",
   "on-success",
 ];
 
 function isDarkScheme(cs: LogoColorScheme) {
-  return !["light", "mono-void"].includes(cs);
+  return !["light", "mono-dark"].includes(cs);
 }
 
 function SchemeBg({ scheme, children }: { scheme: LogoColorScheme; children: React.ReactNode }) {
@@ -179,7 +179,7 @@ export const AllColorSchemes: Story = {
           <SchemeBg scheme={cs}>
             <LogoLoading {...args} colorScheme={cs} />
           </SchemeBg>
-          <span className="text-mono-label text-ink uppercase">{cs}</span>
+          <span className="text-mono-label text-foreground uppercase">{cs}</span>
         </div>
       ))}
     </div>
@@ -203,7 +203,7 @@ export const AllColorSchemesDramatic: Story = {
           <SchemeBg scheme={cs}>
             <LogoLoading {...args} colorScheme={cs} />
           </SchemeBg>
-          <span className="text-mono-label text-ink uppercase">{cs}</span>
+          <span className="text-mono-label text-foreground uppercase">{cs}</span>
         </div>
       ))}
     </div>
@@ -220,7 +220,7 @@ export const SizeScale: Story = {
       {[192, 128, 80, 48, 32].map((s) => (
         <div key={s} className="flex flex-col items-center gap-2">
           <LogoLoading {...args} size={s} />
-          <span className="text-mono-label text-ink">{s}px</span>
+          <span className="text-mono-label text-foreground">{s}px</span>
         </div>
       ))}
     </div>
@@ -252,7 +252,7 @@ export const EffectGrid: Story = {
           <SchemeBg scheme={baseArgs.colorScheme ?? "primary"}>
             <LogoLoading {...baseArgs} {...EFFECTS_OFF} {...args} size={96} />
           </SchemeBg>
-          <span className="text-mono-label text-ink text-center">{label}</span>
+          <span className="text-mono-label text-foreground text-center">{label}</span>
         </div>
       ))}
     </div>

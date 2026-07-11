@@ -18,7 +18,7 @@ function ClientsPage() {
       <div className="mb-section flex items-baseline justify-between">
         <div>
           <h1 className="type-page-title">OAuth Clients</h1>
-          <p className="mt-1 text-sm text-text-secondary">
+          <p className="mt-1 text-sm text-muted-foreground">
             The applications that have been granted the privilege of asking you who you are.
           </p>
         </div>
@@ -31,16 +31,16 @@ function ClientsPage() {
         <table className="w-full min-w-[700px] border-collapse text-sm">
           <thead>
             <tr className="border-b-2 border-border-strong bg-surface-sunken">
-              <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
+              <th className="type-mono-label px-4 py-3 text-left font-normal text-muted-foreground/80">
                 Name
               </th>
-              <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
+              <th className="type-mono-label px-4 py-3 text-left font-normal text-muted-foreground/80">
                 Client ID
               </th>
-              <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
+              <th className="type-mono-label px-4 py-3 text-left font-normal text-muted-foreground/80">
                 Type
               </th>
-              <th className="type-mono-label px-4 py-3 text-left font-normal text-text-tertiary">
+              <th className="type-mono-label px-4 py-3 text-left font-normal text-muted-foreground/80">
                 Source
               </th>
             </tr>
@@ -48,7 +48,7 @@ function ClientsPage() {
           <tbody>
             {clients.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-text-tertiary">
+                <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground/80">
                   No clients registered. The identity provider awaits its supplicants.
                 </td>
               </tr>
@@ -64,7 +64,9 @@ function ClientsPage() {
                     {c.name ?? c.clientId}
                   </Link>
                 </td>
-                <td className="px-4 py-3 font-mono text-xs text-text-tertiary">{c.clientId}</td>
+                <td className="px-4 py-3 font-mono text-xs text-muted-foreground/80">
+                  {c.clientId}
+                </td>
                 <td className="px-4 py-3">
                   <Badge variant="secondary">{c.type ?? "web"}</Badge>
                 </td>
@@ -72,7 +74,7 @@ function ClientsPage() {
                   {isManaged(c.referenceId) ? (
                     <Badge variant="warning">Managed</Badge>
                   ) : (
-                    <Badge variant="ink">Custom</Badge>
+                    <Badge variant="default">Custom</Badge>
                   )}
                 </td>
               </tr>

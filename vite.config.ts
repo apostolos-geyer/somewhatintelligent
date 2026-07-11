@@ -58,6 +58,16 @@ export default defineConfig({
       "workers/**/__tests__/**",
       "**/*.itest.ts",
       "packages/kit/src/log/__tests__/instrumented.test.ts",
+      // packages/design's brand-lint tests import from "bun:test" (its own
+      // `bun test scripts` tier, package.json `test` script) — vitest can't
+      // resolve that module specifier at all.
+      "packages/design/scripts/*.test.ts",
+      // packages/ui's dom tier needs a jsdom environment + setup file
+      // (packages/ui/vite.config.ts's "dom" project); root's flat vitest
+      // glob has no per-directory environment scoping, so these run under
+      // root's default ("document is not defined") instead. Own tier:
+      // `cd packages/ui && bun run test`.
+      "packages/ui/src/**/*.dom.test.tsx",
     ],
   },
 });

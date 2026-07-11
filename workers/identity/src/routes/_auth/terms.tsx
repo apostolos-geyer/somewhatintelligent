@@ -21,7 +21,7 @@ function TermsPage() {
         <CardHeader>
           <CardTitle>Terms</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4 text-sm text-text-secondary">
+        <CardContent className="space-y-4 text-sm text-muted-foreground">
           <p>
             You are using a personal identity provider operated by one person. Don't abuse it. If
             your account causes problems, it will cease to exist. This service is provided as-is. It
@@ -30,7 +30,7 @@ function TermsPage() {
           </p>
           <p>
             Your data is yours. You can delete it at any time. See the{" "}
-            <Link to="/privacy" className="underline underline-offset-2 hover:text-text-primary">
+            <Link to="/privacy" className="underline underline-offset-2 hover:text-foreground">
               privacy policy
             </Link>{" "}
             for what we store and on what terms.
@@ -42,8 +42,8 @@ function TermsPage() {
         </CardContent>
       </Card>
 
-      <div className="mt-section flex justify-center text-xs text-text-tertiary">
-        <Link to="/sign-in" className="hover:text-text-secondary">
+      <div className="mt-section flex justify-center text-xs text-muted-foreground/80">
+        <Link to="/sign-in" className="hover:text-muted-foreground">
           Back to sign in
         </Link>
       </div>

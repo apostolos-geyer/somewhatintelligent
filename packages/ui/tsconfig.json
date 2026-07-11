@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "target": "ES2022",
     "jsx": "react-jsx",
     "jsxImportSource": "react",
     "module": "ESNext",
@@ -8,10 +9,11 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "types": ["@testing-library/jest-dom"],
     "paths": {
       "@si/ui/*": ["./src/*"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "__tests__/**/*.ts"],
   "exclude": ["node_modules"]
 }

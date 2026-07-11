@@ -20,7 +20,7 @@ function NewClientPage() {
     <div className="flex flex-1 flex-col">
       <div className="mb-section">
         <h1 className="type-page-title">Register Client</h1>
-        <p className="mt-1 text-sm text-text-secondary">
+        <p className="mt-1 text-sm text-muted-foreground">
           A new application wishes to participate in the identity apparatus.
         </p>
       </div>
@@ -84,12 +84,12 @@ function CreateClientForm() {
         </CardHeader>
         <CardContent className="space-y-4 p-0">
           <div className="rounded-sm bg-surface-sunken px-4 py-3">
-            <div className="type-mono-label mb-1 text-text-tertiary">Client ID</div>
-            <code className="type-code break-all text-ink">{created.clientId}</code>
+            <div className="type-mono-label mb-1 text-muted-foreground/80">Client ID</div>
+            <code className="type-code break-all text-primary">{created.clientId}</code>
           </div>
           <div className="rounded-sm bg-surface-sunken px-4 py-3">
-            <div className="type-mono-label mb-1 text-text-tertiary">Client Secret</div>
-            <code className="type-code break-all text-ink">{created.clientSecret}</code>
+            <div className="type-mono-label mb-1 text-muted-foreground/80">Client Secret</div>
+            <code className="type-code break-all text-primary">{created.clientSecret}</code>
           </div>
           <Button
             variant="secondary"

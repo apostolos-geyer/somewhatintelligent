@@ -2,20 +2,38 @@
 
 This is a **template fork** of a personal platform monorepo. The platform
 spine — bouncer, guestlist, roadie, promoter, identity, store, and supporting
-packages — runs locally. Per-client rebranding is centralized into three
-files.
+packages — runs locally. Per-client rebranding is centralized into a small
+set of declared brand surfaces — see "Where to edit when rebranding" below.
 
 ## Where to edit when rebranding
 
-| File                                | What lives here                                                                                                                                                                           |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/config/src/brand.ts`      | brand.{name, short, supportEmail}; cookies.prefix; auth.{providerId, passkeyRpName, twoFactorIssuer}                                                                                      |
-| `packages/config/src/deploy.ts`     | baseDomain, devDomain, workerPrefix, cloudflareAccountId (code-consumed values only; per-env D1 ids, routes, domains, and resource names live directly in each worker's `wrangler.jsonc`) |
-| `workers/identity/src/app-brand.ts` | per-app `APP_PRODUCT_NAME` (each app is a different product)                                                                                                                              |
+`packages/design`, `packages/ui`, and `workers/identity` are scaffolded from
+platform's copy-owned templates (`docs/rfc` upstream; see the
+`<!-- scaffold:* -->` sections below) and carry their **own** brand surfaces,
+separate from `@si/config`:
+
+| File                                          | What lives here                                                                                                                                    |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/design/src/tokens/brand.ts`         | palette ramps (`neutralRamp`/`accentRamp`), semantic palette values (`lightPalette`/`darkPalette`/`functionalColors`) — the design system's colors |
+| `packages/ui/src/components/ui/logo/brand.ts` | logo wordmark strings, aria-label, mark geometry/colors (OG-safe hex)                                                                              |
+| `workers/identity/src/app.config.ts`          | identity's brand name/short/supportEmail, and the bouncer attestation public-key set                                                               |
+| `workers/identity/src/app-brand.ts`           | identity's own `APP_PRODUCT_NAME` (shown after the wordmark)                                                                                       |
+
+`@si/config` remains the brand surface for every OTHER consumer (guestlist,
+bouncer, store, promoter, the auth package, email templates):
+
+| File                            | What lives here                                                                                                                                                                                                                                                                      |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `packages/config/src/brand.ts`  | brand.{name, short, supportEmail}; cookies.prefix; auth.{providerId, passkeyRpName, twoFactorIssuer} — read by guestlist, bouncer, store, promoter, packages/auth, packages/email (`short`/`supportEmail` currently have no reader since identity switched to its own app.config.ts) |
+| `packages/config/src/deploy.ts` | baseDomain, devDomain, workerPrefix, cloudflareAccountId (code-consumed values only; per-env D1 ids, routes, domains, and resource names live directly in each worker's `wrangler.jsonc`)                                                                                            |
 
 **Do not** scatter brand/domain/cookie literals through code. Anything new
 that needs branding reads from `@si/config` (or from the app's local
-`app-brand.ts` if it's per-app product information).
+`app-brand.ts`/`app.config.ts` if it's per-app product information), UNLESS
+the code lives in `packages/design`, `packages/ui`, or `workers/identity` —
+those read only from their own brand surfaces above (see the `TODO.md`
+dependency-wiring note and the `<!-- scaffold:* -->` sections below for the
+templates' own conventions).
 
 ## How wrangler config works
 
@@ -49,10 +67,14 @@ import from `@si/config` rather than introducing a literal:
   `.{devDomain}` var rendered into identity's wrangler vars, allowlisted into the
   bundle by `vite.config.ts` CLIENT_VARS). No per-app origin list to maintain —
   any host under the apex is trusted by construction, mirroring the auth
-  server's `*.{apex}` trustedOrigins.
-- `workers/identity/src/components/guestlist-brand.tsx` — wordmark via Logo
-- `workers/identity/og/_brand.tsx` — same, for OG image rendering
-- `packages/ui/.../logo/logo.tsx` + `logo-animated.tsx` — wordmark text
+  server's `*.{apex}` trustedOrigins. (Reads `AUTH_DOMAIN` from the wrangler
+  var directly, not from `@si/config` — listed here for the trust-boundary
+  contract, not the import.)
+
+Identity's own wordmark/logo rendering (`src/components/guestlist-brand.tsx`,
+`og/_brand.tsx`) and `packages/ui`'s `logo.tsx`/`logo-animated.tsx` no longer
+read `@si/config` — they're scaffolded-template brand surfaces now (see
+"Where to edit when rebranding" above).
 
 ## Local dev workflow
 
@@ -178,3 +200,58 @@ Before substantial work:
 - Multiple matches: prefer the most specific local skill for the package or concern you are changing; load additional skills only when the task spans multiple packages or concerns.
 
 <!-- intent-skills:end -->
+
+<!-- scaffold:design -->
+
+# Design system (scaffolded from platform templates/design)
+
+- **Rebranding**: edit `packages/design/src/tokens/brand.ts` (palette ramps,
+  semantic palette values, fonts), then `bun run codegen` and
+  `bun run audit:contrast`. Components never change during a reskin — if a
+  rebrand diff touches anything outside the brand surfaces, that is a bug.
+- **Two token layers**: the palette (yours, open-ended — add custom tokens
+  for marketing surfaces freely) and the semantic layer
+  (`primary`, `foreground`, `destructive`, … — a fixed contract UI
+  components compile against). App code may use declared palette tokens;
+  UI-kit components must stay semantic-only.
+- **`bun run brand-lint <dirs>`** enforces this: no hex literals outside
+  brand surfaces, no unknown color utilities, `--strict-semantic` for the
+  ui package. Wire it into your check pipeline.
+- Generated CSS lives in `generated/` — regenerate via codegen, never
+  hand-edit.
+
+<!-- scaffold:ui -->
+
+# UI kit (scaffolded from platform templates/ui)
+
+- shadcn-style components on Base UI: **copy-owned** — edit freely, there
+  is no upstream dependency to fight.
+- **Components stay semantic**: only semantic design tokens
+  (`bg-primary`, `text-foreground`, `border-border-strong`, …) and semantic
+  variant names (`primary/secondary/destructive/success/warning/inverse`)
+  in this package. Brand-named tokens or strings here break the reskin
+  contract (`brand-lint --strict-semantic` gates it).
+- **Adding components**: `bunx shadcn add <name>` works (`components.json`);
+  stock shadcn output is already semantic — restyle to the house materials
+  (`lib/materials.ts`) as wanted, keep it semantic.
+- **The logo mark and wordmark** live in `src/components/ui/logo/brand.ts`
+  — the one brand-edited file in this package (hex literals there are
+  required by the OG/satori pipeline and are allowlisted).
+
+<!-- scaffold:identity -->
+
+# Identity app (scaffolded from platform templates/identity)
+
+- The IdP surface: auth flows (sign-in/up, reset, verify, two-factor,
+  consent, device), account self-service, and the org/user admin group.
+  Data layer is typed RPC on the `GUESTLIST` service binding.
+- **Brand surfaces**: `src/app.config.ts` (names, support email,
+  attestation keys), the ui package's logo `brand.ts`, `og.config.ts`
+  (OG fonts). A reskin touches only these plus the design package.
+- **Analytics is a no-op stub** (`src/lib/analytics.ts`) — swap in your
+  vendor there; event names are typed.
+- Some org-admin actions are feature-flagged off (`ORG_ADMIN_FEATURES`)
+  pending guestlist entrypoint methods (`adminUpdateOrg`,
+  `adminResendOrgInvitation`).
+- Tests: `bun run test` (unit + jsdom DOM suites). `bun run types` after
+  wrangler edits; repoint the GUESTLIST service names to your fleet.

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { type } from "arktype";
-import { useCapture } from "@si/analytics/client";
+import { useCapture } from "@/lib/analytics";
 import { useAppForm } from "@si/ui/hooks/use-app-form";
 import { buttonVariants } from "@si/ui/components/button";
 import { cn } from "@si/ui/lib/utils";

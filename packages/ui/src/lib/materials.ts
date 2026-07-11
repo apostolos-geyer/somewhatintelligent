@@ -37,7 +37,7 @@ export const surfaceMaterials = {
   /** Soft: quiet secondary sheet — dashed rule, flat */
   soft: "rounded-md border border-dashed border-border bg-surface-raised",
   /** Neo raised: chiseled, standing proud of the paper */
-  neo: "rounded-md border border-border bg-surface shadow-neo-raised",
+  neo: "rounded-md border border-border bg-surface-raised shadow-neo-raised",
   /** Neo inset: pressed/sunken into the paper */
   neoInset: "rounded-md border border-border bg-surface-sunken shadow-neo-inset",
   /** Legacy "glass": an opaque fresh sheet with a solid rule (flat) */

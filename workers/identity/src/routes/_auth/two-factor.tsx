@@ -59,7 +59,7 @@ function TwoFactorPage() {
   return (
     <>
       <GuestlistBrand className="mb-section flex flex-col items-center text-center" />
-      <div className="mb-section -mt-4 text-center type-editorial-lede text-text-secondary">
+      <div className="mb-section -mt-4 text-center type-editorial-lede text-muted-foreground">
         {isBackup
           ? "enter one of your backup codes"
           : "enter the 6-digit code from your authenticator"}
@@ -82,7 +82,7 @@ function TwoFactorPage() {
               />
             </Field>
 
-            <label className="flex items-center gap-2 text-sm text-text-secondary">
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
               <Checkbox
                 checked={trustDevice}
                 onCheckedChange={(v) => setTrustDevice(v === true)}
@@ -102,7 +102,7 @@ function TwoFactorPage() {
             </Button>
           </form>
 
-          <p className="mt-5 text-center text-sm text-text-secondary">
+          <p className="mt-5 text-center text-sm text-muted-foreground">
             {isBackup ? (
               <Link
                 to="/two-factor"
@@ -124,19 +124,19 @@ function TwoFactorPage() {
             )}
           </p>
 
-          <p className="mt-3 text-center text-sm text-text-tertiary">
-            <Link to="/sign-in" className="hover:text-text-secondary">
+          <p className="mt-3 text-center text-sm text-muted-foreground/80">
+            <Link to="/sign-in" className="hover:text-muted-foreground">
               Sign in with a different account
             </Link>
           </p>
         </CardContent>
       </Card>
 
-      <div className="mt-section flex justify-center gap-grid text-xs text-text-tertiary">
-        <Link to="/privacy" className="hover:text-text-secondary">
+      <div className="mt-section flex justify-center gap-grid text-xs text-muted-foreground/80">
+        <Link to="/privacy" className="hover:text-muted-foreground">
           Privacy
         </Link>
-        <Link to="/terms" className="hover:text-text-secondary">
+        <Link to="/terms" className="hover:text-muted-foreground">
           Terms
         </Link>
       </div>

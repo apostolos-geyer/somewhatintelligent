@@ -133,17 +133,17 @@ export const COLOR_SCHEMES: Record<LogoColorScheme, LogoColors> = {
     mainRect: "hsl(200 40% 32%)",
     stroke: "hsl(40 15% 93%)",
   },
-  "mono-paper": {
+  "mono-light": {
     shadowRect: "hsl(60 100% 95% / 0.15)",
     mainRect: "hsl(60 100% 95%)",
     stroke: "hsl(0 0% 6%)",
   },
-  "mono-void": {
+  "mono-dark": {
     shadowRect: "hsl(0 0% 6% / 0.15)",
     mainRect: "hsl(0 0% 6%)",
     stroke: "hsl(60 100% 95%)",
   },
-  "on-rust": {
+  "on-destructive": {
     shadowRect: "hsl(355 55% 42% / 0.5)",
     mainRect: "hsl(60 100% 95%)",
     stroke: "hsl(355 55% 62%)",

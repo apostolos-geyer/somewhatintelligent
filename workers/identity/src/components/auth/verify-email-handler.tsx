@@ -45,7 +45,7 @@ export function VerifyEmailHandler({ token, returnTo }: { token: string; returnT
         {status === "error" && (
           <>
             <CardHeader>
-              <CardTitle className="text-rust">Verification failed.</CardTitle>
+              <CardTitle className="text-destructive">Verification failed.</CardTitle>
               <CardDescription>
                 The token is invalid or expired. You'll need to request a new one.
               </CardDescription>

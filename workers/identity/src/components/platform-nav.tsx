@@ -1,5 +1,5 @@
 // Shared platform top-nav — 52px bar, surface-raised bg, 4px
-// border-strong bottom, Logo + wordmark left cluster with border-r
+// strong bottom border, Logo + wordmark left cluster with border-r
 // separator.
 // Consumers compose children into left/tabs/right regions. The
 // component is **app-agnostic** — the list of apps in the switcher is
@@ -9,13 +9,13 @@ import { CheckIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { cn } from "@si/ui/lib/utils";
-import { LogoIcon } from "./logo";
+import { LogoIcon } from "@si/ui/components/logo";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "./dropdown-menu";
+} from "@si/ui/components/dropdown-menu";
 
 // ── Root ──────────────────────────────────────────────────────────
 
@@ -87,13 +87,13 @@ function PlatformNavAppSwitcher({
             aria-label="Platform app switcher"
             className={cn(
               triggerLayoutClasses,
-              "no-underline outline-none focus-visible:ring-2 focus-visible:ring-ink",
+              "no-underline outline-none focus-visible:ring-2 focus-visible:ring-ring",
             )}
           >
             <LogoIcon colorScheme="light" size={22} />
             <b className="text-foreground font-sans text-[14px] uppercase tracking-[0.08em]">
               {current.label}
-              <span className="text-ink">.</span>
+              <span className="text-primary">.</span>
             </b>
           </button>
         }
@@ -151,7 +151,7 @@ function PlatformNavTab({
   linkComponent?: React.ElementType;
 }) {
   const InternalLink = linkComponent ?? "a";
-  // Tab fills the nav's content area (52px total − 4px border-bottom =
+  // Tab fills the nav's content area (52px total − 4px bottom border =
   // 48px). Not `h-[52px]` because the nav's overflow-x-auto promotes
   // overflow-y to auto in all browsers; any vertical overflow (even
   // 1px) produces a visible scrollbar inside the nav. Indicator sits
@@ -164,7 +164,7 @@ function PlatformNavTab({
       href={href}
       className={cn(
         "group relative flex h-full items-center gap-1.5 px-[18px] text-[13px] font-semibold uppercase tracking-[0.06em] no-underline transition-colors",
-        active ? "text-foreground" : "text-text-secondary hover:text-foreground",
+        active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
       )}
     >
       {Icon ? <Icon className="size-3.5" /> : null}
