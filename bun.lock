@@ -28,8 +28,8 @@
       "dependencies": {
         "@posthog/react": "catalog:",
         "@si/config": "workspace:*",
-        "@somewhatintelligent/auth": "0.0.3",
-        "@somewhatintelligent/kit": "0.0.2",
+        "@somewhatintelligent/auth": "0.0.4-beta.1783733618.d38901c",
+        "@somewhatintelligent/kit": "0.0.3-beta.1783733618.d38901c",
         "posthog-js": "catalog:",
         "posthog-node": "catalog:",
       },
@@ -200,8 +200,8 @@
       "version": "0.0.2",
       "dependencies": {
         "@si/config": "workspace:*",
-        "@somewhatintelligent/auth": "0.0.3",
-        "@somewhatintelligent/bouncer": "0.0.2",
+        "@somewhatintelligent/auth": "0.0.4-beta.1783733618.d38901c",
+        "@somewhatintelligent/bouncer": "0.0.3-beta.1783733618.d38901c",
       },
       "devDependencies": {
         "@cloudflare/vitest-pool-workers": "^0.14.6",
@@ -219,9 +219,9 @@
         "@si/config": "workspace:*",
         "@si/promoter-service": "workspace:*",
         "@si/roadie-service": "workspace:*",
-        "@somewhatintelligent/guestlist": "0.0.5",
-        "@somewhatintelligent/kit": "0.0.2",
-        "@somewhatintelligent/stripe": "0.0.1",
+        "@somewhatintelligent/guestlist": "0.0.6-beta.1783733618.d38901c",
+        "@somewhatintelligent/kit": "0.0.3-beta.1783733618.d38901c",
+        "@somewhatintelligent/stripe": "0.0.2-beta.1783733618.d38901c",
         "better-auth": "catalog:",
         "drizzle-orm": "catalog:",
       },
@@ -243,10 +243,10 @@
         "@si/analytics": "workspace:*",
         "@si/design": "workspace:*",
         "@si/ui": "workspace:*",
-        "@somewhatintelligent/auth": "0.0.4-beta.1783732751.3b77dd8",
-        "@somewhatintelligent/guestlist": "0.0.6-beta.1783732751.3b77dd8",
-        "@somewhatintelligent/kit": "0.0.3-beta.1783732751.3b77dd8",
-        "@somewhatintelligent/og": "0.0.2-beta.1783732751.3b77dd8",
+        "@somewhatintelligent/auth": "0.0.4-beta.1783733618.d38901c",
+        "@somewhatintelligent/guestlist": "0.0.6-beta.1783733618.d38901c",
+        "@somewhatintelligent/kit": "0.0.3-beta.1783733618.d38901c",
+        "@somewhatintelligent/og": "0.0.2-beta.1783733618.d38901c",
         "@tailwindcss/vite": "catalog:",
         "@tanstack/react-devtools": "latest",
         "@tanstack/react-router": "1.170.10",
@@ -285,7 +285,7 @@
       "dependencies": {
         "@si/config": "workspace:*",
         "@si/email": "workspace:*",
-        "@somewhatintelligent/kit": "0.0.2",
+        "@somewhatintelligent/kit": "0.0.3-beta.1783733618.d38901c",
       },
       "devDependencies": {
         "@cloudflare/workers-types": "^4",
@@ -301,7 +301,7 @@
       "name": "@si/roadie-service",
       "version": "0.0.1",
       "dependencies": {
-        "@somewhatintelligent/kit": "0.0.2",
+        "@somewhatintelligent/kit": "0.0.3-beta.1783733618.d38901c",
         "aws4fetch": "^1.0.20",
         "drizzle-orm": "catalog:",
       },
@@ -328,10 +328,10 @@
         "@si/design": "workspace:*",
         "@si/roadie-service": "workspace:*",
         "@si/ui": "workspace:*",
-        "@somewhatintelligent/auth": "0.0.3",
-        "@somewhatintelligent/guestlist": "0.0.5",
-        "@somewhatintelligent/kit": "0.0.2",
-        "@somewhatintelligent/stripe": "0.0.1",
+        "@somewhatintelligent/auth": "0.0.4-beta.1783733618.d38901c",
+        "@somewhatintelligent/guestlist": "0.0.6-beta.1783733618.d38901c",
+        "@somewhatintelligent/kit": "0.0.3-beta.1783733618.d38901c",
+        "@somewhatintelligent/stripe": "0.0.2-beta.1783733618.d38901c",
         "@tailwindcss/vite": "catalog:",
         "@tanstack/react-devtools": "latest",
         "@tanstack/react-router": "1.170.10",
@@ -1162,17 +1162,17 @@
 
     "@solid-primitives/utils": ["@solid-primitives/utils@6.4.1", "", { "peerDependencies": { "solid-js": "^1.6.12" } }, "sha512-ISSB5QX1qP2ynrheIpYwc4oKR5Ny4siNuUyf1qZniy+Il+p/PtDB0QK1Dnle8noiHpwRD3gpPdubOC3qI/Zamg=="],
 
-    "@somewhatintelligent/auth": ["@somewhatintelligent/auth@0.0.3", "", { "dependencies": { "@better-auth/api-key": "^1.6.0", "@better-auth/oauth-provider": "^1.6.0", "@better-auth/passkey": "^1.6.0", "@better-auth/stripe": "^1.6.0", "better-auth": "^1.6.0", "cookie-es": "^3.1.1", "stripe": "^20.4.1" } }, "sha512-MrZG0fpWxNHUJUKdIZoefhOxMls/LW4hiykv8QomQ7ySp918v77vf0ZrZtr02uF2wptHDvMM11Sb8A3pwwU1ng=="],
+    "@somewhatintelligent/auth": ["@somewhatintelligent/auth@0.0.4-beta.1783733618.d38901c", "", { "dependencies": { "@better-auth/api-key": "^1.6.0", "@better-auth/oauth-provider": "^1.6.0", "@better-auth/passkey": "^1.6.0", "@better-auth/stripe": "^1.6.0", "better-auth": "^1.6.0", "cookie-es": "^3.1.1", "stripe": "^20.4.1" } }, "sha512-yWpiiHRX1ScmX6ax5i95dUYeaeg3yLVlqaR+RuOve+zAm3V5BvRx5WM9eZKeXFZLO5QHE4DqRCytMefvx18RIg=="],
 
-    "@somewhatintelligent/bouncer": ["@somewhatintelligent/bouncer@0.0.2", "", { "dependencies": { "@somewhatintelligent/auth": "^0.0.2", "@somewhatintelligent/kit": "^0.0.2", "arktype": "^2.2.0", "cookie-es": "^3.1.1" } }, "sha512-aTd8r7UYQWR3IQkFJnaw5GCwWXtcGpXiWygzecPx5Q5WzxQE+UiWHmrPYxkSz7NO3qECpWqqZB+Pf8O++vmIdg=="],
+    "@somewhatintelligent/bouncer": ["@somewhatintelligent/bouncer@0.0.3-beta.1783733618.d38901c", "", { "dependencies": { "@somewhatintelligent/auth": "^0.0.4-beta.1783733618.d38901c", "@somewhatintelligent/kit": "^0.0.3-beta.1783733618.d38901c", "arktype": "^2.2.0", "cookie-es": "^3.1.1" } }, "sha512-yjB09AKkLnDiM4b7BD8sa2ncaGyx1R29l9hL9PMiOwgOrUOxuvhhvn4+ZlPuNpT4m668uEoSIvp9MXP3OLWmZg=="],
 
-    "@somewhatintelligent/guestlist": ["@somewhatintelligent/guestlist@0.0.5", "", { "dependencies": { "@better-auth/api-key": "^1.6.0", "@better-auth/core": "^1.6.9", "@better-auth/oauth-provider": "^1.6.0", "@better-auth/passkey": "^1.6.0", "@somewhatintelligent/auth": "^0.0.3", "@somewhatintelligent/kit": "^0.0.2", "better-auth": "^1.6.0", "cookie-es": "^3.1.1", "drizzle-orm": "^0.45.2", "ulidx": "^2.4.1" }, "peerDependencies": { "react": "19.2.4" }, "optionalPeers": ["react"] }, "sha512-G+sUKZKm++7q+7r4Vboj/4AkE+9sF+whOSruTOUYBMXGnQFdoOciA4zQWi031ntNCgfNuOM/kejC5T5Kjj/GIQ=="],
+    "@somewhatintelligent/guestlist": ["@somewhatintelligent/guestlist@0.0.6-beta.1783733618.d38901c", "", { "dependencies": { "@better-auth/api-key": "^1.6.0", "@better-auth/core": "^1.6.9", "@better-auth/oauth-provider": "^1.6.0", "@better-auth/passkey": "^1.6.0", "@somewhatintelligent/auth": "^0.0.4-beta.1783733618.d38901c", "@somewhatintelligent/kit": "^0.0.3-beta.1783733618.d38901c", "better-auth": "^1.6.0", "cookie-es": "^3.1.1", "drizzle-orm": "^0.45.2", "ulidx": "^2.4.1" }, "peerDependencies": { "react": "19.2.4" }, "optionalPeers": ["react"] }, "sha512-KvIsjHw5w+I4msq1ZDXqGXNMuVDsUg7DpFRr1LasVQ+JNyb8J6Qu2vd5aHA+91U9cbBFT+A2+wyLm/wk5Y48/g=="],
 
-    "@somewhatintelligent/kit": ["@somewhatintelligent/kit@0.0.2", "", { "dependencies": { "@somewhatintelligent/auth": "^0.0.2", "ulidx": "^2.4.1" }, "peerDependencies": { "@tanstack/react-start": "1.168.18", "react": "19.2.4" }, "optionalPeers": ["@tanstack/react-start", "react"] }, "sha512-HdVIGgZbCCFp/pTEEU5oSyMvu4bw9CAsV5rf7o5GgsJeh8sWwpQ1S8unVqs1/Wjz1cLMAIPjmC/O6DadBH2Ohg=="],
+    "@somewhatintelligent/kit": ["@somewhatintelligent/kit@0.0.3-beta.1783733618.d38901c", "", { "dependencies": { "@somewhatintelligent/auth": "^0.0.4-beta.1783733618.d38901c", "ulidx": "^2.4.1" }, "peerDependencies": { "@tanstack/react-start": "1.168.18", "react": "19.2.4" }, "optionalPeers": ["@tanstack/react-start", "react"] }, "sha512-s75iIEEtnGiL6kKZHNdI3LXGcsMdM08uNKMIFdNdEG+2ryFINj+nDNk/BT+gjaEiBGmMhGNnuL01wt7X07dLPA=="],
 
-    "@somewhatintelligent/og": ["@somewhatintelligent/og@0.0.2-beta.1783732751.3b77dd8", "", { "dependencies": { "@resvg/resvg-js": "^2.6.2", "satori": "^0.26.0", "tinyglobby": "^0.2.16" }, "peerDependencies": { "react": "19.2.4" }, "optionalPeers": ["react"], "bin": { "platform-og": "src/cli.ts" } }, "sha512-wE3VnMBkjf7aY7lP+Q7a8o+qBGUAIjxbX93i8byYmqcHFyrWMUBDkBkbf/cJkb7YzVr9yPFG8wGloYUjSpWQqw=="],
+    "@somewhatintelligent/og": ["@somewhatintelligent/og@0.0.2-beta.1783733618.d38901c", "", { "dependencies": { "@resvg/resvg-js": "^2.6.2", "satori": "^0.26.0", "tinyglobby": "^0.2.16" }, "peerDependencies": { "react": "19.2.4" }, "optionalPeers": ["react"], "bin": { "platform-og": "src/cli.ts" } }, "sha512-Z+tlh+Q2gkdZzT0sb+IL2XogoI6LtntSDqo5i6L+0RoXKQ5b4tYQSfe9UF6T81u/W0WYyhoRVLCMAasaFZuBEw=="],
 
-    "@somewhatintelligent/stripe": ["@somewhatintelligent/stripe@0.0.1", "", { "dependencies": { "stripe": "^20.4.1" } }, "sha512-jWA7FJu3QGT3aJLGJ4QEEiJwqPB0Jzmxh4uaGB5+DOK934jC04otoLt1K97B3KllCsSZmhSIo7ex1nawMP7Yng=="],
+    "@somewhatintelligent/stripe": ["@somewhatintelligent/stripe@0.0.2-beta.1783733618.d38901c", "", { "dependencies": { "stripe": "^20.4.1" } }, "sha512-eT93KfzCvpTJEjQ84ygDztn2eL0toFhE2NBNFcWbztmMb90e4CLFS+8ajvmxc+BA5U9JQH/E4juzyqJlaithCw=="],
 
     "@speed-highlight/core": ["@speed-highlight/core@1.2.17", "", {}, "sha512-Z92FwKpCtfaW1V0jTU/fh3QzYEZN8wDwrzRIBoADCJfn4mJCNcJN/XegifX7BDrQ8/h9Xh/JnbyMchL0FqXrkg=="],
 
@@ -2464,10 +2464,6 @@
 
     "@shuding/opentype.js/fflate": ["fflate@0.7.4", "", {}, "sha512-5u2V/CDW15QM1XbbgS+0DfPxVB+jUKhWEKuuFuHncbk3tEEqzmoXL+2KyOFuKGqOnmdIy0/davWF1CkuwtibCw=="],
 
-    "@somewhatintelligent/bouncer/@somewhatintelligent/auth": ["@somewhatintelligent/auth@0.0.2", "", { "dependencies": { "@better-auth/api-key": "^1.6.0", "@better-auth/oauth-provider": "^1.6.0", "@better-auth/passkey": "^1.6.0", "@better-auth/stripe": "^1.6.0", "better-auth": "^1.6.0", "cookie-es": "^3.1.1", "stripe": "^20.4.1" } }, "sha512-SUyicF6GYdRrv2fvoS5z6m+tdAo89DnftEi95/8IiRdfP8gPrNebAkcTkv7jo+dB65py4O/xR2pE9BL2m95d8w=="],
-
-    "@somewhatintelligent/kit/@somewhatintelligent/auth": ["@somewhatintelligent/auth@0.0.2", "", { "dependencies": { "@better-auth/api-key": "^1.6.0", "@better-auth/oauth-provider": "^1.6.0", "@better-auth/passkey": "^1.6.0", "@better-auth/stripe": "^1.6.0", "better-auth": "^1.6.0", "cookie-es": "^3.1.1", "stripe": "^20.4.1" } }, "sha512-SUyicF6GYdRrv2fvoS5z6m+tdAo89DnftEi95/8IiRdfP8gPrNebAkcTkv7jo+dB65py4O/xR2pE9BL2m95d8w=="],
-
     "@tailwindcss/node/jiti": ["jiti@2.7.0", "", { "bin": { "jiti": "lib/jiti-cli.mjs" } }, "sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ=="],
 
     "@tailwindcss/oxide-wasm32-wasi/@emnapi/core": ["@emnapi/core@1.11.2", "", { "dependencies": { "@emnapi/wasi-threads": "1.2.2", "tslib": "^2.4.0" }, "bundled": true }, "sha512-TC8MkTuZUtcTSiFeuC0ksCh9QIJ5+F21MvZ4Wn4ORfYaFJ/0dsiudv5tVkejgwZlwQ39jL9WWDe2lz8x0WglOA=="],
@@ -2551,12 +2547,6 @@
     "h3-v2/rou3": ["rou3@0.8.1", "", {}, "sha512-ePa+XGk00/3HuCqrEnK3LxJW7I0SdNg6EFzKUJG73hMAdDcOUC/i/aSz7LSDwLrGr33kal/rqOGydzwl6U7zBA=="],
 
     "htmlparser2/entities": ["entities@4.5.0", "", {}, "sha512-V0hjH4dGPh9Ao5p0MoRY6BVqtwCjhz6vI5LT8AJ55H+4g9/4vbHx1I54fS0XuclLhDHArPQCiMjDxjaL8fPxhw=="],
-
-    "identity/@somewhatintelligent/auth": ["@somewhatintelligent/auth@0.0.4-beta.1783732751.3b77dd8", "", { "dependencies": { "@better-auth/api-key": "^1.6.0", "@better-auth/oauth-provider": "^1.6.0", "@better-auth/passkey": "^1.6.0", "@better-auth/stripe": "^1.6.0", "better-auth": "^1.6.0", "cookie-es": "^3.1.1", "stripe": "^20.4.1" } }, "sha512-90QITs3rK/DVoPePv4WPkvDT8CwxTkfX3aeWMZ55JrsqctlmBZ9Q5+pm4fD+vfTFuPTKmcyQ04fmsr40XRr9XA=="],
-
-    "identity/@somewhatintelligent/guestlist": ["@somewhatintelligent/guestlist@0.0.6-beta.1783732751.3b77dd8", "", { "dependencies": { "@better-auth/api-key": "^1.6.0", "@better-auth/core": "^1.6.9", "@better-auth/oauth-provider": "^1.6.0", "@better-auth/passkey": "^1.6.0", "@somewhatintelligent/auth": "^0.0.4-beta.1783732751.3b77dd8", "@somewhatintelligent/kit": "^0.0.3-beta.1783732751.3b77dd8", "better-auth": "^1.6.0", "cookie-es": "^3.1.1", "drizzle-orm": "^0.45.2", "ulidx": "^2.4.1" }, "peerDependencies": { "react": "19.2.4" }, "optionalPeers": ["react"] }, "sha512-EimX3xzOD2hD1wGUTA1u9X4Su+laufLv48FoVm/emdBmbWDBblbcOAIcQXDOrt+5sqm/wSJtdhffPBFRpidkNQ=="],
-
-    "identity/@somewhatintelligent/kit": ["@somewhatintelligent/kit@0.0.3-beta.1783732751.3b77dd8", "", { "dependencies": { "@somewhatintelligent/auth": "^0.0.4-beta.1783732751.3b77dd8", "ulidx": "^2.4.1" }, "peerDependencies": { "@tanstack/react-start": "1.168.18", "react": "19.2.4" }, "optionalPeers": ["@tanstack/react-start", "react"] }, "sha512-kwa9HJF5EgPSP4mHgO7s/7HZqsxFvNy/MGFktmL8XqSvlZRsseADLLj4L41gE+j8+iqpSlg1Ow6goB8qlpgRAQ=="],
 
     "is-inside-container/is-docker": ["is-docker@3.0.0", "", { "bin": { "is-docker": "cli.js" } }, "sha512-eljcgEDlEns/7AXFosB5K/2nCM4P7FQPkGc/DWLy5rmFEWvZayGrik1d9/QIY5nJ4f9YsVvBkA6kJpHn9rISdQ=="],
 
