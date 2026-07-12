@@ -33,6 +33,8 @@
     "@somewhatintelligent/guestlist": "0.0.5",
     "@somewhatintelligent/kit": "0.0.3",
     "@somewhatintelligent/stripe": "0.0.1",
+    "@stripe/react-stripe-js": "catalog:",
+    "@stripe/stripe-js": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-devtools": "latest",
     "@tanstack/react-router": "1.170.10",

@@ -93,6 +93,11 @@ export const customerOrder = sqliteTable(
     // keyless dev/CI; populated when Checkout Sessions are enabled.
     stripeCustomerId: text("stripe_customer_id"),
     stripeCheckoutSessionId: text("stripe_checkout_session_id").unique(),
+    // Set alongside stripeCheckoutSessionId, immediately after Stripe returns the
+    // Session. Mirrors the Session's own `expires_at` (epoch seconds → ms here).
+    // Used by the reconciliation cron (Track D5/D6) to find stale-attached
+    // reservations without an unbounded Stripe API scan.
+    stripeSessionExpiresAt: integer("stripe_session_expires_at", { mode: "timestamp_ms" }),
     paymentStatus: text("payment_status").notNull().default("unpaid"),
     // Fulfillment / tracking.
     carrier: text("carrier"), // CarrierKey from lib/config.ts

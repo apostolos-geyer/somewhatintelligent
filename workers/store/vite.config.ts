@@ -70,6 +70,10 @@ const CLIENT_VARS = [
   "AUTH_DOMAIN",
   "ENVIRONMENT",
   "PUBLIC_BASE",
+  // Stripe publishable key (pk_…) — client-safe; feeds loadStripe for the
+  // embedded Payment Element. The Stripe branch only renders when the
+  // server-derived stripeEnabled flag (full stripeConfigured gate) is true.
+  "STRIPE_PUBLISHABLE_KEY",
 ] as const;
 const clientDefines = process.env.VITEST
   ? {}

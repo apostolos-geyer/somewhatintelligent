@@ -57,6 +57,12 @@
       { "queue": "si-stripe-events-dlq-staging", "max_retries": 0 },
     ],
   },
+  // Reconciliation sweep — releases orphaned/stale-attached stock reservations
+  // no webhook can cover (worker.ts scheduled(), Track D5/D6). Named envs don't
+  // inherit, so env.production re-declares this.
+  "triggers": {
+    "crons": ["*/15 * * * *"],
+  },
   "services": [
     { "binding": "GUESTLIST", "service": "si-guestlist-staging", "entrypoint": "Guestlist" },
     {
@@ -101,6 +107,9 @@
           // Terminal consumer — see the staging note above.
           { "queue": "si-stripe-events-dlq-production", "max_retries": 0 },
         ],
+      },
+      "triggers": {
+        "crons": ["*/15 * * * *"],
       },
       "services": [
         {

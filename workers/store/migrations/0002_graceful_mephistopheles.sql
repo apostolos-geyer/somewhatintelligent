@@ -1,0 +1,1 @@
+ALTER TABLE `customer_order` ADD `stripe_session_expires_at` integer;

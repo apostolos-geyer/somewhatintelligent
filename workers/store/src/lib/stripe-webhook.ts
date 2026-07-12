@@ -13,6 +13,13 @@ export type StoreStripeEventMessage = {
   // "unpaid" / "no_payment_required"). Carried so the queue consumer settles
   // the order without a network re-fetch. See lib/stripe-events.ts.
   payment_status?: string;
+  // Defense-in-depth cross-checks. `mode` ("payment" expected) lets the
+  // consumer ignore a subscription-mode session routed here by an endpoint
+  // misconfiguration; `metadataOrderId` mirrors the Session's `metadata.orderId`
+  // for Dashboard-debuggable order↔session correlation (the authoritative match
+  // stays stripeCheckoutSessionId).
+  mode?: string;
+  metadataOrderId?: string;
 };
 
 // STRIPE_EVENTS is wrangler-generated, not hand-declared in env.d.ts (that hand
@@ -40,7 +47,9 @@ export async function handleStoreStripeWebhook(request: Request, env: Env): Prom
   const rawBody = await request.text();
   let event: Stripe.Event;
   try {
-    const stripe = new Stripe(env.STRIPE_SECRET_KEY);
+    const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
+      apiVersion: "2026-06-24.dahlia" as Stripe.LatestApiVersion,
+    });
     event = await stripe.webhooks.constructEventAsync(
       rawBody,
       signature,
@@ -59,7 +68,12 @@ export async function handleStoreStripeWebhook(request: Request, env: Env): Prom
     return json(503, { ok: false, error: "queue_unconfigured" });
   }
 
-  const eventObject = event.data.object as { id?: unknown; payment_status?: unknown };
+  const eventObject = event.data.object as {
+    id?: unknown;
+    payment_status?: unknown;
+    mode?: unknown;
+    metadata?: { orderId?: unknown } | null;
+  };
   await queue.send({
     id: event.id,
     type: event.type,
@@ -68,6 +82,11 @@ export async function handleStoreStripeWebhook(request: Request, env: Env): Prom
     objectId: typeof eventObject.id === "string" ? eventObject.id : undefined,
     payment_status:
       typeof eventObject.payment_status === "string" ? eventObject.payment_status : undefined,
+    mode: typeof eventObject.mode === "string" ? eventObject.mode : undefined,
+    metadataOrderId:
+      eventObject.metadata && typeof eventObject.metadata.orderId === "string"
+        ? eventObject.metadata.orderId
+        : undefined,
   } satisfies StoreStripeEventMessage);
 
   return json(200, { ok: true });

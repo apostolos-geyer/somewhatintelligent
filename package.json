@@ -73,6 +73,8 @@
     "ulidx": "^2.4.1",
     "better-auth": "^1.6.0",
     "stripe": "^20.4.1",
+    "@stripe/stripe-js": "^8.0.0",
+    "@stripe/react-stripe-js": "^5.0.0",
     "drizzle-orm": "^0.45.2",
     "drizzle-kit": "^0.31.10",
     "@libsql/client": "^0.17.2",

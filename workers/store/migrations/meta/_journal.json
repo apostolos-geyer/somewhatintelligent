@@ -15,6 +15,13 @@
       "when": 1783466690855,
       "tag": "0001_stripe_ingestion",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1783887900338,
+      "tag": "0002_graceful_mephistopheles",
+      "breakpoints": true
     }
   ]
 }

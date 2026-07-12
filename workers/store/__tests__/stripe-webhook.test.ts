@@ -92,4 +92,30 @@ describe("handleStoreStripeWebhook", () => {
       },
     ]);
   });
+
+  test("carries mode and metadata.orderId onto the enqueued message when present", async () => {
+    const testEnv = env();
+    const payload = {
+      id: "evt_with_mode",
+      object: "event",
+      created: 1_806_000_000,
+      type: "checkout.session.expired",
+      livemode: false,
+      data: {
+        object: {
+          id: "cs_test_789",
+          object: "checkout.session",
+          mode: "payment",
+          metadata: { orderId: "o-123" },
+        },
+      },
+    };
+
+    const res = await handleStoreStripeWebhook(signedRequest(payload), testEnv);
+
+    expect(res.status).toBe(200);
+    const [message] = (testEnv.STRIPE_EVENTS as unknown as { messages: StoreStripeEventMessage[] })
+      .messages;
+    expect(message).toMatchObject({ mode: "payment", metadataOrderId: "o-123" });
+  });
 });
