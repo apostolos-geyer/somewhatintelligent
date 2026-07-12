@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.5](https://github.com/apostolos-geyer/somewhatintelligent/compare/identity-v0.0.4...identity-v0.0.5) (2026-07-12)
+
+
+### Features
+
+* **identity:** enable org edit and invitation resend via guestlist 0.0.6 ([#23](https://github.com/apostolos-geyer/somewhatintelligent/issues/23)) ([c152c5c](https://github.com/apostolos-geyer/somewhatintelligent/commit/c152c5ce0c2fe9158db64579e8d182c0f153faa1))
+
 ## [0.0.4](https://github.com/apostolos-geyer/somewhatintelligent/compare/identity-v0.0.3...identity-v0.0.4) (2026-07-11)
 
 
