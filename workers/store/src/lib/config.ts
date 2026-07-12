@@ -8,6 +8,11 @@ import { STORE_TAGLINE } from "@/app-brand";
 export const BRAND_NAME = platformConfig.brand.name;
 export const BRAND_TAGLINE = STORE_TAGLINE;
 
+// Launch gate. While false the storefront is admin-only: everyone else gets
+// the pre-launch landing at `/` (sign-up funnel → identity → /welcome) and
+// the public product reads refuse to serve. Flip to true to open the shop.
+export const STORE_LIVE = false;
+
 // Presigned product-image read URL lifetime. Short; the /api/img route
 // re-mints per request and Roadie caches the signed URL in D1.
 export const IMAGE_URL_LIFETIME_SECONDS = 3_600;

@@ -7,11 +7,15 @@ import { isAdminRole } from "@somewhatintelligent/kit/roles";
 import { useAuth } from "@/lib/auth-context";
 import { useCart } from "@/lib/cart";
 import { BRAND_NAME } from "@/lib/config";
+import { storeOpenFor } from "@/lib/store-gate";
 
 export function StorefrontHeader() {
   const { session } = useAuth();
   const { count } = useCart();
   const isAdmin = isAdminRole(session?.user.role);
+  // Pre-launch the shop chrome (nav, cart, orders) disappears for non-admins;
+  // the brand mark and sign-in stay so the landing's funnel still works.
+  const open = storeOpenFor(session);
 
   const signInHref = `${import.meta.env.IDENTITY_URL}/sign-in?returnTo=${encodeURIComponent(
     typeof window !== "undefined" ? window.location.href : import.meta.env.STORE_URL,
@@ -29,10 +33,12 @@ export function StorefrontHeader() {
         </Link>
 
         <nav className="ml-2 hidden items-center gap-1 md:flex">
-          <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/" />}>
-            Shop
-          </Button>
-          {session && (
+          {open && (
+            <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/" />}>
+              Shop
+            </Button>
+          )}
+          {open && session && (
             <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/orders" />}>
               My orders
             </Button>
@@ -46,21 +52,23 @@ export function StorefrontHeader() {
 
         <div className="flex flex-1 items-center justify-end gap-2">
           <ThemeToggle />
-          <Button
-            variant="outline"
-            size="sm"
-            nativeButton={false}
-            render={<Link to="/cart" />}
-            className="relative"
-          >
-            <ShoppingBagIcon className="size-4" />
-            Cart
-            {count > 0 && (
-              <Badge variant="inverse" size="sm" className="ml-1">
-                {count}
-              </Badge>
-            )}
-          </Button>
+          {open && (
+            <Button
+              variant="outline"
+              size="sm"
+              nativeButton={false}
+              render={<Link to="/cart" />}
+              className="relative"
+            >
+              <ShoppingBagIcon className="size-4" />
+              Cart
+              {count > 0 && (
+                <Badge variant="inverse" size="sm" className="ml-1">
+                  {count}
+                </Badge>
+              )}
+            </Button>
+          )}
           {session ? (
             <span className="text-muted-foreground hidden font-mono text-xs sm:inline">
               {session.user.name ?? session.user.email}

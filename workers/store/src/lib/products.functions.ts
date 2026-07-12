@@ -1,4 +1,5 @@
-// Product catalog server functions. Public reads are unauthenticated; every
+// Product catalog server functions. Public reads are unauthenticated (but
+// refuse to serve while the launch gate is closed — see storeOpenFor); every
 // mutation is gated by `requireAdminMiddleware` (catalog management is
 // admin-only per the brief + RFC-011 role hierarchy).
 import { createServerFn } from "@tanstack/react-start";
@@ -8,9 +9,10 @@ import { type } from "arktype";
 import { product, productImage, productVariant } from "@/db/schema";
 import { getDb } from "@/lib/db";
 import { ulid } from "@somewhatintelligent/kit/ids";
-import { requireAdminMiddleware } from "@/lib/middleware/auth";
-import { NotFoundError } from "@/lib/errors";
+import { authMiddleware, requireAdminMiddleware } from "@/lib/middleware/auth";
+import { ForbiddenError, NotFoundError } from "@/lib/errors";
 import { buildProductMaps, skuFor, slugify, sortBySize } from "@/lib/catalog";
+import { storeOpenFor } from "@/lib/store-gate";
 
 // ── Public reads ─────────────────────────────────────────────────────────────
 
@@ -23,8 +25,10 @@ export interface ProductCard {
   inStock: boolean;
 }
 
-export const listActiveProducts = createServerFn({ method: "GET" }).handler(
-  async (): Promise<{ products: ProductCard[] }> => {
+export const listActiveProducts = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }): Promise<{ products: ProductCard[] }> => {
+    if (!storeOpenFor(context.session)) throw new ForbiddenError();
     const db = getDb();
     const rows = await db
       .select()
@@ -50,12 +54,13 @@ export const listActiveProducts = createServerFn({ method: "GET" }).handler(
         inStock: (stock.get(r.id) ?? 0) > 0,
       })),
     };
-  },
-);
+  });
 
 export const getProductBySlug = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
   .inputValidator((data: { slug: string }) => type({ slug: "string" }).assert(data))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    if (!storeOpenFor(context.session)) throw new ForbiddenError();
     const db = getDb();
     const [row] = await db.select().from(product).where(eq(product.slug, data.slug)).limit(1);
     if (!row || row.status !== "active") throw new NotFoundError();

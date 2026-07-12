@@ -1,12 +1,13 @@
 import { createFileRoute, Link, Outlet, redirect, useLocation } from "@tanstack/react-router";
 import { BoxIcon, LayoutDashboardIcon, ShirtIcon } from "lucide-react";
+import { isAdminRole } from "@somewhatintelligent/kit/roles";
 
 // Admin shell. _app already guarantees a session; here we additionally require
 // the `admin` role (RFC-011: anon < user < trusted < admin). Server functions
 // are independently gated by requireAdminMiddleware — this is the UI gate.
 export const Route = createFileRoute("/_app/admin")({
   beforeLoad: ({ context }) => {
-    if (context.session?.user.role !== "admin") {
+    if (!isAdminRole(context.session?.user.role)) {
       throw redirect({ to: "/" });
     }
   },
