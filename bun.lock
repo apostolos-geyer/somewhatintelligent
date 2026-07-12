@@ -224,6 +224,7 @@
         "@somewhatintelligent/stripe": "0.0.1",
         "better-auth": "catalog:",
         "drizzle-orm": "catalog:",
+        "stripe": "catalog:",
       },
       "devDependencies": {
         "@cloudflare/vitest-pool-workers": "^0.14.6",
