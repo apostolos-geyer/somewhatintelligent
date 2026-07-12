@@ -62,21 +62,6 @@ export interface UserSearchHit {
 
 type OrgRole = "owner" | "admin" | "member";
 
-/**
- * Admin-org actions with no backing RPC method yet on the `Guestlist`
- * WorkerEntrypoint (`@somewhatintelligent/guestlist`'s `src/entrypoint.ts`).
- * Their server fns below always resolve `{ ok: false, error: "unsupported" }`
- * and the UI disables the corresponding action while its flag is `false`.
- * Flip a flag to `true` (and wire the fn to the real RPC call) once the
- * named entrypoint method ships.
- */
-export const ORG_ADMIN_FEATURES = {
-  /** Needs an `adminUpdateOrg` method (rename / re-slug an existing org). */
-  updateOrg: false,
-  /** Needs an `adminResendOrgInvitation` method. */
-  resendInvitation: false,
-} as const;
-
 // ------------------------------------------------------------------
 // Server functions — each one wraps a single guestlist operator RPC
 // method on the GUESTLIST WorkerEntrypoint. The inbound Cookie is the
@@ -158,20 +143,33 @@ export const updateOrgAsOperator = createServerFn({ method: "POST" })
   .middleware([requireAdminMiddleware])
   .inputValidator((data: { orgId: string; name: string; slug: string }) => data)
   .handler(
-    async (): Promise<
+    async ({
+      data,
+    }): Promise<
       | { ok: true; organization: { id: string; slug: string; name: string } }
-      | { ok: false; error: "slug_taken" | "unsupported"; message: string }
+      | { ok: false; error: "slug_taken" | "unknown"; message: string }
     > => {
-      // TODO(guestlist): the Guestlist WorkerEntrypoint has no adminUpdateOrg
-      // RPC method yet (only adminCreateOrg/adminGetOrg/adminListOrgs exist).
-      // Wire this to it once added; until then org rename/re-slug is
-      // unsupported and the Edit action stays disabled
-      // (see ORG_ADMIN_FEATURES.updateOrg above).
-      return {
-        ok: false,
-        error: "unsupported",
-        message: "Renaming organizations isn't wired up yet.",
-      };
+      const res = await env.GUESTLIST.adminUpdateOrg({
+        cookie: requestCookie(),
+        id: data.orgId,
+        name: data.name,
+        slug: data.slug,
+      });
+      if (!res.ok) {
+        if (res.error === "slug_taken") {
+          return {
+            ok: false,
+            error: "slug_taken",
+            message: rpcMessage(res) ?? "Slug already taken",
+          };
+        }
+        return { ok: false, error: "unknown", message: rpcErrorMessage(res) };
+      }
+      const org = res.organization as { id: string; slug: string; name: string } | undefined;
+      if (!org) {
+        return { ok: false, error: "unknown", message: "No org returned from server" };
+      }
+      return { ok: true, organization: org };
     },
   );
 
@@ -264,25 +262,37 @@ export const resendOrgInvitation = createServerFn({ method: "POST" })
   .middleware([requireAdminMiddleware])
   .inputValidator((data: { orgId: string; invitationId: string }) => data)
   .handler(
-    async (): Promise<
+    async ({
+      data,
+    }): Promise<
       | { ok: true; emailSent: boolean; expiresAt: number }
       | {
           ok: false;
-          error: "invitation_not_found" | "invitation_not_pending" | "unsupported";
+          error: "invitation_not_found" | "invitation_not_pending";
           message: string;
         }
     > => {
-      // TODO(guestlist): the Guestlist WorkerEntrypoint has no
-      // adminResendOrgInvitation RPC method yet (only
-      // adminCreateOrgInvitation/adminCancelOrgInvitation exist). Wire this
-      // to it once added; until then resend is unsupported and the "Resend
-      // email" action stays disabled (see ORG_ADMIN_FEATURES.resendInvitation
-      // above).
-      return {
-        ok: false,
-        error: "unsupported",
-        message: "Resending invitations isn't wired up yet.",
-      };
+      const res = await env.GUESTLIST.adminResendOrgInvitation({
+        cookie: requestCookie(),
+        orgId: data.orgId,
+        invitationId: data.invitationId,
+      });
+      if (!res.ok) {
+        if (res.error === "invitation_not_found") {
+          return {
+            ok: false,
+            error: "invitation_not_found",
+            message: "Invitation not found.",
+          };
+        }
+        return {
+          ok: false,
+          error: "invitation_not_pending",
+          message: `Invitation is already ${rpcMessage(res) ?? "resolved"}.`,
+        };
+      }
+      const row = res as { emailSent: boolean; expiresAt: number };
+      return { ok: true, emailSent: row.emailSent, expiresAt: row.expiresAt };
     },
   );
 

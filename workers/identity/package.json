@@ -24,7 +24,7 @@
     "@si/design": "workspace:*",
     "@si/ui": "workspace:*",
     "@somewhatintelligent/auth": "0.0.3",
-    "@somewhatintelligent/guestlist": "0.0.5",
+    "@somewhatintelligent/guestlist": "0.0.6",
     "@somewhatintelligent/kit": "0.0.3",
     "@somewhatintelligent/og": "0.0.2",
     "@tailwindcss/vite": "catalog:",

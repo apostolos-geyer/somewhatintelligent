@@ -5,9 +5,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 // mounts directly — the only external edge is the `updateOrgAsOperator` server
 // fn, which hits guestlist through RPC. Mock the module so no network call
 // happens; only the one export this dialog imports is needed. This exercises
-// the dialog's own state machine (pre-fill, auto-slug, submit/error handling)
-// independent of whether the underlying RPC method exists yet — see
-// `ORG_ADMIN_FEATURES.updateOrg` in `@/lib/org-admin.functions`.
+// the dialog's own state machine (pre-fill, auto-slug, submit/error handling).
 vi.mock("@/lib/org-admin.functions", () => ({
   updateOrgAsOperator: vi.fn(),
 }));
@@ -136,19 +134,19 @@ describe("EditOrgDialog — save", () => {
     expect(onOpenChange).not.toHaveBeenCalled();
   });
 
-  test("an unsupported (TODO-stubbed backend) failure surfaces the generic error message", async () => {
+  test("an unknown failure surfaces the server's generic error message", async () => {
     const { onOpenChange, onSuccess } = renderDialog();
     updateMock.mockResolvedValueOnce({
       ok: false,
-      error: "unsupported",
-      message: "Renaming organizations isn't wired up yet.",
+      error: "unknown",
+      message: "Something went wrong upstream.",
     });
 
     await act(async () => {
       fireEvent.submit(nameInput().closest("form") as HTMLFormElement);
     });
 
-    expect(screen.getByText("Renaming organizations isn't wired up yet.")).toBeInTheDocument();
+    expect(screen.getByText("Something went wrong upstream.")).toBeInTheDocument();
     expect(onSuccess).not.toHaveBeenCalled();
     expect(onOpenChange).not.toHaveBeenCalled();
   });

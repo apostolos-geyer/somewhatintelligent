@@ -27,11 +27,8 @@ vi.mock("@tanstack/react-router", () => ({
 // Server fns hit guestlist through RPC; mock the whole module so nothing
 // touches the network. Every export the route (and its child modals) imports
 // is stubbed — only `resendOrgInvitation` is driven here. This exercises the
-// route's toast/refresh wiring independent of whether the underlying RPC
-// method exists yet — see `ORG_ADMIN_FEATURES.resendInvitation` in
-// `@/lib/org-admin.functions`.
+// route's toast/refresh wiring.
 vi.mock("@/lib/org-admin.functions", () => ({
-  ORG_ADMIN_FEATURES: { updateOrg: false, resendInvitation: false },
   getOrgForAdmin: vi.fn(),
   resendOrgInvitation: vi.fn(),
   updateOrgMemberRole: vi.fn(),
@@ -169,17 +166,15 @@ describe("OrgDetailPage — resend invitation", () => {
     expect(h.invalidate).toHaveBeenCalled();
   });
 
-  test("shows the error toast with the server message when ok: false (e.g. the TODO-stubbed backend)", async () => {
+  test("shows the error toast with the server message when the invitation is no longer pending", async () => {
     resendMock.mockResolvedValue({
       ok: false,
-      error: "unsupported",
-      message: "Resending invitations isn't wired up yet.",
+      error: "invitation_not_pending",
+      message: "Invitation is already accepted.",
     });
     await clickResend();
 
-    await waitFor(() =>
-      expect(toastError).toHaveBeenCalledWith("Resending invitations isn't wired up yet."),
-    );
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith("Invitation is already accepted."));
     expect(toastSuccess).not.toHaveBeenCalled();
     expect(toastWarning).not.toHaveBeenCalled();
   });

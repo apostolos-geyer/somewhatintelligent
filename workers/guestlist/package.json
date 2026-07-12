@@ -26,7 +26,7 @@
     "@si/config": "workspace:*",
     "@si/promoter-service": "workspace:*",
     "@si/roadie-service": "workspace:*",
-    "@somewhatintelligent/guestlist": "0.0.5",
+    "@somewhatintelligent/guestlist": "0.0.6",
     "@somewhatintelligent/kit": "0.0.3",
     "@somewhatintelligent/stripe": "0.0.1",
     "better-auth": "catalog:",
