@@ -91,30 +91,18 @@ function Landing() {
   )}`;
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col justify-center px-4 py-16 md:px-6 md:py-24">
+    <div className="mx-auto flex max-w-6xl flex-col justify-center px-4 py-24 md:px-6 md:py-36">
       <section className="max-w-2xl">
-        <p className="text-primary mb-3 font-mono text-xs uppercase tracking-[0.2em]">
-          {BRAND_NAME} · apparel
-        </p>
         <h1 className="font-display text-foreground text-[clamp(40px,7vw,76px)] leading-[0.95] font-extralight tracking-tighter">
           {BRAND_NAME}.
         </h1>
-        <p className="text-muted-foreground mt-4 max-w-lg text-lg">{BRAND_TAGLINE}</p>
-
-        <p className="text-foreground mt-10 max-w-md text-base">
-          The first drop is at the printers. Create an account and we&rsquo;ll email you the moment
-          it goes live.
+        <p className="text-muted-foreground mt-6 max-w-md text-lg">
+          First drop coming soon. Sign up and we&rsquo;ll email you when it&rsquo;s live.
         </p>
-
-        <div className="mt-6 flex flex-wrap items-center gap-4">
-          <Button size="lg" nativeButton={false} render={<a href={signUpHref} />}>
-            Sign up for the drop
-            <ArrowRightIcon className="size-4" />
-          </Button>
-          <span className="text-muted-foreground font-mono text-xs">
-            no spam · just the drop date
-          </span>
-        </div>
+        <Button size="lg" className="mt-8" nativeButton={false} render={<a href={signUpHref} />}>
+          Sign up
+          <ArrowRightIcon className="size-4" />
+        </Button>
       </section>
     </div>
   );

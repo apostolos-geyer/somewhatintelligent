@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ShoppingBagIcon, ShirtIcon } from "lucide-react";
+import { ShoppingBagIcon } from "lucide-react";
 import { Badge } from "@si/ui/components/badge";
 import { Button } from "@si/ui/components/button";
 import { ThemeToggle } from "@si/ui/components/theme-toggle";
@@ -24,11 +24,7 @@ export function StorefrontHeader() {
   return (
     <header className="border-border bg-background sticky top-0 z-20 border-b">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4 md:px-6">
-        <Link
-          to="/"
-          className="text-foreground flex items-center gap-2 font-semibold tracking-tight"
-        >
-          <ShirtIcon className="text-primary size-5" />
+        <Link to="/" className="text-foreground font-semibold tracking-tight">
           <span className="font-display text-lg">{BRAND_NAME}</span>
         </Link>
 
