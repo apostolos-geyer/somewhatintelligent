@@ -33,8 +33,6 @@ export type { CreateCheckoutSessionResult, OrderByStripeSessionResult } from "@/
 // construction site — stripe@20.4.1's bundled type predates this version.
 const STRIPE_API_VERSION: string = "2026-06-24.dahlia";
 
-const GUESTLIST_INTERNAL = "http://guestlist.internal";
-
 // Mirrors placeOrder's input (orders.functions.ts) — the Stripe checkout path
 // validates the identical cart shape. Declared locally so this stage does not
 // modify the order-fn module it does not own.
@@ -56,23 +54,17 @@ const placeOrderInput = type({
   shipping: shippingSchema,
 });
 
-// Get-or-create the buyer's Stripe Customer via guestlist, forwarding the
-// inbound session cookie (never a client-supplied user id — INV-9). Mirrors
-// identity's invitation.functions.ts service-binding call.
+// Get-or-create the buyer's Stripe Customer via guestlist's typed RPC,
+// forwarding the inbound session cookie as the sole credential (never a
+// client-supplied user id — INV-9). The guestlist entrypoint derives the
+// acting user from the cookie and get-or-creates; the service binding is not
+// a trust boundary. Any failure (unauthorized, stripe unconfigured, create
+// failed) collapses to `{ ok: false }` here — the caller reverses cleanly.
 async function ensureStripeCustomer(): Promise<EnsureCustomerResult> {
-  const inbound = getRequest().headers;
-  const headers: Record<string, string> = {};
-  const cookie = inbound.get("cookie");
-  if (cookie) headers.cookie = cookie;
-  const origin = inbound.get("origin");
-  if (origin) headers.origin = origin;
-
-  const url = new URL("/api/stripe/ensure-customer", GUESTLIST_INTERNAL);
-  const res = await env.GUESTLIST.fetch(new Request(url.toString(), { method: "POST", headers }));
-  if (res.status !== 200) return { ok: false };
-  const body = (await res.json()) as { stripeCustomerId?: string };
-  if (!body.stripeCustomerId) return { ok: false };
-  return { ok: true, stripeCustomerId: body.stripeCustomerId };
+  const cookie = getRequest().headers.get("cookie") ?? "";
+  const res = await env.GUESTLIST.ensureStripeCustomer({ cookie });
+  if (!res.ok) return { ok: false };
+  return { ok: true, stripeCustomerId: res.stripeCustomerId };
 }
 
 // Constructed only past the stripeConfigured gate, so STRIPE_SECRET_KEY is
