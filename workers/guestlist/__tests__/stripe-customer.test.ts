@@ -111,6 +111,67 @@ describe("ensureStripeCustomerCore", () => {
     expect(res).toEqual({ ok: true, stripeCustomerId: "cus_existing_9" });
   });
 
+  test("lost persist race → returns the winner's id and voids the duplicate", async () => {
+    const email = uniqueEmail("race");
+    const { userId } = await signUpVerified({
+      name: "Race Loser",
+      email,
+      password: "correct-horse-battery",
+    });
+
+    // Simulate a concurrent creator winning between this call's NULL read and
+    // its NULL-gated claim: the injected create itself commits the winner's id
+    // before returning the loser's.
+    const createCustomer: CustomerCreator = async () => {
+      await db.update(user).set({ stripeCustomerId: "cus_winner" }).where(eq(user.id, userId));
+      return "cus_loser";
+    };
+    const deleted: string[] = [];
+
+    const res = await ensureStripeCustomerCore({
+      db: env.DB,
+      session: sessionFor(userId, email),
+      secretKey: "sk_test_x",
+      createCustomer,
+      deleteCustomer: async (id) => {
+        deleted.push(id);
+      },
+    });
+
+    // The column is the arbiter: the winner's id is returned, the loser voided.
+    expect(res).toEqual({ ok: true, stripeCustomerId: "cus_winner" });
+    expect(deleted).toEqual(["cus_loser"]);
+    const [row] = await db
+      .select({ stripeCustomerId: user.stripeCustomerId })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+    expect(row?.stripeCustomerId).toBe("cus_winner");
+  });
+
+  test("lost-race cleanup failure is swallowed, winner still returned", async () => {
+    const email = uniqueEmail("race-cleanup");
+    const { userId } = await signUpVerified({
+      name: "Race Cleanup",
+      email,
+      password: "correct-horse-battery",
+    });
+    const createCustomer: CustomerCreator = async () => {
+      await db.update(user).set({ stripeCustomerId: "cus_winner_2" }).where(eq(user.id, userId));
+      return "cus_loser_2";
+    };
+    const res = await ensureStripeCustomerCore({
+      db: env.DB,
+      session: sessionFor(userId, email),
+      secretKey: "sk_test_x",
+      createCustomer,
+      deleteCustomer: async () => {
+        throw new Error("stripe down");
+      },
+    });
+    expect(res).toEqual({ ok: true, stripeCustomerId: "cus_winner_2" });
+  });
+
   test("a create failure surfaces as stripe_customer_create_failed, never a throw", async () => {
     const email = uniqueEmail("failure");
     const { userId } = await signUpVerified({

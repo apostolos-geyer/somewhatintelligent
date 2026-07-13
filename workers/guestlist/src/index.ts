@@ -62,6 +62,17 @@ export class Guestlist extends gl.Guestlist {
         );
         return customer.id;
       },
+      // Voids this call's customer when another creator wins the NULL-gated
+      // column claim (the column is the single arbiter of the one-customer-
+      // per-user rule; Stripe-side idempotency keys cannot converge creators
+      // that use different scopes, e.g. the better-auth plugin's signup-time
+      // create).
+      deleteCustomer: async (stripeCustomerId) => {
+        const stripe = new Stripe(secretKey as string, {
+          apiVersion: STRIPE_API_VERSION as Stripe.LatestApiVersion,
+        });
+        await stripe.customers.del(stripeCustomerId);
+      },
     });
   }
 }
