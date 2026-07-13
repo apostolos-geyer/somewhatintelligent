@@ -272,6 +272,22 @@ sequenceDiagram
 | G1  | `createCheckoutSession` returns `{ ok: true, mode: "stub" }` (zero D1 writes, zero Stripe calls) whenever `stripeConfigured(...)` is false; the client falls back to the existing `placeOrder` button unchanged  | Carries forward 0002 INV-4/INV-8 (decoupling) — this plan must not make any worker's boot/`bun run dev`/typecheck/test/build depend on Stripe.                                                                                                                 |
 | G2  | An expired/failed session **cancels its order**; a retry is a brand-new `createCheckoutSession` call from the (still-populated, since `clear()` only fires on success) cart, producing a new order + new session | Keeps `stripeCheckoutSessionId`'s UNIQUE constraint simple (no session reuse/overwrite semantics to design) and matches the current UI's existing "resubmit" affordance (the form doesn't clear on failure today). Session-per-order reuse is deferred — OQ-3. |
 
+### Track H — DLQ recovery & money-safety
+
+Hardening pass so a captured charge can never be silently lost: the DLQ ack must
+leave durable evidence, the cron must actively heal (not just release), and
+transient outages must not exhaust retries in seconds. Full operator taxonomy
+(the six DLQ cases and their per-case handling) lives in
+`docs/runbooks/stripe.md`; ARCHITECTURE §7.2 carries the code-level contract.
+
+| #   | Decision                                                                                                                                                                                                                                                                  | Why                                                                                                                                                                                                                                                                                                 |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| H1  | New `dead_stripe_event` table; `processDlqBatch` persists a `retryable` or thrown outcome (compacted payload, `reason`, `attempts`, `first/last_seen_at`, upsert on redelivery) **before** its (still-unconditional) ack                                                  | Old code ack'd a `retryable` DLQ event with zero logging and zero persistence — the dominant DLQ cause (no matching order) was silent money loss. Evidence-before-ack makes a stuck charge queryable; nothing backs the DLQ so the ack stays unconditional.                                         |
+| H2  | The **one** DLQ-consumer retry: if the dead-letter INSERT itself throws (D1 down), log `stripe_dlq_persist_failed` and `message.retry()` instead of acking                                                                                                                | If evidence never landed, acking would lose it. The DLQ's own redelivery becomes the persistence retry — the only backstop the terminal consumer has.                                                                                                                                               |
+| H3  | Main consumer retries carry `delaySeconds: Math.min(30 * attempts, 300)`                                                                                                                                                                                                  | Bare `retry()` let 6 attempts burn in seconds, so any D1 blip over ~a minute exhausted straight to the DLQ. Escalating backoff widens the transient-outage window to ~20+ minutes across 5 retries.                                                                                                 |
+| H4  | Checkout-session events with `metadataOrderId` **absent** are classified `ignored` (not `retryable`); events **with** it but no matching order stay `retryable` (cases A/B/C1)                                                                                            | Foreign payment-mode sessions in the same Stripe account (payment links, Dashboard checkouts) carry no `metadata.orderId` and would otherwise retry 6× into the DLQ as noise. Compat: pre-widening messages also lack it, but local/staging queues are ephemeral and prod checkout has not shipped. |
+| H5  | Cron stale-attached branch **heals** a `complete` + paid/no_payment_required session to `paid` (CASE-gated on `unpaid`/`processing`, stock untouched per INV-3, no ledger row), logs `store.stripe_reconcile.healed_paid`, and resolves matching `dead_stripe_event` rows | A paid session whose completed-webhook drained to the DLQ previously left the order pending/unpaid forever (buyer charged, never fulfilled). The cron is the **authoritative** money backstop; the dead-letter table is only visibility.                                                            |
+
 ## Invariants
 
 - **INV-1** — Server-authoritative pricing: every Checkout Session line item's `unit_amount` is computed server-side by `computeOrderTotals` from `product.priceCents`; no client-supplied price or quantity total ever reaches `sessions.create`. Scope: per-request. Enforced: `checkout.functions.ts` calls the same `pricing.ts` core `placeOrder` uses; no cart field but `variantId`/`quantity` crosses the wire. Test: unit test asserting a forged cart price is ignored (mirrors `pricing.test.ts`). Failure mode: a buyer underpays for the full order total.
@@ -771,3 +787,11 @@ status = 'pending' AND createdAt < now − grace`. **New invariant (INV-11):**
   on every Session (new A7, makes the future Stripe Tax flip Dashboard-only);
   v1 receipt emails delegated to Stripe's Dashboard toggle instead of promoter
   (new A8 + non-goal).
+- 2026-07-13 — DLQ recovery & money-safety hardening (new Track H): added the
+  `dead_stripe_event` table + migration `0003_acoustic_maria_hill.sql`,
+  evidence-before-ack in `processDlqBatch` (H1) with a single persist-failure
+  retry (H2), escalating retry backoff in the main consumer (H3), a
+  foreign-session `metadataOrderId` classification guard (H4), and a cron
+  stale-attached healer that flips lost-webhook paid sessions to `paid` and
+  resolves dead-letter rows (H5). New operator runbook `docs/runbooks/stripe.md`
+  (six-case DLQ taxonomy); ARCHITECTURE §7.2 rewritten.

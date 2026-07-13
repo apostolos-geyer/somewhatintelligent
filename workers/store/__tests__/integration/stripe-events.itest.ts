@@ -104,6 +104,10 @@ function msg(overrides: Partial<StoreStripeEventMessage> = {}): StoreStripeEvent
     livemode: false,
     objectId: "cs_x",
     payment_status: "paid",
+    // Our own createCheckoutSession always stamps metadata.orderId; carrying it
+    // by default keeps these ingestion tests on the "ours" path (a session with
+    // no metadata.orderId is a foreign session — see the dedicated test below).
+    metadataOrderId: "ord_x",
     ...overrides,
   };
 }
@@ -195,6 +199,22 @@ describe("processStoreStripeEvent", () => {
       STAGING,
     );
     expect(again).toEqual<ProcessStripeEventResult>({ ok: true, outcome: "ignored" });
+  });
+
+  it("(d2) foreign checkout session (no metadata.orderId) → ignored, order untouched, no ledger row", async () => {
+    // A matching order exists, so the ONLY reason to classify out is the absent
+    // metadata.orderId — a payment link / Dashboard checkout in the same Stripe
+    // account. Without the guard this would be retryable and pollute the DLQ.
+    await seedOrder("cs_x");
+
+    const foreign = await processStoreStripeEvent(
+      db,
+      msg({ id: "evt_foreign", metadataOrderId: undefined }),
+      STAGING,
+    );
+    expect(foreign).toEqual<ProcessStripeEventResult>({ ok: true, outcome: "ignored" });
+    expect(await ledgerCount("evt_foreign")).toBe(0);
+    expect((await orderFor("cs_x"))?.paymentStatus).toBe("unpaid");
   });
 
   describe("(e) f07 livemode gate", () => {

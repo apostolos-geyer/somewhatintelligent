@@ -1076,9 +1076,9 @@ sequenceDiagram
   else duplicate (ledger already had event.id)
     D-->>C: duplicate (idempotent no-op)
   else no matching order
-    C->>Q: message.retry() → after 5 retries → DLQ
+    C->>Q: message.retry({delaySeconds}) → after 5 backed-off retries → DLQ
     Q->>DLQ: poison
-    DLQ->>C: one best-effort reprocess, then ack
+    DLQ->>C: reprocess once; recover→ack, else persist dead_stripe_event→ack
   end
 ```
 
@@ -1102,7 +1102,9 @@ Store is the **only** worker that binds Cloudflare Queues. Per env (`workers/sto
 | main consumer         | `si-stripe-events-{env}`                   | `si-stripe-events-dlq-{env}` | 5           |
 | terminal DLQ consumer | `si-stripe-events-dlq-{env}`               | _(none)_                     | 0           |
 
-Both the main queue and the DLQ point at the **same** worker's `queue()` handler; routing is by queue-name regex `DLQ_QUEUE_PATTERN = /-dlq-/` (`stripe-queue.ts`). The main consumer (`consumeStripeEventBatch`) fans out per-message with `Promise.all`, each wrapped in try/catch: `ok → message.ack()`, retryable → `message.retry()`, thrown → log + `retry()`. The terminal DLQ consumer (`processDlqBatch`) does one best-effort reprocess then **unconditionally acks** — a stuck event surfaces a triage log line (`stripe_dlq_reprocess_failed`) instead of silently ageing out.
+Both the main queue and the DLQ point at the **same** worker's `queue()` handler; routing is by queue-name regex `DLQ_QUEUE_PATTERN = /-dlq-/` (`stripe-queue.ts`). The main consumer (`consumeStripeEventBatch`) fans out per-message with `Promise.all`, each wrapped in try/catch: `ok → message.ack()`, retryable → `message.retry({ delaySeconds })`, thrown → log + `retry({ delaySeconds })`. Retries carry an **escalating backoff** — `Math.min(30 * message.attempts, 300)` — so a transient D1 outage widens the redelivery window from seconds to ~20+ minutes across the 5 retries instead of burning straight to the DLQ on a sub-minute blip.
+
+The terminal DLQ consumer (`processDlqBatch`) reprocesses each message **once**, then makes the money invariant durable before it acks. A recovered event (applied/duplicate/ignored — a transient blip cleared, or the order finally exists) is acked, with a one-line `stripe_dlq_event_recovered` note for an `applied` recovery. A `retryable` outcome (the dominant DLQ cause: no order carries the session id) **or a throw** is written to the `dead_stripe_event` table (upsert keyed on `event_id`, bumping `last_seen_at`/`attempts` on redelivery) and logged `stripe_dlq_event_dead` **before** the ack — so a stuck payment surfaces in a query, never silently ages out of the queue. The ack stays unconditional (nothing backs the DLQ), but the evidence lands first. The **one** case the terminal consumer retries: the dead-letter INSERT itself throws (D1 down) — then the evidence never landed, so it logs `stripe_dlq_persist_failed` and `message.retry()`s, letting the DLQ's own redelivery become the persistence retry. The reconcile cron (`reconcilePendingReservations`, `*/15 * * * *`) stamps `resolved_at` on a row once it heals or releases the matching order — and it is the **authoritative** money backstop: when `sessions.retrieve` reports a stale-attached session `complete` + paid, the cron heals the order to `paid` (the completed-webhook was lost or drained here), rather than only releasing dead sessions. Dead-letter table = visibility, cron healer = authority, backoff = prevention, the foreign-session metadata guard = signal purity. Runbook: `docs/runbooks/stripe.md`.
 
 ## §7.3 Atomicity & idempotency
 
@@ -1356,7 +1358,7 @@ The `getEnvelope()` fast path costs nothing — JWS verify is sub-millisecond. T
 - **Store** — the storefront + commerce TanStack Start app. Owns its own D1 and the only Cloudflare Queue infrastructure on the platform; hosts the Stripe commerce webhook pipeline (§7).
 - **`/hooks/store`** — store's commerce webhook front door. Bouncer passthrough (raw body, unstripped path); verifies the Stripe signature, enqueues a compact event snapshot, returns 200.
 - **`processed_stripe_event`** — store's idempotency ledger (`event_id` PK). Written atomically with the order UPDATE in one `db.batch(...)`; dedupes at-least-once redeliveries (§7.3).
-- **DLQ** — dead-letter queue. `si-stripe-events-dlq-<env>`; a message that fails 5 main-queue retries lands here and gets one best-effort reprocess, then is acked. Routed by the name regex `/-dlq-/`.
+- **DLQ** — dead-letter queue. `si-stripe-events-dlq-<env>`; a message that fails 5 backed-off main-queue retries lands here, gets one reprocess, and is acked — but a non-recovered event is first written to `dead_stripe_event` (logged `stripe_dlq_event_dead`) so a stuck payment is durable, never silently aged out. Routed by the name regex `/-dlq-/`. See §7.2.
 - **`stripeConfigured`** — the single Stripe gate predicate (`@somewhatintelligent/stripe`): `Boolean(secretKey && webhookSecret)`. Absence branches to a no-Stripe fallback, never throws.
 - **`@si/analytics`** — the only package that imports the PostHog SDKs; typed client + server capture, PostHog write token committed as a public `@si/config` constant (§4.8).
 - **Execution-context flushing** — seeding Cloudflare's `ctx` into an ALS (`@somewhatintelligent/kit/execution-context`, `runWithExecutionContext`) so `@si/analytics` can `ctx.waitUntil(captureImmediate)` the event without dropping it on isolate freeze or adding request latency (§4.8).

@@ -12,7 +12,7 @@
 // worker.ts and only its retrieve result (status + payment_status) is passed in.
 import { and, eq, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
 
-import { customerOrder, orderItem, productVariant } from "@/db/schema";
+import { customerOrder, deadStripeEvent, orderItem, productVariant } from "@/db/schema";
 import type { Db } from "@/lib/db";
 
 // An orphaned reservation is released on D1 state alone (Track D6) once it is
@@ -38,6 +38,7 @@ export interface ReconcileDeps {
 export interface ReconcileResult {
   orphansReleased: number;
   staleReleased: number;
+  staleHealed: number;
   staleSkipped: number;
 }
 
@@ -69,6 +70,36 @@ function releaseAndCancel(db: Db, orderId: string, now: Date) {
   return [release, cancel];
 }
 
+// Heal a paid order whose completed-webhook was lost or drained to the DLQ:
+// advance it to the same terminal 'paid' state the consumer's
+// `checkout.session.completed` success path would (paymentStatus + status),
+// leaving stock untouched (INV-3 — stock moved once, at reservation). Both
+// transitions are CASE-gated on the pre-sweep `unpaid`/`processing` state (and
+// `status = 'pending'`) so a real webhook that lands between the candidate
+// SELECT and this write, or a later real-event replay, is a harmless no-op. No
+// ledger row is written — the state-gating alone makes replays idempotent.
+function healPaid(db: Db, orderId: string, now: Date) {
+  return db
+    .update(customerOrder)
+    .set({
+      paymentStatus: sql`case when ${customerOrder.paymentStatus} in ('unpaid', 'processing') then 'paid' else ${customerOrder.paymentStatus} end`,
+      status: sql`case when ${customerOrder.status} = 'pending' and ${customerOrder.paymentStatus} in ('unpaid', 'processing') then 'paid' else ${customerOrder.status} end`,
+      updatedAt: now,
+    })
+    .where(eq(customerOrder.id, orderId));
+}
+
+// Once the cron heals or releases the order behind a session id, any
+// dead_stripe_event rows for that session are no longer a live loss — stamp
+// them resolved. The dead-letter table is visibility; the cron is the
+// authority that closes the loop.
+async function resolveDeadEvents(db: Db, sessionId: string, now: Date): Promise<void> {
+  await db
+    .update(deadStripeEvent)
+    .set({ resolvedAt: now })
+    .where(and(eq(deadStripeEvent.objectId, sessionId), isNull(deadStripeEvent.resolvedAt)));
+}
+
 /**
  * Sweep pending Stripe-path reservations and release the ones that can never
  * resolve on their own:
@@ -80,10 +111,14 @@ function releaseAndCancel(db: Db, orderId: string, now: Date) {
  *     — there is no live Stripe object to re-check.
  *   - Stale-attached (Track D6): a session id is attached, its
  *     `stripeSessionExpiresAt` has passed, and no terminal `paymentStatus`
- *     landed. Re-checked via `sessions.retrieve` first and released ONLY if
- *     Stripe agrees the session is dead (expired, or still open-and-unpaid) —
- *     never a `complete` session, whose async payment method may still be
- *     settling and whose webhook owns the terminal transition.
+ *     landed. Re-checked via `sessions.retrieve` first, then:
+ *       - `complete` + paid/no_payment_required → HEALED to `paid` (the
+ *         completed-webhook was lost or drained to the DLQ — the cron is the
+ *         authoritative money backstop, not just a stock releaser).
+ *       - expired, or still open-and-unpaid → released (dead session).
+ *       - `complete` + still-unpaid (async settling) → left for its webhook.
+ *     After a heal or release, any `dead_stripe_event` rows for that session
+ *     are stamped resolved.
  */
 export async function reconcilePendingReservations(deps: ReconcileDeps): Promise<ReconcileResult> {
   const { db, retrieveSession } = deps;
@@ -124,6 +159,7 @@ export async function reconcilePendingReservations(deps: ReconcileDeps): Promise
     );
 
   let staleReleased = 0;
+  let staleHealed = 0;
   let staleSkipped = 0;
   for (const row of stale) {
     const sessionId = row.sessionId;
@@ -140,9 +176,26 @@ export async function reconcilePendingReservations(deps: ReconcileDeps): Promise
       );
       continue;
     }
+    // Heal first: a `complete` session Stripe reports as settled means the buyer
+    // was charged but the completed-webhook never landed (lost or drained to the
+    // DLQ). Advance the order to `paid` — the cron is the authoritative backstop
+    // for a captured charge, not just a stock releaser.
+    const paid =
+      session.status === "complete" &&
+      (session.payment_status === "paid" || session.payment_status === "no_payment_required");
+    if (paid) {
+      await db.batch([healPaid(db, row.id, now)] as never);
+      staleHealed++;
+      console.log("store.stripe_reconcile.healed_paid", {
+        order_id: row.id,
+        session_id: sessionId,
+      });
+      await resolveDeadEvents(db, sessionId, now);
+      continue;
+    }
     // Release only a session Stripe agrees is dead: expired, or still
-    // open-and-unpaid past its window (abandoned). A `complete` session — paid,
-    // or an async method still settling — is left to its webhook.
+    // open-and-unpaid past its window (abandoned). A `complete` session still
+    // unpaid (an async method settling) is left to its webhook.
     const dead =
       session.status === "expired" ||
       (session.status === "open" && session.payment_status === "unpaid");
@@ -156,7 +209,8 @@ export async function reconcilePendingReservations(deps: ReconcileDeps): Promise
       order_id: row.id,
       reason: "cron_stale_attached",
     });
+    await resolveDeadEvents(db, sessionId, now);
   }
 
-  return { orphansReleased, staleReleased, staleSkipped };
+  return { orphansReleased, staleReleased, staleHealed, staleSkipped };
 }

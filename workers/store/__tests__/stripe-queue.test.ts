@@ -17,10 +17,10 @@ type FakeMessage = {
   retry: ReturnType<typeof vi.fn>;
 };
 
-function fakeMessage(id: string, type = "checkout.session.completed"): FakeMessage {
+function fakeMessage(id: string, type = "checkout.session.completed", attempts = 1): FakeMessage {
   return {
     id,
-    attempts: 1,
+    attempts,
     body: { id, type, created: 0, livemode: false, objectId: `cs_${id}` },
     ack: vi.fn(),
     retry: vi.fn(),
@@ -73,16 +73,33 @@ describe("consumeStripeEventBatch", () => {
     expect(ok1.ack).toHaveBeenCalledTimes(1);
     expect(ok1.retry).not.toHaveBeenCalled();
     expect(ok2.ack).toHaveBeenCalledTimes(1);
+    // A thrown (transient) error retries with backoff (attempts=1 → 30s).
     expect(boom.retry).toHaveBeenCalledTimes(1);
+    expect(boom.retry).toHaveBeenCalledWith({ delaySeconds: 30 });
     expect(boom.ack).not.toHaveBeenCalled();
   });
 
-  it("retryable outcome → retry(), never ack()", async () => {
+  it("retryable outcome → retry() with backoff, never ack()", async () => {
     process.mockResolvedValue({ ok: false, outcome: "retryable" });
     const m = fakeMessage("r");
     await consumeStripeEventBatch(db, fakeBatch(m), env);
     expect(m.retry).toHaveBeenCalledTimes(1);
+    expect(m.retry).toHaveBeenCalledWith({ delaySeconds: 30 });
     expect(m.ack).not.toHaveBeenCalled();
+  });
+
+  it("retry backoff escalates with attempts, capped at 300s", async () => {
+    process.mockResolvedValue({ ok: false, outcome: "retryable" });
+    // attempts=1 → 30s, attempts=6 → 180s, attempts=12 → 300s (30*12=360 capped).
+    const [a1, a6, a12] = [
+      fakeMessage("a1", "checkout.session.completed", 1),
+      fakeMessage("a6", "checkout.session.completed", 6),
+      fakeMessage("a12", "checkout.session.completed", 12),
+    ];
+    await consumeStripeEventBatch(db, fakeBatch(a1, a6, a12), env);
+    expect(a1.retry).toHaveBeenCalledWith({ delaySeconds: 30 });
+    expect(a6.retry).toHaveBeenCalledWith({ delaySeconds: 180 });
+    expect(a12.retry).toHaveBeenCalledWith({ delaySeconds: 300 });
   });
 
   it.each(["applied", "duplicate", "ignored"] as const)(

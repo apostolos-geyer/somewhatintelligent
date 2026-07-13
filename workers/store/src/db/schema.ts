@@ -124,6 +124,30 @@ export const processedStripeEvent = sqliteTable("processed_stripe_event", {
   processedAt: integer("processed_at", { mode: "timestamp_ms" }).notNull(),
 });
 
+// Dead-letter forensics for Stripe events the terminal DLQ consumer could not
+// recover. The money invariant — a captured charge always terminates as a paid
+// order or a deliberate refund, never silently neither — needs the DLQ ack to
+// leave durable evidence behind: when a DLQ message reprocesses to `retryable`
+// (no matching order yet) or throws, its compacted payload is persisted here
+// BEFORE the (unconditional) ack, so a stuck payment surfaces in a query
+// instead of ageing out of the queue. The reconcile cron stamps `resolvedAt`
+// once it heals (paid) or releases the matching order (see reconcile.ts). One
+// row per Stripe event id; a redelivery bumps `lastSeenAt`/`attempts`.
+export const deadStripeEvent = sqliteTable("dead_stripe_event", {
+  eventId: text("event_id").primaryKey(),
+  eventType: text("event_type").notNull(),
+  objectId: text("object_id"), // checkout session id, when the event carried one
+  metadataOrderId: text("metadata_order_id"),
+  payload: text("payload").notNull(), // compacted StoreStripeEventMessage JSON
+  attempts: integer("attempts"),
+  // 'retryable_exhausted' (reprocess still finds no order) | 'reprocess_threw'.
+  reason: text("reason").notNull(),
+  firstSeenAt: integer("first_seen_at", { mode: "timestamp_ms" }).notNull(),
+  lastSeenAt: integer("last_seen_at", { mode: "timestamp_ms" }).notNull(),
+  // Null until the reconcile cron heals or releases the matching order.
+  resolvedAt: integer("resolved_at", { mode: "timestamp_ms" }),
+});
+
 // Line items — snapshot title/size/price at purchase time so later catalog
 // edits never rewrite a customer's order history.
 export const orderItem = sqliteTable(
@@ -149,3 +173,4 @@ export type ProductVariant = typeof productVariant.$inferSelect;
 export type CustomerOrder = typeof customerOrder.$inferSelect;
 export type OrderItem = typeof orderItem.$inferSelect;
 export type ProcessedStripeEvent = typeof processedStripeEvent.$inferSelect;
+export type DeadStripeEvent = typeof deadStripeEvent.$inferSelect;

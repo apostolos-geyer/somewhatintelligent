@@ -52,6 +52,19 @@ function buildEventMutations(db: Db, message: StoreStripeEventMessage) {
   // Defense-in-depth: a "payment" mode is expected; a subscription-mode session
   // routed here by an endpoint misconfiguration is ignored, never mutated.
   if (message.mode !== undefined && message.mode !== "payment") return null;
+  // Foreign-session guard: a checkout.session.* event carrying no
+  // `metadata.orderId` was not created by this app (a payment link, a
+  // Dashboard-created checkout, another integration sharing the Stripe
+  // account). It can never match one of our orders, so classify it out
+  // (`ignored`) instead of retrying it 6× into the DLQ as noise. Only our own
+  // createCheckoutSession stamps `metadata.orderId`. Compat: a message enqueued
+  // by pre-widening producer code also lacks the field, but local/staging
+  // queues are ephemeral and prod checkout has not shipped, so no in-flight
+  // legitimate message is misclassified. Events WITH the field but no matching
+  // order stay retryable (the order-creation-vs-webhook race, cases A/B/C1).
+  if (message.type.startsWith("checkout.session.") && message.metadataOrderId === undefined) {
+    return null;
+  }
   const now = new Date();
   const where = eq(customerOrder.stripeCheckoutSessionId, objectId);
 

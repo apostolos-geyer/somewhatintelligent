@@ -16,7 +16,7 @@ import {
   type SessionRetriever,
 } from "@/lib/reconcile";
 
-const { product, productVariant, customerOrder, orderItem } = schema;
+const { product, productVariant, customerOrder, orderItem, deadStripeEvent } = schema;
 const db = drizzle(env.DB, { schema });
 
 const NOW = Date.UTC(2026, 6, 12, 12, 0, 0);
@@ -101,6 +101,28 @@ async function orderRow(orderId: string) {
   return row!;
 }
 
+// Seed a dead_stripe_event row (unresolved) for a session id — evidence a DLQ
+// arrival left behind that the sweep should stamp resolved once it acts.
+async function seedDeadEvent(eventId: string, objectId: string) {
+  const now = new Date(NOW);
+  await db.insert(deadStripeEvent).values({
+    eventId,
+    eventType: "checkout.session.completed",
+    objectId,
+    metadataOrderId: null,
+    payload: JSON.stringify({ id: eventId, objectId }),
+    attempts: 6,
+    reason: "retryable_exhausted",
+    firstSeenAt: now,
+    lastSeenAt: now,
+  });
+}
+
+async function deadEventRow(eventId: string) {
+  const [row] = await db.select().from(deadStripeEvent).where(eq(deadStripeEvent.eventId, eventId));
+  return row;
+}
+
 // A retriever that returns a fixed session per id and records the ids it saw.
 function retriever(map: Record<string, RetrievedSession>): SessionRetriever {
   return vi.fn(async (sessionId: string) => {
@@ -115,6 +137,7 @@ beforeEach(async () => {
   await db.delete(customerOrder);
   await db.delete(productVariant);
   await db.delete(product);
+  await db.delete(deadStripeEvent);
 });
 
 describe("reconcilePendingReservations — orphans", () => {
@@ -265,6 +288,65 @@ describe("reconcilePendingReservations — stale-attached", () => {
       status: "pending",
       paymentStatus: "processing",
     });
+  });
+
+  it("HEALS a stale session Stripe reports complete+paid → order paid, stock untouched, dead-letter resolved", async () => {
+    // The completed-webhook was lost or drained to the DLQ: the buyer was
+    // charged but the order is still pending/unpaid. The cron is the
+    // authoritative money backstop — it must flip the order to paid.
+    await seedReservation({
+      orderId: "o-stale-paid",
+      variantId: "v1",
+      quantity: 3,
+      stock: 7, // reserved 10 → 7; healing must NOT hand stock back (INV-3)
+      stripeCustomerId: "cus_1",
+      stripeCheckoutSessionId: "cs_healme",
+      stripeSessionExpiresAt: new Date(NOW - 5 * MIN),
+      status: "pending",
+      paymentStatus: "unpaid",
+      createdAt: new Date(NOW - 40 * MIN),
+    });
+    // A dead-letter row this session's lost webhook left behind.
+    await seedDeadEvent("evt_lost", "cs_healme");
+
+    const retrieveSession = retriever({
+      cs_healme: { status: "complete", payment_status: "paid" },
+    });
+    const result = await reconcilePendingReservations({ db, retrieveSession, now: NOW });
+
+    expect(result.staleHealed).toBe(1);
+    expect(result.staleReleased).toBe(0);
+    expect(result.staleSkipped).toBe(0);
+    expect(await stockOf("v1")).toBe(7); // stock moved once, at reservation
+    expect(await orderRow("o-stale-paid")).toMatchObject({
+      status: "paid",
+      paymentStatus: "paid",
+    });
+    // The dead-letter evidence is now resolved (the loop closed).
+    expect((await deadEventRow("evt_lost"))?.resolvedAt).toEqual(new Date(NOW));
+  });
+
+  it("resolves the dead-letter row when a stale session is released (dead)", async () => {
+    await seedReservation({
+      orderId: "o-stale-dead",
+      variantId: "v1",
+      quantity: 2,
+      stock: 8,
+      stripeCustomerId: "cus_1",
+      stripeCheckoutSessionId: "cs_dead",
+      stripeSessionExpiresAt: new Date(NOW - 5 * MIN),
+      createdAt: new Date(NOW - 40 * MIN),
+    });
+    await seedDeadEvent("evt_dead", "cs_dead");
+
+    const result = await reconcilePendingReservations({
+      db,
+      retrieveSession: retriever({ cs_dead: { status: "expired", payment_status: "unpaid" } }),
+      now: NOW,
+    });
+
+    expect(result.staleReleased).toBe(1);
+    expect((await deadEventRow("evt_dead"))?.resolvedAt).toEqual(new Date(NOW));
   });
 
   it("leaves a fresh attached reservation (expiry in the future) untouched", async () => {
