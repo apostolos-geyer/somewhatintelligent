@@ -2,6 +2,7 @@
 // checks the host allowlist BEFORE touching any row or key material (fail
 // closed), strips caller credential headers, stamps the registry's header
 // template, and tags the response with the spent grant.
+import type { GrantPayload } from "../crypto/envelope";
 import type { VaultErrorCode } from "../errors";
 import { err, ok, type Result } from "../result";
 import { hostAllowed, type Destination } from "../registry";
@@ -36,43 +37,47 @@ export type InjectError =
   | "body_too_large"
   | "upstream_unreachable";
 
-/** Resolve dest + grant + freshness — the shared front half of both spends. */
-async function resolveSpend(
+/** Select the grant + ensure freshness — the shared middle of both spends.
+ * The dest is already resolved by the caller (so requireDest runs once). */
+async function resolveGrant(
   self: TenantInstance,
-  input: { dest: string; label?: string },
+  dest: Destination,
+  label: string | undefined,
   op: string,
   attr: Attribution,
-): Promise<Result<{ dest: Destination; row: GrantRow }, SpendError>> {
-  const destR = requireDest(input.dest);
-  if (!destR.ok) {
-    audit(self, { op, outcome: destR.error, dest: input.dest, label: input.label, ...attr });
-    return destR;
-  }
-  const dest = destR.value;
-  const selected = selectGrant(self, dest, input.label);
+): Promise<Result<GrantRow, SpendError>> {
+  const selected = selectGrant(self, dest, label);
   if (!selected.ok) {
-    audit(self, { op, outcome: selected.error, dest: input.dest, label: input.label, ...attr });
+    audit(self, { op, outcome: selected.error, dest: dest.id, label, ...attr });
     return selected;
   }
   const fresh = await ensureFresh(self, dest, selected.value);
   if (!fresh.ok) {
-    audit(self, {
-      op,
-      outcome: fresh.error,
-      dest: input.dest,
-      label: selected.value.label,
-      ...attr,
-    });
+    audit(self, { op, outcome: fresh.error, dest: dest.id, label: selected.value.label, ...attr });
     return fresh;
   }
-  return ok({ dest, row: fresh.value });
+  return ok(fresh.value);
 }
 
-function spendableToken(
+/** Decrypt the grant and pull its spendable material; audits the failure
+ * branches shared by getToken and inject. */
+async function openSpendable(
+  self: TenantInstance,
   row: GrantRow,
-  payload: { accessToken?: string; apiKey?: string },
-): string | undefined {
-  return row.kind === "oauth" ? payload.accessToken : payload.apiKey;
+  op: string,
+  attr: Attribution,
+): Promise<Result<{ token: string; payload: GrantPayload }, "grant_unhealthy">> {
+  const opened = await openGrantRow(self, row);
+  if (!opened.ok) {
+    audit(self, { op, outcome: opened.error, dest: row.dest, label: row.label, ...attr });
+    return opened;
+  }
+  const token = row.kind === "oauth" ? opened.value.accessToken : opened.value.apiKey;
+  if (!token) {
+    audit(self, { op, outcome: "grant_unhealthy", dest: row.dest, label: row.label, ...attr });
+    return err("grant_unhealthy", `grant ${row.dest}/${row.label} carries no access material`);
+  }
+  return ok({ token, payload: opened.value });
 }
 
 // ── getToken (FR-8) ────────────────────────────────────────────────────
@@ -82,8 +87,13 @@ export async function getToken(
   input: { dest: string; label?: string },
   attr: Attribution,
 ): Promise<Result<AccessMaterial, GetTokenError>> {
-  const destCfg = requireDest(input.dest);
-  if (destCfg.ok && destCfg.value.kind !== "oauth" && !destCfg.value.getTokenEnabled) {
+  const destR = requireDest(input.dest);
+  if (!destR.ok) {
+    audit(self, { op: "get_token", outcome: destR.error, dest: input.dest, ...attr });
+    return destR;
+  }
+  const dest = destR.value;
+  if (dest.kind !== "oauth" && !dest.getTokenEnabled) {
     // Raw long-lived keys are spent via inject, not handed out (FR-8).
     audit(self, { op: "get_token", outcome: "get_token_disabled", dest: input.dest, ...attr });
     return err(
@@ -91,38 +101,18 @@ export async function getToken(
       `destination "${input.dest}" does not allow getToken — use inject`,
     );
   }
-  const resolved = await resolveSpend(self, input, "get_token", attr);
+  const resolved = await resolveGrant(self, dest, input.label, "get_token", attr);
   if (!resolved.ok) return resolved;
-  const { row } = resolved.value;
+  const row = resolved.value;
 
-  const opened = await openGrantRow(self, row);
-  if (!opened.ok) {
-    audit(self, {
-      op: "get_token",
-      outcome: opened.error,
-      dest: row.dest,
-      label: row.label,
-      ...attr,
-    });
-    return opened;
-  }
-  const token = spendableToken(row, opened.value);
-  if (!token) {
-    audit(self, {
-      op: "get_token",
-      outcome: "grant_unhealthy",
-      dest: row.dest,
-      label: row.label,
-      ...attr,
-    });
-    return err("grant_unhealthy", `grant ${row.dest}/${row.label} carries no access material`);
-  }
+  const spendable = await openSpendable(self, row, "get_token", attr);
+  if (!spendable.ok) return spendable;
   touchLastUsed(self, row.grantId);
   audit(self, { op: "get_token", outcome: "ok", dest: row.dest, label: row.label, ...attr });
   return ok({
-    token,
+    token: spendable.value.token,
     expiresAt: row.expiresAt,
-    scopes: opened.value.scopes,
+    scopes: spendable.value.payload.scopes,
     env: (row.env as GrantEnv | null) ?? null,
   });
 }
@@ -161,26 +151,13 @@ export async function inject(
     return err("body_too_large", `request body exceeds ${MAX_INJECT_REQUEST_BODY} bytes`);
   }
 
-  const resolved = await resolveSpend(self, input, "inject", attr);
+  const resolved = await resolveGrant(self, dest, input.label, "inject", attr);
   if (!resolved.ok) return resolved;
-  const { row } = resolved.value;
+  const row = resolved.value;
 
-  const opened = await openGrantRow(self, row);
-  if (!opened.ok) {
-    audit(self, { op: "inject", outcome: opened.error, dest: row.dest, label: row.label, ...attr });
-    return opened;
-  }
-  const token = spendableToken(row, opened.value);
-  if (!token) {
-    audit(self, {
-      op: "inject",
-      outcome: "grant_unhealthy",
-      dest: row.dest,
-      label: row.label,
-      ...attr,
-    });
-    return err("grant_unhealthy", `grant ${row.dest}/${row.label} carries no access material`);
-  }
+  const spendable = await openSpendable(self, row, "inject", attr);
+  if (!spendable.ok) return spendable;
+  const token = spendable.value.token;
 
   // Strip-then-stamp: caller-supplied credential headers never survive.
   const headers = new Headers();

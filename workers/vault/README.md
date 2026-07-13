@@ -96,8 +96,9 @@ verifies a full decrypt round-trip before its single-row UPDATE.
   `src/types.ts`) and returns a structured `InjectResult` rather than a
   `Response`, so results cross the two RPC hops (caller → entry → DO) with no
   stream-disposal edge cases. Streaming passthrough is a later spike.
-- `scope_reduced` health is typed but not yet detected (refresh succeeding
-  with narrower scopes still stores them; nothing marks the grant).
+- `scope_reduced` health is not yet detected (refresh succeeding with
+  narrower scopes still stores them; nothing marks the grant). The
+  `UnhealthyReason` wire type omits it until the refresh path emits it.
 
 ## Tests
 

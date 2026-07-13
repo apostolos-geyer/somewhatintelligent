@@ -6,7 +6,10 @@
 export type GrantEnv = "live" | "test";
 export type GrantKind = "oauth" | "api_key" | "pat";
 export type GrantHealth = "ok" | "unhealthy";
-export type UnhealthyReason = "revoked_upstream" | "scope_reduced" | "network" | "tampered";
+// Machine-readable health reasons actually emitted today. `scope_reduced` is
+// a planned addition (see README) — add it here when the refresh path detects
+// narrowed scopes, so the wire type never advertises a case nothing produces.
+export type UnhealthyReason = "revoked_upstream" | "network" | "tampered";
 
 /** Grant address within a tenant. Label optional only where unambiguous (FR-16). */
 export type GrantRef = { dest: string; label?: string };

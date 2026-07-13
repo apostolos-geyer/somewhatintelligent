@@ -360,7 +360,7 @@ tasks:
       # .rwx/release.yml so a fix can't land in one lane and miss the others. A
       # migration failure is fatal there (no `|| true`), flipping this task's EXIT
       # trap to `failure`.
-      ORDER="promoter roadie guestlist identity store bouncer"
+      ORDER="promoter roadie vault guestlist identity store bouncer"
       for w in $ORDER; do
         case " ${RELEASED} " in
           *" ${w} "*) : ;;                                   # released — ship it

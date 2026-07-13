@@ -28,9 +28,11 @@ export function audit(self: TenantInstance, ev: AuditEvent): void {
       callerApp: ev.callerApp ?? null,
     })
     .run();
-  // Keep the newest WINDOW rows.
+  // Keep the newest WINDOW rows. `id` is monotonic autoincrement, so this is
+  // an index range delete (no NOT-IN set to materialize per insert) and a
+  // no-op until the table exceeds WINDOW.
   self.db.run(
-    sql`DELETE FROM audit_recent WHERE id NOT IN (SELECT id FROM audit_recent ORDER BY id DESC LIMIT ${WINDOW})`,
+    sql`DELETE FROM audit_recent WHERE id <= (SELECT MAX(id) FROM audit_recent) - ${WINDOW}`,
   );
 }
 

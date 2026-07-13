@@ -7,9 +7,8 @@ import { openPayload, sealPayload, unwrapDek, type GrantPayload } from "../crypt
 import { loadKek } from "../crypto/keys";
 import { err, ok, type Result } from "../result";
 import type { Destination } from "../registry";
-import type { GrantEnv } from "../types";
 import { oauthClientCreds } from "./creds";
-import { markUnhealthy, openGrantRow } from "./grants";
+import { aadFor, markUnhealthy, openGrantRow } from "./grants";
 import type { GrantRow, TenantInstance } from "./instance";
 import { grants } from "./schema";
 
@@ -97,14 +96,7 @@ async function refreshGrant(
   // fresh IV per GCM rules.
   const kek = await loadKek(self.env, row.kekVersion);
   const dek = await unwrapDek(new Uint8Array(row.dekWrapped), kek);
-  const aad = {
-    tenantId: self.tenantId,
-    dest: row.dest,
-    label: row.label,
-    env: (row.env as GrantEnv | null) ?? null,
-    grantId: row.grantId,
-    kekVersion: row.kekVersion,
-  };
+  const aad = aadFor(self, row);
   const sealed = await sealPayload(nextPayload, dek, aad);
   self.db
     .update(grants)

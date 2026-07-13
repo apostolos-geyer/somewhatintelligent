@@ -7,13 +7,12 @@
 // Resumability needs no cursor: the `kek_version != target` predicate makes
 // every call converge — a killed batch leaves already-rotated rows filtered
 // out of the next run, and a half-processed grant was never UPDATEd.
-import { and, eq, ne, not } from "drizzle-orm";
+import { and, count, eq, ne, not } from "drizzle-orm";
 import { openPayload, sealPayload, unwrapDek, wrapDek } from "../crypto/envelope";
 import { activeKekVersion, loadKek } from "../crypto/keys";
 import { err, ok, type Result } from "../result";
-import type { GrantEnv } from "../types";
 import { audit } from "./audit";
-import { markUnhealthy } from "./grants";
+import { aadFor, markUnhealthy } from "./grants";
 import type { Attribution, GrantRow, TenantInstance } from "./instance";
 import { grants } from "./schema";
 
@@ -54,7 +53,7 @@ export async function rotateKek(
     const done = await rotateGrant(self, row, target, targetKek);
     if (done) rewrapped++;
   }
-  const remaining = self.db.select().from(grants).where(pending).all().length;
+  const remaining = self.db.select({ n: count() }).from(grants).where(pending).get()?.n ?? 0;
   audit(self, { op: "rotate_kek", outcome: remaining === 0 ? "ok" : "partial", ...attr });
   return ok({ done: remaining === 0, rewrapped, remaining, kekVersion: target });
 }
@@ -65,16 +64,8 @@ async function rotateGrant(
   target: number,
   targetKek: CryptoKey,
 ): Promise<boolean> {
-  const env = (row.env as GrantEnv | null) ?? null;
-  const oldAad = {
-    tenantId: self.tenantId,
-    dest: row.dest,
-    label: row.label,
-    env,
-    grantId: row.grantId,
-    kekVersion: row.kekVersion,
-  };
-  const newAad = { ...oldAad, kekVersion: target };
+  const oldAad = aadFor(self, row);
+  const newAad = aadFor(self, row, target);
   try {
     const oldKek = await loadKek(self.env, row.kekVersion);
     // Extractable transiently — required to rewrap; scope ends this function.

@@ -17,18 +17,38 @@ function leadMsFor(destId: string): number {
   return (getDestination(destId)?.refreshLeadSeconds ?? DEFAULT_LEAD_S) * 1000;
 }
 
+const REFRESHABLE = and(
+  eq(grants.health, "ok"),
+  eq(grants.kind, "oauth"),
+  isNotNull(grants.expiresAt),
+);
+
+/** Registry says the destination actually issues refresh tokens. */
+function destRefreshable(dest: string): boolean {
+  return getDestination(dest)?.oauth?.refreshable === true;
+}
+
 function refreshableRows(self: TenantInstance) {
   return self.db
     .select()
     .from(grants)
-    .where(and(eq(grants.health, "ok"), eq(grants.kind, "oauth"), isNotNull(grants.expiresAt)))
+    .where(REFRESHABLE)
     .all()
-    .filter((r) => getDestination(r.dest)?.oauth?.refreshable === true);
+    .filter((r) => destRefreshable(r.dest));
 }
 
-/** Recompute and (re)arm the alarm from the earliest upcoming expiry. */
+/**
+ * Recompute and (re)arm the alarm from the earliest upcoming expiry. Reads
+ * only the two columns it needs — no encrypted BLOBs, since this runs after
+ * every credential mutation.
+ */
 export function scheduleSweep(self: TenantInstance): void {
-  const rows = refreshableRows(self);
+  const rows = self.db
+    .select({ dest: grants.dest, expiresAt: grants.expiresAt })
+    .from(grants)
+    .where(REFRESHABLE)
+    .all()
+    .filter((r) => destRefreshable(r.dest));
   if (rows.length === 0) {
     void self.ctx.storage.deleteAlarm();
     return;

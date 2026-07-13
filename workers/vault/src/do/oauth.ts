@@ -30,18 +30,27 @@ interface StatePayload {
 
 // ── state signing ──────────────────────────────────────────────────────
 
-async function stateKey(env: VaultEnv): Promise<CryptoKey> {
+// Import the HMAC key once per isolate (keyed by material, mirroring
+// crypto/keys.ts's kekCache) rather than on every mint/verify.
+const stateKeyCache = new Map<string, Promise<CryptoKey>>();
+
+function stateKey(env: VaultEnv): Promise<CryptoKey> {
   const b64 = env.VAULT_STATE_HMAC;
   if (typeof b64 !== "string" || b64.length === 0) {
     throw new Error("VAULT_STATE_HMAC binding is missing");
   }
-  return crypto.subtle.importKey(
-    "raw",
-    base64Decode(b64) as BufferSource,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign", "verify"],
-  );
+  let key = stateKeyCache.get(b64);
+  if (!key) {
+    key = crypto.subtle.importKey(
+      "raw",
+      base64Decode(b64) as BufferSource,
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign", "verify"],
+    );
+    stateKeyCache.set(b64, key);
+  }
+  return key;
 }
 
 function b64url(bytes: Uint8Array): string {

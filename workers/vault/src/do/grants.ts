@@ -3,7 +3,7 @@
 // refresh, rotation, and the OAuth callback. All plaintext material in this
 // module is function-scoped (NFR-3).
 import { and, asc, eq } from "drizzle-orm";
-import { buildAad, type AadParts } from "../crypto/aad";
+import type { AadParts } from "../crypto/aad";
 import {
   generateDek,
   importDek,
@@ -50,7 +50,13 @@ export function rowToMeta(row: GrantRow): GrantMeta {
   };
 }
 
-function aadFor(self: TenantInstance, row: GrantRow, kekVersion?: number): AadParts {
+/**
+ * The AAD tuple binding a grant row to its ciphertext (§7). Exported so the
+ * refresh and rotation paths derive it the SAME way — this invariant must
+ * never drift across the three re-seal sites. `kekVersion` defaults to the
+ * row's current epoch; rotation passes the target epoch.
+ */
+export function aadFor(self: TenantInstance, row: GrantRow, kekVersion?: number): AadParts {
   return {
     tenantId: self.tenantId,
     dest: row.dest,
@@ -204,29 +210,40 @@ export async function put(
   input: PutInput,
   attr: Attribution,
 ): Promise<Result<GrantMeta, PutError>> {
+  // Audit validation failures too, so the rolling window matches the spend
+  // paths (which audit every branch) rather than only recording put successes.
+  const fail = <E extends PutError>(e: { ok: false; error: E; message?: string }) => {
+    audit(self, { op: "put", outcome: e.error, dest: input.dest, label: input.label, ...attr });
+    return e;
+  };
+
   const destR = requireDest(input.dest);
-  if (!destR.ok) return destR;
+  if (!destR.ok) return fail(destR);
   const dest = destR.value;
   if (!LABEL_RE.test(input.label)) {
-    return err("label_invalid", "label must be a 1-32 char slug: [a-z0-9][a-z0-9-]*");
+    return fail(err("label_invalid", "label must be a 1-32 char slug: [a-z0-9][a-z0-9-]*"));
   }
   if (input.material.kind !== dest.kind) {
-    return err(
-      "material_mismatch",
-      `destination "${dest.id}" expects ${dest.kind} material, got ${input.material.kind}`,
+    return fail(
+      err(
+        "material_mismatch",
+        `destination "${dest.id}" expects ${dest.kind} material, got ${input.material.kind}`,
+      ),
     );
   }
   const envR = resolveEnv(dest, input.env, input.material);
-  if (!envR.ok) return envR;
+  if (!envR.ok) return fail(envR);
   const env = envR.value;
 
   const existing = grantByRef(self, input.dest, input.label);
   // Env is immutable per grant (FR-19): the path across env is put a new
   // label and del the old.
   if (existing && (existing.env ?? null) !== env) {
-    return err(
-      "env_immutable",
-      `grant ${input.dest}/${input.label} is pinned to env "${existing.env ?? "none"}"`,
+    return fail(
+      err(
+        "env_immutable",
+        `grant ${input.dest}/${input.label} is pinned to env "${existing.env ?? "none"}"`,
+      ),
     );
   }
 
