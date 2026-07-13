@@ -132,3 +132,35 @@ What it does per stale-attached order (session id attached, past
 After a heal or release it stamps `resolved_at` on any matching
 `dead_stripe_event` rows (`object_id` = session id). Orphans (no session id, past
 the 10-min grace) are released on D1 state alone.
+
+---
+
+## Superseded sessions
+
+At most one open checkout session exists per user. `createCheckoutSession`
+enforces this on every new attempt: before reserving stock it expires the
+caller's prior open sessions at Stripe, so a buyer who initiates → backs out →
+re-initiates never leaves stacked live sessions each holding reserved stock for
+the full 30-min TTL (false out-of-stock for others; self-block on the last unit;
+with a redirect method like Klarna, an abandoned-but-still-payable session that
+could double-charge). Two log lines (grep in `wrangler tail`) record it:
+
+- `store.stripe_checkout.superseded` (`order_id`, `session_id`) — the prior
+  session was expired at Stripe **and** its order released+cancelled
+  (`payment_status` → `expired`, `status` → `cancelled`, its reserved stock
+  handed back). Expected once per superseded prior attempt on each new checkout.
+- `store.stripe_checkout.supersede_skipped` (`order_id`, `session_id`) — the
+  expire call threw, so the session was **not** open (already `complete` or
+  `expired` — a paid webhook may be in flight). The order is left completely
+  untouched; the webhook or the reconcile cron settles it. Not an error: this is
+  the safe branch that never releases stock on D1 state alone.
+
+**Why release precedes the webhook:** Stripe only expires an OPEN session, so a
+successful `sessions.expire` _proves_ the session can never be paid — that is the
+release authority, and releasing immediately frees the stock without waiting for
+the (eventual) `checkout.session.expired` webhook. That later webhook is not
+redundant work: it no-ops through the same `unpaid`/`processing` gates the
+supersede release already used (see the `cs_super` convergence test in
+`stripe-events.itest.ts`), so stock is never handed back twice. Orphans (a
+reservation with no session id) are never superseded here — they have no live
+Stripe object to expire and belong to the cron's orphan sweep.

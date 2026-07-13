@@ -6,7 +6,7 @@
 // tier drives this against a real D1 with both mocked. Stripe appears only as a
 // type here (`import type`) — the client is constructed in the wrapper.
 import type Stripe from "stripe";
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 
 import { customerOrder, orderItem, product, productVariant } from "@/db/schema";
 import type { Db } from "@/lib/db";
@@ -14,6 +14,7 @@ import { ulid } from "@somewhatintelligent/kit/ids";
 import type { PlatformSession } from "@somewhatintelligent/auth";
 import { computeOrderTotals, type OrderLine } from "@/lib/pricing";
 import { reserveStock } from "@/lib/reservation";
+import { releaseAndCancel } from "@/lib/reconcile";
 import type { OrderStatus } from "@/lib/config";
 import { stripeConfigured } from "@somewhatintelligent/stripe";
 
@@ -82,6 +83,12 @@ export type StripeSessionCreator = (
   options: { idempotencyKey: string },
 ) => Promise<CreatedCheckoutSession>;
 
+// Injected `stripe.checkout.sessions.expire`. The authority for the supersede
+// sweep (Track G3): Stripe only expires an OPEN session, so a resolved promise
+// PROVES the session can never be paid, and a throw means it is not open
+// (complete/already-expired — a paid webhook may be in flight).
+export type SessionExpirer = (sessionId: string) => Promise<void>;
+
 export interface CheckoutSessionDeps {
   db: Db;
   session: PlatformSession;
@@ -89,6 +96,7 @@ export interface CheckoutSessionDeps {
   env: Pick<Env, "STRIPE_SECRET_KEY" | "STRIPE_WEBHOOK_SIGNING_SECRET" | "STORE_URL">;
   ensureCustomer: EnsureCustomer;
   createStripeSession: StripeSessionCreator;
+  expireSession: SessionExpirer;
 }
 
 function buildSessionParams(opts: {
@@ -159,6 +167,59 @@ async function reverseReservation(
   await db.batch(statements as never);
 }
 
+// At most one open checkout session per user (Track G3): before reserving stock
+// for a new attempt, supersede the caller's prior open attempts so an abandoned
+// session neither holds reserved stock for its full TTL nor stays payable at
+// Stripe (a redirect method like Klarna leaves an abandoned session completable
+// — a later double charge). Stripe is the release authority: `sessions.expire`
+// only succeeds on an OPEN session, so a resolved expire PROVES the session can
+// never be paid — only then is its reservation released+cancelled in one gated
+// batch (reusing reconcile.ts's idiom exactly; the later checkout.session.expired
+// webhook no-ops through the same gates, no ledger row written here). A throw
+// means the session is not open (complete/already-expired — a paid webhook may
+// be in flight), so the order is left COMPLETELY untouched for the webhook/cron
+// to settle, never released on D1 state alone. Orphans (no session id) belong to
+// the cron (Track D5/D6) and are excluded here. A supersede failure never fails
+// the new checkout.
+async function supersedePriorOpenAttempts(
+  db: Db,
+  userId: string,
+  expireSession: SessionExpirer,
+): Promise<void> {
+  const priors = await db
+    .select({ id: customerOrder.id, sessionId: customerOrder.stripeCheckoutSessionId })
+    .from(customerOrder)
+    .where(
+      and(
+        eq(customerOrder.userId, userId),
+        eq(customerOrder.status, "pending"),
+        inArray(customerOrder.paymentStatus, ["unpaid", "processing"]),
+        isNotNull(customerOrder.stripeCheckoutSessionId),
+      ),
+    );
+
+  for (const prior of priors) {
+    const sessionId = prior.sessionId;
+    if (!sessionId) continue;
+    try {
+      await expireSession(sessionId);
+    } catch {
+      // Not open at Stripe (complete/already-expired — a paid webhook may be in
+      // flight). Leave the order untouched; the webhook/cron settles it.
+      console.log("store.stripe_checkout.supersede_skipped", {
+        order_id: prior.id,
+        session_id: sessionId,
+      });
+      continue;
+    }
+    await db.batch(releaseAndCancel(db, prior.id, new Date()) as never);
+    console.log("store.stripe_checkout.superseded", {
+      order_id: prior.id,
+      session_id: sessionId,
+    });
+  }
+}
+
 function stripeErrorCode(err: unknown): string {
   if (err && typeof err === "object" && "code" in err && typeof err.code === "string") {
     return err.code;
@@ -178,7 +239,7 @@ function stripeErrorCode(err: unknown): string {
 export async function createCheckoutSessionCore(
   deps: CheckoutSessionDeps,
 ): Promise<CreateCheckoutSessionResult> {
-  const { db, session, input, env: cfg, ensureCustomer, createStripeSession } = deps;
+  const { db, session, input, env: cfg, ensureCustomer, createStripeSession, expireSession } = deps;
 
   // INV-7: unconfigured → zero D1 writes, zero Stripe calls; client falls back
   // to placeOrder.
@@ -206,6 +267,11 @@ export async function createCheckoutSessionCore(
   // carry it from creation (INV-11 discriminator, never half-set).
   const customer = await ensureCustomer();
   if (!customer.ok) return { ok: false, error: "stripe_customer_failed" };
+
+  // At most one open checkout session per user (Track G3): supersede the
+  // caller's prior open attempts before reserving new stock. Never blocks —
+  // control falls through to the new reservation regardless of the outcome.
+  await supersedePriorOpenAttempts(db, session.user.id, expireSession);
 
   // Reserve stock atomically (INV-4). A failed guard fully reverses its own
   // partial decrement inside reserveStock, so no order row is written on

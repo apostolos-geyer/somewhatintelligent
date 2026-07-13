@@ -49,8 +49,9 @@ export interface ReconcileResult {
 // gated on the order still being `unpaid`/`processing`, so a webhook that landed
 // between the candidate SELECT and this batch (moving the order to a terminal
 // state) makes both guards no-op — the sweep never double-releases or clobbers a
-// terminal state.
-function releaseAndCancel(db: Db, orderId: string, now: Date) {
+// terminal state. Shared with createCheckoutSession's supersede path (Track G3),
+// which releases a prior attempt Stripe has just confirmed expired.
+export function releaseAndCancel(db: Db, orderId: string, now: Date) {
   const release = db
     .update(productVariant)
     .set({

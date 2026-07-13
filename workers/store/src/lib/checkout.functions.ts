@@ -23,6 +23,7 @@ import {
   type DahliaSessionCreateParams,
   type EnsureCustomerResult,
   type OrderByStripeSessionResult,
+  type SessionExpirer,
   type StripeSessionCreator,
 } from "@/lib/checkout";
 
@@ -81,6 +82,19 @@ function makeStripeSessionCreator(secretKey: string): StripeSessionCreator {
   };
 }
 
+// Injected supersede authority (Track G3), same pinned-apiVersion client
+// pattern as the session creator. Constructed only past the stripeConfigured
+// gate, so STRIPE_SECRET_KEY is present. A throw (session not open) is caught
+// in createCheckoutSessionCore's supersede loop, never here.
+function makeSessionExpirer(secretKey: string): SessionExpirer {
+  return async (sessionId: string) => {
+    const stripe = new Stripe(secretKey, {
+      apiVersion: STRIPE_API_VERSION as Stripe.LatestApiVersion,
+    });
+    await stripe.checkout.sessions.expire(sessionId);
+  };
+}
+
 export const createCheckoutSession = createServerFn({ method: "POST" })
   .middleware([requireAuthMiddleware])
   .inputValidator((data: typeof placeOrderInput.infer) => placeOrderInput.assert(data))
@@ -92,6 +106,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       env,
       ensureCustomer: ensureStripeCustomer,
       createStripeSession: makeStripeSessionCreator(env.STRIPE_SECRET_KEY),
+      expireSession: makeSessionExpirer(env.STRIPE_SECRET_KEY),
     });
   });
 

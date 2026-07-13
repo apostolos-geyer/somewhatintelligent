@@ -403,5 +403,38 @@ describe("processStoreStripeEvent", () => {
       expect(order?.status).toBe("paid");
       expect(await stockOf("v4")).toBe(8); // never released
     });
+
+    it("a real expired event for an already-superseded order does NOT re-release stock (Track G3 convergence, INV-5)", async () => {
+      // createCheckoutSession's supersede sweep already expired the session at
+      // Stripe and released+cancelled this order (paymentStatus 'expired', status
+      // 'cancelled', its 2 units handed back → stock already at 10). The real
+      // checkout.session.expired webhook that Stripe fires afterward must no-op
+      // through the same unpaid/processing gates the supersede release used.
+      await seedReservedOrder("cs_super", {
+        variantId: "v5",
+        quantity: 2,
+        stock: 10,
+        status: "cancelled",
+        paymentStatus: "expired",
+      });
+
+      const r = await processStoreStripeEvent(
+        db,
+        msg({
+          id: "evt_super",
+          type: "checkout.session.expired",
+          objectId: "cs_super",
+          payment_status: "unpaid",
+        }),
+        STAGING,
+      );
+      // The order exists, so the event is acked (recorded), not retried…
+      expect(r.ok).toBe(true);
+
+      const order = await orderFor("cs_super");
+      expect(order?.paymentStatus).toBe("expired"); // unchanged
+      expect(order?.status).toBe("cancelled"); // unchanged
+      expect(await stockOf("v5")).toBe(10); // NOT 12 — released exactly once
+    });
   });
 });

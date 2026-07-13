@@ -20,6 +20,7 @@ import {
   type CheckoutInput,
   type CheckoutSessionDeps,
   type EnsureCustomer,
+  type SessionExpirer,
   type StripeSessionCreator,
 } from "@/lib/checkout";
 
@@ -36,6 +37,63 @@ const session = (id = "buyer-1"): PlatformSession =>
   ({ user: { id, email: `${id}@example.com`, role: "user" } }) as unknown as PlatformSession;
 
 const okCustomer: EnsureCustomer = async () => ({ ok: true, stripeCustomerId: "cus_test_1" });
+
+// Default supersede authority for the tests that seed no prior open attempt for
+// the caller — the supersede SELECT returns nothing, so this is never invoked.
+// The supersede-specific tests below inject their own spy/throwing expirer.
+const noExpire: SessionExpirer = async () => {};
+
+// Seed a prior open checkout attempt for a user: a pending/unpaid order carrying
+// a session id + one reserved line, exactly the shape the supersede sweep
+// targets. `stock` on the variant is assumed already decremented for this
+// reservation by the caller's seedVariant.
+async function seedPriorAttempt(opts: {
+  orderId: string;
+  sessionId: string | null;
+  userId?: string;
+  productId: string;
+  variantId: string;
+  quantity: number;
+  status?: "pending" | "cancelled" | "paid";
+  paymentStatus?: string;
+}) {
+  const now = new Date();
+  await db.insert(customerOrder).values({
+    id: opts.orderId,
+    orderNumber: `SI-${opts.orderId}`,
+    userId: opts.userId ?? "buyer-1",
+    email: `${opts.userId ?? "buyer-1"}@example.com`,
+    status: opts.status ?? "pending",
+    paymentStatus: opts.paymentStatus ?? "unpaid",
+    // Stripe-path shaped (INV-11): a resolved customer id is always present.
+    stripeCustomerId: "cus_prior",
+    stripeCheckoutSessionId: opts.sessionId,
+    shipName: "Ada",
+    shipLine1: "1 Main",
+    shipCity: "Toronto",
+    shipRegion: "ON",
+    shipPostal: "M5V",
+    subtotalCents: 3000,
+    totalCents: 3000,
+    createdAt: now,
+    updatedAt: now,
+  });
+  await db.insert(orderItem).values({
+    id: `oi-${opts.orderId}`,
+    orderId: opts.orderId,
+    productId: opts.productId,
+    variantId: opts.variantId,
+    titleSnapshot: "Tee",
+    sizeSnapshot: "M",
+    unitPriceCents: 3000,
+    quantity: opts.quantity,
+  });
+}
+
+async function orderById(id: string) {
+  const [row] = await db.select().from(customerOrder).where(eq(customerOrder.id, id));
+  return row;
+}
 
 async function seedProduct(id: string, priceCents: number) {
   const now = new Date();
@@ -103,6 +161,7 @@ describe("createCheckoutSessionCore", () => {
       env: STRIPE_ENV,
       ensureCustomer: okCustomer,
       createStripeSession,
+      expireSession: noExpire,
     });
 
     expect(result).toEqual({
@@ -179,6 +238,7 @@ describe("createCheckoutSessionCore", () => {
       env: STRIPE_ENV,
       ensureCustomer: okCustomer,
       createStripeSession,
+      expireSession: noExpire,
     });
 
     const [params] = createStripeSession.mock.calls[0]!;
@@ -201,6 +261,7 @@ describe("createCheckoutSessionCore", () => {
       env: STRIPE_ENV,
       ensureCustomer: okCustomer,
       createStripeSession,
+      expireSession: noExpire,
     });
 
     expect(result).toEqual({ ok: false, error: "stripe_session_failed" });
@@ -224,6 +285,7 @@ describe("createCheckoutSessionCore", () => {
       env: STRIPE_ENV,
       ensureCustomer: okCustomer,
       createStripeSession,
+      expireSession: noExpire,
     });
 
     expect(result).toMatchObject({ ok: false, error: "out_of_stock" });
@@ -238,6 +300,7 @@ describe("createCheckoutSessionCore", () => {
 
     const createStripeSession = vi.fn();
     const ensureCustomer = vi.fn<EnsureCustomer>();
+    const expireSession = vi.fn<SessionExpirer>();
 
     const result = await createCheckoutSessionCore({
       db,
@@ -250,11 +313,13 @@ describe("createCheckoutSessionCore", () => {
       },
       ensureCustomer,
       createStripeSession,
+      expireSession,
     });
 
     expect(result).toEqual({ ok: true, mode: "stub" });
     expect(ensureCustomer).not.toHaveBeenCalled();
     expect(createStripeSession).not.toHaveBeenCalled();
+    expect(expireSession).not.toHaveBeenCalled();
     expect(await db.select().from(customerOrder)).toHaveLength(0);
     expect(await stockOf("v1")).toBe(10);
   });
@@ -271,12 +336,203 @@ describe("createCheckoutSessionCore", () => {
       env: STRIPE_ENV,
       ensureCustomer: async () => ({ ok: false }),
       createStripeSession,
+      expireSession: noExpire,
     });
 
     expect(result).toEqual({ ok: false, error: "stripe_customer_failed" });
     expect(createStripeSession).not.toHaveBeenCalled();
     expect(await db.select().from(customerOrder)).toHaveLength(0);
     expect(await stockOf("v1")).toBe(10);
+  });
+});
+
+describe("createCheckoutSessionCore — supersede prior open attempts (Track G3)", () => {
+  it("expires the caller's prior open attempt, releases its stock, and the new attempt reserves only its own", async () => {
+    await seedProduct("p1", 3000);
+    // Original stock 10; the prior attempt already reserved 3 → 7 on hand.
+    await seedVariant({ id: "v1", productId: "p1", size: "M", stock: 7 });
+    await seedPriorAttempt({
+      orderId: "ord_prior",
+      sessionId: "cs_prior",
+      productId: "p1",
+      variantId: "v1",
+      quantity: 3,
+    });
+
+    const expireSession = vi.fn<SessionExpirer>(async () => {});
+    const createStripeSession = vi.fn<StripeSessionCreator>(async () => ({
+      id: "cs_new",
+      client_secret: "cs_new_secret",
+      expires_at: Math.floor(Date.now() / 1000) + 1800,
+    }));
+
+    const result = await createCheckoutSessionCore({
+      db,
+      session: session("buyer-1"),
+      input: input({ items: [{ variantId: "v1", quantity: 3 }] }),
+      env: STRIPE_ENV,
+      ensureCustomer: okCustomer,
+      createStripeSession,
+      expireSession,
+    });
+
+    expect(result).toMatchObject({ ok: true, mode: "elements", clientSecret: "cs_new_secret" });
+
+    // The prior session was expired at Stripe (authority), exactly once.
+    expect(expireSession).toHaveBeenCalledTimes(1);
+    expect(expireSession).toHaveBeenCalledWith("cs_prior");
+
+    // The prior order is released + cancelled; its stock returned.
+    const prior = await orderById("ord_prior");
+    expect(prior).toMatchObject({ status: "cancelled", paymentStatus: "expired" });
+
+    // A single new pending order carries the new session id.
+    const orders = await db.select().from(customerOrder);
+    expect(orders).toHaveLength(2);
+    const fresh = orders.find((o) => o.id !== "ord_prior")!;
+    expect(fresh).toMatchObject({
+      status: "pending",
+      paymentStatus: "unpaid",
+      stripeCheckoutSessionId: "cs_new",
+    });
+
+    // Net stock held = the new attempt only (10 − 3), not both attempts.
+    expect(await stockOf("v1")).toBe(7);
+  });
+
+  it("expireSession throws (session completing at Stripe): the prior order is untouched, the new attempt still succeeds", async () => {
+    await seedProduct("p1", 3000);
+    // Original 10; prior holds 3 → 7 on hand.
+    await seedVariant({ id: "v1", productId: "p1", size: "M", stock: 7 });
+    await seedPriorAttempt({
+      orderId: "ord_prior",
+      sessionId: "cs_prior",
+      productId: "p1",
+      variantId: "v1",
+      quantity: 3,
+    });
+
+    const expireSession = vi.fn<SessionExpirer>(async () => {
+      throw new Error("session is not open");
+    });
+    const createStripeSession = vi.fn<StripeSessionCreator>(async () => ({
+      id: "cs_new",
+      client_secret: "cs_new_secret",
+      expires_at: Math.floor(Date.now() / 1000) + 1800,
+    }));
+
+    const result = await createCheckoutSessionCore({
+      db,
+      session: session("buyer-1"),
+      input: input({ items: [{ variantId: "v1", quantity: 3 }] }),
+      env: STRIPE_ENV,
+      ensureCustomer: okCustomer,
+      createStripeSession,
+      expireSession,
+    });
+
+    // A supersede failure never blocks the new checkout.
+    expect(result).toMatchObject({ ok: true, mode: "elements" });
+    expect(expireSession).toHaveBeenCalledWith("cs_prior");
+
+    // The prior order is left COMPLETELY untouched — never released on D1 state
+    // alone; the webhook/cron settles it.
+    const prior = await orderById("ord_prior");
+    expect(prior).toMatchObject({
+      status: "pending",
+      paymentStatus: "unpaid",
+      stripeCheckoutSessionId: "cs_prior",
+    });
+
+    // Both reservations still held: prior 3 + new 3 out of 10 → 4.
+    expect(await stockOf("v1")).toBe(4);
+  });
+
+  it("never touches another user's pending attempt", async () => {
+    await seedProduct("p1", 3000);
+    // buyer-2 holds 3 of 10 → 7 on hand.
+    await seedVariant({ id: "v1", productId: "p1", size: "M", stock: 7 });
+    await seedPriorAttempt({
+      orderId: "ord_other",
+      sessionId: "cs_other",
+      userId: "buyer-2",
+      productId: "p1",
+      variantId: "v1",
+      quantity: 3,
+    });
+
+    const expireSession = vi.fn<SessionExpirer>(async () => {});
+    const createStripeSession = vi.fn<StripeSessionCreator>(async () => ({
+      id: "cs_new",
+      client_secret: "cs_new_secret",
+      expires_at: Math.floor(Date.now() / 1000) + 1800,
+    }));
+
+    const result = await createCheckoutSessionCore({
+      db,
+      session: session("buyer-1"),
+      input: input({ items: [{ variantId: "v1", quantity: 3 }] }),
+      env: STRIPE_ENV,
+      ensureCustomer: okCustomer,
+      createStripeSession,
+      expireSession,
+    });
+
+    expect(result).toMatchObject({ ok: true, mode: "elements" });
+    // buyer-2's session is never expired.
+    expect(expireSession).not.toHaveBeenCalled();
+
+    const other = await orderById("ord_other");
+    expect(other).toMatchObject({
+      status: "pending",
+      paymentStatus: "unpaid",
+      stripeCheckoutSessionId: "cs_other",
+    });
+    // buyer-2 (3) + buyer-1's new (3) both held out of 10 → 4.
+    expect(await stockOf("v1")).toBe(4);
+  });
+
+  it("never touches an orphan (no session id) — that belongs to the cron", async () => {
+    await seedProduct("p1", 3000);
+    // The orphan holds 3 of 10 → 7 on hand.
+    await seedVariant({ id: "v1", productId: "p1", size: "M", stock: 7 });
+    await seedPriorAttempt({
+      orderId: "ord_orphan",
+      sessionId: null,
+      productId: "p1",
+      variantId: "v1",
+      quantity: 3,
+    });
+
+    const expireSession = vi.fn<SessionExpirer>(async () => {});
+    const createStripeSession = vi.fn<StripeSessionCreator>(async () => ({
+      id: "cs_new",
+      client_secret: "cs_new_secret",
+      expires_at: Math.floor(Date.now() / 1000) + 1800,
+    }));
+
+    const result = await createCheckoutSessionCore({
+      db,
+      session: session("buyer-1"),
+      input: input({ items: [{ variantId: "v1", quantity: 3 }] }),
+      env: STRIPE_ENV,
+      ensureCustomer: okCustomer,
+      createStripeSession,
+      expireSession,
+    });
+
+    expect(result).toMatchObject({ ok: true, mode: "elements" });
+    // An orphan has no session id to expire.
+    expect(expireSession).not.toHaveBeenCalled();
+
+    const orphan = await orderById("ord_orphan");
+    expect(orphan).toMatchObject({
+      status: "pending",
+      paymentStatus: "unpaid",
+      stripeCheckoutSessionId: null,
+    });
+    // Orphan (3) + new (3) both held out of 10 → 4.
+    expect(await stockOf("v1")).toBe(4);
   });
 });
 
