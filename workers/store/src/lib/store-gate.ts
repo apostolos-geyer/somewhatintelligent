@@ -6,6 +6,9 @@ import { isAdminRole } from "@somewhatintelligent/kit/roles";
 import type { PlatformSession } from "@somewhatintelligent/auth";
 import { STORE_LIVE } from "@/lib/config";
 
-export function storeOpenFor(session: PlatformSession | null | undefined): boolean {
-  return STORE_LIVE || isAdminRole(session?.user.role);
+export function storeOpenFor(
+  session: PlatformSession | null | undefined,
+  live: boolean = STORE_LIVE,
+): boolean {
+  return live || isAdminRole(session?.user.role);
 }

@@ -70,6 +70,7 @@ const CLIENT_VARS = [
   "AUTH_DOMAIN",
   "ENVIRONMENT",
   "PUBLIC_BASE",
+  "STORE_LIVE",
 ] as const;
 const clientDefines = process.env.VITEST
   ? {}

@@ -10,6 +10,9 @@ interface ImportMetaEnv {
   // THE single source of the client-only router basepath (the `/shop` mount,
   // or "/" in dev-direct). See src/lib/basepath.ts + src/router.tsx.
   readonly PUBLIC_BASE: string;
+  // Launch gate ("true"/"false") — parsed once in src/lib/config.ts
+  // (STORE_LIVE); undefined under vitest, where the define map is empty.
+  readonly STORE_LIVE?: string;
 }
 
 interface ImportMeta {
