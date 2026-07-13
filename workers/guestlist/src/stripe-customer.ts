@@ -10,7 +10,7 @@
  * because the pinned 0.0.5 package exposes no billing-customer surface.
  */
 import { drizzle } from "drizzle-orm/d1";
-import { and, eq, isNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import type { PlatformSession } from "@somewhatintelligent/auth";
 import { user } from "./schema.gen";
 
@@ -37,11 +37,6 @@ export interface EnsureStripeCustomerDeps {
   // operation never performs, so it is deliberately not required here.
   secretKey: string | undefined;
   createCustomer: CustomerCreator;
-  // Voids the duplicate Stripe Customer when this call loses the persist race
-  // (another creator claimed the column first). Best-effort: a failure only
-  // leaves an unattached customer in Stripe, so errors are logged, never
-  // surfaced.
-  deleteCustomer?: (stripeCustomerId: string) => Promise<void>;
 }
 
 /**
@@ -81,38 +76,6 @@ export async function ensureStripeCustomerCore(
     return { ok: false, error: "stripe_customer_create_failed" };
   }
 
-  // The column is the single arbiter: a NULL-gated claim commits at most one
-  // id per user no matter how many creators race (a concurrent RPC, or the
-  // better-auth plugin's signup-time create once billing plans ship — its
-  // customers.create carries no idempotency key, so Stripe-side dedup cannot
-  // converge the two creation paths; this claim does).
-  const claim = await db
-    .update(user)
-    .set({ stripeCustomerId })
-    .where(and(eq(user.id, userId), isNull(user.stripeCustomerId)));
-  if ((claim.meta?.changes ?? 0) > 0) return { ok: true, stripeCustomerId };
-
-  // Lost the race: return the winner's id and void our duplicate.
-  const [winner] = await db
-    .select({ stripeCustomerId: user.stripeCustomerId })
-    .from(user)
-    .where(eq(user.id, userId))
-    .limit(1);
-  if (!winner?.stripeCustomerId) {
-    // Claim matched nothing yet no winner exists (user row deleted mid-flight).
-    // The created customer is still this user's only one — return it.
-    return { ok: true, stripeCustomerId };
-  }
-  if (deps.deleteCustomer && winner.stripeCustomerId !== stripeCustomerId) {
-    try {
-      await deps.deleteCustomer(stripeCustomerId);
-    } catch (err) {
-      console.error(
-        `[guestlist] duplicate customer ${stripeCustomerId} cleanup failed for user ${userId}: ${
-          err instanceof Error ? err.message : String(err)
-        }`,
-      );
-    }
-  }
-  return { ok: true, stripeCustomerId: winner.stripeCustomerId };
+  await db.update(user).set({ stripeCustomerId }).where(eq(user.id, userId));
+  return { ok: true, stripeCustomerId };
 }
