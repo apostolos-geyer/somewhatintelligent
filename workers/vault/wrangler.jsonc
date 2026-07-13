@@ -1,0 +1,61 @@
+// vault — multi-tenant encrypted key store. RPC-only (service bindings);
+// no routes, no public HTTP surface beyond /__version.
+//
+// Top level = STAGING. `wrangler deploy` ships staging;
+// `wrangler deploy --env production` ships production. Named envs do not
+// inherit bindings, so env.production re-declares everything it needs.
+//
+// Secrets (never vars — provisioned via packages/secrets):
+//   VAULT_KEK_V1               32-byte base64 KEK, AES-KW wrap key (versioned;
+//                              add VAULT_KEK_V2 etc. on rotation)
+//   VAULT_STATE_HMAC           32-byte base64 OAuth-state signing key
+//   VAULT_GITHUB_CLIENT_ID     GitHub OAuth app (optional until onboarded)
+//   VAULT_GITHUB_CLIENT_SECRET
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "si-vault-staging",
+  "main": "src/index.ts",
+  "account_id": "c735c5a53d864bee37400befb7f4c7f4",
+  "compatibility_date": "2026-04-19",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "upload_source_maps": true,
+  "workers_dev": false,
+  "preview_urls": true,
+  // drizzle's DO migrations bundle imports the generated .sql files as text.
+  "rules": [{ "type": "Text", "globs": ["**/*.sql"], "fallthrough": true }],
+  "vars": {
+    "ENVIRONMENT": "staging",
+    "VAULT_ACTIVE_KEK_VERSION": "1",
+  },
+  // DO migrations are TOP-LEVEL ONLY — wrangler applies them per deployed
+  // script and errors on env-scoped migration blocks. Do not duplicate into
+  // env.production.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["VaultTenantDO"] }],
+  "durable_objects": {
+    "bindings": [{ "name": "VAULT_TENANT", "class_name": "VaultTenantDO" }],
+  },
+  // Self-referencing binding onto the named entrypoint so integration tests
+  // exercise the real RPC surface (guestlist's GL_RPC pattern); vite.config.ts
+  // re-points it at the current worker under vitest-pool-workers.
+  "services": [{ "binding": "VAULT_RPC", "service": "si-vault-staging", "entrypoint": "Vault" }],
+  "env": {
+    "production": {
+      "name": "si-vault-production",
+      "vars": {
+        "ENVIRONMENT": "production",
+        "VAULT_ACTIVE_KEK_VERSION": "1",
+      },
+      // Bindings do NOT inherit into named envs — re-declare everything.
+      "durable_objects": {
+        "bindings": [{ "name": "VAULT_TENANT", "class_name": "VaultTenantDO" }],
+      },
+      "services": [
+        { "binding": "VAULT_RPC", "service": "si-vault-production", "entrypoint": "Vault" },
+      ],
+      "observability": { "enabled": true, "head_sampling_rate": 1 },
+      "preview_urls": false,
+      // No routes — consumers reach vault exclusively over service bindings.
+    },
+  },
+}

@@ -23,7 +23,7 @@ if [ -z "${CHANGED}" ]; then
 fi
 for w in ${CHANGED}; do
   case "$w" in
-    promoter | roadie | guestlist | identity | store | bouncer) : ;;
+    promoter | roadie | vault | guestlist | identity | store | bouncer) : ;;
     *) echo "generate-preview-tasks: refusing unknown worker '$w'" >&2; exit 1 ;;
   esac
 done

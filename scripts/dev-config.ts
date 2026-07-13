@@ -68,6 +68,13 @@ ${LOCAL_BNC_ATT_PRIV_B64}
 -----END PRIVATE KEY-----`;
 export const LOCAL_BNC_ATT_KID = "dev";
 
+// LOCAL_VAULT_* are vault's well-known dev key material: the v1 KEK that
+// wraps per-grant DEKs and the HMAC key that signs OAuth state. Local-only
+// (encrypts nothing that leaves the machine); staging/production get unique
+// generated values via packages/secrets. Rotate per fork if you care.
+export const LOCAL_VAULT_KEK_V1 = "vGbPpVdLiGQp903ookg1Bvkux+WnvN7bAddxIbqKTq8=";
+export const LOCAL_VAULT_STATE_HMAC = "nYhDB5QNxWOKnaERgn7z0oqYkTaFONRBEdnGi4jXF/Q=";
+
 // Shared `.dev.vars` template for non-guestlist apps/services. BETTER_AUTH_SECRET
 // is intentionally NOT included — session verification lives entirely in
 // guestlist (which holds the secret in its own env). Apps reach guestlist over

@@ -342,6 +342,11 @@ tasks:
     filter: [*gate-filter, workers/store/**, *gate-neg]
     run: cd workers/store && bun run typecheck
     timeout: 8m
+  - key: typecheck-vault
+    use: types
+    filter: [*gate-filter, workers/vault/**, *gate-neg]
+    run: cd workers/vault && bun run typecheck
+    timeout: 8m
   - key: typecheck-config
     use: types
     filter: [*gate-filter, packages/config/**, *gate-neg]
@@ -428,6 +433,16 @@ tasks:
       captain run si-store --print-summary
     outputs:
       test-results: [{ path: .captain-out/store.rwx.json }]
+  - key: test-vault
+    use: [bootstrap, captain, node]
+    agent: *gate-agent
+    filter: [*gate-filter, workers/vault/**, *gate-neg]
+    timeout: 8m
+    run: |
+      mkdir -p .captain-out
+      captain run si-vault --print-summary
+    outputs:
+      test-results: [{ path: .captain-out/vault.rwx.json }]
   - key: test-secrets
     use: [bootstrap, captain]
     agent: *gate-agent
@@ -449,6 +464,7 @@ tasks:
       - typecheck-promoter
       - typecheck-roadie
       - typecheck-store
+      - typecheck-vault
       - typecheck-config
       - typecheck-design
       - typecheck-email
@@ -460,6 +476,7 @@ tasks:
       - test-promoter
       - test-roadie
       - test-store
+      - test-vault
       - test-secrets
     run: echo "gate green"
 

@@ -214,7 +214,7 @@
     },
     "workers/guestlist": {
       "name": "@si/guestlist-service",
-      "version": "0.0.4",
+      "version": "0.0.5",
       "dependencies": {
         "@si/config": "workspace:*",
         "@si/promoter-service": "workspace:*",
@@ -238,7 +238,7 @@
     },
     "workers/identity": {
       "name": "identity",
-      "version": "0.0.4",
+      "version": "0.0.5",
       "dependencies": {
         "@si/analytics": "workspace:*",
         "@si/design": "workspace:*",
@@ -321,7 +321,7 @@
     },
     "workers/store": {
       "name": "store",
-      "version": "0.0.3",
+      "version": "0.0.4",
       "dependencies": {
         "@si/analytics": "workspace:*",
         "@si/config": "workspace:*",
@@ -361,6 +361,27 @@
         "vite": "catalog:",
         "vite-plus": "catalog:",
         "vitest": "catalog:",
+      },
+    },
+    "workers/vault": {
+      "name": "@si/vault-service",
+      "version": "0.0.0",
+      "dependencies": {
+        "@somewhatintelligent/kit": "0.0.3",
+        "drizzle-orm": "catalog:",
+      },
+      "devDependencies": {
+        "@babel/plugin-proposal-decorators": "^7.29.0",
+        "@cloudflare/vitest-pool-workers": "^0.14.6",
+        "@cloudflare/workers-types": "^4",
+        "@rolldown/plugin-babel": "^0.2.3",
+        "@si/typescript-config": "workspace:*",
+        "@types/node": "catalog:",
+        "drizzle-kit": "catalog:",
+        "vite": "catalog:",
+        "vite-plus": "catalog:",
+        "vitest": "catalog:",
+        "wrangler": "^4",
       },
     },
   },
@@ -1139,6 +1160,8 @@
     "@si/typescript-config": ["@si/typescript-config@workspace:packages/typescript-config"],
 
     "@si/ui": ["@si/ui@workspace:packages/ui"],
+
+    "@si/vault-service": ["@si/vault-service@workspace:workers/vault"],
 
     "@simplewebauthn/browser": ["@simplewebauthn/browser@13.3.0", "", {}, "sha512-BE/UWv6FOToAdVk0EokzkqQQDOWtNydYlY6+OrmiZ5SCNmb41VehttboTetUM3T/fr6EAFYVXjz4My2wg230rQ=="],
 

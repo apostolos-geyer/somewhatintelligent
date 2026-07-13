@@ -59,6 +59,19 @@ test-suites:
       attempts: 2
       command: npx vp test run --root workers/roadie '{{ file }}' -t '{{ testNamePattern }}' --reporter=default --reporter=json --outputFile=../../.captain-out/roadie.vitest.json
 
+  si-vault:
+    command: npx vp test run --root workers/vault --reporter=default --reporter=json --outputFile=../../.captain-out/vault.vitest.json
+    results:
+      language: JavaScript
+      framework: Vitest
+      path: .captain-out/vault.vitest.json
+    output:
+      reporters:
+        rwx-v1-json: .captain-out/vault.rwx.json
+    retries:
+      attempts: 2
+      command: npx vp test run --root workers/vault '{{ file }}' -t '{{ testNamePattern }}' --reporter=default --reporter=json --outputFile=../../.captain-out/vault.vitest.json
+
   si-store:
     command: bunx vp test run --root workers/store --reporter=default --reporter=json --outputFile=../../.captain-out/store.vitest.json
     results:

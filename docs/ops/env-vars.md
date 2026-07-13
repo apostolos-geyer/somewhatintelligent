@@ -165,6 +165,24 @@ are baked into the client bundle at build time by `vite.config.ts`
 (allowlisted in `CLIENT_VARS`), gated by `SI_BUILD` / `CLOUDFLARE_ENV` so a dev
 `.dev.vars` never leaks into a shipped bundle.
 
+## vault (`workers/vault`)
+
+Multi-tenant encrypted key store. RPC-only (no routes, no bouncer mount); all
+credential state lives in per-tenant Durable Object SQLite (no D1), so there
+is nothing to provision besides the secrets below.
+
+| name                         | consumed by                              | dev source                                   | staging + production source                                                                                                           |
+| ---------------------------- | ---------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `ENVIRONMENT`                | worker runtime                           | `env-init` (`development`)                   | wrangler var                                                                                                                          |
+| `VAULT_ACTIVE_KEK_VERSION`   | `src/crypto/keys.ts` (seal epoch)        | wrangler top-level (staging), not overridden | wrangler var — bump when introducing `VAULT_KEK_V{n+1}` and rotating                                                                  |
+| `VAULT_KEK_V1`               | `src/crypto/keys.ts` (AES-KW wrap key)   | `env-init` (`LOCAL_VAULT_KEK_V1`, committed) | **secret (packages/secrets)** — `generated`/required; NEVER delete a version while grants still reference it (rotation rewraps first) |
+| `VAULT_STATE_HMAC`           | `src/do/oauth.ts` (OAuth state signing)  | `env-init` (`LOCAL_VAULT_STATE_HMAC`)        | **secret (packages/secrets)** — `generated`/required                                                                                  |
+| `VAULT_GITHUB_CLIENT_ID`     | registry `clientIdVar` (github dest)     | `env-init` (blank placeholder)               | **secret (packages/secrets)** — `provided`/optional; unset disables github OAuth begin/refresh/revoke, everything else keeps working  |
+| `VAULT_GITHUB_CLIENT_SECRET` | registry `clientSecretVar` (github dest) | `env-init` (blank placeholder)               | **secret (packages/secrets)** — `provided`/optional                                                                                   |
+
+`WORKER_VERSION`/`WORKER_COMMIT` follow the cross-cutting convention below
+(ship-time `--var` injection, `/__version` only).
+
 ---
 
 ## Cross-cutting / build / CI / CD

@@ -13,7 +13,14 @@ export type Env = "local" | "staging" | "production";
 export const ENVS = ["local", "staging", "production"] as const satisfies readonly Env[];
 export type RemoteEnv = Exclude<Env, "local">;
 
-export type ServiceName = "guestlist" | "bouncer" | "promoter" | "roadie" | "identity" | "store";
+export type ServiceName =
+  | "guestlist"
+  | "bouncer"
+  | "promoter"
+  | "roadie"
+  | "identity"
+  | "store"
+  | "vault";
 
 /** Repo-relative directory holding each service's `.dev.vars` (the local target). */
 export const SERVICE_DIR: Record<ServiceName, string> = {
@@ -23,6 +30,7 @@ export const SERVICE_DIR: Record<ServiceName, string> = {
   roadie: "workers/roadie",
   identity: "workers/identity",
   store: "workers/store",
+  vault: "workers/vault",
 };
 
 /**
@@ -39,6 +47,10 @@ export function workerName(service: ServiceName, env: RemoteEnv): string {
 export type SecretKind =
   | { type: "generated"; algo: "betterAuthSecret" }
   | { type: "generated"; algo: "ed25519" }
+  // 32 random bytes, base64 — same material as betterAuthSecret, named for
+  // what it is rather than one consumer. The provisioner's dispatch already
+  // routes every non-ed25519 generated secret through the 32-byte generator.
+  | { type: "generated"; algo: "random32" }
   | { type: "provided" };
 
 export interface SecretSpec {
@@ -143,6 +155,38 @@ export const SECRETS: SecretSpec[] = [
     description: "R2 S3-API secret access key (roadie blob SigV4).",
     perEnv: { local: ["roadie"], staging: ["roadie"], production: ["roadie"] },
   },
+  {
+    name: "VAULT_KEK_V1",
+    kind: { type: "generated", algo: "random32" },
+    required: true,
+    description:
+      "vault's v1 key-encryption key (AES-KW wrap of per-grant DEKs). Versioned: " +
+      "rotation adds VAULT_KEK_V2 etc. and rewraps; never delete a version while " +
+      "grants still reference it.",
+    perEnv: { local: ["vault"], staging: ["vault"], production: ["vault"] },
+  },
+  {
+    name: "VAULT_STATE_HMAC",
+    kind: { type: "generated", algo: "random32" },
+    required: true,
+    description: "vault's OAuth-state HMAC-SHA-256 signing key (single-use consent state).",
+    perEnv: { local: ["vault"], staging: ["vault"], production: ["vault"] },
+  },
+  {
+    name: "VAULT_GITHUB_CLIENT_ID",
+    kind: { type: "provided" },
+    required: false,
+    description:
+      "GitHub OAuth app client id for vault's github destination (optional until onboarded).",
+    perEnv: { local: ["vault"], staging: ["vault"], production: ["vault"] },
+  },
+  {
+    name: "VAULT_GITHUB_CLIENT_SECRET",
+    kind: { type: "provided" },
+    required: false,
+    description: "GitHub OAuth app client secret for vault's github destination.",
+    perEnv: { local: ["vault"], staging: ["vault"], production: ["vault"] },
+  },
   ...oauth("GOOGLE"),
   ...oauth("MICROSOFT"),
   ...oauth("FACEBOOK"),
@@ -157,6 +201,8 @@ export const SECRETS: SecretSpec[] = [
  */
 export const DEV_DEFAULTS: Record<string, string> = {
   BETTER_AUTH_SECRET: "//oc0iA9surRLIWnCKmFs9DlnrN3brN7mt4lMahzW0M=",
+  VAULT_KEK_V1: "vGbPpVdLiGQp903ookg1Bvkux+WnvN7bAddxIbqKTq8=",
+  VAULT_STATE_HMAC: "nYhDB5QNxWOKnaERgn7z0oqYkTaFONRBEdnGi4jXF/Q=",
   BNC_ATT_PRIV:
     "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEINzNgiuDD9xbqVEPkfMt8twPcq7hTnIbAdKKHPjM7TmU\n-----END PRIVATE KEY-----",
 };

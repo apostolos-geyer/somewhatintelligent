@@ -93,7 +93,12 @@ describe("provision — production", () => {
     const { exec } = recordingExec();
     const res = await provision("production", {}, exec, io);
 
-    expect(res.generated.sort()).toEqual(["BETTER_AUTH_SECRET", "BNC_ATT_PRIV"]);
+    expect(res.generated.sort()).toEqual([
+      "BETTER_AUTH_SECRET",
+      "BNC_ATT_PRIV",
+      "VAULT_KEK_V1",
+      "VAULT_STATE_HMAC",
+    ]);
     expect(stores.production.BNC_ATT_PRIV).toContain("BEGIN PRIVATE KEY");
     expect(pubkeys.some((p) => p.kid === "production")).toBe(true);
     expect(res.pubkeySynced?.kid).toBe("production");

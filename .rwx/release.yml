@@ -51,6 +51,7 @@ on:
         values:
           - promoter
           - roadie
+          - vault
           - guestlist
           - identity
           - store
@@ -156,7 +157,7 @@ tasks:
       # Guard: only ever deploy a known worker (the dropdown enforces this in the
       # UI, but a CLI/API dispatch could pass anything).
       case "${WORKER}" in
-        promoter|roadie|guestlist|identity|store|bouncer) : ;;
+        promoter|roadie|vault|guestlist|identity|store|bouncer) : ;;
         *) echo "unknown worker '${WORKER}'"; exit 1 ;;
       esac
 

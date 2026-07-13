@@ -1,5 +1,10 @@
 import { describe, expect, test } from "vitest";
-import { LOCAL_BETTER_AUTH_SECRET, LOCAL_BNC_ATT_PRIV } from "../../../scripts/dev-config";
+import {
+  LOCAL_BETTER_AUTH_SECRET,
+  LOCAL_BNC_ATT_PRIV,
+  LOCAL_VAULT_KEK_V1,
+  LOCAL_VAULT_STATE_HMAC,
+} from "../../../scripts/dev-config";
 import { ATT_KID, DEV_DEFAULTS, SECRETS, sourceFor, workerName } from "../src/manifest";
 
 const byName = (name: string) => {
@@ -49,6 +54,27 @@ describe("dev defaults stay in lockstep with scripts/dev-config", () => {
   test("the committed dev secret material matches", () => {
     expect(DEV_DEFAULTS.BETTER_AUTH_SECRET).toBe(LOCAL_BETTER_AUTH_SECRET);
     expect(DEV_DEFAULTS.BNC_ATT_PRIV).toBe(LOCAL_BNC_ATT_PRIV);
+    expect(DEV_DEFAULTS.VAULT_KEK_V1).toBe(LOCAL_VAULT_KEK_V1);
+    expect(DEV_DEFAULTS.VAULT_STATE_HMAC).toBe(LOCAL_VAULT_STATE_HMAC);
+  });
+});
+
+describe("vault secrets", () => {
+  test("KEK + state HMAC are required generated 32-byte secrets in every env", () => {
+    for (const name of ["VAULT_KEK_V1", "VAULT_STATE_HMAC"]) {
+      expect(byName(name)).toMatchObject({
+        required: true,
+        kind: { type: "generated", algo: "random32" },
+        perEnv: { local: ["vault"], staging: ["vault"], production: ["vault"] },
+      });
+      expect(sourceFor(byName(name), "local")).toBe("devDefault");
+      expect(sourceFor(byName(name), "staging")).toBe("generate");
+      expect(sourceFor(byName(name), "production")).toBe("generate");
+    }
+  });
+  test("GitHub OAuth client creds are optional provided secrets", () => {
+    expect(byName("VAULT_GITHUB_CLIENT_ID").required).toBe(false);
+    expect(byName("VAULT_GITHUB_CLIENT_SECRET").required).toBe(false);
   });
 });
 
