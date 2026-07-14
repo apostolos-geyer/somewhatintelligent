@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { MinusIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { useCapture } from "@si/analytics/client";
 import { Button } from "@si/ui/components/button";
@@ -6,8 +6,13 @@ import { Card } from "@si/ui/components/card";
 import { ProductImage } from "@/components/product-image";
 import { useCart } from "@/lib/cart";
 import { formatCents } from "@/lib/money";
+import { storeOpenFor } from "@/lib/store-gate";
 
 export const Route = createFileRoute("/_public/cart")({
+  // Pre-launch gate: the landing (or /welcome) is all a non-admin gets.
+  beforeLoad: ({ context }) => {
+    if (!storeOpenFor(context.session)) throw redirect({ to: "/" });
+  },
   component: CartPage,
 });
 

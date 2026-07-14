@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { CheckIcon, ShoppingBagIcon } from "lucide-react";
@@ -9,8 +9,13 @@ import { ProductImage } from "@/components/product-image";
 import { getProductBySlug } from "@/lib/products.functions";
 import { formatCents } from "@/lib/money";
 import { useCart } from "@/lib/cart";
+import { storeOpenFor } from "@/lib/store-gate";
 
 export const Route = createFileRoute("/_public/products/$slug")({
+  // Pre-launch gate: the landing (or /welcome) is all a non-admin gets.
+  beforeLoad: ({ context }) => {
+    if (!storeOpenFor(context.session)) throw redirect({ to: "/" });
+  },
   loader: async ({ params }) => getProductBySlug({ data: { slug: params.slug } }),
   component: ProductDetail,
 });

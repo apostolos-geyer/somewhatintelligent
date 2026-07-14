@@ -32,6 +32,11 @@
     // Controlled apex (leading dot) — cross-subdomain cookie domain + the
     // auth server's `*.{apex}` trustedOrigins.
     "AUTH_DOMAIN": ".somewhatintelligent.ca",
+    // Launch gate, per env ("true"/"false"). While "false" the storefront is
+    // admin-only: everyone else gets the pre-launch landing (sign-up funnel →
+    // /welcome) and the public product reads refuse to serve. Baked into both
+    // bundles at build time (vite CLIENT_VARS → src/lib/config.ts STORE_LIVE).
+    "STORE_LIVE": "false",
   },
   "d1_databases": [
     {
@@ -80,6 +85,8 @@
         "STORE_URL": "https://somewhatintelligent.ca/shop",
         "IDENTITY_URL": "https://somewhatintelligent.ca/account",
         "AUTH_DOMAIN": ".somewhatintelligent.ca",
+        // Launch gate — flip to "true" to open the production shop.
+        "STORE_LIVE": "false",
       },
       "d1_databases": [
         {

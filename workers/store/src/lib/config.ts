@@ -8,6 +8,13 @@ import { STORE_TAGLINE } from "@/app-brand";
 export const BRAND_NAME = platformConfig.brand.name;
 export const BRAND_TAGLINE = STORE_TAGLINE;
 
+// Launch gate. While false the storefront is admin-only: everyone else gets
+// the pre-launch landing at `/` (sign-up funnel → identity → /welcome) and
+// the public product reads refuse to serve. Per-env wrangler var ("true"/
+// "false"), baked into both bundles at build time via vite CLIENT_VARS —
+// flip it in wrangler.jsonc (or .dev.vars locally) to open the shop.
+export const STORE_LIVE = import.meta.env.STORE_LIVE === "true";
+
 // Presigned product-image read URL lifetime. Short; the /api/img route
 // re-mints per request and Roadie caches the signed URL in D1.
 export const IMAGE_URL_LIFETIME_SECONDS = 3_600;
