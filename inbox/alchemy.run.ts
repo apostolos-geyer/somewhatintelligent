@@ -142,6 +142,12 @@ export default Alchemy.Stack(
     const worker = yield* Cloudflare.Worker("Inbox", {
       name: WORKER_NAME,
       main: Output.map(build.outdir, (dir) => `${dir}/server/index.js`),
+      // The vite build's output is a prebuilt multi-module worker (the
+      // generated wrangler.json sets no_bundle + ESModule rules). Re-bundling
+      // it rewrites React Router's dynamic chunk imports and breaks routing
+      // at runtime (site 404s) — upload it byte-for-byte instead. Alchemy's
+      // default module rules match the generated config (ESModule **/*.js).
+      bundle: false,
       // AssetsWithHash: the plain string/directory shape has no hash for the
       // differ to compare, so every plan conservatively reports the worker
       // as changed (WorkerProvider `hasChanged`). Passing Command.Build's
