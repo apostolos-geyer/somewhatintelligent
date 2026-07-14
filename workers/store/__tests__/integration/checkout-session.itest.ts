@@ -9,8 +9,6 @@
  * reverses the reservation (Track C3), and the unconfigured gate writes nothing
  * (INV-7). Mirrors place-order.itest.ts / reservation.itest.ts.
  */
-import { env } from "cloudflare:test";
-import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import type { PlatformSession } from "@somewhatintelligent/auth";
@@ -23,9 +21,9 @@ import {
   type SessionExpirer,
   type StripeSessionCreator,
 } from "@/lib/checkout";
+import { db, seedOrder, seedOrderItem, seedProduct, seedVariant, stockOf } from "./helpers";
 
 const { product, productVariant, customerOrder, orderItem } = schema;
-const db = drizzle(env.DB, { schema });
 
 const STRIPE_ENV = {
   STRIPE_SECRET_KEY: "sk_test_x",
@@ -57,34 +55,23 @@ async function seedPriorAttempt(opts: {
   status?: "pending" | "cancelled" | "paid";
   paymentStatus?: string;
 }) {
-  const now = new Date();
-  await db.insert(customerOrder).values({
+  await seedOrder({
     id: opts.orderId,
-    orderNumber: `SI-${opts.orderId}`,
-    userId: opts.userId ?? "buyer-1",
-    email: `${opts.userId ?? "buyer-1"}@example.com`,
-    status: opts.status ?? "pending",
-    paymentStatus: opts.paymentStatus ?? "unpaid",
+    userId: opts.userId,
+    status: opts.status,
+    paymentStatus: opts.paymentStatus,
     // Stripe-path shaped (INV-11): a resolved customer id is always present.
     stripeCustomerId: "cus_prior",
     stripeCheckoutSessionId: opts.sessionId,
-    shipName: "Ada",
-    shipLine1: "1 Main",
-    shipCity: "Toronto",
-    shipRegion: "ON",
-    shipPostal: "M5V",
     subtotalCents: 3000,
     totalCents: 3000,
-    createdAt: now,
-    updatedAt: now,
   });
-  await db.insert(orderItem).values({
+  await seedOrderItem({
     id: `oi-${opts.orderId}`,
     orderId: opts.orderId,
     productId: opts.productId,
     variantId: opts.variantId,
     titleSnapshot: "Tee",
-    sizeSnapshot: "M",
     unitPriceCents: 3000,
     quantity: opts.quantity,
   });
@@ -93,34 +80,6 @@ async function seedPriorAttempt(opts: {
 async function orderById(id: string) {
   const [row] = await db.select().from(customerOrder).where(eq(customerOrder.id, id));
   return row;
-}
-
-async function seedProduct(id: string, priceCents: number) {
-  const now = new Date();
-  await db.insert(product).values({
-    id,
-    slug: `slug-${id}`,
-    title: `Tee ${id}`,
-    priceCents,
-    status: "active",
-    createdBy: "admin",
-    createdAt: now,
-    updatedAt: now,
-  });
-}
-async function seedVariant(opts: { id: string; productId: string; size: string; stock: number }) {
-  await db.insert(productVariant).values({
-    id: opts.id,
-    productId: opts.productId,
-    size: opts.size,
-    sku: `SKU-${opts.id}`,
-    stock: opts.stock,
-    createdAt: new Date(),
-  });
-}
-async function stockOf(variantId: string) {
-  const [v] = await db.select().from(productVariant).where(eq(productVariant.id, variantId));
-  return v!.stock;
 }
 
 const input = (over: Partial<CheckoutInput> = {}): CheckoutInput => ({
@@ -144,7 +103,7 @@ beforeEach(async () => {
 
 describe("createCheckoutSessionCore", () => {
   it("happy path: writes order + items + reserved stock, attaches session id after Stripe returns", async () => {
-    await seedProduct("p1", 3000);
+    await seedProduct({ id: "p1", priceCents: 3000 });
     await seedVariant({ id: "v1", productId: "p1", size: "M", stock: 10 });
 
     const expiresAt = Math.floor(Date.now() / 1000) + 1800;
@@ -220,7 +179,7 @@ describe("createCheckoutSessionCore", () => {
   });
 
   it("prices from D1, not the client: line-item amount is the product price", async () => {
-    await seedProduct("p1", 2500);
+    await seedProduct({ id: "p1", priceCents: 2500 });
     await seedVariant({ id: "v1", productId: "p1", size: "M", stock: 5 });
 
     const createStripeSession = vi.fn<StripeSessionCreator>(async () => ({
@@ -247,7 +206,7 @@ describe("createCheckoutSessionCore", () => {
   });
 
   it("Stripe sessions.create throws: reservation fully reversed, order cancelled, no session id", async () => {
-    await seedProduct("p1", 3000);
+    await seedProduct({ id: "p1", priceCents: 3000 });
     await seedVariant({ id: "v1", productId: "p1", size: "M", stock: 10 });
 
     const createStripeSession = vi.fn<StripeSessionCreator>(async () => {
@@ -274,7 +233,7 @@ describe("createCheckoutSessionCore", () => {
   });
 
   it("out_of_stock from the reservation guard: no order row written", async () => {
-    await seedProduct("p1", 3000);
+    await seedProduct({ id: "p1", priceCents: 3000 });
     await seedVariant({ id: "v1", productId: "p1", size: "M", stock: 2 });
 
     const createStripeSession = vi.fn();
@@ -295,7 +254,7 @@ describe("createCheckoutSessionCore", () => {
   });
 
   it("stub mode (Stripe unconfigured): zero writes, zero Stripe/customer calls", async () => {
-    await seedProduct("p1", 3000);
+    await seedProduct({ id: "p1", priceCents: 3000 });
     await seedVariant({ id: "v1", productId: "p1", size: "M", stock: 10 });
 
     const createStripeSession = vi.fn();
@@ -325,7 +284,7 @@ describe("createCheckoutSessionCore", () => {
   });
 
   it("stripe_customer_failed: customer resolution fails before any reservation", async () => {
-    await seedProduct("p1", 3000);
+    await seedProduct({ id: "p1", priceCents: 3000 });
     await seedVariant({ id: "v1", productId: "p1", size: "M", stock: 10 });
 
     const createStripeSession = vi.fn();
@@ -348,7 +307,7 @@ describe("createCheckoutSessionCore", () => {
 
 describe("createCheckoutSessionCore — supersede prior open attempts (Track G3)", () => {
   it("expires the caller's prior open attempt, releases its stock, and the new attempt reserves only its own", async () => {
-    await seedProduct("p1", 3000);
+    await seedProduct({ id: "p1", priceCents: 3000 });
     // Original stock 10; the prior attempt already reserved 3 → 7 on hand.
     await seedVariant({ id: "v1", productId: "p1", size: "M", stock: 7 });
     await seedPriorAttempt({
@@ -401,7 +360,7 @@ describe("createCheckoutSessionCore — supersede prior open attempts (Track G3)
   });
 
   it("expireSession throws (session completing at Stripe): the prior order is untouched, the new attempt still succeeds", async () => {
-    await seedProduct("p1", 3000);
+    await seedProduct({ id: "p1", priceCents: 3000 });
     // Original 10; prior holds 3 → 7 on hand.
     await seedVariant({ id: "v1", productId: "p1", size: "M", stock: 7 });
     await seedPriorAttempt({
@@ -449,7 +408,7 @@ describe("createCheckoutSessionCore — supersede prior open attempts (Track G3)
   });
 
   it("never touches another user's pending attempt", async () => {
-    await seedProduct("p1", 3000);
+    await seedProduct({ id: "p1", priceCents: 3000 });
     // buyer-2 holds 3 of 10 → 7 on hand.
     await seedVariant({ id: "v1", productId: "p1", size: "M", stock: 7 });
     await seedPriorAttempt({
@@ -493,7 +452,7 @@ describe("createCheckoutSessionCore — supersede prior open attempts (Track G3)
   });
 
   it("never touches an orphan (no session id) — that belongs to the cron", async () => {
-    await seedProduct("p1", 3000);
+    await seedProduct({ id: "p1", priceCents: 3000 });
     // The orphan holds 3 of 10 → 7 on hand.
     await seedVariant({ id: "v1", productId: "p1", size: "M", stock: 7 });
     await seedPriorAttempt({
@@ -538,24 +497,13 @@ describe("createCheckoutSessionCore — supersede prior open attempts (Track G3)
 
 describe("getOrderByStripeSessionCore", () => {
   async function seedAttachedOrder(sessionId: string, userId: string) {
-    const now = new Date();
-    await db.insert(customerOrder).values({
+    await seedOrder({
       id: `o-${sessionId}`,
       orderNumber: `SI-${sessionId}`,
       userId,
-      email: `${userId}@example.com`,
-      status: "pending",
-      paymentStatus: "unpaid",
-      shipName: "Ada",
-      shipLine1: "1 Main",
-      shipCity: "Toronto",
-      shipRegion: "ON",
-      shipPostal: "M5V",
+      stripeCheckoutSessionId: sessionId,
       subtotalCents: 3000,
       totalCents: 3000,
-      stripeCheckoutSessionId: sessionId,
-      createdAt: now,
-      updatedAt: now,
     });
   }
 

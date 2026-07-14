@@ -6,42 +6,12 @@
  * proving the DB shape supports the load-bearing invariants: atomic stock
  * decrement, order-item snapshotting, and totals persistence.
  */
-import { env } from "cloudflare:test";
-import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import { computeOrderTotals } from "@/lib/pricing";
+import { db, seedOrder, seedOrderItem, seedProduct, seedVariant } from "./helpers";
 
 const { product, productVariant, customerOrder, orderItem } = schema;
-const db = drizzle(env.DB, { schema });
-
-async function seedProduct(opts: {
-  id: string;
-  slug: string;
-  priceCents: number;
-  status?: string;
-}) {
-  const now = new Date();
-  await db.insert(product).values({
-    id: opts.id,
-    slug: opts.slug,
-    title: `Tee ${opts.id}`,
-    priceCents: opts.priceCents,
-    status: (opts.status ?? "active") as "active",
-    createdBy: "admin",
-    createdAt: now,
-    updatedAt: now,
-  });
-}
-async function seedVariant(opts: {
-  id: string;
-  productId: string;
-  size: string;
-  sku: string;
-  stock: number;
-}) {
-  await db.insert(productVariant).values({ ...opts, createdAt: new Date() });
-}
 
 // Mirror placeOrder's batch construction against the real db.
 async function placeOrderBatch(
@@ -149,21 +119,16 @@ describe("placeOrder D1 write path", () => {
 
   it("admin status transitions persist: pending → paid → shipped → delivered", async () => {
     await seedProduct({ id: "p1", slug: "s", priceCents: 1000 });
-    await db.insert(customerOrder).values({
+    await seedOrder({
       id: "o1",
       orderNumber: "SI-BBB111",
-      userId: "buyer-1",
       email: "b@e.com",
-      status: "pending",
       shipName: "A",
       shipLine1: "1",
       shipCity: "T",
-      shipRegion: "ON",
       shipPostal: "M",
       subtotalCents: 1000,
       totalCents: 1000,
-      createdAt: new Date(),
-      updatedAt: new Date(),
     });
 
     await db.update(customerOrder).set({ status: "paid" }).where(eq(customerOrder.id, "o1"));
@@ -191,29 +156,23 @@ describe("placeOrder D1 write path", () => {
 
   it("deleting an order cascades its line items", async () => {
     await seedProduct({ id: "p1", slug: "s", priceCents: 1000 });
-    await db.insert(customerOrder).values({
+    await seedOrder({
       id: "o1",
       orderNumber: "SI-CCC111",
       userId: "u",
       email: "e",
-      status: "pending",
       shipName: "A",
       shipLine1: "1",
       shipCity: "T",
-      shipRegion: "ON",
       shipPostal: "M",
       subtotalCents: 1000,
       totalCents: 1000,
-      createdAt: new Date(),
-      updatedAt: new Date(),
     });
-    await db.insert(orderItem).values({
+    await seedOrderItem({
       id: "i1",
       orderId: "o1",
       productId: "p1",
       variantId: "v1",
-      titleSnapshot: "t",
-      sizeSnapshot: "M",
       unitPriceCents: 1000,
       quantity: 1,
     });

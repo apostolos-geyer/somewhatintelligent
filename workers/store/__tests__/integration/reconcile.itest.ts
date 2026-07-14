@@ -6,8 +6,6 @@
  * mirroring stripe-events.itest.ts / checkout-session.itest.ts. The Stripe
  * re-check is injected, so no Stripe client is constructed here.
  */
-import { env } from "cloudflare:test";
-import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import {
@@ -16,9 +14,9 @@ import {
   type SessionExpirer,
   type SessionRetriever,
 } from "@/lib/reconcile";
+import { db, seedOrder, seedOrderItem, seedProduct, seedVariant, stockOf } from "./helpers";
 
 const { product, productVariant, customerOrder, orderItem, deadStripeEvent } = schema;
-const db = drizzle(env.DB, { schema });
 
 const NOW = Date.UTC(2026, 6, 12, 12, 0, 0);
 const MIN = 60 * 1000;
@@ -39,17 +37,14 @@ async function seedReservation(opts: {
   createdAt: Date;
 }) {
   const now = new Date(NOW);
-  await db.insert(product).values({
+  await seedProduct({
     id: `p-${opts.variantId}`,
     slug: `slug-${opts.variantId}`,
     title: "Tee",
     priceCents: 1500,
-    status: "active",
-    createdBy: "admin",
     createdAt: now,
-    updatedAt: now,
   });
-  await db.insert(productVariant).values({
+  await seedVariant({
     id: opts.variantId,
     productId: `p-${opts.variantId}`,
     size: "M",
@@ -57,44 +52,28 @@ async function seedReservation(opts: {
     stock: opts.stock,
     createdAt: now,
   });
-  await db.insert(customerOrder).values({
+  await seedOrder({
     id: opts.orderId,
-    orderNumber: `SI-${opts.orderId}`,
-    userId: "buyer-1",
     email: "buyer@example.com",
-    status: opts.status ?? "pending",
-    paymentStatus: opts.paymentStatus ?? "unpaid",
-    shipName: "Ada",
-    shipLine1: "1 Main",
-    shipCity: "Toronto",
-    shipRegion: "ON",
-    shipPostal: "M5V",
+    status: opts.status,
+    paymentStatus: opts.paymentStatus,
+    stripeCustomerId: opts.stripeCustomerId,
+    stripeCheckoutSessionId: opts.stripeCheckoutSessionId,
+    stripeSessionExpiresAt: opts.stripeSessionExpiresAt,
     subtotalCents: 1500 * opts.quantity,
     totalCents: 1500 * opts.quantity,
-    stripeCustomerId: opts.stripeCustomerId ?? null,
-    stripeCheckoutSessionId: opts.stripeCheckoutSessionId ?? null,
-    stripeSessionExpiresAt: opts.stripeSessionExpiresAt ?? null,
     createdAt: opts.createdAt,
     updatedAt: opts.createdAt,
   });
-  await db.insert(orderItem).values({
+  await seedOrderItem({
     id: `oi-${opts.orderId}`,
     orderId: opts.orderId,
     productId: `p-${opts.variantId}`,
     variantId: opts.variantId,
     titleSnapshot: "Tee",
-    sizeSnapshot: "M",
     unitPriceCents: 1500,
     quantity: opts.quantity,
   });
-}
-
-async function stockOf(variantId: string) {
-  const [row] = await db
-    .select({ stock: productVariant.stock })
-    .from(productVariant)
-    .where(eq(productVariant.id, variantId));
-  return row?.stock;
 }
 
 async function orderRow(orderId: string) {

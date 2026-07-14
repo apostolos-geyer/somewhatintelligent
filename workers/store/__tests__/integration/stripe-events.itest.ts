@@ -5,15 +5,20 @@
  * absence and order state are only provable against a real DB, so this runs in
  * the pool tier (`bun run test:pool`), mirroring place-order.itest.ts.
  */
-import { env } from "cloudflare:test";
-import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import { processStoreStripeEvent, type ProcessStripeEventResult } from "@/lib/stripe-events";
 import type { StoreStripeEventMessage } from "@/lib/stripe-webhook";
+import {
+  db,
+  seedOrder as seedOrderRow,
+  seedOrderItem,
+  seedProduct,
+  seedVariant,
+  stockOf,
+} from "./helpers";
 
 const { product, productVariant, customerOrder, orderItem, processedStripeEvent } = schema;
-const db = drizzle(env.DB, { schema });
 
 const STAGING = { ENVIRONMENT: "staging" } as const;
 const PRODUCTION = { ENVIRONMENT: "production" } as const;
@@ -22,24 +27,15 @@ async function seedOrder(
   sessionId: string,
   opts: { status?: "pending" | "cancelled" | "paid"; paymentStatus?: string } = {},
 ) {
-  const now = new Date();
-  await db.insert(customerOrder).values({
+  await seedOrderRow({
     id: `o-${sessionId}`,
     orderNumber: `SI-${sessionId}`,
-    userId: "buyer-1",
     email: "buyer@example.com",
-    status: opts.status ?? "pending",
-    paymentStatus: opts.paymentStatus ?? "unpaid",
-    shipName: "Ada",
-    shipLine1: "1 Main",
-    shipCity: "Toronto",
-    shipRegion: "ON",
-    shipPostal: "M5V",
+    status: opts.status,
+    paymentStatus: opts.paymentStatus,
+    stripeCheckoutSessionId: sessionId,
     subtotalCents: 3000,
     totalCents: 3000,
-    stripeCheckoutSessionId: sessionId,
-    createdAt: now,
-    updatedAt: now,
   });
 }
 
@@ -56,44 +52,29 @@ async function seedReservedOrder(
     paymentStatus?: string;
   },
 ) {
-  const now = new Date();
-  await db.insert(product).values({
+  await seedProduct({
     id: `p-${opts.variantId}`,
     slug: `slug-${opts.variantId}`,
     title: "Tee",
     priceCents: 1500,
-    status: "active",
-    createdBy: "admin",
-    createdAt: now,
-    updatedAt: now,
   });
-  await db.insert(productVariant).values({
+  await seedVariant({
     id: opts.variantId,
     productId: `p-${opts.variantId}`,
     size: "M",
     sku: `sku-${opts.variantId}`,
     stock: opts.stock,
-    createdAt: now,
   });
   await seedOrder(sessionId, { status: opts.status, paymentStatus: opts.paymentStatus });
-  await db.insert(orderItem).values({
+  await seedOrderItem({
     id: `oi-${sessionId}`,
     orderId: `o-${sessionId}`,
     productId: `p-${opts.variantId}`,
     variantId: opts.variantId,
     titleSnapshot: "Tee",
-    sizeSnapshot: "M",
     unitPriceCents: 1500,
     quantity: opts.quantity,
   });
-}
-
-async function stockOf(variantId: string) {
-  const [row] = await db
-    .select({ stock: productVariant.stock })
-    .from(productVariant)
-    .where(eq(productVariant.id, variantId));
-  return row?.stock;
 }
 
 function msg(overrides: Partial<StoreStripeEventMessage> = {}): StoreStripeEventMessage {
