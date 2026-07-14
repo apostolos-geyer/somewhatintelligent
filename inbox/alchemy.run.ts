@@ -32,12 +32,13 @@
  *   CLOUDFLARE_ACCOUNT_ID=c735c5a53d864bee37400befb7f4c7f4
  *   TEAM_DOMAIN=https://<team>.cloudflareaccess.com   # your Zero Trust team domain
  *
- *   bun alchemy deploy --adopt
+ *   bun alchemy deploy --stage prod
  *
- *   - `--adopt` takes ownership of the existing worker (incl. its live DO
- *     classes — matched by binding name, no new migrations), the R2 bucket,
- *     and the zone's email-routing state. The Access app/policy adopt via
- *     their `adopt: true` props (matched by the names below).
+ *   - adoption is baked into the stack (`AdoptPolicy.adopt(true)` piped on
+ *     the stack effect below — no `--adopt` flag needed): the existing
+ *     worker (incl. its live DO classes — matched by binding name, no new
+ *     migrations), the R2 bucket, and the zone's email-routing state are
+ *     all taken over in place.
  *   - the first run also bootstraps Alchemy's state-store worker into the
  *     account (prompted; pass --yes to auto-accept).
  *   - acceptance: a second `bun alchemy deploy` must show an EMPTY plan,
@@ -47,6 +48,7 @@
  */
 import * as Alchemy from "alchemy";
 import * as Cloudflare from "alchemy/Cloudflare";
+import * as AdoptPolicy from "alchemy/AdoptPolicy";
 import * as Command from "alchemy/Command";
 import * as Output from "alchemy/Output";
 import * as Config from "effect/Config";
@@ -68,12 +70,26 @@ const APP_DOMAIN = "mail.somewhatintelligent.ca";
 const ACCESS_ALLOWED_EMAILS = ["apostoli.geyer@geyerconsulting.com"];
 
 /**
- * Names of the pre-existing Access objects created by the legacy
- * setup-access.mjs run. `adopt: true` matches on these names — keep them in
- * sync with what exists in the dashboard or adoption creates duplicates.
+ * Name of the pre-existing Access policy. `adopt: true` matches on this
+ * name — keep it in sync with what exists in the dashboard.
  */
 const ACCESS_POLICY_NAME = `${WORKER_NAME}-access`;
-const ACCESS_APP_NAME = "Agentic Inbox (somewhatintelligent.ca)";
+
+/**
+ * The `aud` of the live Access application "mail.somewhatintelligent.ca"
+ * (app id ff35743f-8c54-46e3-9938-e2c8a7ff65df), read from the Access API.
+ *
+ * HARDCODED EXCEPTION: the Access application itself is the one piece of
+ * this deployment still managed in the dashboard. Alchemy's
+ * `Access.Application` cannot adopt an existing app on a greenfield deploy
+ * (its observe step only matches by persisted applicationId or by
+ * `olds.domain` after state loss — a first deploy would blind-create a
+ * duplicate app with a fresh aud on the same domain). Once upstream supports
+ * adopt-by-domain, declare the app here and replace this const with the
+ * application resource's `aud` output.
+ */
+const ACCESS_APP_AUD =
+  "a0046cb0773459b27a32ff7123e52e18d985c2e4aa75df35ba35828ca096443f";
 
 export default Alchemy.Stack(
   "AgenticInbox",
@@ -112,13 +128,11 @@ export default Alchemy.Stack(
       adopt: true,
     });
 
-    const accessApp = yield* Cloudflare.Access.Application("AccessApp", {
-      type: "self_hosted",
-      name: ACCESS_APP_NAME,
-      domain: APP_DOMAIN,
-      policies: [accessPolicy.policyId],
-      adopt: true,
-    });
+    // NOTE: the Access application is deliberately NOT declared — see the
+    // ACCESS_APP_AUD comment above. The adopted policy remains attached to
+    // the dashboard-managed app; its allow-list still reconciles from
+    // ACCESS_ALLOWED_EMAILS.
+    void accessPolicy;
 
     // The Zero Trust team domain has no read-only lookup resource, so it is
     // the one deploy-time input (TEAM_DOMAIN in the environment / .env).
@@ -140,8 +154,7 @@ export default Alchemy.Stack(
       env: {
         DOMAINS: APP_DOMAIN,
         EMAIL_ADDRESSES: [],
-        // Derived straight from the Access application — rotates with it.
-        POLICY_AUD: accessApp.aud,
+        POLICY_AUD: ACCESS_APP_AUD,
         TEAM_DOMAIN: teamDomain,
         BUCKET: bucket,
         AI: ai,
@@ -171,7 +184,10 @@ export default Alchemy.Stack(
       url: `https://${APP_DOMAIN}`,
       workerName: worker.workerName,
       bucket: bucket.bucketName,
-      accessAud: accessApp.aud,
+      accessAud: ACCESS_APP_AUD,
     };
-  }),
+    // Adoption is declared here, not via the `--adopt` CLI flag: this stack
+    // deliberately takes over the pre-existing live instance, so any
+    // resource whose read reports Unowned is adopted rather than failing.
+  }).pipe(AdoptPolicy.adopt(true)),
 );
