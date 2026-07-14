@@ -6,7 +6,6 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "strict": true,
-    "noEmit": true,
-    "types": ["./worker-configuration.d.ts"]
+    "noEmit": true
   }
 }

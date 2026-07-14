@@ -6,7 +6,6 @@ import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { reactRouter } from "@react-router/dev/vite";
-import { cloudflare } from "@cloudflare/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
@@ -43,10 +42,9 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(readAppVersion()),
     __APP_COMMIT__: JSON.stringify(readGitSha()),
   },
-  plugins: [
-    cloudflare({ viteEnvironment: { name: "ssr" } }),
-    tailwindcss(),
-    reactRouter(),
-    tsconfigPaths(),
-  ],
+  // No Cloudflare plugin here: Alchemy's Website.Vite resource injects its
+  // own fork of the Cloudflare Vite plugin at build/dev time (upstream
+  // @cloudflare/vite-plugin is incompatible with it). Build, local dev, and
+  // deploy all run through `alchemy` — see alchemy.run.ts.
+  plugins: [tailwindcss(), reactRouter(), tsconfigPaths()],
 });
