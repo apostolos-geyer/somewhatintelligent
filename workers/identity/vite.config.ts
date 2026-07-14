@@ -140,6 +140,19 @@ export default defineConfig({
       "#": path.resolve(__dirname, "./src"),
     },
   },
+  // Unique assets dir: Vite's own preload-helper and TanStack Start's
+  // router-preload manifest resolve dynamically-imported chunk URLs from
+  // `import.meta.env.BASE_URL` — a build-time constant that can't be made
+  // mount-aware (the same build must also work unmounted in local dev). Under
+  // bouncer's vmf mount those requests land at the bare apex path, so
+  // identity and store MUST NOT share `/assets/` — bouncer has no bare-path
+  // mount and the collision silently falls through to the `/` → `/shop`
+  // catch-all instead of 404ing. A matching bouncer passthrough mount for
+  // `/_assets/account` (workers/bouncer/wrangler.jsonc ROUTES) closes the
+  // loop, mirroring the `/_sfn/account` server-fn base below.
+  build: {
+    assetsDir: "_assets/account",
+  },
   define: {
     ...clientDefines,
     __APP_VERSION__: JSON.stringify(readAppVersion()),
