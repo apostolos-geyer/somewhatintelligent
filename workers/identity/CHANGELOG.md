@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.7](https://github.com/apostolos-geyer/somewhatintelligent/compare/identity-v0.0.6...identity-v0.0.7) (2026-07-14)
+
+
+### Bug Fixes
+
+* **bouncer,identity,store:** scope vmf app assets to unique dirs to stop cross-app collision ([#30](https://github.com/apostolos-geyer/somewhatintelligent/issues/30)) ([3403c3c](https://github.com/apostolos-geyer/somewhatintelligent/commit/3403c3cb131c47eb9295743ab903b7c53e1ec562))
+
 ## [0.0.6](https://github.com/apostolos-geyer/somewhatintelligent/compare/identity-v0.0.5...identity-v0.0.6) (2026-07-14)
 
 
