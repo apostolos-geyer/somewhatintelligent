@@ -19,19 +19,19 @@ import {
 import { isAdminRole } from "@somewhatintelligent/kit/roles";
 import type { PlatformSession } from "@somewhatintelligent/auth";
 import { ForbiddenError, NotFoundError } from "@/lib/errors";
-import { CARRIER_KEYS } from "@/lib/config";
+import { CARRIER_KEYS, isOrderStatus, orderNumber } from "@/lib/config";
 import { computeOrderTotals } from "@/lib/pricing";
+import { reserveStockAndWrite } from "@/lib/reservation";
+import { updateOrderShippingCore } from "@/lib/orders-core";
 
 // Cap admin order lists (query-hygiene §5 — no unbounded table scans).
 const ORDER_LIST_LIMIT = 200;
 
-function orderNumber(): string {
-  return `SI-${ulid().slice(-6).toUpperCase()}`;
-}
-
 // ── Customer ─────────────────────────────────────────────────────────────────
 
-const shippingSchema = type({
+// Also consumed by lib/checkout.functions.ts — the Stripe checkout path
+// validates the identical cart shape.
+export const shippingSchema = type({
   name: "2 <= string <= 120",
   line1: "1 <= string <= 160",
   "line2?": "string <= 160",
@@ -42,10 +42,14 @@ const shippingSchema = type({
   "phone?": "string <= 40",
 });
 
-const placeOrderInput = type({
-  items: type({ variantId: "string", quantity: "1 <= number.integer <= 99" })
-    .array()
-    .atLeastLength(1),
+// The cart items piece, shared by placeOrder ({items, shipping}) and the Stripe
+// checkout server fn ({items}) — one validator, no copy-paste.
+export const orderItemsInput = type({ variantId: "string", quantity: "1 <= number.integer <= 99" })
+  .array()
+  .atLeastLength(1);
+
+export const placeOrderInput = type({
+  items: orderItemsInput,
   shipping: shippingSchema,
 });
 
@@ -102,7 +106,6 @@ export const placeOrder = createServerFn({ method: "POST" })
     if (!priced.ok) return priced;
     const { lines, subtotalCents: subtotal, shippingCents, totalCents: total } = priced;
 
-    const variantById = new Map(variants.map((v) => [v.id, v]));
     const id = ulid();
     const num = orderNumber();
     const now = new Date();
@@ -128,28 +131,26 @@ export const placeOrder = createServerFn({ method: "POST" })
       createdAt: now,
       updatedAt: now,
     });
-    const lineStatements = lines.flatMap((line) => {
-      const v = variantById.get(line.variantId)!;
-      return [
-        db.insert(orderItem).values({
-          id: ulid(),
-          orderId: id,
-          productId: line.productId,
-          variantId: line.variantId,
-          titleSnapshot: line.title,
-          sizeSnapshot: line.size,
-          unitPriceCents: line.unitPriceCents,
-          quantity: line.quantity,
-        }),
-        // Decrement stock (best-effort; pre-checked above).
-        db
-          .update(productVariant)
-          .set({ stock: Math.max(0, v.stock - line.quantity) })
-          .where(eq(productVariant.id, line.variantId)),
-      ];
+    const lineStatements = lines.map((line) =>
+      db.insert(orderItem).values({
+        id: ulid(),
+        orderId: id,
+        productId: line.productId,
+        variantId: line.variantId,
+        titleSnapshot: line.title,
+        sizeSnapshot: line.size,
+        unitPriceCents: line.unitPriceCents,
+        quantity: line.quantity,
+      }),
+    );
+
+    // Guards + order rows in one transaction; the SQL guard (not the pricing
+    // pre-check) is the authoritative stock gate.
+    const reserved = await reserveStockAndWrite(db, lines, {
+      orderId: id,
+      statements: [orderInsert, ...lineStatements],
     });
-    // D1 batch — all-or-nothing.
-    await db.batch([orderInsert, ...lineStatements]);
+    if (!reserved.ok) return reserved;
 
     return {
       ok: true,
@@ -191,6 +192,23 @@ export const getMyOrder = createServerFn({ method: "GET" })
     return { order, items };
   });
 
+const updateOrderShippingInput = type({
+  orderNumber: "string",
+  shipping: shippingSchema,
+});
+
+// Edit an order's shipping address. Owner-or-admin, editable only while the
+// order is still 'pending' or 'paid'; request-path logic lives in
+// updateOrderShippingCore (pool-testable).
+export const updateOrderShipping = createServerFn({ method: "POST" })
+  .middleware([requireAuthMiddleware])
+  .inputValidator((data: typeof updateOrderShippingInput.infer) =>
+    updateOrderShippingInput.assert(data),
+  )
+  .handler(({ data, context }) =>
+    updateOrderShippingCore(getDb(), context.session, data.orderNumber, data.shipping),
+  );
+
 // ── Admin ────────────────────────────────────────────────────────────────────
 
 export const listAllOrders = createServerFn({ method: "GET" })
@@ -200,7 +218,8 @@ export const listAllOrders = createServerFn({ method: "GET" })
     const db = getDb();
     const q = db.select().from(customerOrder).$dynamic();
     if (data.status && data.status !== "all") {
-      q.where(eq(customerOrder.status, data.status as never));
+      if (!isOrderStatus(data.status)) return { orders: [] };
+      q.where(eq(customerOrder.status, data.status));
     }
     const orders = await q.orderBy(desc(customerOrder.createdAt)).limit(ORDER_LIST_LIMIT);
     return { orders };

@@ -6,42 +6,15 @@
  * proving the DB shape supports the load-bearing invariants: atomic stock
  * decrement, order-item snapshotting, and totals persistence.
  */
-import { env } from "cloudflare:test";
-import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
+import type { PlatformSession } from "@somewhatintelligent/auth";
 import { computeOrderTotals } from "@/lib/pricing";
+import { runBatch } from "@/lib/db-batch";
+import { updateOrderShippingCore } from "@/lib/orders-core";
+import { db, seedOrder, seedOrderItem, seedProduct, seedVariant } from "./helpers";
 
 const { product, productVariant, customerOrder, orderItem } = schema;
-const db = drizzle(env.DB, { schema });
-
-async function seedProduct(opts: {
-  id: string;
-  slug: string;
-  priceCents: number;
-  status?: string;
-}) {
-  const now = new Date();
-  await db.insert(product).values({
-    id: opts.id,
-    slug: opts.slug,
-    title: `Tee ${opts.id}`,
-    priceCents: opts.priceCents,
-    status: (opts.status ?? "active") as "active",
-    createdBy: "admin",
-    createdAt: now,
-    updatedAt: now,
-  });
-}
-async function seedVariant(opts: {
-  id: string;
-  productId: string;
-  size: string;
-  sku: string;
-  stock: number;
-}) {
-  await db.insert(productVariant).values({ ...opts, createdAt: new Date() });
-}
 
 // Mirror placeOrder's batch construction against the real db.
 async function placeOrderBatch(
@@ -84,7 +57,7 @@ async function placeOrderBatch(
       .set({ stock: Math.max(0, (variantStock.get(line.variantId) ?? 0) - line.quantity) })
       .where(eq(productVariant.id, line.variantId)),
   ]);
-  await db.batch([orderInsert, ...lineStatements] as never);
+  await runBatch(db, [orderInsert, ...lineStatements]);
 }
 
 beforeEach(async () => {
@@ -149,21 +122,16 @@ describe("placeOrder D1 write path", () => {
 
   it("admin status transitions persist: pending → paid → shipped → delivered", async () => {
     await seedProduct({ id: "p1", slug: "s", priceCents: 1000 });
-    await db.insert(customerOrder).values({
+    await seedOrder({
       id: "o1",
       orderNumber: "SI-BBB111",
-      userId: "buyer-1",
       email: "b@e.com",
-      status: "pending",
       shipName: "A",
       shipLine1: "1",
       shipCity: "T",
-      shipRegion: "ON",
       shipPostal: "M",
       subtotalCents: 1000,
       totalCents: 1000,
-      createdAt: new Date(),
-      updatedAt: new Date(),
     });
 
     await db.update(customerOrder).set({ status: "paid" }).where(eq(customerOrder.id, "o1"));
@@ -191,33 +159,108 @@ describe("placeOrder D1 write path", () => {
 
   it("deleting an order cascades its line items", async () => {
     await seedProduct({ id: "p1", slug: "s", priceCents: 1000 });
-    await db.insert(customerOrder).values({
+    await seedOrder({
       id: "o1",
       orderNumber: "SI-CCC111",
       userId: "u",
       email: "e",
-      status: "pending",
       shipName: "A",
       shipLine1: "1",
       shipCity: "T",
-      shipRegion: "ON",
       shipPostal: "M",
       subtotalCents: 1000,
       totalCents: 1000,
-      createdAt: new Date(),
-      updatedAt: new Date(),
     });
-    await db.insert(orderItem).values({
+    await seedOrderItem({
       id: "i1",
       orderId: "o1",
       productId: "p1",
       variantId: "v1",
-      titleSnapshot: "t",
-      sizeSnapshot: "M",
       unitPriceCents: 1000,
       quantity: 1,
     });
     await db.delete(customerOrder).where(eq(customerOrder.id, "o1"));
     expect(await db.select().from(orderItem).where(eq(orderItem.orderId, "o1"))).toEqual([]);
+  });
+});
+
+describe("updateOrderShippingCore", () => {
+  const session = (id: string, role = "user"): PlatformSession =>
+    ({ user: { id, email: `${id}@e.com`, role } }) as unknown as PlatformSession;
+
+  const shipping = {
+    name: "Grace Hopper",
+    line1: "2 Navy Way",
+    line2: "Suite 9",
+    city: "Arlington",
+    region: "VA",
+    postal: "22201",
+    phone: "+17035550100",
+  };
+
+  async function seedFor(status: schema.CustomerOrder["status"]) {
+    await seedOrder({
+      id: "o1",
+      orderNumber: "SI-EDIT1",
+      userId: "buyer-1",
+      status,
+      subtotalCents: 1000,
+      totalCents: 1000,
+    });
+  }
+
+  it("owner edits a pending order → ok, address written", async () => {
+    await seedFor("pending");
+    const res = await updateOrderShippingCore(db, session("buyer-1"), "SI-EDIT1", shipping);
+    expect(res).toEqual({ ok: true });
+    const [order] = await db.select().from(customerOrder).where(eq(customerOrder.id, "o1"));
+    expect(order).toMatchObject({
+      shipName: "Grace Hopper",
+      shipLine1: "2 Navy Way",
+      shipLine2: "Suite 9",
+      shipCity: "Arlington",
+      shipRegion: "VA",
+      shipPostal: "22201",
+      shipCountry: "CA",
+      shipPhone: "+17035550100",
+    });
+  });
+
+  it("owner edits a paid (not-yet-shipped) order → ok", async () => {
+    await seedFor("paid");
+    expect(await updateOrderShippingCore(db, session("buyer-1"), "SI-EDIT1", shipping)).toEqual({
+      ok: true,
+    });
+  });
+
+  it("a shipped order is not_editable", async () => {
+    await seedFor("shipped");
+    const res = await updateOrderShippingCore(db, session("buyer-1"), "SI-EDIT1", shipping);
+    expect(res).toEqual({ ok: false, error: "not_editable" });
+    // Address untouched (still the seeded default).
+    const [order] = await db.select().from(customerOrder).where(eq(customerOrder.id, "o1"));
+    expect(order!.shipName).toBe("Ada");
+  });
+
+  it("a non-owner non-admin is forbidden (throws)", async () => {
+    await seedFor("pending");
+    await expect(
+      updateOrderShippingCore(db, session("stranger"), "SI-EDIT1", shipping),
+    ).rejects.toThrow();
+    const [order] = await db.select().from(customerOrder).where(eq(customerOrder.id, "o1"));
+    expect(order!.shipName).toBe("Ada"); // never written
+  });
+
+  it("an admin may edit another user's order", async () => {
+    await seedFor("pending");
+    expect(
+      await updateOrderShippingCore(db, session("admin-1", "admin"), "SI-EDIT1", shipping),
+    ).toEqual({ ok: true });
+  });
+
+  it("an unknown order number throws not-found", async () => {
+    await expect(
+      updateOrderShippingCore(db, session("buyer-1"), "SI-NOPE", shipping),
+    ).rejects.toThrow();
   });
 });

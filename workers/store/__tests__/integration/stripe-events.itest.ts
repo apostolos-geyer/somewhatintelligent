@@ -5,38 +5,75 @@
  * absence and order state are only provable against a real DB, so this runs in
  * the pool tier (`bun run test:pool`), mirroring place-order.itest.ts.
  */
-import { env } from "cloudflare:test";
-import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import { processStoreStripeEvent, type ProcessStripeEventResult } from "@/lib/stripe-events";
 import type { StoreStripeEventMessage } from "@/lib/stripe-webhook";
+import {
+  db,
+  seedOrder as seedOrderRow,
+  seedOrderItem,
+  seedProduct,
+  seedVariant,
+  stockOf,
+} from "./helpers";
 
-const { customerOrder, processedStripeEvent } = schema;
-const db = drizzle(env.DB, { schema });
+const { product, productVariant, customerOrder, orderItem, processedStripeEvent } = schema;
 
 const STAGING = { ENVIRONMENT: "staging" } as const;
 const PRODUCTION = { ENVIRONMENT: "production" } as const;
 
-async function seedOrder(sessionId: string) {
-  const now = new Date();
-  await db.insert(customerOrder).values({
+async function seedOrder(
+  sessionId: string,
+  opts: { status?: "pending" | "cancelled" | "paid"; paymentStatus?: string } = {},
+) {
+  await seedOrderRow({
     id: `o-${sessionId}`,
     orderNumber: `SI-${sessionId}`,
-    userId: "buyer-1",
     email: "buyer@example.com",
-    status: "pending",
-    paymentStatus: "unpaid",
-    shipName: "Ada",
-    shipLine1: "1 Main",
-    shipCity: "Toronto",
-    shipRegion: "ON",
-    shipPostal: "M5V",
+    status: opts.status,
+    paymentStatus: opts.paymentStatus,
+    stripeCheckoutSessionId: sessionId,
     subtotalCents: 3000,
     totalCents: 3000,
-    stripeCheckoutSessionId: sessionId,
-    createdAt: now,
-    updatedAt: now,
+  });
+}
+
+// Seed a product + variant plus one order (with an order_item line) whose
+// reserved stock the release path can hand back. `stock` is the CURRENT (post-
+// reservation) value; releasing `quantity` restores `stock + quantity`.
+async function seedReservedOrder(
+  sessionId: string,
+  opts: {
+    variantId: string;
+    quantity: number;
+    stock: number;
+    status?: "pending" | "cancelled" | "paid";
+    paymentStatus?: string;
+  },
+) {
+  await seedProduct({
+    id: `p-${opts.variantId}`,
+    slug: `slug-${opts.variantId}`,
+    title: "Tee",
+    priceCents: 1500,
+  });
+  await seedVariant({
+    id: opts.variantId,
+    productId: `p-${opts.variantId}`,
+    size: "M",
+    sku: `sku-${opts.variantId}`,
+    stock: opts.stock,
+  });
+  await seedOrder(sessionId, { status: opts.status, paymentStatus: opts.paymentStatus });
+  await seedOrderItem({
+    id: `oi-${sessionId}`,
+    orderId: `o-${sessionId}`,
+    productId: `p-${opts.variantId}`,
+    variantId: opts.variantId,
+    titleSnapshot: "Tee",
+    unitPriceCents: 1500,
+    quantity: opts.quantity,
   });
 }
 
@@ -48,9 +85,45 @@ function msg(overrides: Partial<StoreStripeEventMessage> = {}): StoreStripeEvent
     livemode: false,
     objectId: "cs_x",
     payment_status: "paid",
+    // Our own createCheckoutSession always stamps metadata.orderId; carrying it
+    // by default keeps these ingestion tests on the "ours" path (a session with
+    // no metadata.orderId is a foreign session — see the dedicated test below).
+    metadataOrderId: "ord_x",
     ...overrides,
   };
 }
+
+// Seed an order in the pre-payment shape the Stripe checkout writes: the core
+// address group NULL (shipCountry keeps "CA"), for the backfill to fill in.
+async function seedUnaddressedOrder(
+  sessionId: string,
+  opts: { status?: "pending" | "cancelled" | "paid"; paymentStatus?: string } = {},
+) {
+  await seedOrder(sessionId, opts);
+  await db
+    .update(customerOrder)
+    .set({
+      shipName: null,
+      shipLine1: null,
+      shipLine2: null,
+      shipCity: null,
+      shipRegion: null,
+      shipPostal: null,
+      shipPhone: null,
+    })
+    .where(eq(customerOrder.stripeCheckoutSessionId, sessionId));
+}
+
+const fullShipping = {
+  name: "Ada Lovelace",
+  line1: "1 Main St",
+  line2: "Apt 2",
+  city: "Toronto",
+  state: "ON",
+  postal: "M5V 2T6",
+  country: "CA",
+  phone: "+14165550100",
+} as const;
 
 async function orderFor(sessionId: string) {
   const [row] = await db
@@ -70,7 +143,10 @@ async function ledgerCount(eventId: string) {
 
 beforeEach(async () => {
   await db.delete(processedStripeEvent);
+  await db.delete(orderItem);
   await db.delete(customerOrder);
+  await db.delete(productVariant);
+  await db.delete(product);
 });
 
 describe("processStoreStripeEvent", () => {
@@ -136,6 +212,51 @@ describe("processStoreStripeEvent", () => {
       STAGING,
     );
     expect(again).toEqual<ProcessStripeEventResult>({ ok: true, outcome: "ignored" });
+  });
+
+  it("(d2) foreign checkout session (no metadata.orderId, no matching order) → ignored, no ledger row", async () => {
+    // A payment link / Dashboard checkout in the same Stripe account: no order
+    // carries the session id. Without the classification this would be
+    // retryable and pollute the DLQ.
+    const foreign = await processStoreStripeEvent(
+      db,
+      msg({ id: "evt_foreign", objectId: "cs_foreign", metadataOrderId: undefined }),
+      STAGING,
+    );
+    expect(foreign).toEqual<ProcessStripeEventResult>({ ok: true, outcome: "ignored" });
+    expect(await ledgerCount("evt_foreign")).toBe(0);
+  });
+
+  it("(d3) missing metadata.orderId but the session id matches an order → applied", async () => {
+    // Session-id matching is authoritative — a thin/truncated event payload
+    // that dropped metadata must not strand a real order's event.
+    await seedOrder("cs_x");
+
+    const r = await processStoreStripeEvent(
+      db,
+      msg({ id: "evt_thin", metadataOrderId: undefined }),
+      STAGING,
+    );
+    expect(r).toEqual<ProcessStripeEventResult>({ ok: true, outcome: "applied" });
+    expect((await orderFor("cs_x"))?.paymentStatus).toBe("paid");
+  });
+
+  it("(d4) metadata.orderId present, no session match, order already cancelled → ignored (moot)", async () => {
+    // The checkout reverse path cancelled the order before a session id was
+    // attached; the session's later event is moot, not DLQ noise.
+    await seedOrder("cs_never_attached");
+    await db
+      .update(customerOrder)
+      .set({ status: "cancelled", stripeCheckoutSessionId: null })
+      .where(eq(customerOrder.stripeCheckoutSessionId, "cs_never_attached"));
+
+    const r = await processStoreStripeEvent(
+      db,
+      msg({ id: "evt_moot", objectId: "cs_orphaned", metadataOrderId: "o-cs_never_attached" }),
+      STAGING,
+    );
+    expect(r).toEqual<ProcessStripeEventResult>({ ok: true, outcome: "ignored" });
+    expect(await ledgerCount("evt_moot")).toBe(0);
   });
 
   describe("(e) f07 livemode gate", () => {
@@ -211,7 +332,7 @@ describe("processStoreStripeEvent", () => {
       expect((await orderFor("cs_x"))?.paymentStatus).toBe("paid");
     });
 
-    it("async_payment_failed → paymentStatus failed, status stays pending; late completed does not clobber", async () => {
+    it("async_payment_failed → paymentStatus failed, status cancelled; late completed does not clobber", async () => {
       await seedOrder("cs_x");
 
       await processStoreStripeEvent(
@@ -221,11 +342,210 @@ describe("processStoreStripeEvent", () => {
       );
       let order = await orderFor("cs_x");
       expect(order?.paymentStatus).toBe("failed");
-      expect(order?.status).toBe("pending");
+      expect(order?.status).toBe("cancelled");
 
       await processStoreStripeEvent(db, msg({ id: "evt_c", payment_status: "unpaid" }), STAGING);
       order = await orderFor("cs_x");
       expect(order?.paymentStatus).toBe("failed"); // terminal, not clobbered
+      expect(order?.status).toBe("cancelled");
+    });
+  });
+
+  describe("(h) address + totals backfill from the paid session", () => {
+    it("completed carrying shipping + totals backfills the address and finalized money", async () => {
+      await seedUnaddressedOrder("cs_x");
+
+      const r = await processStoreStripeEvent(
+        db,
+        msg({ shipping: fullShipping, amountTotal: 12_345, shippingCents: 999 }),
+        STAGING,
+      );
+      expect(r).toEqual<ProcessStripeEventResult>({ ok: true, outcome: "applied" });
+
+      const order = await orderFor("cs_x");
+      expect(order?.paymentStatus).toBe("paid");
+      expect(order).toMatchObject({
+        shipName: "Ada Lovelace",
+        shipLine1: "1 Main St",
+        shipLine2: "Apt 2",
+        shipCity: "Toronto",
+        shipRegion: "ON", // from address.state
+        shipPostal: "M5V 2T6",
+        shipCountry: "CA",
+        shipPhone: "+14165550100",
+        shippingCents: 999,
+        totalCents: 12_345,
+      });
+    });
+
+    it("async_payment_succeeded backfills the address and totals too", async () => {
+      // Async method: completed(unpaid) first (no shipping), then the success.
+      await seedUnaddressedOrder("cs_a", { paymentStatus: "processing" });
+
+      const r = await processStoreStripeEvent(
+        db,
+        msg({
+          id: "evt_a",
+          type: "checkout.session.async_payment_succeeded",
+          objectId: "cs_a",
+          shipping: fullShipping,
+          amountTotal: 8_800,
+          shippingCents: 500,
+        }),
+        STAGING,
+      );
+      expect(r).toEqual<ProcessStripeEventResult>({ ok: true, outcome: "applied" });
+
+      const order = await orderFor("cs_a");
+      expect(order?.paymentStatus).toBe("paid");
+      expect(order).toMatchObject({
+        shipName: "Ada Lovelace",
+        shipRegion: "ON",
+        shipPostal: "M5V 2T6",
+        shippingCents: 500,
+        totalCents: 8_800,
+      });
+    });
+
+    it("a message with no shipping leaves the address NULL (no half-write)", async () => {
+      await seedUnaddressedOrder("cs_n");
+
+      await processStoreStripeEvent(db, msg({ objectId: "cs_n", amountTotal: 3_000 }), STAGING);
+
+      const order = await orderFor("cs_n");
+      expect(order?.paymentStatus).toBe("paid");
+      expect(order?.shipName).toBeNull();
+      expect(order?.shipPostal).toBeNull();
+      expect(order?.totalCents).toBe(3_000); // money still finalized
+    });
+  });
+
+  describe("(g) terminal non-payment outcomes release reserved stock (Track D4/F, INV-5)", () => {
+    it("expired → paymentStatus expired, status cancelled, stock released to pre-reservation value", async () => {
+      // Reserved 2 of a variant that started at 10 → current stock 8.
+      await seedReservedOrder("cs_exp", { variantId: "v1", quantity: 2, stock: 8 });
+
+      const r = await processStoreStripeEvent(
+        db,
+        msg({
+          id: "evt_exp",
+          type: "checkout.session.expired",
+          objectId: "cs_exp",
+          payment_status: "unpaid",
+        }),
+        STAGING,
+      );
+      expect(r).toEqual<ProcessStripeEventResult>({ ok: true, outcome: "applied" });
+
+      const order = await orderFor("cs_exp");
+      expect(order?.paymentStatus).toBe("expired");
+      expect(order?.status).toBe("cancelled");
+      expect(await stockOf("v1")).toBe(10); // 8 + 2 released
+      expect(await ledgerCount("evt_exp")).toBe(1);
+    });
+
+    it("async_payment_failed → paymentStatus failed, status cancelled, stock released", async () => {
+      // An async method arrives 'processing' before it declines.
+      await seedReservedOrder("cs_fail", {
+        variantId: "v2",
+        quantity: 3,
+        stock: 5,
+        paymentStatus: "processing",
+      });
+
+      const r = await processStoreStripeEvent(
+        db,
+        msg({ id: "evt_fail", type: "checkout.session.async_payment_failed", objectId: "cs_fail" }),
+        STAGING,
+      );
+      expect(r).toEqual<ProcessStripeEventResult>({ ok: true, outcome: "applied" });
+
+      const order = await orderFor("cs_fail");
+      expect(order?.paymentStatus).toBe("failed");
+      expect(order?.status).toBe("cancelled");
+      expect(await stockOf("v2")).toBe(8); // 5 + 3 released
+    });
+
+    it("redelivered expired does NOT double-increment stock (idempotent release, INV-5)", async () => {
+      await seedReservedOrder("cs_dup", { variantId: "v3", quantity: 2, stock: 8 });
+
+      const expired = () =>
+        msg({
+          id: "evt_dup",
+          type: "checkout.session.expired",
+          objectId: "cs_dup",
+          payment_status: "unpaid",
+        });
+      const first = await processStoreStripeEvent(db, expired(), STAGING);
+      expect(first).toEqual<ProcessStripeEventResult>({ ok: true, outcome: "applied" });
+      expect(await stockOf("v3")).toBe(10);
+
+      const second = await processStoreStripeEvent(db, expired(), STAGING);
+      expect(second).toEqual<ProcessStripeEventResult>({ ok: true, outcome: "duplicate" });
+      expect(await stockOf("v3")).toBe(10); // NOT 12 — released exactly once
+      expect(await ledgerCount("evt_dup")).toBe(1);
+    });
+
+    it("out-of-order expired arriving after paid touches neither stock nor status", async () => {
+      // The order already settled paid (stock stays reserved-as-sold).
+      await seedReservedOrder("cs_paid", {
+        variantId: "v4",
+        quantity: 2,
+        stock: 8,
+        status: "paid",
+        paymentStatus: "paid",
+      });
+
+      const r = await processStoreStripeEvent(
+        db,
+        msg({
+          id: "evt_late",
+          type: "checkout.session.expired",
+          objectId: "cs_paid",
+          payment_status: "unpaid",
+        }),
+        STAGING,
+      );
+      // The order exists, so the event is acked (recorded), not retried…
+      expect(r.ok).toBe(true);
+
+      const order = await orderFor("cs_paid");
+      expect(order?.paymentStatus).toBe("paid"); // terminal, not clobbered
+      expect(order?.status).toBe("paid");
+      expect(await stockOf("v4")).toBe(8); // never released
+    });
+
+    it("a real expired event for an already-superseded order does NOT re-release stock (Track G3 convergence, INV-5)", async () => {
+      // createCheckoutSession's supersede sweep already expired the session at
+      // Stripe and released+cancelled this order (paymentStatus 'expired', status
+      // 'cancelled', its 2 units handed back → stock already at 10). The real
+      // checkout.session.expired webhook that Stripe fires afterward must no-op
+      // through the same unpaid/processing gates the supersede release used.
+      await seedReservedOrder("cs_super", {
+        variantId: "v5",
+        quantity: 2,
+        stock: 10,
+        status: "cancelled",
+        paymentStatus: "expired",
+      });
+
+      const r = await processStoreStripeEvent(
+        db,
+        msg({
+          id: "evt_super",
+          type: "checkout.session.expired",
+          objectId: "cs_super",
+          payment_status: "unpaid",
+        }),
+        STAGING,
+      );
+      // The order exists, so the event is acked (recorded), not retried…
+      expect(r.ok).toBe(true);
+
+      const order = await orderFor("cs_super");
+      expect(order?.paymentStatus).toBe("expired"); // unchanged
+      expect(order?.status).toBe("cancelled"); // unchanged
+      expect(await stockOf("v5")).toBe(10); // NOT 12 — released exactly once
     });
   });
 });

@@ -32,6 +32,9 @@
     // Controlled apex (leading dot) — cross-subdomain cookie domain + the
     // auth server's `*.{apex}` trustedOrigins.
     "AUTH_DOMAIN": ".somewhatintelligent.ca",
+    // Stripe publishable key (pk_…, client-safe). Blank until Stripe
+    // onboarding; getCheckoutConfig gates the Payment Element on it.
+    "STRIPE_PUBLISHABLE_KEY": "",
     // Launch gate, per env ("true"/"false"). While "false" the storefront is
     // admin-only: everyone else gets the pre-launch landing (sign-up funnel →
     // /welcome) and the public product reads refuse to serve. Baked into both
@@ -55,12 +58,17 @@
         "dead_letter_queue": "si-stripe-events-dlq-staging",
         "max_retries": 5,
       },
-      // Terminal consumer: no dead_letter_queue behind it, no retries — the
-      // worker best-effort reprocesses then unconditionally acks (see worker.ts
-      // processDlqBatch), so dead events surface a log line instead of silently
-      // ageing out of the DLQ.
-      { "queue": "si-stripe-events-dlq-staging", "max_retries": 0 },
+      // Terminal consumer: no dead_letter_queue behind it. processDlqBatch acks
+      // after persisting evidence; max_retries only backs its one retry case —
+      // the dead-letter INSERT itself failing (see stripe-queue.ts).
+      { "queue": "si-stripe-events-dlq-staging", "max_retries": 5 },
     ],
+  },
+  // Reconciliation sweep — releases orphaned/stale-attached stock reservations
+  // no webhook can cover (worker.ts scheduled(), Track D5/D6). Named envs don't
+  // inherit, so env.production re-declares this.
+  "triggers": {
+    "crons": ["*/15 * * * *"],
   },
   "services": [
     { "binding": "GUESTLIST", "service": "si-guestlist-staging", "entrypoint": "Guestlist" },
@@ -85,6 +93,7 @@
         "STORE_URL": "https://somewhatintelligent.ca/shop",
         "IDENTITY_URL": "https://somewhatintelligent.ca/account",
         "AUTH_DOMAIN": ".somewhatintelligent.ca",
+        "STRIPE_PUBLISHABLE_KEY": "",
         // Launch gate — flip to "true" to open the production shop.
         "STORE_LIVE": "false",
       },
@@ -106,8 +115,11 @@
             "max_retries": 5,
           },
           // Terminal consumer — see the staging note above.
-          { "queue": "si-stripe-events-dlq-production", "max_retries": 0 },
+          { "queue": "si-stripe-events-dlq-production", "max_retries": 5 },
         ],
+      },
+      "triggers": {
+        "crons": ["*/15 * * * *"],
       },
       "services": [
         {

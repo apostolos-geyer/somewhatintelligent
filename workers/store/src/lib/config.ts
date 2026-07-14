@@ -1,6 +1,7 @@
 // Code constants. Environment-dependent values live in wrangler.jsonc and are
 // read through `env.*` / `import.meta.env.*` at runtime.
 import { platformConfig } from "@si/config";
+import { ulid } from "@somewhatintelligent/kit/ids";
 import { STORE_TAGLINE } from "@/app-brand";
 
 // Brand NAME is platform-wide (@si/config); the storefront tagline is per-app
@@ -8,6 +9,11 @@ import { STORE_TAGLINE } from "@/app-brand";
 export const BRAND_NAME = platformConfig.brand.name;
 export const BRAND_TAGLINE = STORE_TAGLINE;
 
+// Single source of truth for order numbers, shared by placeOrder
+// (orders.functions.ts) and the Stripe checkout path (lib/checkout.ts).
+export function orderNumber(): string {
+  return `${platformConfig.brand.short}-${ulid().slice(-6).toUpperCase()}`;
+}
 // Launch gate. While false the storefront is admin-only: everyone else gets
 // the pre-launch landing at `/` (sign-up funnel → identity → /welcome) and
 // the public product reads refuse to serve. Per-env wrangler var ("true"/
@@ -51,6 +57,11 @@ export function trackingUrlFor(carrier: string | null, tracking: string | null):
 // enum, the status badge, and the admin order filters.
 export const ORDER_STATUSES = ["pending", "paid", "shipped", "delivered", "cancelled"] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
+
+export function isOrderStatus(s: string): s is OrderStatus {
+  const all: readonly string[] = ORDER_STATUSES;
+  return all.includes(s);
+}
 
 // Product lifecycle: draft (hidden) → active (listed) → archived. Single source
 // for the schema enum + the catalog form's status field/validator.

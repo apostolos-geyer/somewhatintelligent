@@ -3,10 +3,14 @@
 import startEntry from "@tanstack/react-start/server-entry";
 import { extractPlatformStartContext } from "@somewhatintelligent/kit/react-start";
 import { runWithExecutionContext } from "@somewhatintelligent/kit/execution-context";
+import { stripeConfigured } from "@somewhatintelligent/stripe";
+import { makeStripeClient } from "./lib/stripe-client";
 import { devEnvelopeStamper } from "./lib/platform";
 import { handleStoreStripeWebhook, STORE_STRIPE_WEBHOOK_PATH } from "./lib/stripe-webhook";
 import { createDb } from "./lib/db";
 import { consumeStripeEventBatch, DLQ_QUEUE_PATTERN, processDlqBatch } from "./lib/stripe-queue";
+import { reconcilePendingReservations } from "./lib/reconcile";
+import { extractSessionSnapshot } from "./lib/stripe-session-fields";
 import type { StoreStripeEventMessage } from "./lib/stripe-webhook";
 
 declare module "@tanstack/react-start" {
@@ -52,5 +56,25 @@ export default {
       return;
     }
     await consumeStripeEventBatch(db, batch, env);
+  },
+  async scheduled(_controller: ScheduledController, env: Env): Promise<void> {
+    // Only one cron is registered (wrangler.jsonc) — the sweep runs
+    // unconditionally on every trigger. INV-7 decoupling: the sweep only ever
+    // acts on Stripe-path reservations (which require a resolved customer id,
+    // never set without Stripe) and needs a live client to re-check
+    // stale-attached sessions. With Stripe unconfigured there is nothing to
+    // sweep and no client to build — skip.
+    if (!stripeConfigured(env.STRIPE_SECRET_KEY, env.STRIPE_WEBHOOK_SIGNING_SECRET)) return;
+    const stripe = makeStripeClient(env.STRIPE_SECRET_KEY);
+    await reconcilePendingReservations({
+      db: createDb(env.DB),
+      retrieveSession: async (sessionId) => {
+        const s = await stripe.checkout.sessions.retrieve(sessionId);
+        return { status: s.status, payment_status: s.payment_status, ...extractSessionSnapshot(s) };
+      },
+      expireSession: async (sessionId) => {
+        await stripe.checkout.sessions.expire(sessionId);
+      },
+    });
   },
 } satisfies ExportedHandler<Env, StoreStripeEventMessage>;

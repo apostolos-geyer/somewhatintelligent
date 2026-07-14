@@ -1,7 +1,8 @@
 // Storefront schema. All timestamps are unix milliseconds. User ids are bare
 // `text` columns holding bouncer user ids — this app owns no auth tables
 // (cross-subdomain SSO via bouncer; see docs/adding-an-app.md §2).
-import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { check, index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
 import { ORDER_STATUSES, PRODUCT_STATUSES } from "@/lib/config";
 
 // ── Catalog ────────────────────────────────────────────────────────────────
@@ -60,6 +61,9 @@ export const productVariant = sqliteTable(
   (t) => [
     index("idx_variant_product").on(t.productId),
     uniqueIndex("idx_variant_product_size").on(t.productId, t.size),
+    // Negative stock is unrepresentable. The reservation guard (WHERE stock >=
+    // qty) stays the concurrency mechanism; this backstops any unguarded write.
+    check("stock_non_negative", sql`stock >= 0`),
   ],
 );
 
@@ -76,13 +80,16 @@ export const customerOrder = sqliteTable(
     userId: text("user_id").notNull(), // bouncer buyer id
     email: text("email").notNull(),
     status: text("status", { enum: ORDER_STATUSES }).notNull().default("pending"),
-    // Shipping address snapshot.
-    shipName: text("ship_name").notNull(),
-    shipLine1: text("ship_line1").notNull(),
+    // Shipping address snapshot. Nullable because the embedded Stripe checkout
+    // collects the address during payment (ShippingAddressElement) — the order
+    // is created before Stripe returns it, and the completed webhook / heal
+    // sweep backfills these columns. shipCountry keeps its notNull "CA" default.
+    shipName: text("ship_name"),
+    shipLine1: text("ship_line1"),
     shipLine2: text("ship_line2"),
-    shipCity: text("ship_city").notNull(),
-    shipRegion: text("ship_region").notNull(),
-    shipPostal: text("ship_postal").notNull(),
+    shipCity: text("ship_city"),
+    shipRegion: text("ship_region"),
+    shipPostal: text("ship_postal"),
     shipCountry: text("ship_country").notNull().default("CA"),
     shipPhone: text("ship_phone"),
     // Money (integer cents, CAD).
@@ -93,6 +100,11 @@ export const customerOrder = sqliteTable(
     // keyless dev/CI; populated when Checkout Sessions are enabled.
     stripeCustomerId: text("stripe_customer_id"),
     stripeCheckoutSessionId: text("stripe_checkout_session_id").unique(),
+    // Set alongside stripeCheckoutSessionId, immediately after Stripe returns the
+    // Session. Mirrors the Session's own `expires_at` (epoch seconds → ms here).
+    // Used by the reconciliation cron (Track D5/D6) to find stale-attached
+    // reservations without an unbounded Stripe API scan.
+    stripeSessionExpiresAt: integer("stripe_session_expires_at", { mode: "timestamp_ms" }),
     paymentStatus: text("payment_status").notNull().default("unpaid"),
     // Fulfillment / tracking.
     carrier: text("carrier"), // CarrierKey from lib/config.ts
@@ -107,6 +119,13 @@ export const customerOrder = sqliteTable(
     index("idx_order_user").on(t.userId, t.createdAt),
     index("idx_order_status").on(t.status),
     index("idx_order_stripe_customer").on(t.stripeCustomerId),
+    // Address atomicity: the core address group is either wholly collected or
+    // wholly absent — a half-written address is unrepresentable. (shipCountry
+    // keeps its own "CA" default; shipLine2/shipPhone are independently optional.)
+    check(
+      "ship_address_atomic",
+      sql`(ship_name IS NULL) = (ship_line1 IS NULL) AND (ship_name IS NULL) = (ship_city IS NULL) AND (ship_name IS NULL) = (ship_region IS NULL) AND (ship_name IS NULL) = (ship_postal IS NULL)`,
+    ),
   ],
 );
 
@@ -117,6 +136,30 @@ export const processedStripeEvent = sqliteTable("processed_stripe_event", {
   eventId: text("event_id").primaryKey(),
   eventType: text("event_type").notNull(),
   processedAt: integer("processed_at", { mode: "timestamp_ms" }).notNull(),
+});
+
+// Dead-letter forensics for Stripe events the terminal DLQ consumer could not
+// recover. The money invariant — a captured charge always terminates as a paid
+// order or a deliberate refund, never silently neither — needs the DLQ ack to
+// leave durable evidence behind: when a DLQ message reprocesses to `retryable`
+// (no matching order yet) or throws, its compacted payload is persisted here
+// BEFORE the (unconditional) ack, so a stuck payment surfaces in a query
+// instead of ageing out of the queue. The reconcile cron stamps `resolvedAt`
+// once it heals (paid) or releases the matching order (see reconcile.ts). One
+// row per Stripe event id; a redelivery bumps `lastSeenAt`/`attempts`.
+export const deadStripeEvent = sqliteTable("dead_stripe_event", {
+  eventId: text("event_id").primaryKey(),
+  eventType: text("event_type").notNull(),
+  objectId: text("object_id"), // checkout session id, when the event carried one
+  metadataOrderId: text("metadata_order_id"),
+  payload: text("payload").notNull(), // compacted StoreStripeEventMessage JSON
+  attempts: integer("attempts"),
+  // 'retryable_exhausted' (reprocess still finds no order) | 'reprocess_threw'.
+  reason: text("reason").notNull(),
+  firstSeenAt: integer("first_seen_at", { mode: "timestamp_ms" }).notNull(),
+  lastSeenAt: integer("last_seen_at", { mode: "timestamp_ms" }).notNull(),
+  // Null until the reconcile cron heals or releases the matching order.
+  resolvedAt: integer("resolved_at", { mode: "timestamp_ms" }),
 });
 
 // Line items — snapshot title/size/price at purchase time so later catalog
@@ -144,3 +187,4 @@ export type ProductVariant = typeof productVariant.$inferSelect;
 export type CustomerOrder = typeof customerOrder.$inferSelect;
 export type OrderItem = typeof orderItem.$inferSelect;
 export type ProcessedStripeEvent = typeof processedStripeEvent.$inferSelect;
+export type DeadStripeEvent = typeof deadStripeEvent.$inferSelect;

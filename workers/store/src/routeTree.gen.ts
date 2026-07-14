@@ -14,13 +14,14 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
 import { Route as PublicWelcomeRouteImport } from './routes/_public/welcome'
 import { Route as PublicCartRouteImport } from './routes/_public/cart'
-import { Route as AppCheckoutRouteImport } from './routes/_app/checkout'
 import { Route as AppAdminRouteImport } from './routes/_app/admin'
 import { Route as AppOrdersIndexRouteImport } from './routes/_app/orders.index'
+import { Route as AppCheckoutIndexRouteImport } from './routes/_app/checkout.index'
 import { Route as AppAdminIndexRouteImport } from './routes/_app/admin/index'
 import { Route as ApiImgRefIdRouteImport } from './routes/api/img.$refId'
 import { Route as PublicProductsSlugRouteImport } from './routes/_public/products.$slug'
 import { Route as AppOrdersOrderNumberRouteImport } from './routes/_app/orders.$orderNumber'
+import { Route as AppCheckoutReturnRouteImport } from './routes/_app/checkout.return'
 import { Route as AppAdminProductsIndexRouteImport } from './routes/_app/admin/products.index'
 import { Route as AppAdminOrdersIndexRouteImport } from './routes/_app/admin/orders.index'
 import { Route as AppAdminProductsIdRouteImport } from './routes/_app/admin/products.$id'
@@ -49,11 +50,6 @@ const PublicCartRoute = PublicCartRouteImport.update({
   path: '/cart',
   getParentRoute: () => PublicRoute,
 } as any)
-const AppCheckoutRoute = AppCheckoutRouteImport.update({
-  id: '/checkout',
-  path: '/checkout',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppAdminRoute = AppAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -62,6 +58,11 @@ const AppAdminRoute = AppAdminRouteImport.update({
 const AppOrdersIndexRoute = AppOrdersIndexRouteImport.update({
   id: '/orders/',
   path: '/orders/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCheckoutIndexRoute = AppCheckoutIndexRouteImport.update({
+  id: '/checkout/',
+  path: '/checkout/',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAdminIndexRoute = AppAdminIndexRouteImport.update({
@@ -82,6 +83,11 @@ const PublicProductsSlugRoute = PublicProductsSlugRouteImport.update({
 const AppOrdersOrderNumberRoute = AppOrdersOrderNumberRouteImport.update({
   id: '/orders/$orderNumber',
   path: '/orders/$orderNumber',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCheckoutReturnRoute = AppCheckoutReturnRouteImport.update({
+  id: '/checkout/return',
+  path: '/checkout/return',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAdminProductsIndexRoute = AppAdminProductsIndexRouteImport.update({
@@ -109,13 +115,14 @@ const AppAdminOrdersOrderNumberRoute =
 export interface FileRoutesByFullPath {
   '/': typeof PublicIndexRoute
   '/admin': typeof AppAdminRouteWithChildren
-  '/checkout': typeof AppCheckoutRoute
   '/cart': typeof PublicCartRoute
   '/welcome': typeof PublicWelcomeRoute
+  '/checkout/return': typeof AppCheckoutReturnRoute
   '/orders/$orderNumber': typeof AppOrdersOrderNumberRoute
   '/products/$slug': typeof PublicProductsSlugRoute
   '/api/img/$refId': typeof ApiImgRefIdRoute
   '/admin/': typeof AppAdminIndexRoute
+  '/checkout/': typeof AppCheckoutIndexRoute
   '/orders/': typeof AppOrdersIndexRoute
   '/admin/orders/$orderNumber': typeof AppAdminOrdersOrderNumberRoute
   '/admin/products/$id': typeof AppAdminProductsIdRoute
@@ -124,13 +131,14 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof PublicIndexRoute
-  '/checkout': typeof AppCheckoutRoute
   '/cart': typeof PublicCartRoute
   '/welcome': typeof PublicWelcomeRoute
+  '/checkout/return': typeof AppCheckoutReturnRoute
   '/orders/$orderNumber': typeof AppOrdersOrderNumberRoute
   '/products/$slug': typeof PublicProductsSlugRoute
   '/api/img/$refId': typeof ApiImgRefIdRoute
   '/admin': typeof AppAdminIndexRoute
+  '/checkout': typeof AppCheckoutIndexRoute
   '/orders': typeof AppOrdersIndexRoute
   '/admin/orders/$orderNumber': typeof AppAdminOrdersOrderNumberRoute
   '/admin/products/$id': typeof AppAdminProductsIdRoute
@@ -142,14 +150,15 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/_public': typeof PublicRouteWithChildren
   '/_app/admin': typeof AppAdminRouteWithChildren
-  '/_app/checkout': typeof AppCheckoutRoute
   '/_public/cart': typeof PublicCartRoute
   '/_public/welcome': typeof PublicWelcomeRoute
   '/_public/': typeof PublicIndexRoute
+  '/_app/checkout/return': typeof AppCheckoutReturnRoute
   '/_app/orders/$orderNumber': typeof AppOrdersOrderNumberRoute
   '/_public/products/$slug': typeof PublicProductsSlugRoute
   '/api/img/$refId': typeof ApiImgRefIdRoute
   '/_app/admin/': typeof AppAdminIndexRoute
+  '/_app/checkout/': typeof AppCheckoutIndexRoute
   '/_app/orders/': typeof AppOrdersIndexRoute
   '/_app/admin/orders/$orderNumber': typeof AppAdminOrdersOrderNumberRoute
   '/_app/admin/products/$id': typeof AppAdminProductsIdRoute
@@ -161,13 +170,14 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
-    | '/checkout'
     | '/cart'
     | '/welcome'
+    | '/checkout/return'
     | '/orders/$orderNumber'
     | '/products/$slug'
     | '/api/img/$refId'
     | '/admin/'
+    | '/checkout/'
     | '/orders/'
     | '/admin/orders/$orderNumber'
     | '/admin/products/$id'
@@ -176,13 +186,14 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/checkout'
     | '/cart'
     | '/welcome'
+    | '/checkout/return'
     | '/orders/$orderNumber'
     | '/products/$slug'
     | '/api/img/$refId'
     | '/admin'
+    | '/checkout'
     | '/orders'
     | '/admin/orders/$orderNumber'
     | '/admin/products/$id'
@@ -193,14 +204,15 @@ export interface FileRouteTypes {
     | '/_app'
     | '/_public'
     | '/_app/admin'
-    | '/_app/checkout'
     | '/_public/cart'
     | '/_public/welcome'
     | '/_public/'
+    | '/_app/checkout/return'
     | '/_app/orders/$orderNumber'
     | '/_public/products/$slug'
     | '/api/img/$refId'
     | '/_app/admin/'
+    | '/_app/checkout/'
     | '/_app/orders/'
     | '/_app/admin/orders/$orderNumber'
     | '/_app/admin/products/$id'
@@ -251,13 +263,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicCartRouteImport
       parentRoute: typeof PublicRoute
     }
-    '/_app/checkout': {
-      id: '/_app/checkout'
-      path: '/checkout'
-      fullPath: '/checkout'
-      preLoaderRoute: typeof AppCheckoutRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/admin': {
       id: '/_app/admin'
       path: '/admin'
@@ -270,6 +275,13 @@ declare module '@tanstack/react-router' {
       path: '/orders'
       fullPath: '/orders/'
       preLoaderRoute: typeof AppOrdersIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/checkout/': {
+      id: '/_app/checkout/'
+      path: '/checkout'
+      fullPath: '/checkout/'
+      preLoaderRoute: typeof AppCheckoutIndexRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/admin/': {
@@ -298,6 +310,13 @@ declare module '@tanstack/react-router' {
       path: '/orders/$orderNumber'
       fullPath: '/orders/$orderNumber'
       preLoaderRoute: typeof AppOrdersOrderNumberRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/checkout/return': {
+      id: '/_app/checkout/return'
+      path: '/checkout/return'
+      fullPath: '/checkout/return'
+      preLoaderRoute: typeof AppCheckoutReturnRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/admin/products/': {
@@ -353,15 +372,17 @@ const AppAdminRouteWithChildren = AppAdminRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppAdminRoute: typeof AppAdminRouteWithChildren
-  AppCheckoutRoute: typeof AppCheckoutRoute
+  AppCheckoutReturnRoute: typeof AppCheckoutReturnRoute
   AppOrdersOrderNumberRoute: typeof AppOrdersOrderNumberRoute
+  AppCheckoutIndexRoute: typeof AppCheckoutIndexRoute
   AppOrdersIndexRoute: typeof AppOrdersIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppAdminRoute: AppAdminRouteWithChildren,
-  AppCheckoutRoute: AppCheckoutRoute,
+  AppCheckoutReturnRoute: AppCheckoutReturnRoute,
   AppOrdersOrderNumberRoute: AppOrdersOrderNumberRoute,
+  AppCheckoutIndexRoute: AppCheckoutIndexRoute,
   AppOrdersIndexRoute: AppOrdersIndexRoute,
 }
 
