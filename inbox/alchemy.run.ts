@@ -142,7 +142,16 @@ export default Alchemy.Stack(
     const worker = yield* Cloudflare.Worker("Inbox", {
       name: WORKER_NAME,
       main: Output.map(build.outdir, (dir) => `${dir}/server/index.js`),
-      assets: Output.map(build.outdir, (dir) => `${dir}/client`),
+      // AssetsWithHash: the plain string/directory shape has no hash for the
+      // differ to compare, so every plan conservatively reports the worker
+      // as changed (WorkerProvider `hasChanged`). Passing Command.Build's
+      // authoritative output hash restores the empty-plan no-op property.
+      // (Cast mirrors upstream StaticSite.ts — the const-generic inference
+      // can't see an Output-valued `hash` inside the assets literal.)
+      assets: {
+        directory: "build/client",
+        hash: Output.map(build.hash, (h) => h.output ?? ""),
+      } as unknown as Cloudflare.AssetsWithHash,
       compatibility: { date: "2025-11-28", flags: ["nodejs_compat"] },
       domain: APP_DOMAIN,
       // workers.dev disabled: mail.<zone> is the single, Access-gated
