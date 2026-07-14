@@ -804,3 +804,24 @@ status = 'pending' AND createdAt < now − grace`. **New invariant (INV-11):**
   defers to the webhook/cron (`store.stripe_checkout.supersede_skipped`), and a
   supersede failure never blocks the new checkout. Runbook `docs/runbooks/stripe.md`
   gains a "Superseded sessions" section.
+- 2026-07-14 — Post-review money-path hardening (PR #27): stock guards and
+  order/line-item inserts commit in one atomic batch (`reserveStockAndWrite`);
+  DLQ consumers gain `max_retries: 5` so the persist-failure retry redelivers;
+  the checkout reverse paths attach + expire the session and reuse
+  `releaseAndCancel` (`reverseReservation` and the unused `releaseStock` are
+  gone); the stale sweep expires an open session before releasing; the events
+  consumer matches by session id without `metadata.orderId` and treats events
+  for already-cancelled orders as moot; session TTL is 35 minutes; the return
+  page clears the cart once the order exists and terminal-states properly.
+- 2026-07-14 — Decisions A3 and B3 reversed (operator call, PR #27): Stripe
+  owns address collection and shipping rates. The Session sets
+  `shipping_address_collection`; the ShippingAddressElement collects and
+  validates the address at payment; orders are created with NULL `ship*`
+  columns (`ship_address_atomic` CHECK) and the completed/async-succeeded
+  webhooks — and the reconcile heal path — backfill the address and finalized
+  totals; buyers edit the address on pending/paid orders via
+  `updateOrderShipping`. Shipping rates are Dashboard shipping-rate objects
+  discovered at session create (`min_subtotal_cents` metadata thresholds,
+  cheapest-first, max 5, buyer picks; built-in flat rate fallback);
+  `product_variant` gains a `stock_non_negative` CHECK. Runbook updated.
+- 2026-07-14 — Shipped in PR #27; plan moved to completed/.
