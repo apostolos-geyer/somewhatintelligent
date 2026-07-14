@@ -9,6 +9,7 @@
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import { computeOrderTotals } from "@/lib/pricing";
+import { runBatch } from "@/lib/db-batch";
 import { db, seedOrder, seedOrderItem, seedProduct, seedVariant } from "./helpers";
 
 const { product, productVariant, customerOrder, orderItem } = schema;
@@ -54,7 +55,7 @@ async function placeOrderBatch(
       .set({ stock: Math.max(0, (variantStock.get(line.variantId) ?? 0) - line.quantity) })
       .where(eq(productVariant.id, line.variantId)),
   ]);
-  await db.batch([orderInsert, ...lineStatements] as never);
+  await runBatch(db, [orderInsert, ...lineStatements]);
 }
 
 beforeEach(async () => {

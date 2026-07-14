@@ -8,17 +8,18 @@
 // by createCheckoutSession and placeOrder so both paths contend for the same
 // `product_variant.stock` pool safely.
 import { eq, sql } from "drizzle-orm";
-import { orderItem, productVariant } from "@/db/schema";
+import { customerOrder, orderItem, productVariant } from "@/db/schema";
 import type { Db } from "@/lib/db";
+import { runBatch, type DbBatchItem } from "@/lib/db-batch";
 import type { OrderLine } from "@/lib/pricing";
 
 export type ReserveResult = { ok: true } | { ok: false; error: "out_of_stock"; message: string };
 
-// Caller writes committed atomically with the guards, plus the compensating
-// statements that remove them when a guard misses.
+// The order/line-item inserts committed atomically with the guards. The module
+// owns the compensation shape: a guard miss deletes the order's rows by id.
 export interface ReservationWrite {
-  statements: unknown[];
-  undo: unknown[];
+  orderId: string;
+  statements: DbBatchItem[];
 }
 
 /**
@@ -33,22 +34,23 @@ export interface ReservationWrite {
  * the same intent.
  */
 export async function reserveStock(db: Db, lines: readonly OrderLine[]): Promise<ReserveResult> {
-  return reserveStockAndWrite(db, lines, { statements: [], undo: [] });
+  return reserveStockAndWrite(db, lines);
 }
 
 /**
  * reserveStock plus the caller's order writes in the SAME `db.batch` (one
  * transaction — a thrown statement commits nothing). A zero-row guard UPDATE
  * is not an error, so that case is compensated explicitly: re-increment the
- * decremented lines and run `write.undo`.
+ * decremented lines and delete the just-committed order rows.
  */
 export async function reserveStockAndWrite(
   db: Db,
   lines: readonly OrderLine[],
-  write: ReservationWrite,
+  write?: ReservationWrite,
 ): Promise<ReserveResult> {
+  const statements = write?.statements ?? [];
   if (lines.length === 0) {
-    if (write.statements.length > 0) await db.batch(write.statements as never);
+    await runBatch(db, statements);
     return { ok: true };
   }
 
@@ -60,9 +62,7 @@ export async function reserveStockAndWrite(
         sql`${productVariant.id} = ${line.variantId} and ${productVariant.stock} >= ${line.quantity}`,
       ),
   );
-  const results = (await db.batch([...guards, ...write.statements] as never)) as Array<{
-    meta?: { changes?: number };
-  }>;
+  const results = await runBatch(db, [...guards, ...statements]);
 
   const succeeded: OrderLine[] = [];
   let firstFailing: OrderLine | undefined;
@@ -74,44 +74,25 @@ export async function reserveStockAndWrite(
   if (!firstFailing) return { ok: true };
 
   // Compensate: re-increment only the lines that actually decremented, and
-  // undo the caller's writes that committed alongside the guards.
-  const compensations = [
+  // remove the order rows that committed alongside the guards.
+  await runBatch(db, [
     ...succeeded.map((line) =>
       db
         .update(productVariant)
         .set({ stock: sql`${productVariant.stock} + ${line.quantity}` })
         .where(eq(productVariant.id, line.variantId)),
     ),
-    ...write.undo,
-  ];
-  if (compensations.length > 0) await db.batch(compensations as never);
+    ...(write
+      ? [
+          db.delete(orderItem).where(eq(orderItem.orderId, write.orderId)),
+          db.delete(customerOrder).where(eq(customerOrder.id, write.orderId)),
+        ]
+      : []),
+  ]);
 
   return {
     ok: false,
     error: "out_of_stock",
     message: `${firstFailing.title} (${firstFailing.size})`,
   };
-}
-
-/**
- * Release the stock a reservation held, reading the release amounts from the
- * order's `order_item` rows (reserved and sold are the same decrement, so the
- * release amount is always exactly what was decremented). Used by the webhook
- * consumer and the reconciliation cron — never by createCheckoutSession's own
- * failure path, which uses reserveStock's cheaper in-request compensation.
- */
-export async function releaseStock(db: Db, orderId: string): Promise<void> {
-  const items = await db
-    .select({ variantId: orderItem.variantId, quantity: orderItem.quantity })
-    .from(orderItem)
-    .where(eq(orderItem.orderId, orderId));
-  if (items.length === 0) return;
-
-  const increments = items.map((it) =>
-    db
-      .update(productVariant)
-      .set({ stock: sql`${productVariant.stock} + ${it.quantity}` })
-      .where(eq(productVariant.id, it.variantId)),
-  );
-  await db.batch(increments as never);
 }

@@ -19,7 +19,7 @@ import {
 import { isAdminRole } from "@somewhatintelligent/kit/roles";
 import type { PlatformSession } from "@somewhatintelligent/auth";
 import { ForbiddenError, NotFoundError } from "@/lib/errors";
-import { CARRIER_KEYS, orderNumber } from "@/lib/config";
+import { CARRIER_KEYS, isOrderStatus, orderNumber } from "@/lib/config";
 import { computeOrderTotals } from "@/lib/pricing";
 import { reserveStockAndWrite } from "@/lib/reservation";
 
@@ -142,11 +142,8 @@ export const placeOrder = createServerFn({ method: "POST" })
     // Guards + order rows in one transaction; the SQL guard (not the pricing
     // pre-check) is the authoritative stock gate.
     const reserved = await reserveStockAndWrite(db, lines, {
+      orderId: id,
       statements: [orderInsert, ...lineStatements],
-      undo: [
-        db.delete(orderItem).where(eq(orderItem.orderId, id)),
-        db.delete(customerOrder).where(eq(customerOrder.id, id)),
-      ],
     });
     if (!reserved.ok) return reserved;
 
@@ -199,7 +196,8 @@ export const listAllOrders = createServerFn({ method: "GET" })
     const db = getDb();
     const q = db.select().from(customerOrder).$dynamic();
     if (data.status && data.status !== "all") {
-      q.where(eq(customerOrder.status, data.status as never));
+      if (!isOrderStatus(data.status)) return { orders: [] };
+      q.where(eq(customerOrder.status, data.status));
     }
     const orders = await q.orderBy(desc(customerOrder.createdAt)).limit(ORDER_LIST_LIMIT);
     return { orders };

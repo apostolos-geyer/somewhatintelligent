@@ -1,6 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import { customerOrder, orderItem, processedStripeEvent, productVariant } from "@/db/schema";
 import type { Db } from "@/lib/db";
+import { runBatch, type DbBatchItem } from "@/lib/db-batch";
 import type { StoreStripeEventMessage } from "@/lib/stripe-webhook";
 
 export type ProcessStripeEventResult =
@@ -46,7 +47,10 @@ function releaseStockStatement(db: Db, objectId: string, eventId: string) {
 // ORDER_STATUSES has no 'processing'/'failed'/'expired' member, so `status`
 // stays 'pending' (or moves to 'cancelled' on a terminal non-payment outcome)
 // — only paymentStatus (free-text) carries the granular Stripe lifecycle.
-function buildEventMutations(db: Db, message: StoreStripeEventMessage) {
+function buildEventMutations(
+  db: Db,
+  message: StoreStripeEventMessage,
+): { objectId: string; statements: DbBatchItem[] } | null {
   const objectId = message.objectId;
   if (!objectId) return null;
   // Defense-in-depth: a "payment" mode is expected; a subscription-mode session
@@ -63,63 +67,75 @@ function buildEventMutations(db: Db, message: StoreStripeEventMessage) {
       const settled =
         message.payment_status === "paid" || message.payment_status === "no_payment_required";
       const nextPay = settled ? "paid" : "processing";
-      return [
-        db
-          .update(customerOrder)
-          .set({
-            paymentStatus: sql`case when ${customerOrder.paymentStatus} = 'unpaid' then ${nextPay} else ${customerOrder.paymentStatus} end`,
-            ...(settled
-              ? {
-                  status: sql`case when ${customerOrder.status} = 'pending' and ${customerOrder.paymentStatus} = 'unpaid' then 'paid' else ${customerOrder.status} end`,
-                }
-              : {}),
-            updatedAt: now,
-          })
-          .where(where),
-      ];
+      return {
+        objectId,
+        statements: [
+          db
+            .update(customerOrder)
+            .set({
+              paymentStatus: sql`case when ${customerOrder.paymentStatus} = 'unpaid' then ${nextPay} else ${customerOrder.paymentStatus} end`,
+              ...(settled
+                ? {
+                    status: sql`case when ${customerOrder.status} = 'pending' and ${customerOrder.paymentStatus} = 'unpaid' then 'paid' else ${customerOrder.status} end`,
+                  }
+                : {}),
+              updatedAt: now,
+            })
+            .where(where),
+        ],
+      };
     }
     case "checkout.session.async_payment_succeeded":
-      return [
-        db
-          .update(customerOrder)
-          .set({
-            paymentStatus: "paid",
-            status: sql`case when ${customerOrder.status} = 'pending' then 'paid' else ${customerOrder.status} end`,
-            updatedAt: now,
-          })
-          .where(where),
-      ];
+      return {
+        objectId,
+        statements: [
+          db
+            .update(customerOrder)
+            .set({
+              paymentStatus: "paid",
+              status: sql`case when ${customerOrder.status} = 'pending' then 'paid' else ${customerOrder.status} end`,
+              updatedAt: now,
+            })
+            .where(where),
+        ],
+      };
     case "checkout.session.async_payment_failed":
       // A declined async method terminates the attempt: release the reserved
       // stock and cancel the order (both CASE/guard-gated so an out-of-order
       // 'paid' is never regressed), giving the buyer a clean state to retry
       // from (a new cart → new order, Track F2/D4).
-      return [
-        releaseStockStatement(db, objectId, message.id),
-        db
-          .update(customerOrder)
-          .set({
-            paymentStatus: sql`case when ${customerOrder.paymentStatus} in ('unpaid', 'processing') then 'failed' else ${customerOrder.paymentStatus} end`,
-            status: sql`case when ${customerOrder.status} = 'pending' and ${customerOrder.paymentStatus} in ('unpaid', 'processing') then 'cancelled' else ${customerOrder.status} end`,
-            updatedAt: now,
-          })
-          .where(where),
-      ];
+      return {
+        objectId,
+        statements: [
+          releaseStockStatement(db, objectId, message.id),
+          db
+            .update(customerOrder)
+            .set({
+              paymentStatus: sql`case when ${customerOrder.paymentStatus} in ('unpaid', 'processing') then 'failed' else ${customerOrder.paymentStatus} end`,
+              status: sql`case when ${customerOrder.status} = 'pending' and ${customerOrder.paymentStatus} in ('unpaid', 'processing') then 'cancelled' else ${customerOrder.status} end`,
+              updatedAt: now,
+            })
+            .where(where),
+        ],
+      };
     case "checkout.session.expired":
       // The buyer never completed an unpaid/processing session before its
       // expires_at window closed: release the reserved stock and cancel the
       // order (Track F1/D4).
-      return [
-        releaseStockStatement(db, objectId, message.id),
-        db
-          .update(customerOrder)
-          .set({
-            paymentStatus: sql`case when ${customerOrder.paymentStatus} in ('unpaid', 'processing') then 'expired' else ${customerOrder.paymentStatus} end`,
-            status: sql`case when ${customerOrder.status} = 'pending' and ${customerOrder.paymentStatus} in ('unpaid', 'processing') then 'cancelled' else ${customerOrder.status} end`,
-            updatedAt: now,
-          })
-          .where(where),
-      ];
+      return {
+        objectId,
+        statements: [
+          releaseStockStatement(db, objectId, message.id),
+          db
+            .update(customerOrder)
+            .set({
+              paymentStatus: sql`case when ${customerOrder.paymentStatus} in ('unpaid', 'processing') then 'expired' else ${customerOrder.paymentStatus} end`,
+              status: sql`case when ${customerOrder.status} = 'pending' and ${customerOrder.paymentStatus} in ('unpaid', 'processing') then 'cancelled' else ${customerOrder.status} end`,
+              updatedAt: now,
+            })
+            .where(where),
+        ],
+      };
     default:
       return null;
   }
@@ -171,7 +187,7 @@ export async function processStoreStripeEvent(
   // matches the order contributes to `orderChanges` (a release only fires when
   // the order exists, so it never falsely signals a match the order-status
   // UPDATE didn't already), and the last statement's changes is `ledgerChanges`.
-  const objectId = message.objectId as string; // guaranteed by buildEventMutations
+  const { objectId, statements } = mutations;
   const ledgerInsert = db
     .insert(processedStripeEvent)
     .select(
@@ -179,9 +195,7 @@ export async function processStoreStripeEvent(
     )
     .onConflictDoNothing();
 
-  const results = (await db.batch([...mutations, ledgerInsert] as never)) as Array<{
-    meta?: { changes?: number };
-  }>;
+  const results = await runBatch(db, [...statements, ledgerInsert]);
   const ledgerChanges = results[results.length - 1]?.meta?.changes ?? 0;
   const orderChanges = results.slice(0, -1).reduce((sum, r) => sum + (r?.meta?.changes ?? 0), 0);
 

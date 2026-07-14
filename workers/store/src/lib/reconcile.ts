@@ -14,6 +14,7 @@ import { and, eq, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
 
 import { customerOrder, deadStripeEvent, orderItem, productVariant } from "@/db/schema";
 import type { Db } from "@/lib/db";
+import type { DbBatchItem } from "@/lib/db-batch";
 
 // An orphaned reservation is released on D1 state alone (Track D6) once it is
 // older than this grace window — comfortably longer than any Stripe API round
@@ -56,7 +57,7 @@ export interface ReconcileResult {
 // state) makes both guards no-op — the sweep never double-releases or clobbers a
 // terminal state. Shared with createCheckoutSession's supersede path (Track G3),
 // which releases a prior attempt Stripe has just confirmed expired.
-export function releaseAndCancel(db: Db, orderId: string, now: Date) {
+export function releaseAndCancel(db: Db, orderId: string, now: Date): [DbBatchItem, DbBatchItem] {
   const release = db
     .update(productVariant)
     .set({
@@ -144,12 +145,26 @@ export async function reconcilePendingReservations(deps: ReconcileDeps): Promise
       ),
     );
 
-  let orphansReleased = 0;
-  for (const row of orphans) {
-    await db.batch(releaseAndCancel(db, row.id, now) as never);
-    orphansReleased++;
-    console.log("store.stripe_reservation.released", { order_id: row.id, reason: "cron_orphaned" });
-  }
+  // Rows are independent orders — sweep them concurrently; a failed row is
+  // logged and left for the next run, never blocking its siblings.
+  const orphanOutcomes = await Promise.all(
+    orphans.map(async (row) => {
+      try {
+        await db.batch(releaseAndCancel(db, row.id, now));
+      } catch (err) {
+        console.warn(
+          `[store] reconcile orphan release failed for ${row.id}: ${err instanceof Error ? err.message : "unknown"}`,
+        );
+        return false;
+      }
+      console.log("store.stripe_reservation.released", {
+        order_id: row.id,
+        reason: "cron_orphaned",
+      });
+      return true;
+    }),
+  );
+  const orphansReleased = orphanOutcomes.filter(Boolean).length;
 
   const stale = await db
     .select({ id: customerOrder.id, sessionId: customerOrder.stripeCheckoutSessionId })
@@ -164,69 +179,77 @@ export async function reconcilePendingReservations(deps: ReconcileDeps): Promise
       ),
     );
 
-  let staleReleased = 0;
-  let staleHealed = 0;
-  let staleSkipped = 0;
-  for (const row of stale) {
+  // Heal first: a `complete` session Stripe reports as settled means the buyer
+  // was charged but the completed-webhook never landed (lost or drained to the
+  // DLQ) — advance the order to `paid`; the cron is the authoritative backstop
+  // for a captured charge. Release only a session PROVEN dead: already expired,
+  // or open-and-unpaid and successfully expired here (a resolved expire is the
+  // proof — the buyer can no longer pay it). Everything inconclusive — a failed
+  // retrieve or expire (payment may have just landed), a `complete` session
+  // still settling — is skipped for the next sweep, never released blind.
+  const sweepOne = async (row: {
+    id: string;
+    sessionId: string | null;
+  }): Promise<"released" | "healed" | "skipped"> => {
     const sessionId = row.sessionId;
-    if (!sessionId) continue;
+    if (!sessionId) return "skipped";
     let session: RetrievedSession;
     try {
       session = await retrieveSession(sessionId);
     } catch (err) {
-      // A failed re-check is inconclusive — never release blind. Leave the order
-      // for the next sweep.
-      staleSkipped++;
       console.warn(
         `[store] reconcile sessions.retrieve failed for ${sessionId}: ${err instanceof Error ? err.message : "unknown"}`,
       );
-      continue;
+      return "skipped";
     }
-    // Heal first: a `complete` session Stripe reports as settled means the buyer
-    // was charged but the completed-webhook never landed (lost or drained to the
-    // DLQ). Advance the order to `paid` — the cron is the authoritative backstop
-    // for a captured charge, not just a stock releaser.
     const paid =
       session.status === "complete" &&
       (session.payment_status === "paid" || session.payment_status === "no_payment_required");
     if (paid) {
-      await db.batch([healPaid(db, row.id, now)] as never);
-      staleHealed++;
+      await db.batch([healPaid(db, row.id, now)]);
       console.log("store.stripe_reconcile.healed_paid", {
         order_id: row.id,
         session_id: sessionId,
       });
       await resolveDeadEvents(db, sessionId, now);
-      continue;
+      return "healed";
     }
-    // Release only a session PROVEN dead: already expired, or open-and-unpaid
-    // and successfully expired here (a resolved expire is the proof — the buyer
-    // can no longer pay it). A `complete` session still unpaid (an async method
-    // settling) is left to its webhook; a failed expire is inconclusive
-    // (payment may have just landed), so skip and let the next sweep re-check.
     const dead =
       session.status === "expired" ||
       (session.status === "open" && session.payment_status === "unpaid");
-    if (!dead) {
-      staleSkipped++;
-      continue;
-    }
+    if (!dead) return "skipped";
     if (session.status === "open") {
       try {
         await deps.expireSession(sessionId);
       } catch {
-        staleSkipped++;
-        continue;
+        return "skipped";
       }
     }
-    await db.batch(releaseAndCancel(db, row.id, now) as never);
-    staleReleased++;
+    await db.batch(releaseAndCancel(db, row.id, now));
     console.log("store.stripe_reservation.released", {
       order_id: row.id,
       reason: "cron_stale_attached",
     });
     await resolveDeadEvents(db, sessionId, now);
-  }
+    return "released";
+  };
 
-  return { orphansReleased, staleReleased, staleHealed, staleSkipped };
+  // Independent orders, swept concurrently; a thrown row is skipped, not fatal.
+  const staleOutcomes = await Promise.all(
+    stale.map((row) =>
+      sweepOne(row).catch((err: unknown) => {
+        console.warn(
+          `[store] reconcile stale sweep failed for ${row.id}: ${err instanceof Error ? err.message : "unknown"}`,
+        );
+        return "skipped" as const;
+      }),
+    ),
+  );
+
+  return {
+    orphansReleased,
+    staleReleased: staleOutcomes.filter((o) => o === "released").length,
+    staleHealed: staleOutcomes.filter((o) => o === "healed").length,
+    staleSkipped: staleOutcomes.filter((o) => o === "skipped").length,
+  };
 }

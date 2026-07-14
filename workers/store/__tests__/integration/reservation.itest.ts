@@ -6,8 +6,8 @@
  */
 import * as schema from "@/db/schema";
 import type { OrderLine } from "@/lib/pricing";
-import { releaseStock, reserveStock } from "@/lib/reservation";
-import { db, seedOrder, seedOrderItem, seedProduct, seedVariant, stockOf } from "./helpers";
+import { reserveStock } from "@/lib/reservation";
+import { db, seedProduct, seedVariant, stockOf } from "./helpers";
 
 const { product, productVariant, customerOrder, orderItem } = schema;
 
@@ -69,52 +69,5 @@ describe("reserveStock against real D1", () => {
     // v1's decrement was rolled back; v2 never changed.
     expect(await stockOf("v1")).toBe(5);
     expect(await stockOf("v2")).toBe(1);
-  });
-});
-
-describe("releaseStock against real D1", () => {
-  it("re-increments each variant by its order_item quantity", async () => {
-    await seedProduct({ id: "p1" });
-    await seedVariant({ id: "v1", productId: "p1", size: "M", stock: 3 });
-    await seedVariant({ id: "v2", productId: "p1", size: "L", stock: 0 });
-    await seedOrder({
-      id: "o1",
-      orderNumber: "SI-REL111",
-      email: "b@e.com",
-      shipName: "A",
-      shipLine1: "1",
-      shipCity: "T",
-      shipPostal: "M",
-      subtotalCents: 3000,
-      totalCents: 3000,
-    });
-    await seedOrderItem({
-      id: "i1",
-      orderId: "o1",
-      productId: "p1",
-      variantId: "v1",
-      unitPriceCents: 3000,
-      quantity: 2,
-    });
-    await seedOrderItem({
-      id: "i2",
-      orderId: "o1",
-      productId: "p1",
-      variantId: "v2",
-      sizeSnapshot: "L",
-      unitPriceCents: 3000,
-      quantity: 4,
-    });
-
-    await releaseStock(db, "o1");
-    expect(await stockOf("v1")).toBe(5); // 3 + 2
-    expect(await stockOf("v2")).toBe(4); // 0 + 4
-  });
-
-  it("is a no-op for an order with no items", async () => {
-    await seedProduct({ id: "p1" });
-    await seedVariant({ id: "v1", productId: "p1", size: "M", stock: 3 });
-    await releaseStock(db, "nonexistent-order");
-    expect(await stockOf("v1")).toBe(3);
   });
 });

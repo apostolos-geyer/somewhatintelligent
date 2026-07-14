@@ -34,7 +34,7 @@ function fakeBatch(...messages: FakeMessage[]) {
   } as unknown as MessageBatch<StoreStripeEventMessage>;
 }
 
-const db = {} as never;
+const db = {} as unknown as import("@/lib/db").Db;
 const env = { ENVIRONMENT: "staging" } as const;
 const applied: ProcessStripeEventResult = { ok: true, outcome: "applied" };
 

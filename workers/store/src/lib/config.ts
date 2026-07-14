@@ -52,6 +52,11 @@ export function trackingUrlFor(carrier: string | null, tracking: string | null):
 export const ORDER_STATUSES = ["pending", "paid", "shipped", "delivered", "cancelled"] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
+export function isOrderStatus(s: string): s is OrderStatus {
+  const all: readonly string[] = ORDER_STATUSES;
+  return all.includes(s);
+}
+
 // Product lifecycle: draft (hidden) → active (listed) → archived. Single source
 // for the schema enum + the catalog form's status field/validator.
 export const PRODUCT_STATUSES = ["draft", "active", "archived"] as const;

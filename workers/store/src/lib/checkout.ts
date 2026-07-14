@@ -6,7 +6,7 @@
 // tier drives this against a real D1 with both mocked. Stripe appears only as a
 // type here (`import type`) — the client is constructed in the wrapper.
 import type Stripe from "stripe";
-import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull } from "drizzle-orm";
 
 import { customerOrder, orderItem, product, productVariant } from "@/db/schema";
 import type { Db } from "@/lib/db";
@@ -137,31 +137,6 @@ function buildSessionParams(opts: {
   };
 }
 
-// Reverse a committed reservation synchronously (Track C3): re-increment each
-// line's stock and cancel the order, in one batch. Knows the lines in memory,
-// so no order_item re-read — cheaper than releaseStock, which the webhook/cron
-// paths use instead.
-async function reverseReservation(
-  db: Db,
-  orderId: string,
-  lines: readonly OrderLine[],
-): Promise<void> {
-  const now = new Date();
-  const statements = [
-    ...lines.map((line) =>
-      db
-        .update(productVariant)
-        .set({ stock: sql`${productVariant.stock} + ${line.quantity}` })
-        .where(eq(productVariant.id, line.variantId)),
-    ),
-    db
-      .update(customerOrder)
-      .set({ status: "cancelled", updatedAt: now })
-      .where(eq(customerOrder.id, orderId)),
-  ];
-  await db.batch(statements as never);
-}
-
 // At most one open checkout session per user (Track G3): before reserving stock
 // for a new attempt, supersede the caller's prior open attempts so an abandoned
 // session neither holds reserved stock for its full TTL nor stays payable at
@@ -207,7 +182,7 @@ async function supersedePriorOpenAttempts(
       });
       continue;
     }
-    await db.batch(releaseAndCancel(db, prior.id, new Date()) as never);
+    await db.batch(releaseAndCancel(db, prior.id, new Date()));
     console.log("store.stripe_checkout.superseded", {
       order_id: prior.id,
       session_id: sessionId,
@@ -310,11 +285,8 @@ export async function createCheckoutSessionCore(
 
   // Guards + order rows in one transaction (INV-4, Track C3/D2).
   const reserved = await reserveStockAndWrite(db, lines, {
+    orderId,
     statements: [orderInsert, ...lineStatements],
-    undo: [
-      db.delete(orderItem).where(eq(orderItem.orderId, orderId)),
-      db.delete(customerOrder).where(eq(customerOrder.id, orderId)),
-    ],
   });
   if (!reserved.ok) return reserved;
 
@@ -334,7 +306,7 @@ export async function createCheckoutSessionCore(
       { idempotencyKey: `checkout:${orderId}` },
     );
   } catch (err) {
-    await reverseReservation(db, orderId, lines);
+    await db.batch(releaseAndCancel(db, orderId, new Date()));
     console.error(
       `[store] checkout.sessions.create failed for order ${orderId}: ${stripeErrorCode(err)}`,
     );
@@ -357,7 +329,7 @@ export async function createCheckoutSessionCore(
     } catch {
       // Not open at Stripe; a webhook settles it.
     }
-    await reverseReservation(db, orderId, lines);
+    await db.batch(releaseAndCancel(db, orderId, new Date()));
     return { ok: false, error: "stripe_session_failed" };
   }
 
