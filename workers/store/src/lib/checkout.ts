@@ -15,17 +15,13 @@ import type { PlatformSession } from "@somewhatintelligent/auth";
 import { computeOrderTotals, type OrderLine } from "@/lib/pricing";
 import { reserveStockAndWrite } from "@/lib/reservation";
 import { releaseAndCancel, type SessionExpirer } from "@/lib/reconcile";
-import type { OrderStatus } from "@/lib/config";
+import { orderNumber, type OrderStatus } from "@/lib/config";
 import { stripeConfigured } from "@somewhatintelligent/stripe";
 
 // Stripe rejects expires_at under its 30-minute minimum; the extra 5 minutes
 // absorb clock skew/latency while still bounding the reservation window
 // (Track A4/D4).
 const CHECKOUT_SESSION_TTL_SECONDS = 35 * 60;
-
-function orderNumber(): string {
-  return `SI-${ulid().slice(-6).toUpperCase()}`;
-}
 
 // The cart shape createCheckoutSession accepts — structurally the same as
 // placeOrder's arktype input, kept as a plain type so this module carries no

@@ -19,20 +19,18 @@ import {
 import { isAdminRole } from "@somewhatintelligent/kit/roles";
 import type { PlatformSession } from "@somewhatintelligent/auth";
 import { ForbiddenError, NotFoundError } from "@/lib/errors";
-import { CARRIER_KEYS } from "@/lib/config";
+import { CARRIER_KEYS, orderNumber } from "@/lib/config";
 import { computeOrderTotals } from "@/lib/pricing";
 import { reserveStockAndWrite } from "@/lib/reservation";
 
 // Cap admin order lists (query-hygiene §5 — no unbounded table scans).
 const ORDER_LIST_LIMIT = 200;
 
-function orderNumber(): string {
-  return `SI-${ulid().slice(-6).toUpperCase()}`;
-}
-
 // ── Customer ─────────────────────────────────────────────────────────────────
 
-const shippingSchema = type({
+// Also consumed by lib/checkout.functions.ts — the Stripe checkout path
+// validates the identical cart shape.
+export const shippingSchema = type({
   name: "2 <= string <= 120",
   line1: "1 <= string <= 160",
   "line2?": "string <= 160",
@@ -43,7 +41,7 @@ const shippingSchema = type({
   "phone?": "string <= 40",
 });
 
-const placeOrderInput = type({
+export const placeOrderInput = type({
   items: type({ variantId: "string", quantity: "1 <= number.integer <= 99" })
     .array()
     .atLeastLength(1),

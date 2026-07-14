@@ -5,7 +5,7 @@
 // exposes the two server functions the checkout UI calls. Stripe stays optional
 // — the client is constructed only past the stripeConfigured gate, so keyless
 // boot never reaches `new Stripe(...)`.
-import Stripe from "stripe";
+import type Stripe from "stripe";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
@@ -14,6 +14,8 @@ import { stripeConfigured } from "@somewhatintelligent/stripe";
 
 import { getDb } from "@/lib/db";
 import { requireAuthMiddleware } from "@/lib/middleware/auth";
+import { makeStripeClient } from "@/lib/stripe-client";
+import { placeOrderInput } from "@/lib/orders.functions";
 import type { PlatformSession } from "@somewhatintelligent/auth";
 import {
   createCheckoutSessionCore,
@@ -29,32 +31,6 @@ import {
 
 export type { CreateCheckoutSessionResult, OrderByStripeSessionResult } from "@/lib/checkout";
 
-// The endpoint (and this client) target Stripe API 2026-06-24.dahlia. Typed as
-// a plain string so it narrows to the SDK's LatestApiVersion literal at the
-// construction site — stripe@20.4.1's bundled type predates this version.
-const STRIPE_API_VERSION: string = "2026-06-24.dahlia";
-
-// Mirrors placeOrder's input (orders.functions.ts) — the Stripe checkout path
-// validates the identical cart shape. Declared locally so this stage does not
-// modify the order-fn module it does not own.
-const shippingSchema = type({
-  name: "2 <= string <= 120",
-  line1: "1 <= string <= 160",
-  "line2?": "string <= 160",
-  city: "1 <= string <= 80",
-  region: "1 <= string <= 80",
-  postal: "1 <= string <= 20",
-  "country?": "string <= 2",
-  "phone?": "string <= 40",
-});
-
-const placeOrderInput = type({
-  items: type({ variantId: "string", quantity: "1 <= number.integer <= 99" })
-    .array()
-    .atLeastLength(1),
-  shipping: shippingSchema,
-});
-
 // Get-or-create the buyer's Stripe Customer via guestlist's typed RPC,
 // forwarding the inbound session cookie as the sole credential (never a
 // client-supplied user id — INV-9). The guestlist entrypoint derives the
@@ -68,30 +44,25 @@ async function ensureStripeCustomer(): Promise<EnsureCustomerResult> {
   return { ok: true, stripeCustomerId: res.stripeCustomerId };
 }
 
-// Constructed only past the stripeConfigured gate, so STRIPE_SECRET_KEY is
-// present — keyless boot never reaches `new Stripe(...)`.
-function makeStripeSessionCreator(secretKey: string): StripeSessionCreator {
-  return async (params: DahliaSessionCreateParams, options) => {
-    const stripe = new Stripe(secretKey, {
-      apiVersion: STRIPE_API_VERSION as Stripe.LatestApiVersion,
-    });
-    return stripe.checkout.sessions.create(
-      params as unknown as Stripe.Checkout.SessionCreateParams,
-      options,
-    );
-  };
-}
-
-// Injected supersede authority (Track G3), same pinned-apiVersion client
-// pattern as the session creator. Constructed only past the stripeConfigured
-// gate, so STRIPE_SECRET_KEY is present. A throw (session not open) is caught
-// in createCheckoutSessionCore's supersede loop, never here.
-function makeSessionExpirer(secretKey: string): SessionExpirer {
-  return async (sessionId: string) => {
-    const stripe = new Stripe(secretKey, {
-      apiVersion: STRIPE_API_VERSION as Stripe.LatestApiVersion,
-    });
-    await stripe.checkout.sessions.expire(sessionId);
+// One client per request, lazily built and shared between the session
+// creator and the expirer (Track G3's supersede loop can call the expirer
+// many times). Never invoked until createCheckoutSessionCore calls past the
+// stripeConfigured gate, so keyless boot never reaches `new Stripe(...)`.
+function makeStripeDeps(secretKey: string): {
+  createStripeSession: StripeSessionCreator;
+  expireSession: SessionExpirer;
+} {
+  let client: Stripe | undefined;
+  const stripe = () => (client ??= makeStripeClient(secretKey));
+  return {
+    createStripeSession: (params: DahliaSessionCreateParams, options) =>
+      stripe().checkout.sessions.create(
+        params as unknown as Stripe.Checkout.SessionCreateParams,
+        options,
+      ),
+    expireSession: async (sessionId: string) => {
+      await stripe().checkout.sessions.expire(sessionId);
+    },
   };
 }
 
@@ -99,14 +70,15 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
   .middleware([requireAuthMiddleware])
   .inputValidator((data: typeof placeOrderInput.infer) => placeOrderInput.assert(data))
   .handler(async ({ data, context }): Promise<CreateCheckoutSessionResult> => {
+    const { createStripeSession, expireSession } = makeStripeDeps(env.STRIPE_SECRET_KEY);
     return createCheckoutSessionCore({
       db: getDb(),
       session: context.session as PlatformSession,
       input: data as CheckoutInput,
       env,
       ensureCustomer: ensureStripeCustomer,
-      createStripeSession: makeStripeSessionCreator(env.STRIPE_SECRET_KEY),
-      expireSession: makeSessionExpirer(env.STRIPE_SECRET_KEY),
+      createStripeSession,
+      expireSession,
     });
   });
 

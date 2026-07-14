@@ -1,12 +1,19 @@
 // Code constants. Environment-dependent values live in wrangler.jsonc and are
 // read through `env.*` / `import.meta.env.*` at runtime.
 import { platformConfig } from "@si/config";
+import { ulid } from "@somewhatintelligent/kit/ids";
 import { STORE_TAGLINE } from "@/app-brand";
 
 // Brand NAME is platform-wide (@si/config); the storefront tagline is per-app
 // (src/app-brand.ts). Do not scatter brand literals — CLAUDE.md.
 export const BRAND_NAME = platformConfig.brand.name;
 export const BRAND_TAGLINE = STORE_TAGLINE;
+
+// Single source of truth for order numbers, shared by placeOrder
+// (orders.functions.ts) and the Stripe checkout path (lib/checkout.ts).
+export function orderNumber(): string {
+  return `${platformConfig.brand.short}-${ulid().slice(-6).toUpperCase()}`;
+}
 
 // Presigned product-image read URL lifetime. Short; the /api/img route
 // re-mints per request and Roadie caches the signed URL in D1.

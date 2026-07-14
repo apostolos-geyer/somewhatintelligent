@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import { stripeConfigured } from "@somewhatintelligent/stripe";
+import { makeStripeClient } from "@/lib/stripe-client";
 
 export const STORE_STRIPE_WEBHOOK_PATH = "/hooks/store";
 
@@ -47,9 +48,7 @@ export async function handleStoreStripeWebhook(request: Request, env: Env): Prom
   const rawBody = await request.text();
   let event: Stripe.Event;
   try {
-    const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
-      apiVersion: "2026-06-24.dahlia" as Stripe.LatestApiVersion,
-    });
+    const stripe = makeStripeClient(env.STRIPE_SECRET_KEY);
     event = await stripe.webhooks.constructEventAsync(
       rawBody,
       signature,
