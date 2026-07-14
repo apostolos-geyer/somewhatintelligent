@@ -93,7 +93,9 @@ export interface CheckoutSessionDeps {
   db: Db;
   session: PlatformSession;
   input: CheckoutInput;
-  env: Pick<Env, "STRIPE_SECRET_KEY" | "STRIPE_WEBHOOK_SIGNING_SECRET" | "STORE_URL">;
+  // STORE_URL widened to string: wrangler types it as the literal union of the
+  // deployed values, but the core only needs "a URL" (tests inject localhost).
+  env: Pick<Env, "STRIPE_SECRET_KEY" | "STRIPE_WEBHOOK_SIGNING_SECRET"> & { STORE_URL: string };
   ensureCustomer: EnsureCustomer;
   createStripeSession: StripeSessionCreator;
   expireSession: SessionExpirer;
