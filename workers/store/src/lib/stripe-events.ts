@@ -3,6 +3,7 @@ import { customerOrder, orderItem, processedStripeEvent, productVariant } from "
 import type { Db } from "@/lib/db";
 import { runBatch, type DbBatchItem } from "@/lib/db-batch";
 import type { StoreStripeEventMessage } from "@/lib/stripe-webhook";
+import { orderShippingBackfill } from "@/lib/stripe-session-fields";
 
 export type ProcessStripeEventResult =
   | { ok: true; outcome: "applied" | "duplicate" | "ignored" }
@@ -67,6 +68,8 @@ function buildEventMutations(
       const settled =
         message.payment_status === "paid" || message.payment_status === "no_payment_required";
       const nextPay = settled ? "paid" : "processing";
+      // Stripe's collected address is authoritative at payment time — backfill it
+      // (and the finalized totals) unconditionally, but only when carried.
       return {
         objectId,
         statements: [
@@ -79,6 +82,7 @@ function buildEventMutations(
                     status: sql`case when ${customerOrder.status} = 'pending' and ${customerOrder.paymentStatus} = 'unpaid' then 'paid' else ${customerOrder.status} end`,
                   }
                 : {}),
+              ...orderShippingBackfill(message),
               updatedAt: now,
             })
             .where(where),
@@ -94,6 +98,7 @@ function buildEventMutations(
             .set({
               paymentStatus: "paid",
               status: sql`case when ${customerOrder.status} = 'pending' then 'paid' else ${customerOrder.status} end`,
+              ...orderShippingBackfill(message),
               updatedAt: now,
             })
             .where(where),

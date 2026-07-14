@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 import { stripeConfigured } from "@somewhatintelligent/stripe";
 import { makeStripeClient } from "@/lib/stripe-client";
+import { extractSessionSnapshot, type StripeShippingDetails } from "@/lib/stripe-session-fields";
 
 export const STORE_STRIPE_WEBHOOK_PATH = "/hooks/store";
 
@@ -21,6 +22,12 @@ export type StoreStripeEventMessage = {
   // stays stripeCheckoutSessionId).
   mode?: string;
   metadataOrderId?: string;
+  // Stripe-collected shipping address + finalized money, carried so the consumer
+  // backfills the order at payment time without a re-fetch. Present only on
+  // completed/async-succeeded events that actually carry them.
+  shipping?: StripeShippingDetails;
+  amountTotal?: number;
+  shippingCents?: number;
 };
 
 // STRIPE_EVENTS is wrangler-generated, not hand-declared in env.d.ts (that hand
@@ -86,6 +93,7 @@ export async function handleStoreStripeWebhook(request: Request, env: Env): Prom
       eventObject.metadata && typeof eventObject.metadata.orderId === "string"
         ? eventObject.metadata.orderId
         : undefined,
+    ...extractSessionSnapshot(event.data.object),
   } satisfies StoreStripeEventMessage);
 
   return json(200, { ok: true });

@@ -15,7 +15,7 @@ import { stripeConfigured } from "@somewhatintelligent/stripe";
 import { getDb } from "@/lib/db";
 import { requireAuthMiddleware } from "@/lib/middleware/auth";
 import { makeStripeClient } from "@/lib/stripe-client";
-import { placeOrderInput } from "@/lib/orders.functions";
+import { orderItemsInput } from "@/lib/orders.functions";
 import type { PlatformSession } from "@somewhatintelligent/auth";
 import {
   createCheckoutSessionCore,
@@ -26,8 +26,13 @@ import {
   type EnsureCustomerResult,
   type OrderByStripeSessionResult,
   type SessionExpirer,
+  type ShippingRateLister,
   type StripeSessionCreator,
 } from "@/lib/checkout";
+
+// Items-only checkout input — Stripe collects the shipping address during
+// payment. Shares the cart-items validator with placeOrder (no copy-paste).
+const checkoutInput = type({ items: orderItemsInput });
 
 export type { CreateCheckoutSessionResult, OrderByStripeSessionResult } from "@/lib/checkout";
 
@@ -51,6 +56,7 @@ async function ensureStripeCustomer(): Promise<EnsureCustomerResult> {
 function makeStripeDeps(secretKey: string): {
   createStripeSession: StripeSessionCreator;
   expireSession: SessionExpirer;
+  listShippingRates: ShippingRateLister;
 } {
   let client: Stripe | undefined;
   const stripe = () => (client ??= makeStripeClient(secretKey));
@@ -63,14 +69,32 @@ function makeStripeDeps(secretKey: string): {
     expireSession: async (sessionId: string) => {
       await stripe().checkout.sessions.expire(sessionId);
     },
+    // Active CAD fixed-amount rates only; `min_subtotal_cents` metadata (absent
+    // → 0) makes thresholds like free-over-$150 Dashboard-editable.
+    listShippingRates: async () => {
+      const { data } = await stripe().shippingRates.list({ active: true, limit: 100 });
+      return data.flatMap((r) =>
+        r.type === "fixed_amount" && r.fixed_amount?.currency === "cad"
+          ? [
+              {
+                id: r.id,
+                amountCents: r.fixed_amount.amount,
+                minSubtotalCents: Number.parseInt(r.metadata?.min_subtotal_cents ?? "0", 10) || 0,
+              },
+            ]
+          : [],
+      );
+    },
   };
 }
 
 export const createCheckoutSession = createServerFn({ method: "POST" })
   .middleware([requireAuthMiddleware])
-  .inputValidator((data: typeof placeOrderInput.infer) => placeOrderInput.assert(data))
+  .inputValidator((data: typeof checkoutInput.infer) => checkoutInput.assert(data))
   .handler(async ({ data, context }): Promise<CreateCheckoutSessionResult> => {
-    const { createStripeSession, expireSession } = makeStripeDeps(env.STRIPE_SECRET_KEY);
+    const { createStripeSession, expireSession, listShippingRates } = makeStripeDeps(
+      env.STRIPE_SECRET_KEY,
+    );
     return createCheckoutSessionCore({
       db: getDb(),
       session: context.session as PlatformSession,
@@ -79,6 +103,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       ensureCustomer: ensureStripeCustomer,
       createStripeSession,
       expireSession,
+      listShippingRates,
     });
   });
 

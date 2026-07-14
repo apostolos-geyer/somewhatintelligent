@@ -4,7 +4,9 @@ Everything an operator needs when a Stripe checkout event does not resolve
 cleanly: what lands in the dead-letter queue, where the durable evidence lives,
 and how to replay or heal a stuck order. Code lives in
 `workers/store/src/lib/{stripe-queue,stripe-events,reconcile}.ts`; the pipeline
-overview is `docs/ARCHITECTURE.md` §7.
+overview is `docs/ARCHITECTURE.md` §7. Checkout session creation and the
+shipping-address/shipping-rate surfaces this runbook also documents live in
+`workers/store/src/lib/checkout.ts`.
 
 ---
 
@@ -164,3 +166,89 @@ supersede release already used (see the `cs_super` convergence test in
 `stripe-events.itest.ts`), so stock is never handed back twice. Orphans (a
 reservation with no session id) are never superseded here — they have no live
 Stripe object to expire and belong to the cron's orphan sweep.
+
+---
+
+## Shipping rates (Dashboard-managed)
+
+Shipping rates for the embedded checkout are **operator-managed entirely in
+the Stripe Dashboard** — no deploy touches a price. `createCheckoutSession`
+(`workers/store/src/lib/checkout.ts`) lists ACTIVE shipping rate objects at
+session-create time and attaches the applicable ones as the session's
+`shipping_options`, cheapest first, capped at 5; the buyer picks in the
+Payment Element when more than one applies. This is deliberately the same
+shape as A2's payment-method selection: the server discovers what's live in
+the Dashboard rather than hardcoding a rate id, so a price change is
+API-discovered, not code-deployed.
+
+**Creating a rate:** Dashboard → **Product catalog → Shipping rates** → create
+a fixed-amount CAD rate (`type: fixed_amount`, `currency: cad`). Give it a
+buyer-facing `display_name` — it renders on the Payment Element's shipping
+selector and on the Stripe receipt.
+
+**Gating a rate to a subtotal threshold — `min_subtotal_cents` metadata:** set
+the rate's `metadata.min_subtotal_cents` to a cents integer to make it apply
+only at or above that subtotal. A rate with no `min_subtotal_cents` metadata
+applies unconditionally (treated as `0`). Example: a `$0` "Free shipping" rate
+with `metadata.min_subtotal_cents = 15000` only appears once the cart subtotal
+reaches $150; a flat `$10` rate with no metadata always appears. Both live
+side by side — the server lists every ACTIVE rate, filters to the ones whose
+threshold the subtotal clears, then presents up to 5 of those, cheapest first.
+
+**Changing a rate's price:** shipping rate objects are **immutable** once
+created — Stripe has no "edit amount" call. To change a price: archive the
+old rate (Dashboard → the rate → Archive) and create a new one with the
+desired amount/metadata. Archiving removes it from the ACTIVE list the very
+next session-create call picks up — no redeploy, no code change.
+
+**No active rates configured — the built-in fallback:** if the ACTIVE-rate
+list comes back empty (a fresh environment before any Dashboard setup, or a
+listing call that fails), checkout falls back to the built-in flat rate
+(`calculateShipping`, `workers/store/src/lib/config.ts` /
+`workers/store/src/lib/pricing.ts` — `FLAT_SHIPPING_CENTS` /
+`FREE_SHIPPING_THRESHOLD_CENTS`) as a single `shipping_rate_data` option, so a
+brand-new fork works before an operator ever opens the Dashboard.
+
+---
+
+## Order address lifecycle
+
+Stripe, not the storefront's own form, collects the shipping address on the
+embedded checkout path: the Payment Element's ShippingAddressElement handles
+entry, autocomplete, validation, and Link autofill at payment time. (The
+manual `placeOrder` stub path is unchanged — it still collects the address
+in-form, for whenever Stripe is unconfigured.) That moves address data out of
+the request that creates the order:
+
+1. **Creation — NULL shipping fields.** `createCheckoutSession` writes the
+   `customer_order` row before the Payment Element has collected anything, so
+   the `ship*` columns start NULL. The order is fully reservable and payable
+   in this state — nothing downstream of checkout blocks on an address being
+   present yet.
+2. **Webhook backfill.** The `checkout.session.completed` (or, for an async
+   payment method, `checkout.session.async_payment_succeeded`) handler in
+   `workers/store/src/lib/stripe-events.ts` backfills the `ship*` columns from
+   the Session's collected shipping details, and finalizes the order's
+   totals (`subtotalCents`/`shippingCents`/`totalCents`) from the Session's
+   `amount_total` rather than trusting the provisional totals computed at
+   reservation time — the buyer's picked shipping option and any Dashboard
+   rate change between reservation and payment are only certain once Stripe
+   reports what was actually charged.
+3. **Cron-heal backfill.** The same backfill runs on the reconcile cron's heal
+   path ("Running the reconcile sweep out-of-band" above,
+   `store.stripe_reconcile.healed_paid`): when the sweep heals a
+   stale-attached session that Stripe reports `complete` + paid but whose
+   webhook never arrived, it retrieves the same shipping/amount data the
+   webhook would have used and backfills it in the same pass — a healed order
+   is never left with a NULL address just because its webhook was lost.
+4. **Buyer edit while pending.** The order's owner can edit the shipping
+   address on the order detail page while the order is still `pending` or
+   `paid` (before fulfillment) — an owner-only mutation, gated the same way
+   the existing owner/admin check on order reads is (`isOwner` in
+   `workers/store/src/lib/orders.functions.ts`). Once fulfillment has run
+   (`shipped`/`delivered`), the address is frozen; it is a record of where the
+   order was shipped, not a live field.
+5. **Fulfillment reads the order row.** `fulfillOrder` (carrier + tracking
+   number) is unchanged by any of this — it never talks to Stripe and always
+   reads/writes the order row directly, so it is unaffected by whether the
+   address arrived via webhook backfill, cron heal, or a buyer edit.

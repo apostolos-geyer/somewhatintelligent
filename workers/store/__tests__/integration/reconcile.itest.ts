@@ -357,6 +357,74 @@ describe("reconcilePendingReservations — stale-attached", () => {
     expect((await deadEventRow("evt_lost"))?.resolvedAt).toEqual(new Date(NOW));
   });
 
+  it("HEALS and BACKFILLS the address + totals when the retrieved session carries them", async () => {
+    // The paid-without-address hole: the completed-webhook was lost, so the
+    // order is still unpaid AND its address is NULL. The heal must both flip it
+    // to paid and backfill the Stripe-collected address the sweep re-fetched.
+    await seedReservation({
+      orderId: "o-heal-bf",
+      variantId: "v1",
+      quantity: 3,
+      stock: 7,
+      stripeCustomerId: "cus_1",
+      stripeCheckoutSessionId: "cs_healbf",
+      stripeSessionExpiresAt: new Date(NOW - 5 * MIN),
+      status: "pending",
+      paymentStatus: "unpaid",
+      createdAt: new Date(NOW - 40 * MIN),
+    });
+    // Pre-payment shape: core address NULL (shipCountry keeps "CA").
+    await db
+      .update(customerOrder)
+      .set({
+        shipName: null,
+        shipLine1: null,
+        shipLine2: null,
+        shipCity: null,
+        shipRegion: null,
+        shipPostal: null,
+        shipPhone: null,
+      })
+      .where(eq(customerOrder.id, "o-heal-bf"));
+
+    const result = await reconcilePendingReservations({
+      db,
+      retrieveSession: retriever({
+        cs_healbf: {
+          status: "complete",
+          payment_status: "paid",
+          shipping: {
+            name: "Ada Lovelace",
+            line1: "1 Main St",
+            city: "Toronto",
+            state: "ON",
+            postal: "M5V 2T6",
+            country: "CA",
+          },
+          amountTotal: 5_400,
+          shippingCents: 900,
+        },
+      }),
+      expireSession: expireOk(),
+      now: NOW,
+    });
+
+    expect(result.staleHealed).toBe(1);
+    expect(await stockOf("v1")).toBe(7); // stock never handed back on a heal
+    expect(await orderRow("o-heal-bf")).toMatchObject({
+      status: "paid",
+      paymentStatus: "paid",
+      shipName: "Ada Lovelace",
+      shipLine1: "1 Main St",
+      shipCity: "Toronto",
+      shipRegion: "ON",
+      shipPostal: "M5V 2T6",
+      shipCountry: "CA",
+      shippingCents: 900,
+      totalCents: 5_400,
+    });
+  });
+
   it("resolves the dead-letter row when a stale session is released (dead)", async () => {
     await seedReservation({
       orderId: "o-stale-dead",

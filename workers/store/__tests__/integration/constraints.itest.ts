@@ -7,7 +7,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 
-const { product, productImage, productVariant } = schema;
+const { product, productImage, productVariant, customerOrder } = schema;
 const db = drizzle(env.DB, { schema });
 
 async function seedProduct(id: string, slug: string) {
@@ -28,6 +28,7 @@ beforeEach(async () => {
   await db.delete(productImage);
   await db.delete(productVariant);
   await db.delete(product);
+  await db.delete(customerOrder);
 });
 
 describe("catalog constraints", () => {
@@ -107,5 +108,51 @@ describe("catalog constraints", () => {
     expect(await db.select().from(productImage).where(eq(productImage.productId, "p1"))).toEqual(
       [],
     );
+  });
+});
+
+describe("customer_order address atomicity (ship_address_atomic CHECK)", () => {
+  const baseOrder = (over: Partial<typeof customerOrder.$inferInsert>) => {
+    const now = new Date();
+    return {
+      id: "o1",
+      orderNumber: "SI-ATOMIC1",
+      userId: "buyer-1",
+      email: "b@e.com",
+      subtotalCents: 1000,
+      totalCents: 1000,
+      createdAt: now,
+      updatedAt: now,
+      ...over,
+    } satisfies typeof customerOrder.$inferInsert;
+  };
+
+  it("rejects a half-written address (some core fields set, others NULL)", async () => {
+    await expect(
+      // name + line1 set, city/region/postal NULL → CHECK violation.
+      db.insert(customerOrder).values(baseOrder({ shipName: "Ada", shipLine1: "1 Main" })),
+    ).rejects.toThrow();
+  });
+
+  it("accepts an all-NULL address (pre-payment order)", async () => {
+    await db.insert(customerOrder).values(baseOrder({}));
+    const [row] = await db.select().from(customerOrder).where(eq(customerOrder.id, "o1"));
+    expect(row!.shipName).toBeNull();
+  });
+
+  it("accepts a fully-collected address", async () => {
+    await db.insert(customerOrder).values(
+      baseOrder({
+        id: "o2",
+        orderNumber: "SI-ATOMIC2",
+        shipName: "Ada",
+        shipLine1: "1 Main",
+        shipCity: "Toronto",
+        shipRegion: "ON",
+        shipPostal: "M5V",
+      }),
+    );
+    const [row] = await db.select().from(customerOrder).where(eq(customerOrder.id, "o2"));
+    expect(row!.shipPostal).toBe("M5V");
   });
 });

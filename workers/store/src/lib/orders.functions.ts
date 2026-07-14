@@ -22,6 +22,7 @@ import { ForbiddenError, NotFoundError } from "@/lib/errors";
 import { CARRIER_KEYS, isOrderStatus, orderNumber } from "@/lib/config";
 import { computeOrderTotals } from "@/lib/pricing";
 import { reserveStockAndWrite } from "@/lib/reservation";
+import { updateOrderShippingCore } from "@/lib/orders-core";
 
 // Cap admin order lists (query-hygiene §5 — no unbounded table scans).
 const ORDER_LIST_LIMIT = 200;
@@ -41,10 +42,14 @@ export const shippingSchema = type({
   "phone?": "string <= 40",
 });
 
+// The cart items piece, shared by placeOrder ({items, shipping}) and the Stripe
+// checkout server fn ({items}) — one validator, no copy-paste.
+export const orderItemsInput = type({ variantId: "string", quantity: "1 <= number.integer <= 99" })
+  .array()
+  .atLeastLength(1);
+
 export const placeOrderInput = type({
-  items: type({ variantId: "string", quantity: "1 <= number.integer <= 99" })
-    .array()
-    .atLeastLength(1),
+  items: orderItemsInput,
   shipping: shippingSchema,
 });
 
@@ -186,6 +191,23 @@ export const getMyOrder = createServerFn({ method: "GET" })
     const items = await db.select().from(orderItem).where(eq(orderItem.orderId, order.id));
     return { order, items };
   });
+
+const updateOrderShippingInput = type({
+  orderNumber: "string",
+  shipping: shippingSchema,
+});
+
+// Edit an order's shipping address. Owner-or-admin, editable only while the
+// order is still 'pending' or 'paid'; request-path logic lives in
+// updateOrderShippingCore (pool-testable).
+export const updateOrderShipping = createServerFn({ method: "POST" })
+  .middleware([requireAuthMiddleware])
+  .inputValidator((data: typeof updateOrderShippingInput.infer) =>
+    updateOrderShippingInput.assert(data),
+  )
+  .handler(({ data, context }) =>
+    updateOrderShippingCore(getDb(), context.session, data.orderNumber, data.shipping),
+  );
 
 // ── Admin ────────────────────────────────────────────────────────────────────
 

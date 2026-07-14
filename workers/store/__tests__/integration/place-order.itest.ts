@@ -8,8 +8,10 @@
  */
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
+import type { PlatformSession } from "@somewhatintelligent/auth";
 import { computeOrderTotals } from "@/lib/pricing";
 import { runBatch } from "@/lib/db-batch";
+import { updateOrderShippingCore } from "@/lib/orders-core";
 import { db, seedOrder, seedOrderItem, seedProduct, seedVariant } from "./helpers";
 
 const { product, productVariant, customerOrder, orderItem } = schema;
@@ -179,5 +181,86 @@ describe("placeOrder D1 write path", () => {
     });
     await db.delete(customerOrder).where(eq(customerOrder.id, "o1"));
     expect(await db.select().from(orderItem).where(eq(orderItem.orderId, "o1"))).toEqual([]);
+  });
+});
+
+describe("updateOrderShippingCore", () => {
+  const session = (id: string, role = "user"): PlatformSession =>
+    ({ user: { id, email: `${id}@e.com`, role } }) as unknown as PlatformSession;
+
+  const shipping = {
+    name: "Grace Hopper",
+    line1: "2 Navy Way",
+    line2: "Suite 9",
+    city: "Arlington",
+    region: "VA",
+    postal: "22201",
+    phone: "+17035550100",
+  };
+
+  async function seedFor(status: schema.CustomerOrder["status"]) {
+    await seedOrder({
+      id: "o1",
+      orderNumber: "SI-EDIT1",
+      userId: "buyer-1",
+      status,
+      subtotalCents: 1000,
+      totalCents: 1000,
+    });
+  }
+
+  it("owner edits a pending order → ok, address written", async () => {
+    await seedFor("pending");
+    const res = await updateOrderShippingCore(db, session("buyer-1"), "SI-EDIT1", shipping);
+    expect(res).toEqual({ ok: true });
+    const [order] = await db.select().from(customerOrder).where(eq(customerOrder.id, "o1"));
+    expect(order).toMatchObject({
+      shipName: "Grace Hopper",
+      shipLine1: "2 Navy Way",
+      shipLine2: "Suite 9",
+      shipCity: "Arlington",
+      shipRegion: "VA",
+      shipPostal: "22201",
+      shipCountry: "CA",
+      shipPhone: "+17035550100",
+    });
+  });
+
+  it("owner edits a paid (not-yet-shipped) order → ok", async () => {
+    await seedFor("paid");
+    expect(await updateOrderShippingCore(db, session("buyer-1"), "SI-EDIT1", shipping)).toEqual({
+      ok: true,
+    });
+  });
+
+  it("a shipped order is not_editable", async () => {
+    await seedFor("shipped");
+    const res = await updateOrderShippingCore(db, session("buyer-1"), "SI-EDIT1", shipping);
+    expect(res).toEqual({ ok: false, error: "not_editable" });
+    // Address untouched (still the seeded default).
+    const [order] = await db.select().from(customerOrder).where(eq(customerOrder.id, "o1"));
+    expect(order!.shipName).toBe("Ada");
+  });
+
+  it("a non-owner non-admin is forbidden (throws)", async () => {
+    await seedFor("pending");
+    await expect(
+      updateOrderShippingCore(db, session("stranger"), "SI-EDIT1", shipping),
+    ).rejects.toThrow();
+    const [order] = await db.select().from(customerOrder).where(eq(customerOrder.id, "o1"));
+    expect(order!.shipName).toBe("Ada"); // never written
+  });
+
+  it("an admin may edit another user's order", async () => {
+    await seedFor("pending");
+    expect(
+      await updateOrderShippingCore(db, session("admin-1", "admin"), "SI-EDIT1", shipping),
+    ).toEqual({ ok: true });
+  });
+
+  it("an unknown order number throws not-found", async () => {
+    await expect(
+      updateOrderShippingCore(db, session("buyer-1"), "SI-NOPE", shipping),
+    ).rejects.toThrow();
   });
 });

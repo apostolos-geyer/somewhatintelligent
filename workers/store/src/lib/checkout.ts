@@ -23,21 +23,39 @@ import { stripeConfigured } from "@somewhatintelligent/stripe";
 // (Track A4/D4).
 const CHECKOUT_SESSION_TTL_SECONDS = 35 * 60;
 
-// The cart shape createCheckoutSession accepts — structurally the same as
-// placeOrder's arktype input, kept as a plain type so this module carries no
-// server-fn/validation dependency.
+// The cart shape createCheckoutSession accepts — items only. The shipping
+// address is collected by Stripe's ShippingAddressElement during payment and
+// backfilled onto the order by the completed webhook.
 export interface CheckoutInput {
   items: { variantId: string; quantity: number }[];
-  shipping: {
-    name: string;
-    line1: string;
-    line2?: string;
-    city: string;
-    region: string;
-    postal: string;
-    country?: string;
-    phone?: string;
-  };
+}
+
+// A Dashboard-managed shipping rate (`shr_…`), listed at session-create time.
+// `minSubtotalCents` comes from the rate's `min_subtotal_cents` metadata
+// (absent → 0), so thresholds like free-over-$150 are Dashboard-editable.
+export interface ShippingRateOption {
+  id: string;
+  amountCents: number;
+  minSubtotalCents: number;
+}
+export type ShippingRateLister = () => Promise<ShippingRateOption[]>;
+
+// Stripe's shipping_options accepts at most this many entries.
+const MAX_SHIPPING_OPTIONS = 5;
+
+// The rates a subtotal qualifies for, cheapest-first, capped at Stripe's
+// shipping_options limit. The first (cheapest) entry is Stripe's default
+// selection and the order's provisional shippingCents; an empty result means no
+// rate is configured for this subtotal (the session falls back to the built-in
+// flat rate).
+export function applicableShippingRates(
+  rates: readonly ShippingRateOption[],
+  subtotalCents: number,
+): ShippingRateOption[] {
+  return rates
+    .filter((r) => r.minSubtotalCents <= subtotalCents)
+    .sort((a, b) => a.amountCents - b.amountCents)
+    .slice(0, MAX_SHIPPING_OPTIONS);
 }
 
 type CheckoutError =
@@ -92,12 +110,14 @@ export interface CheckoutSessionDeps {
   ensureCustomer: EnsureCustomer;
   createStripeSession: StripeSessionCreator;
   expireSession: SessionExpirer;
+  listShippingRates: ShippingRateLister;
 }
 
 function buildSessionParams(opts: {
   customerId: string;
   lines: readonly OrderLine[];
-  shippingCents: number;
+  shippingRates: readonly ShippingRateOption[];
+  fallbackShippingCents: number;
   orderId: string;
   returnUrl: string;
 }): DahliaSessionCreateParams {
@@ -117,17 +137,24 @@ function buildSessionParams(opts: {
         product_data: { name: `${line.title} (${line.size})` },
       },
     })),
-    // Shipping rides shipping_options as a server-picked rate, never a line item
-    // (Track B3) — calculateShipping stays the single shipping-cost authority.
-    shipping_options: [
-      {
-        shipping_rate_data: {
-          display_name: "Shipping",
-          type: "fixed_amount",
-          fixed_amount: { amount: opts.shippingCents, currency: "cad" },
-        },
-      },
-    ],
+    // Stripe collects and validates the shipping address (ShippingAddressElement
+    // at payment); the completed webhook backfills it onto the order.
+    shipping_address_collection: { allowed_countries: ["CA"] },
+    // Shipping rides shipping_options: the Dashboard-managed rates the subtotal
+    // qualifies for (cheapest-first, capped), else the built-in flat rate (Track
+    // B3).
+    shipping_options:
+      opts.shippingRates.length > 0
+        ? opts.shippingRates.map((r) => ({ shipping_rate: r.id }))
+        : [
+            {
+              shipping_rate_data: {
+                display_name: "Shipping",
+                type: "fixed_amount",
+                fixed_amount: { amount: opts.fallbackShippingCents, currency: "cad" },
+              },
+            },
+          ],
     // Costs nothing now; prerequisite for a future Dashboard-only Stripe Tax
     // flip (Track A7).
     billing_address_collection: "auto",
@@ -231,7 +258,23 @@ export async function createCheckoutSessionCore(
   if (!priced.ok) {
     return { ok: false, error: priced.error as CheckoutError, message: priced.message };
   }
-  const { lines, subtotalCents, shippingCents, totalCents } = priced;
+  const { lines, subtotalCents } = priced;
+
+  // The Dashboard-managed rates the subtotal qualifies for (metadata-
+  // thresholded), else the built-in flat rate. A listing failure degrades to the
+  // fallback, never blocks checkout. Totals here are PROVISIONAL — the default
+  // (cheapest) rate — and the completed webhook finalizes them from the buyer's
+  // actual Stripe selection.
+  let shippingRates: ShippingRateOption[] = [];
+  try {
+    shippingRates = applicableShippingRates(await deps.listShippingRates(), subtotalCents);
+  } catch (err) {
+    console.warn(
+      `[store] shippingRates.list failed, using built-in rate: ${err instanceof Error ? err.message : "unknown"}`,
+    );
+  }
+  const shippingCents = shippingRates[0]?.amountCents ?? priced.shippingCents;
+  const totalCents = subtotalCents + shippingCents;
 
   // Resolve the buyer's Stripe Customer BEFORE reserving, so the order row can
   // carry it from creation (INV-11 discriminator, never half-set).
@@ -246,7 +289,8 @@ export async function createCheckoutSessionCore(
   const orderId = ulid();
   const num = orderNumber();
   const now = new Date();
-  const s = input.shipping;
+  // Shipping address is NULL until the completed webhook backfills the Stripe-
+  // collected address; fulfillment only reads it once the order is paid.
   const orderInsert = db.insert(customerOrder).values({
     id: orderId,
     orderNumber: num,
@@ -256,14 +300,14 @@ export async function createCheckoutSessionCore(
     paymentStatus: "unpaid",
     // stripeCustomerId set in the SAME insert as the reservation write — INV-11.
     stripeCustomerId: customer.stripeCustomerId,
-    shipName: s.name,
-    shipLine1: s.line1,
-    shipLine2: s.line2 ?? null,
-    shipCity: s.city,
-    shipRegion: s.region,
-    shipPostal: s.postal,
-    shipCountry: s.country ?? "CA",
-    shipPhone: s.phone ?? null,
+    shipName: null,
+    shipLine1: null,
+    shipLine2: null,
+    shipCity: null,
+    shipRegion: null,
+    shipPostal: null,
+    shipCountry: "CA",
+    shipPhone: null,
     subtotalCents,
     shippingCents,
     totalCents,
@@ -299,7 +343,8 @@ export async function createCheckoutSessionCore(
       buildSessionParams({
         customerId: customer.stripeCustomerId,
         lines,
-        shippingCents,
+        shippingRates,
+        fallbackShippingCents: shippingCents,
         orderId,
         returnUrl,
       }),

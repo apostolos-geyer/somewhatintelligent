@@ -1,7 +1,8 @@
 // Storefront schema. All timestamps are unix milliseconds. User ids are bare
 // `text` columns holding bouncer user ids — this app owns no auth tables
 // (cross-subdomain SSO via bouncer; see docs/adding-an-app.md §2).
-import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { check, index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
 import { ORDER_STATUSES, PRODUCT_STATUSES } from "@/lib/config";
 
 // ── Catalog ────────────────────────────────────────────────────────────────
@@ -60,6 +61,9 @@ export const productVariant = sqliteTable(
   (t) => [
     index("idx_variant_product").on(t.productId),
     uniqueIndex("idx_variant_product_size").on(t.productId, t.size),
+    // Negative stock is unrepresentable. The reservation guard (WHERE stock >=
+    // qty) stays the concurrency mechanism; this backstops any unguarded write.
+    check("stock_non_negative", sql`stock >= 0`),
   ],
 );
 
@@ -76,13 +80,16 @@ export const customerOrder = sqliteTable(
     userId: text("user_id").notNull(), // bouncer buyer id
     email: text("email").notNull(),
     status: text("status", { enum: ORDER_STATUSES }).notNull().default("pending"),
-    // Shipping address snapshot.
-    shipName: text("ship_name").notNull(),
-    shipLine1: text("ship_line1").notNull(),
+    // Shipping address snapshot. Nullable because the embedded Stripe checkout
+    // collects the address during payment (ShippingAddressElement) — the order
+    // is created before Stripe returns it, and the completed webhook / heal
+    // sweep backfills these columns. shipCountry keeps its notNull "CA" default.
+    shipName: text("ship_name"),
+    shipLine1: text("ship_line1"),
     shipLine2: text("ship_line2"),
-    shipCity: text("ship_city").notNull(),
-    shipRegion: text("ship_region").notNull(),
-    shipPostal: text("ship_postal").notNull(),
+    shipCity: text("ship_city"),
+    shipRegion: text("ship_region"),
+    shipPostal: text("ship_postal"),
     shipCountry: text("ship_country").notNull().default("CA"),
     shipPhone: text("ship_phone"),
     // Money (integer cents, CAD).
@@ -112,6 +119,13 @@ export const customerOrder = sqliteTable(
     index("idx_order_user").on(t.userId, t.createdAt),
     index("idx_order_status").on(t.status),
     index("idx_order_stripe_customer").on(t.stripeCustomerId),
+    // Address atomicity: the core address group is either wholly collected or
+    // wholly absent — a half-written address is unrepresentable. (shipCountry
+    // keeps its own "CA" default; shipLine2/shipPhone are independently optional.)
+    check(
+      "ship_address_atomic",
+      sql`(ship_name IS NULL) = (ship_line1 IS NULL) AND (ship_name IS NULL) = (ship_city IS NULL) AND (ship_name IS NULL) = (ship_region IS NULL) AND (ship_name IS NULL) = (ship_postal IS NULL)`,
+    ),
   ],
 );
 

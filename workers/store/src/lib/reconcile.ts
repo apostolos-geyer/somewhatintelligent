@@ -15,6 +15,7 @@ import { and, eq, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import { customerOrder, deadStripeEvent, orderItem, productVariant } from "@/db/schema";
 import type { Db } from "@/lib/db";
 import type { DbBatchItem } from "@/lib/db-batch";
+import { orderShippingBackfill, type StripeSessionSnapshot } from "@/lib/stripe-session-fields";
 
 // An orphaned reservation is released on D1 state alone (Track D6) once it is
 // older than this grace window — comfortably longer than any Stripe API round
@@ -22,8 +23,12 @@ import type { DbBatchItem } from "@/lib/db-batch";
 const ORPHAN_GRACE_MS = 10 * 60 * 1000;
 
 // The subset of a retrieved Session the sweep branches on. `null` mirrors the
-// SDK's own nullable fields.
-export type RetrievedSession = { status: string | null; payment_status: string | null };
+// SDK's own nullable fields; the snapshot fields carry the Stripe-collected
+// address + finalized money a heal backfills onto the order.
+export type RetrievedSession = {
+  status: string | null;
+  payment_status: string | null;
+} & StripeSessionSnapshot;
 export type SessionRetriever = (sessionId: string) => Promise<RetrievedSession>;
 
 // Injected `stripe.checkout.sessions.expire`: only resolves on an OPEN session,
@@ -84,13 +89,16 @@ export function releaseAndCancel(db: Db, orderId: string, now: Date): [DbBatchIt
 // transitions are CASE-gated on the pre-sweep `unpaid`/`processing` state (and
 // `status = 'pending'`) so a real webhook that lands between the candidate
 // SELECT and this write, or a later real-event replay, is a harmless no-op. No
-// ledger row is written — the state-gating alone makes replays idempotent.
-function healPaid(db: Db, orderId: string, now: Date) {
+// ledger row is written — the state-gating alone makes replays idempotent. The
+// Stripe-collected address + finalized totals are backfilled when the retrieved
+// session carries them — this heal closes the paid-without-address hole.
+function healPaid(db: Db, orderId: string, now: Date, snapshot: StripeSessionSnapshot) {
   return db
     .update(customerOrder)
     .set({
       paymentStatus: sql`case when ${customerOrder.paymentStatus} in ('unpaid', 'processing') then 'paid' else ${customerOrder.paymentStatus} end`,
       status: sql`case when ${customerOrder.status} = 'pending' and ${customerOrder.paymentStatus} in ('unpaid', 'processing') then 'paid' else ${customerOrder.status} end`,
+      ...orderShippingBackfill(snapshot),
       updatedAt: now,
     })
     .where(eq(customerOrder.id, orderId));
@@ -206,7 +214,7 @@ export async function reconcilePendingReservations(deps: ReconcileDeps): Promise
       session.status === "complete" &&
       (session.payment_status === "paid" || session.payment_status === "no_payment_required");
     if (paid) {
-      await db.batch([healPaid(db, row.id, now)]);
+      await db.batch([healPaid(db, row.id, now, session)]);
       console.log("store.stripe_reconcile.healed_paid", {
         order_id: row.id,
         session_id: sessionId,

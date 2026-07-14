@@ -19,6 +19,8 @@ import {
   type CheckoutSessionDeps,
   type EnsureCustomer,
   type SessionExpirer,
+  type ShippingRateLister,
+  type ShippingRateOption,
   type StripeSessionCreator,
 } from "@/lib/checkout";
 import { db, seedOrder, seedOrderItem, seedProduct, seedVariant, stockOf } from "./helpers";
@@ -40,6 +42,10 @@ const okCustomer: EnsureCustomer = async () => ({ ok: true, stripeCustomerId: "c
 // the caller — the supersede SELECT returns nothing, so this is never invoked.
 // The supersede-specific tests below inject their own spy/throwing expirer.
 const noExpire: SessionExpirer = async () => {};
+
+// Default rate lister: no Dashboard rates, so the session falls back to the
+// built-in flat rate. The rates-specific test injects its own lister.
+const noRates: ShippingRateLister = async () => [];
 
 // Seed a prior open checkout attempt for a user: a pending/unpaid order carrying
 // a session id + one reserved line, exactly the shape the supersede sweep
@@ -84,13 +90,6 @@ async function orderById(id: string) {
 
 const input = (over: Partial<CheckoutInput> = {}): CheckoutInput => ({
   items: [{ variantId: "v1", quantity: 3 }],
-  shipping: {
-    name: "Ada Lovelace",
-    line1: "1 Main",
-    city: "Toronto",
-    region: "ON",
-    postal: "M5V",
-  },
   ...over,
 });
 
@@ -121,6 +120,7 @@ describe("createCheckoutSessionCore", () => {
       ensureCustomer: okCustomer,
       createStripeSession,
       expireSession: noExpire,
+      listShippingRates: noRates,
     });
 
     expect(result).toEqual({
@@ -142,6 +142,16 @@ describe("createCheckoutSessionCore", () => {
       subtotalCents: 9000,
       shippingCents: 0,
       totalCents: 9000,
+      // Address is NULL at creation — Stripe collects it during payment and the
+      // completed webhook backfills it. shipCountry keeps its "CA" default.
+      shipName: null,
+      shipLine1: null,
+      shipLine2: null,
+      shipCity: null,
+      shipRegion: null,
+      shipPostal: null,
+      shipCountry: "CA",
+      shipPhone: null,
     });
     expect(orders[0]!.stripeSessionExpiresAt).toBeInstanceOf(Date);
     expect(orders[0]!.stripeSessionExpiresAt!.getTime()).toBe(expiresAt * 1000);
@@ -198,11 +208,60 @@ describe("createCheckoutSessionCore", () => {
       ensureCustomer: okCustomer,
       createStripeSession,
       expireSession: noExpire,
+      listShippingRates: noRates,
     });
 
     const [params] = createStripeSession.mock.calls[0]!;
     const [line] = params.line_items!;
     expect((line as { price_data: { unit_amount: number } }).price_data.unit_amount).toBe(2500);
+  });
+
+  it("Dashboard rates: applicable set (filtered, sorted, capped at 5) rides shipping_options; default rate is the provisional shippingCents", async () => {
+    await seedProduct({ id: "p1", priceCents: 3000 });
+    await seedVariant({ id: "v1", productId: "p1", size: "M", stock: 10 });
+
+    // subtotal = 3 × 3000 = 9000. shr_hi is filtered (threshold above subtotal);
+    // the remaining six sort cheapest-first and cap to five (shr_6 drops).
+    const rates: ShippingRateOption[] = [
+      { id: "shr_6", amountCents: 600, minSubtotalCents: 0 },
+      { id: "shr_1", amountCents: 100, minSubtotalCents: 0 },
+      { id: "shr_5", amountCents: 500, minSubtotalCents: 0 },
+      { id: "shr_2", amountCents: 200, minSubtotalCents: 0 },
+      { id: "shr_hi", amountCents: 50, minSubtotalCents: 100_000 },
+      { id: "shr_4", amountCents: 400, minSubtotalCents: 0 },
+      { id: "shr_3", amountCents: 300, minSubtotalCents: 0 },
+    ];
+
+    const createStripeSession = vi.fn<StripeSessionCreator>(async () => ({
+      id: "cs_rates",
+      client_secret: "cs_rates_secret",
+      expires_at: Math.floor(Date.now() / 1000) + 1800,
+    }));
+
+    await createCheckoutSessionCore({
+      db,
+      session: session(),
+      input: input(),
+      env: STRIPE_ENV,
+      ensureCustomer: okCustomer,
+      createStripeSession,
+      expireSession: noExpire,
+      listShippingRates: async () => rates,
+    });
+
+    const [params] = createStripeSession.mock.calls[0]!;
+    expect(params.shipping_options).toEqual([
+      { shipping_rate: "shr_1" },
+      { shipping_rate: "shr_2" },
+      { shipping_rate: "shr_3" },
+      { shipping_rate: "shr_4" },
+      { shipping_rate: "shr_5" },
+    ]);
+
+    // Provisional totals use the default (cheapest) rate; the webhook finalizes.
+    const [order] = await db.select().from(customerOrder);
+    expect(order!.shippingCents).toBe(100);
+    expect(order!.totalCents).toBe(9100);
   });
 
   it("Stripe sessions.create throws: reservation fully reversed, order cancelled, no session id", async () => {
@@ -221,6 +280,7 @@ describe("createCheckoutSessionCore", () => {
       ensureCustomer: okCustomer,
       createStripeSession,
       expireSession: noExpire,
+      listShippingRates: noRates,
     });
 
     expect(result).toEqual({ ok: false, error: "stripe_session_failed" });
@@ -245,6 +305,7 @@ describe("createCheckoutSessionCore", () => {
       ensureCustomer: okCustomer,
       createStripeSession,
       expireSession: noExpire,
+      listShippingRates: noRates,
     });
 
     expect(result).toMatchObject({ ok: false, error: "out_of_stock" });
@@ -260,6 +321,7 @@ describe("createCheckoutSessionCore", () => {
     const createStripeSession = vi.fn();
     const ensureCustomer = vi.fn<EnsureCustomer>();
     const expireSession = vi.fn<SessionExpirer>();
+    const listShippingRates = vi.fn<ShippingRateLister>();
 
     const result = await createCheckoutSessionCore({
       db,
@@ -273,12 +335,14 @@ describe("createCheckoutSessionCore", () => {
       ensureCustomer,
       createStripeSession,
       expireSession,
+      listShippingRates,
     });
 
     expect(result).toEqual({ ok: true, mode: "stub" });
     expect(ensureCustomer).not.toHaveBeenCalled();
     expect(createStripeSession).not.toHaveBeenCalled();
     expect(expireSession).not.toHaveBeenCalled();
+    expect(listShippingRates).not.toHaveBeenCalled();
     expect(await db.select().from(customerOrder)).toHaveLength(0);
     expect(await stockOf("v1")).toBe(10);
   });
@@ -296,6 +360,7 @@ describe("createCheckoutSessionCore", () => {
       ensureCustomer: async () => ({ ok: false }),
       createStripeSession,
       expireSession: noExpire,
+      listShippingRates: noRates,
     });
 
     expect(result).toEqual({ ok: false, error: "stripe_customer_failed" });
@@ -333,6 +398,7 @@ describe("createCheckoutSessionCore — supersede prior open attempts (Track G3)
       ensureCustomer: okCustomer,
       createStripeSession,
       expireSession,
+      listShippingRates: noRates,
     });
 
     expect(result).toMatchObject({ ok: true, mode: "elements", clientSecret: "cs_new_secret" });
@@ -388,6 +454,7 @@ describe("createCheckoutSessionCore — supersede prior open attempts (Track G3)
       ensureCustomer: okCustomer,
       createStripeSession,
       expireSession,
+      listShippingRates: noRates,
     });
 
     // A supersede failure never blocks the new checkout.
@@ -435,6 +502,7 @@ describe("createCheckoutSessionCore — supersede prior open attempts (Track G3)
       ensureCustomer: okCustomer,
       createStripeSession,
       expireSession,
+      listShippingRates: noRates,
     });
 
     expect(result).toMatchObject({ ok: true, mode: "elements" });
@@ -478,6 +546,7 @@ describe("createCheckoutSessionCore — supersede prior open attempts (Track G3)
       ensureCustomer: okCustomer,
       createStripeSession,
       expireSession,
+      listShippingRates: noRates,
     });
 
     expect(result).toMatchObject({ ok: true, mode: "elements" });

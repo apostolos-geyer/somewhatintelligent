@@ -10,6 +10,7 @@ import { handleStoreStripeWebhook, STORE_STRIPE_WEBHOOK_PATH } from "./lib/strip
 import { createDb } from "./lib/db";
 import { consumeStripeEventBatch, DLQ_QUEUE_PATTERN, processDlqBatch } from "./lib/stripe-queue";
 import { reconcilePendingReservations } from "./lib/reconcile";
+import { extractSessionSnapshot } from "./lib/stripe-session-fields";
 import type { StoreStripeEventMessage } from "./lib/stripe-webhook";
 
 declare module "@tanstack/react-start" {
@@ -69,7 +70,7 @@ export default {
       db: createDb(env.DB),
       retrieveSession: async (sessionId) => {
         const s = await stripe.checkout.sessions.retrieve(sessionId);
-        return { status: s.status, payment_status: s.payment_status };
+        return { status: s.status, payment_status: s.payment_status, ...extractSessionSnapshot(s) };
       },
       expireSession: async (sessionId) => {
         await stripe.checkout.sessions.expire(sessionId);

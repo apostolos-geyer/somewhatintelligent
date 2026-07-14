@@ -93,6 +93,38 @@ function msg(overrides: Partial<StoreStripeEventMessage> = {}): StoreStripeEvent
   };
 }
 
+// Seed an order in the pre-payment shape the Stripe checkout writes: the core
+// address group NULL (shipCountry keeps "CA"), for the backfill to fill in.
+async function seedUnaddressedOrder(
+  sessionId: string,
+  opts: { status?: "pending" | "cancelled" | "paid"; paymentStatus?: string } = {},
+) {
+  await seedOrder(sessionId, opts);
+  await db
+    .update(customerOrder)
+    .set({
+      shipName: null,
+      shipLine1: null,
+      shipLine2: null,
+      shipCity: null,
+      shipRegion: null,
+      shipPostal: null,
+      shipPhone: null,
+    })
+    .where(eq(customerOrder.stripeCheckoutSessionId, sessionId));
+}
+
+const fullShipping = {
+  name: "Ada Lovelace",
+  line1: "1 Main St",
+  line2: "Apt 2",
+  city: "Toronto",
+  state: "ON",
+  postal: "M5V 2T6",
+  country: "CA",
+  phone: "+14165550100",
+} as const;
+
 async function orderFor(sessionId: string) {
   const [row] = await db
     .select()
@@ -316,6 +348,75 @@ describe("processStoreStripeEvent", () => {
       order = await orderFor("cs_x");
       expect(order?.paymentStatus).toBe("failed"); // terminal, not clobbered
       expect(order?.status).toBe("cancelled");
+    });
+  });
+
+  describe("(h) address + totals backfill from the paid session", () => {
+    it("completed carrying shipping + totals backfills the address and finalized money", async () => {
+      await seedUnaddressedOrder("cs_x");
+
+      const r = await processStoreStripeEvent(
+        db,
+        msg({ shipping: fullShipping, amountTotal: 12_345, shippingCents: 999 }),
+        STAGING,
+      );
+      expect(r).toEqual<ProcessStripeEventResult>({ ok: true, outcome: "applied" });
+
+      const order = await orderFor("cs_x");
+      expect(order?.paymentStatus).toBe("paid");
+      expect(order).toMatchObject({
+        shipName: "Ada Lovelace",
+        shipLine1: "1 Main St",
+        shipLine2: "Apt 2",
+        shipCity: "Toronto",
+        shipRegion: "ON", // from address.state
+        shipPostal: "M5V 2T6",
+        shipCountry: "CA",
+        shipPhone: "+14165550100",
+        shippingCents: 999,
+        totalCents: 12_345,
+      });
+    });
+
+    it("async_payment_succeeded backfills the address and totals too", async () => {
+      // Async method: completed(unpaid) first (no shipping), then the success.
+      await seedUnaddressedOrder("cs_a", { paymentStatus: "processing" });
+
+      const r = await processStoreStripeEvent(
+        db,
+        msg({
+          id: "evt_a",
+          type: "checkout.session.async_payment_succeeded",
+          objectId: "cs_a",
+          shipping: fullShipping,
+          amountTotal: 8_800,
+          shippingCents: 500,
+        }),
+        STAGING,
+      );
+      expect(r).toEqual<ProcessStripeEventResult>({ ok: true, outcome: "applied" });
+
+      const order = await orderFor("cs_a");
+      expect(order?.paymentStatus).toBe("paid");
+      expect(order).toMatchObject({
+        shipName: "Ada Lovelace",
+        shipRegion: "ON",
+        shipPostal: "M5V 2T6",
+        shippingCents: 500,
+        totalCents: 8_800,
+      });
+    });
+
+    it("a message with no shipping leaves the address NULL (no half-write)", async () => {
+      await seedUnaddressedOrder("cs_n");
+
+      await processStoreStripeEvent(db, msg({ objectId: "cs_n", amountTotal: 3_000 }), STAGING);
+
+      const order = await orderFor("cs_n");
+      expect(order?.paymentStatus).toBe("paid");
+      expect(order?.shipName).toBeNull();
+      expect(order?.shipPostal).toBeNull();
+      expect(order?.totalCents).toBe(3_000); // money still finalized
     });
   });
 
