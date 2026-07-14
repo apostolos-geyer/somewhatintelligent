@@ -12,8 +12,12 @@ import { useAppForm } from "@si/ui/hooks/use-app-form";
 import { useCart, type CartLine } from "@/lib/cart";
 import { formatCents } from "@/lib/money";
 import { calculateShipping } from "@/lib/config";
-import { placeOrder } from "@/lib/orders.functions";
-import { createCheckoutSession, getCheckoutConfig } from "@/lib/checkout.functions";
+import { placeOrder, type PlaceOrderResult } from "@/lib/orders.functions";
+import {
+  createCheckoutSession,
+  getCheckoutConfig,
+  type CreateCheckoutSessionResult,
+} from "@/lib/checkout.functions";
 
 export const Route = createFileRoute("/_app/checkout/")({
   // stripeEnabled comes from the server (the full stripeConfigured gate) — when
@@ -41,6 +45,40 @@ const checkoutSchema = type({
   phone: "string <= 40",
 });
 
+type CheckoutFormValues = typeof checkoutSchema.infer;
+
+type OrderSubmitPayload = {
+  items: { variantId: string; quantity: number }[];
+  shipping: {
+    name: string;
+    line1: string;
+    line2?: string;
+    city: string;
+    region: string;
+    postal: string;
+    country: "CA";
+    phone?: string;
+  };
+};
+
+function buildOrderSubmitPayload(lines: CartLine[], value: CheckoutFormValues): OrderSubmitPayload {
+  return {
+    items: lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })),
+    shipping: {
+      name: value.name,
+      line1: value.line1,
+      ...(value.line2 ? { line2: value.line2 } : {}),
+      city: value.city,
+      region: value.region,
+      postal: value.postal,
+      country: "CA",
+      ...(value.phone ? { phone: value.phone } : {}),
+    },
+  };
+}
+
+type CheckoutSubmitFailure = { ok: false; error: string; message?: string };
+
 // Stripe.js loads only from js.stripe.com via the npm loader — never bundled
 // (PCI SAQ-A). Lazily initialized in-browser (only when the payment step
 // mounts), so SSR never touches it.
@@ -50,11 +88,26 @@ function getStripe(): Promise<Stripe | null> {
   return stripePromise;
 }
 
-// Today's manual checkout, unchanged: submits the shipping form straight to
-// placeOrder. Renders whenever Stripe is unconfigured.
-function ManualCheckout() {
-  const { lines, subtotalCents, clear } = useCart();
-  const navigate = useNavigate();
+// Shared shell for both checkout branches: shipping form, order summary, the
+// checkout_started analytics effect, and submit/failure handling. Only the
+// submit call, its success handling, and the button copy differ per branch.
+function CheckoutForm<TSuccess extends { ok: true }>({
+  lines,
+  subtotalCents,
+  submitLabel,
+  submitLoadingLabel,
+  footnote,
+  submit,
+  onSuccess,
+}: {
+  lines: CartLine[];
+  subtotalCents: number;
+  submitLabel: string;
+  submitLoadingLabel: string;
+  footnote: string;
+  submit: (payload: OrderSubmitPayload) => Promise<TSuccess | CheckoutSubmitFailure>;
+  onSuccess: (result: TSuccess) => void | Promise<void>;
+}) {
   const capture = useCapture();
   const captureException = useCaptureException();
 
@@ -80,21 +133,7 @@ function ManualCheckout() {
         return;
       }
       try {
-        const result = await placeOrder({
-          data: {
-            items: lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })),
-            shipping: {
-              name: value.name,
-              line1: value.line1,
-              ...(value.line2 ? { line2: value.line2 } : {}),
-              city: value.city,
-              region: value.region,
-              postal: value.postal,
-              country: "CA",
-              ...(value.phone ? { phone: value.phone } : {}),
-            },
-          },
-        });
+        const result = await submit(buildOrderSubmitPayload(lines, value));
         if (!result.ok) {
           capture("checkout_failed", {
             reason: toCheckoutFailureReason(result.error),
@@ -104,9 +143,7 @@ function ManualCheckout() {
           toast.error(result.message ? `${result.error}: ${result.message}` : result.error);
           return;
         }
-        clear();
-        toast.success("Order placed!");
-        void navigate({ to: "/orders/$orderNumber", params: { orderNumber: result.orderNumber } });
+        await onSuccess(result);
       } catch (err) {
         captureException(err);
         toast.error(err instanceof Error ? err.message : "Checkout failed");
@@ -172,14 +209,14 @@ function ManualCheckout() {
             />
             <form.AppForm>
               <form.SubmitButton
-                label="Place order"
-                loadingLabel="Placing order…"
+                label={submitLabel}
+                loadingLabel={submitLoadingLabel}
                 size="lg"
                 className="mt-5 w-full"
               />
             </form.AppForm>
             <p className="text-muted-foreground mt-2 text-center font-mono text-[11px]">
-              Payment is collected on confirmation (no card charged here).
+              {footnote}
             </p>
           </Card>
         </div>
@@ -188,78 +225,39 @@ function ManualCheckout() {
   );
 }
 
+// Today's manual checkout, unchanged: submits the shipping form straight to
+// placeOrder. Renders whenever Stripe is unconfigured.
+function ManualCheckout() {
+  const { lines, subtotalCents, clear } = useCart();
+  const navigate = useNavigate();
+
+  return (
+    <CheckoutForm<Extract<PlaceOrderResult, { ok: true }>>
+      lines={lines}
+      subtotalCents={subtotalCents}
+      submitLabel="Place order"
+      submitLoadingLabel="Placing order…"
+      footnote="Payment is collected on confirmation (no card charged here)."
+      submit={(payload) => placeOrder({ data: payload })}
+      onSuccess={(result) => {
+        clear();
+        toast.success("Order placed!");
+        void navigate({ to: "/orders/$orderNumber", params: { orderNumber: result.orderNumber } });
+      }}
+    />
+  );
+}
+
 // Stripe branch: shipping form stays ours (Track A3 — no Stripe address
 // elements). On submit createCheckoutSession reserves stock + creates the
 // Session; the returned client_secret mounts the embedded Payment Element.
 function StripeCheckout() {
   const { lines, subtotalCents } = useCart();
-  const capture = useCapture();
-  const captureException = useCaptureException();
   const [clientSecret, setClientSecret] = useState<string | null>(null);
 
-  const shippingCents = calculateShipping(subtotalCents);
-  const totalCents = subtotalCents + shippingCents;
-
-  useEffect(() => {
-    if (lines.length > 0) {
-      capture("checkout_started", {
-        item_count: lines.reduce((sum, l) => sum + l.quantity, 0),
-        subtotal_cents: subtotalCents,
-        total_cents: totalCents,
-      });
-    }
-  }, []);
-
-  const form = useAppForm({
-    defaultValues: { name: "", line1: "", line2: "", city: "", region: "", postal: "", phone: "" },
-    validators: { onChange: checkoutSchema },
-    onSubmit: async ({ value }) => {
-      if (lines.length === 0) {
-        toast.error("Your cart is empty");
-        return;
-      }
-      try {
-        const result = await createCheckoutSession({
-          data: {
-            items: lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })),
-            shipping: {
-              name: value.name,
-              line1: value.line1,
-              ...(value.line2 ? { line2: value.line2 } : {}),
-              city: value.city,
-              region: value.region,
-              postal: value.postal,
-              country: "CA",
-              ...(value.phone ? { phone: value.phone } : {}),
-            },
-          },
-        });
-        if (!result.ok) {
-          capture("checkout_failed", {
-            reason: toCheckoutFailureReason(result.error),
-            item_count: lines.reduce((sum, l) => sum + l.quantity, 0),
-            total_cents: totalCents,
-          });
-          toast.error(result.message ? `${result.error}: ${result.message}` : result.error);
-          return;
-        }
-        if (result.mode !== "elements") {
-          // stripeEnabled and a stub result share the same gate, so this is
-          // unreachable in practice — surface it rather than silently stalling.
-          toast.error("Checkout is unavailable right now");
-          return;
-        }
-        setClientSecret(result.clientSecret);
-      } catch (err) {
-        captureException(err);
-        toast.error(err instanceof Error ? err.message : "Checkout failed");
-      }
-    },
-  });
-
-  if (lines.length === 0) return <EmptyCart />;
-
   if (clientSecret) {
+    const shippingCents = calculateShipping(subtotalCents);
+    const totalCents = subtotalCents + shippingCents;
     return (
       <CheckoutProvider stripe={getStripe()} options={{ clientSecret }}>
         <PaymentPhase
@@ -273,74 +271,23 @@ function StripeCheckout() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 md:px-6 md:py-12">
-      <h1 className="font-display text-foreground mb-6 text-3xl font-light tracking-tight">
-        Checkout
-      </h1>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          void form.handleSubmit();
-        }}
-        className="grid gap-8 md:grid-cols-[1fr_320px]"
-      >
-        <Card className="p-6">
-          <h2 className="text-foreground mb-4 font-semibold">Shipping address</h2>
-          <div className="grid gap-4">
-            <form.AppField name="name">
-              {(field) => <field.TextField label="Full name" autoComplete="name" />}
-            </form.AppField>
-            <form.AppField name="line1">
-              {(field) => <field.TextField label="Address" autoComplete="address-line1" />}
-            </form.AppField>
-            <form.AppField name="line2">
-              {(field) => (
-                <field.TextField label="Apartment, suite, etc." autoComplete="address-line2" />
-              )}
-            </form.AppField>
-            <div className="grid grid-cols-2 gap-4">
-              <form.AppField name="city">
-                {(field) => <field.TextField label="City" autoComplete="address-level2" />}
-              </form.AppField>
-              <form.AppField name="region">
-                {(field) => <field.TextField label="Province" autoComplete="address-level1" />}
-              </form.AppField>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <form.AppField name="postal">
-                {(field) => <field.TextField label="Postal code" autoComplete="postal-code" />}
-              </form.AppField>
-              <form.AppField name="phone">
-                {(field) => <field.TextField label="Phone" type="tel" autoComplete="tel" />}
-              </form.AppField>
-            </div>
-          </div>
-        </Card>
-
-        <div>
-          <Card variant="soft" className="p-5">
-            <h2 className="text-foreground mb-3 font-semibold">Order summary</h2>
-            <OrderLines lines={lines} />
-            <OrderTotals
-              subtotalCents={subtotalCents}
-              shippingCents={shippingCents}
-              totalCents={totalCents}
-            />
-            <form.AppForm>
-              <form.SubmitButton
-                label="Continue to payment"
-                loadingLabel="Preparing checkout…"
-                size="lg"
-                className="mt-5 w-full"
-              />
-            </form.AppForm>
-            <p className="text-muted-foreground mt-2 text-center font-mono text-[11px]">
-              Card details are entered securely on the next step.
-            </p>
-          </Card>
-        </div>
-      </form>
-    </div>
+    <CheckoutForm<Extract<CreateCheckoutSessionResult, { ok: true }>>
+      lines={lines}
+      subtotalCents={subtotalCents}
+      submitLabel="Continue to payment"
+      submitLoadingLabel="Preparing checkout…"
+      footnote="Card details are entered securely on the next step."
+      submit={(payload) => createCheckoutSession({ data: payload })}
+      onSuccess={(result) => {
+        if (result.mode !== "elements") {
+          // stripeEnabled and a stub result share the same gate, so this is
+          // unreachable in practice — surface it rather than silently stalling.
+          toast.error("Checkout is unavailable right now");
+          return;
+        }
+        setClientSecret(result.clientSecret);
+      }}
+    />
   );
 }
 
