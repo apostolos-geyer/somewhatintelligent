@@ -252,8 +252,5 @@ Before substantial work:
   `src/analytics.adapter.tsx` (wired to `@si/analytics/client`); the typed
   event registry lives in `src/lib/analytics-events.ts`. Call sites never
   change when the vendor does.
-- Some org-admin actions are feature-flagged off (`ORG_ADMIN_FEATURES`)
-  pending guestlist entrypoint methods (`adminUpdateOrg`,
-  `adminResendOrgInvitation`).
 - Tests: `bun run test` (unit + jsdom DOM suites). `bun run types` after
   wrangler edits; repoint the GUESTLIST service names to your fleet.

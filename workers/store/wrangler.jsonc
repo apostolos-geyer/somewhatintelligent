@@ -35,6 +35,11 @@
     // Stripe publishable key (pk_…, client-safe). Blank until Stripe
     // onboarding; getCheckoutConfig gates the Payment Element on it.
     "STRIPE_PUBLISHABLE_KEY": "",
+    // Launch gate, per env ("true"/"false"). While "false" the storefront is
+    // admin-only: everyone else gets the pre-launch landing (sign-up funnel →
+    // /welcome) and the public product reads refuse to serve. Baked into both
+    // bundles at build time (vite CLIENT_VARS → src/lib/config.ts STORE_LIVE).
+    "STORE_LIVE": "false",
   },
   "d1_databases": [
     {
@@ -89,6 +94,8 @@
         "IDENTITY_URL": "https://somewhatintelligent.ca/account",
         "AUTH_DOMAIN": ".somewhatintelligent.ca",
         "STRIPE_PUBLISHABLE_KEY": "",
+        // Launch gate — flip to "true" to open the production shop.
+        "STORE_LIVE": "false",
       },
       "d1_databases": [
         {

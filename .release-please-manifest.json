@@ -1,8 +1,8 @@
 {
   "workers/bouncer": "0.0.3",
-  "workers/guestlist": "0.0.4",
+  "workers/guestlist": "0.0.5",
   "workers/promoter": "0.0.2",
   "workers/roadie": "0.0.2",
-  "workers/identity": "0.0.4",
-  "workers/store": "0.0.3"
+  "workers/identity": "0.0.5",
+  "workers/store": "0.0.4"
 }

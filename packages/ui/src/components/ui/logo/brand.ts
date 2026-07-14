@@ -33,8 +33,8 @@ export const brand: LogoBrand = {
   wordmarkShort: "SI",
   ariaLabel: "somewhatintelligent",
   ogColors: {
-    primary: "#F8F7F1",
-    light: "#171613",
+    primary: "#F7F8FA",
+    light: "#0B0C0E",
   },
 };
 

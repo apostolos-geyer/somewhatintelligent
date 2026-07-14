@@ -14,6 +14,9 @@ interface ImportMetaEnv {
   // the embedded Payment Element. The server-derived getCheckoutConfig flag
   // gates the Stripe branch on this var AND the server secrets.
   readonly STRIPE_PUBLISHABLE_KEY: string;
+  // Launch gate ("true"/"false") — parsed once in src/lib/config.ts
+  // (STORE_LIVE); undefined under vitest, where the define map is empty.
+  readonly STORE_LIVE?: string;
 }
 
 interface ImportMeta {

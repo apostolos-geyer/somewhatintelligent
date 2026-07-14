@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as PublicRouteImport } from './routes/_public'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
+import { Route as PublicWelcomeRouteImport } from './routes/_public/welcome'
 import { Route as PublicCartRouteImport } from './routes/_public/cart'
 import { Route as AppAdminRouteImport } from './routes/_app/admin'
 import { Route as AppOrdersIndexRouteImport } from './routes/_app/orders.index'
@@ -37,6 +38,11 @@ const AppRoute = AppRouteImport.update({
 const PublicIndexRoute = PublicIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => PublicRoute,
+} as any)
+const PublicWelcomeRoute = PublicWelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
   getParentRoute: () => PublicRoute,
 } as any)
 const PublicCartRoute = PublicCartRouteImport.update({
@@ -110,6 +116,7 @@ export interface FileRoutesByFullPath {
   '/': typeof PublicIndexRoute
   '/admin': typeof AppAdminRouteWithChildren
   '/cart': typeof PublicCartRoute
+  '/welcome': typeof PublicWelcomeRoute
   '/checkout/return': typeof AppCheckoutReturnRoute
   '/orders/$orderNumber': typeof AppOrdersOrderNumberRoute
   '/products/$slug': typeof PublicProductsSlugRoute
@@ -125,6 +132,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof PublicIndexRoute
   '/cart': typeof PublicCartRoute
+  '/welcome': typeof PublicWelcomeRoute
   '/checkout/return': typeof AppCheckoutReturnRoute
   '/orders/$orderNumber': typeof AppOrdersOrderNumberRoute
   '/products/$slug': typeof PublicProductsSlugRoute
@@ -143,6 +151,7 @@ export interface FileRoutesById {
   '/_public': typeof PublicRouteWithChildren
   '/_app/admin': typeof AppAdminRouteWithChildren
   '/_public/cart': typeof PublicCartRoute
+  '/_public/welcome': typeof PublicWelcomeRoute
   '/_public/': typeof PublicIndexRoute
   '/_app/checkout/return': typeof AppCheckoutReturnRoute
   '/_app/orders/$orderNumber': typeof AppOrdersOrderNumberRoute
@@ -162,6 +171,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/cart'
+    | '/welcome'
     | '/checkout/return'
     | '/orders/$orderNumber'
     | '/products/$slug'
@@ -177,6 +187,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/cart'
+    | '/welcome'
     | '/checkout/return'
     | '/orders/$orderNumber'
     | '/products/$slug'
@@ -194,6 +205,7 @@ export interface FileRouteTypes {
     | '/_public'
     | '/_app/admin'
     | '/_public/cart'
+    | '/_public/welcome'
     | '/_public/'
     | '/_app/checkout/return'
     | '/_app/orders/$orderNumber'
@@ -235,6 +247,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof PublicIndexRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/welcome': {
+      id: '/_public/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof PublicWelcomeRouteImport
       parentRoute: typeof PublicRoute
     }
     '/_public/cart': {
@@ -371,12 +390,14 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 interface PublicRouteChildren {
   PublicCartRoute: typeof PublicCartRoute
+  PublicWelcomeRoute: typeof PublicWelcomeRoute
   PublicIndexRoute: typeof PublicIndexRoute
   PublicProductsSlugRoute: typeof PublicProductsSlugRoute
 }
 
 const PublicRouteChildren: PublicRouteChildren = {
   PublicCartRoute: PublicCartRoute,
+  PublicWelcomeRoute: PublicWelcomeRoute,
   PublicIndexRoute: PublicIndexRoute,
   PublicProductsSlugRoute: PublicProductsSlugRoute,
 }

@@ -1,17 +1,30 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { ArrowRightIcon } from "lucide-react";
 import { Badge } from "@si/ui/components/badge";
+import { Button } from "@si/ui/components/button";
 import { ProductImage } from "@/components/product-image";
-import { listActiveProducts } from "@/lib/products.functions";
+import { listActiveProducts, type ProductCard } from "@/lib/products.functions";
 import { formatCents } from "@/lib/money";
 import { BRAND_NAME, BRAND_TAGLINE } from "@/lib/config";
+import { storeOpenFor } from "@/lib/store-gate";
 
 export const Route = createFileRoute("/_public/")({
-  loader: async () => listActiveProducts(),
+  // Pre-launch: signed-in non-admins have already joined the list — send them
+  // to the thanks page; anonymous visitors get the sign-up landing below.
+  beforeLoad: ({ context }) => {
+    if (!storeOpenFor(context.session) && context.session) {
+      throw redirect({ to: "/welcome" });
+    }
+  },
+  loader: async ({ context }): Promise<{ products: ProductCard[] | null }> =>
+    storeOpenFor(context.session) ? listActiveProducts() : { products: null },
   component: Home,
 });
 
 function Home() {
   const { products } = Route.useLoaderData();
+  // null products ⇒ the gate is closed for this visitor (see loader).
+  if (products === null) return <Landing />;
   return (
     <div className="mx-auto max-w-6xl px-4 md:px-6">
       <section className="py-12 md:py-16">
@@ -65,6 +78,31 @@ function Home() {
             ))}
           </div>
         )}
+      </section>
+    </div>
+  );
+}
+
+// Pre-launch landing: the only thing a non-admin sees. One job — get an email
+// on the list. Sign-up round-trips through identity and lands on /welcome.
+function Landing() {
+  const signUpHref = `${import.meta.env.IDENTITY_URL}/sign-up?returnTo=${encodeURIComponent(
+    `${import.meta.env.STORE_URL}/welcome`,
+  )}`;
+
+  return (
+    <div className="mx-auto flex max-w-6xl flex-col justify-center px-4 py-24 md:px-6 md:py-36">
+      <section className="max-w-2xl">
+        <h1 className="font-display text-foreground text-[clamp(40px,7vw,76px)] leading-[0.95] font-extralight tracking-tighter">
+          {BRAND_NAME}.
+        </h1>
+        <p className="text-muted-foreground mt-6 max-w-md text-lg">
+          First drop coming soon. Sign up and we&rsquo;ll email you when it&rsquo;s live.
+        </p>
+        <Button size="lg" className="mt-8" nativeButton={false} render={<a href={signUpHref} />}>
+          Sign up
+          <ArrowRightIcon className="size-4" />
+        </Button>
       </section>
     </div>
   );

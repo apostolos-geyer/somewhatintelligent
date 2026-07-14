@@ -74,6 +74,7 @@ const CLIENT_VARS = [
   // embedded Payment Element. The Stripe branch only renders when the
   // server-derived stripeEnabled flag (full stripeConfigured gate) is true.
   "STRIPE_PUBLISHABLE_KEY",
+  "STORE_LIVE",
 ] as const;
 const clientDefines = process.env.VITEST
   ? {}

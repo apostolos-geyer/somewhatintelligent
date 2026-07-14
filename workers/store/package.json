@@ -1,6 +1,6 @@
 {
   "name": "store",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "private": true,
   "type": "module",
   "imports": {
@@ -30,7 +30,7 @@
     "@si/roadie-service": "workspace:*",
     "@si/ui": "workspace:*",
     "@somewhatintelligent/auth": "0.0.3",
-    "@somewhatintelligent/guestlist": "0.0.5",
+    "@somewhatintelligent/guestlist": "0.0.6",
     "@somewhatintelligent/kit": "0.0.3",
     "@somewhatintelligent/stripe": "0.0.1",
     "@stripe/react-stripe-js": "catalog:",

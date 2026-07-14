@@ -24,6 +24,9 @@ const label = "workers/store";
 // branch-prefixed URL at runtime via PORTLESS_URL in vite.config).
 const devVars = `${PLATFORM_DEV_VARS}STORE_URL=https://store.somewhatintelligent.localhost
 PUBLIC_BASE=/
+# Launch gate: "false" shows the pre-launch landing locally (admins bypass);
+# flip to "true" to develop against the open shop.
+STORE_LIVE=false
 BNC_ATT_KID=${LOCAL_BNC_ATT_KID}
 BNC_ATT_PRIV="${LOCAL_BNC_ATT_PRIV.replace(/\n/g, "\\n")}"
 # Stripe webhook ingestion (/hooks/store) — unset until Stripe onboarding.

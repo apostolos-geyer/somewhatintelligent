@@ -17,7 +17,6 @@ import { EditOrgDialog } from "@/components/admin/edit-org-dialog";
 import { InviteMemberModal } from "@/components/admin/invite-member-modal";
 import { MemberActions } from "@/components/admin/member-actions";
 import {
-  ORG_ADMIN_FEATURES,
   cancelOrgInvitation,
   getOrgForAdmin,
   removeOrgMember,
@@ -131,12 +130,7 @@ function OrgDetailPage() {
           <h1 className="type-page-title">{organization.name}</h1>
           <p className="mt-1 font-mono text-sm text-muted-foreground/80">{organization.slug}</p>
         </div>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={!ORG_ADMIN_FEATURES.updateOrg}
-          onClick={() => setEditOpen(true)}
-        >
+        <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
           Edit
         </Button>
       </div>
@@ -317,10 +311,7 @@ function OrgDetailPage() {
                             ⋯
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              disabled={!ORG_ADMIN_FEATURES.resendInvitation}
-                              onClick={() => void handleResendInvitation(inv)}
-                            >
+                            <DropdownMenuItem onClick={() => void handleResendInvitation(inv)}>
                               Resend email
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => void copyAcceptLink(inv)}>

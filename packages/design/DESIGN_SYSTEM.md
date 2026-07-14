@@ -1,9 +1,11 @@
-# Design System — "DRAFT"
+# Design System — "FRIEND"
 
-**The UI is a technical drawing.** Warm drafting paper, graphite ink,
-ruled lines, generous rounding. Nothing glows, nothing blurs, nothing
-floats on a soft shadow — depth is _drawn_, with border treatment and
-hard-offset drafted lines, the way a blueprint communicates structure.
+**The UI is a code editor.** A near-black canvas, syntax-highlighted
+color, generous rounding. Nothing glows, nothing blurs, nothing floats on
+a soft shadow — depth is _drawn_, with border treatment and hard-offset
+lines, the way a terminal communicates structure. The name and the pink
+are both lifted straight off the shirt that funds this store: C++'s
+`friend` keyword, white-on-black, printed in small runs.
 
 This document is the contract. Every component in `@si/ui`, every app
 surface, and every future agent run is held to it.
@@ -12,11 +14,13 @@ surface, and every future agent run is held to it.
 
 ## 1. The five rules
 
-1. **Neutral by default, one accent slot.** A grayscale ramp for
-   backgrounds/surfaces/text, plus a single `primary` accent (the brand
-   slot — see README.md) and the conventional `destructive` / `success` /
-   `warning` triad. See src/tokens/brand.ts for the literal values and
-   src/tokens/colors.ts for the full semantic token contract.
+1. **Neutral canvas, one loud accent slot.** A cool near-black/white
+   grayscale ramp for backgrounds/surfaces/text, plus a single hot-pink
+   `primary` accent (the brand slot — see README.md, the `friend` pink)
+   and the conventional `destructive` / `success` / `warning` triad, each
+   its own syntax-highlighter hue (red / green / amber). See
+   src/tokens/brand.ts for the literal values and src/tokens/colors.ts for
+   the full semantic token contract.
 2. **No soft shadows. No blur. Ever.** `box-shadow` blur radii are 0
    everywhere (the generated `--soft-*`/`--neo-*` variables resolve to
    hard lines), `backdrop-filter` does not exist, and the legacy `glass`
@@ -27,13 +31,13 @@ surface, and every future agent run is held to it.
    | `border-solid` (+ `border-border-strong`, 1.5–2px) | primary surface, strongest emphasis, success/confirmed |
    | `border-dashed` | secondary surface, interactive affordance, warning/pending |
    | `border-dotted` | tertiary, hints, dividers, informational |
-   | `shadow-brutal-*` | a hard ink offset — the drafted "duplicate line" that stands a card/CTA off the paper |
+   | `shadow-brutal-*` | a hard offset — the "duplicate line" that stands a card/CTA off the canvas |
 4. **Rounded.** The radius scale is generous (`sm`=10px is the control
    default, `md`=16 cards, up to `xl`=30). Crisp rules + soft corners is
    the signature tension.
 5. **Iosevka is the voice.** `Iosevka Aile` for display/body/editorial,
    `Iosevka` (mono) for code, IDs, timestamps, and uppercase annotation
-   labels — the "dimension text" of the drawing. No other typefaces are
+   labels — the annotation voice of the terminal. No other typefaces are
    vendored or permitted.
 
 ## 2. Palette
@@ -59,7 +63,7 @@ The four generated shadow families survive by name, hard-edged by value:
 
 - `shadow-brutal-sm|md|lg` — `Xpx Ypx 0 var(--color-border-strong)`. THE
   elevation effect. Interactive form: offset grows on hover, collapses on
-  press (`interactiveMaterials.brutal` — the element sits down on the paper).
+  press (`interactiveMaterials.brutal` — the element sits down on the canvas).
 - `shadow-soft-*` — legacy name; now a single hard 0-blur rule. Prefer
   borders in new code.
 - `shadow-neo-*` — hard 0-blur chisel for toggle-like controls.
@@ -70,16 +74,15 @@ The four generated shadow families survive by name, hard-edged by value:
 
 `surfaceMaterials` / `interactiveMaterials` / `compactMaterials` encode the
 grammar once; components compose them. Key mapping: `brutal` = solid rule +
-drafted offset (signature), `soft` = dashed rule (quiet secondary; dashes
+signature offset, `soft` = dashed rule (quiet secondary; dashes
 commit to solid on hover), `neo` = chisel, `glass` = opaque sheet.
 
 ## 5. Component conventions
 
 - **Buttons**: full pill. `default`/`strong` = solid primary fill (strong
-  adds the drafted offset); `outline` = 1.5px heavy rule; `link` = dotted
+  adds the signature offset); `outline` = 1.5px heavy rule; `link` = dotted
   underline that commits to solid on hover; `destructive` = the destructive
-  token. Focus is a 2px solid ring, offset — a drafted focus rectangle,
-  never a glow.
+  token. Focus is a 2px solid ring, offset — never a glow.
 - **Badges / Alerts**: status carries by border style — solid (success),
   dashed (warning), solid (destructive) — never by hue alone.
 - **Overlays** (dialog/sheet/drawer): opaque sheet + rule + hard offset;

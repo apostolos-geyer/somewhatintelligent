@@ -1,19 +1,19 @@
 /**
- * Shared Material Language Styles — "DRAFT" (blueprint monochrome)
+ * Shared Material Language Styles — "FRIEND" (syntax-highlight terminal)
  *
- * Surfaces are technical drawings: flat paper, crisp ink rules, generous
- * rounding. There is NO diffused shadow and NO blur anywhere — depth is
- * drawn with border treatment and hard-offset drafted lines:
+ * Surfaces are a code editor: flat canvas, crisp rules, generous rounding.
+ * There is NO diffused shadow and NO blur anywhere — depth is drawn with
+ * border treatment and hard-offset lines:
  *
  *   solid rule    — primary surface / strongest emphasis
  *   dashed rule   — secondary / interactive affordance (dashes invite touch)
  *   dotted rule   — tertiary / hints / dividers
- *   brutal offset — a hard ink offset (--brutal-*), the drafted "duplicate
- *                   line" that stands a surface off the paper
+ *   brutal offset — a hard offset (--brutal-*), the "duplicate line" that
+ *                   stands a surface off the canvas
  *
  * The four material keys (brutal / soft / neo / glass) are kept for
  * backwards compatibility with every consumer:
- *   brutal — the signature: solid rule + drafted offset
+ *   brutal — the signature: solid rule + hard offset
  *   soft   — quiet secondary: dashed rule, no offset
  *   neo    — chiseled toggle surfaces (hard 0-blur chisel)
  *   glass  — LEGACY name; renders as an opaque fresh sheet + solid rule
@@ -32,13 +32,13 @@
 // material strings are appended last in cn()/twMerge, so they must match or
 // they silently downgrade every card back to the control radius.
 export const surfaceMaterials = {
-  /** Signature: solid rule + drafted ink offset — the default card */
+  /** Signature: solid rule + hard offset — the default card */
   brutal: "rounded-md bg-card border border-border-strong shadow-brutal-sm",
   /** Soft: quiet secondary sheet — dashed rule, flat */
   soft: "rounded-md border border-dashed border-border bg-surface-raised",
-  /** Neo raised: chiseled, standing proud of the paper */
+  /** Neo raised: chiseled, standing proud of the canvas */
   neo: "rounded-md border border-border bg-surface-raised shadow-neo-raised",
-  /** Neo inset: pressed/sunken into the paper */
+  /** Neo inset: pressed/sunken into the canvas */
   neoInset: "rounded-md border border-border bg-surface-sunken shadow-neo-inset",
   /** Legacy "glass": an opaque fresh sheet with a solid rule (flat) */
   glass: "rounded-md glass",
@@ -49,8 +49,8 @@ export const surfaceMaterials = {
 // ============================================
 
 export const interactiveMaterials = {
-  /** Signature: drafted offset that grows on hover and collapses on press —
-   *  the element physically sits down on the paper. Card-tile interaction —
+  /** Signature: offset that grows on hover and collapses on press —
+   *  the element physically sits down on the canvas. Card-tile interaction —
    *  consumed only by clickable card surfaces (never buttons/badges), so it
    *  rounds on the `md` Cards token like the surfaces. */
   brutal:
@@ -68,7 +68,7 @@ export const interactiveMaterials = {
 // ============================================
 
 export const compactMaterials = {
-  /** Solid rule + tiny drafted offset */
+  /** Solid rule + tiny hard offset */
   brutal: "border border-border-strong shadow-brutal-sm",
   /** Legacy "glass": opaque sheet chip with a solid rule */
   glass: "glass",
