@@ -13,14 +13,15 @@ import type { Db } from "@/lib/db";
 import { ulid } from "@somewhatintelligent/kit/ids";
 import type { PlatformSession } from "@somewhatintelligent/auth";
 import { computeOrderTotals, type OrderLine } from "@/lib/pricing";
-import { reserveStock } from "@/lib/reservation";
-import { releaseAndCancel } from "@/lib/reconcile";
+import { reserveStockAndWrite } from "@/lib/reservation";
+import { releaseAndCancel, type SessionExpirer } from "@/lib/reconcile";
 import type { OrderStatus } from "@/lib/config";
 import { stripeConfigured } from "@somewhatintelligent/stripe";
 
-// Stripe's documented minimum session lifetime; bounds the stock-reservation
-// window (Track A4/D4) to something a buyer finishes an in-page checkout within.
-const CHECKOUT_SESSION_TTL_SECONDS = 30 * 60;
+// Stripe rejects expires_at under its 30-minute minimum; the extra 5 minutes
+// absorb clock skew/latency while still bounding the reservation window
+// (Track A4/D4).
+const CHECKOUT_SESSION_TTL_SECONDS = 35 * 60;
 
 function orderNumber(): string {
   return `SI-${ulid().slice(-6).toUpperCase()}`;
@@ -83,11 +84,7 @@ export type StripeSessionCreator = (
   options: { idempotencyKey: string },
 ) => Promise<CreatedCheckoutSession>;
 
-// Injected `stripe.checkout.sessions.expire`. The authority for the supersede
-// sweep (Track G3): Stripe only expires an OPEN session, so a resolved promise
-// PROVES the session can never be paid, and a throw means it is not open
-// (complete/already-expired — a paid webhook may be in flight).
-export type SessionExpirer = (sessionId: string) => Promise<void>;
+export type { SessionExpirer } from "@/lib/reconcile";
 
 export interface CheckoutSessionDeps {
   db: Db;
@@ -275,12 +272,6 @@ export async function createCheckoutSessionCore(
   // control falls through to the new reservation regardless of the outcome.
   await supersedePriorOpenAttempts(db, session.user.id, expireSession);
 
-  // Reserve stock atomically (INV-4). A failed guard fully reverses its own
-  // partial decrement inside reserveStock, so no order row is written on
-  // out_of_stock (Track C3/D2).
-  const reserved = await reserveStock(db, lines);
-  if (!reserved.ok) return reserved;
-
   const orderId = ulid();
   const num = orderNumber();
   const now = new Date();
@@ -320,7 +311,16 @@ export async function createCheckoutSessionCore(
       quantity: line.quantity,
     }),
   );
-  await db.batch([orderInsert, ...lineStatements] as never);
+
+  // Guards + order rows in one transaction (INV-4, Track C3/D2).
+  const reserved = await reserveStockAndWrite(db, lines, {
+    statements: [orderInsert, ...lineStatements],
+    undo: [
+      db.delete(orderItem).where(eq(orderItem.orderId, orderId)),
+      db.delete(customerOrder).where(eq(customerOrder.id, orderId)),
+    ],
+  });
+  if (!reserved.ok) return reserved;
 
   // Create the Session. metadata.orderId links it before its id exists on our
   // side (Track C1/C2). On throw we reverse synchronously (Track C3).
@@ -346,8 +346,21 @@ export async function createCheckoutSessionCore(
   }
 
   if (!created.client_secret) {
-    // A session with no client secret can't drive the Element — reverse and
-    // fail rather than hand back an unusable order.
+    // Unusable session: attach its id so later webhooks can match the order,
+    // best-effort expire it at Stripe, then reverse.
+    await db
+      .update(customerOrder)
+      .set({
+        stripeCheckoutSessionId: created.id,
+        stripeSessionExpiresAt: created.expires_at ? new Date(created.expires_at * 1000) : null,
+        updatedAt: new Date(),
+      })
+      .where(eq(customerOrder.id, orderId));
+    try {
+      await expireSession(created.id);
+    } catch {
+      // Not open at Stripe; a webhook settles it.
+    }
     await reverseReservation(db, orderId, lines);
     return { ok: false, error: "stripe_session_failed" };
   }

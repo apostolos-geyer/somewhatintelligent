@@ -16,7 +16,7 @@ export const Route = createFileRoute("/_app/checkout/return")({
   component: CheckoutReturn,
 });
 
-type Phase = "loading" | "processing" | "paid" | "cancelled" | "not_found";
+type Phase = "loading" | "processing" | "paid" | "cancelled" | "not_found" | "timeout";
 
 // unpaid/processing (or pending) keeps polling; a paid/cancelled/failed/expired
 // order is terminal.
@@ -54,33 +54,37 @@ function CheckoutReturn() {
 
     const poll = async () => {
       polls += 1;
-      let result: OrderByStripeSessionResult;
+      let result: OrderByStripeSessionResult | null;
       try {
         result = await getOrderByStripeSession({ data: { sessionId: session_id } });
       } catch {
-        // Transient failure — keep the loading state and try again below.
-        result = { ok: false, error: "not_found" };
+        // Transient fetch failure — keep polling; a server not_found is real.
+        result = null;
       }
       if (cancelled) return;
 
-      const next = phaseFor(result);
-      if (result.ok) setOrderNumber(result.orderNumber);
+      const next = result ? phaseFor(result) : "processing";
+      if (result?.ok) setOrderNumber(result.orderNumber);
 
-      // Clear the cart exactly once, only on a confirmed-paid order (Track G2).
-      if (next === "paid" && !clearedRef.current) {
+      // The order existing here means payment was submitted (the session id is
+      // attached before the buyer ever gets the client secret) — clear the cart
+      // once, so a still-settling async payment can't be re-purchased (Track G2).
+      if (result?.ok && next !== "cancelled" && !clearedRef.current) {
         clearedRef.current = true;
         clear();
       }
 
-      const terminal = next === "paid" || next === "cancelled";
+      const terminal = next === "paid" || next === "cancelled" || next === "not_found";
       if (terminal) {
         setPhase(next);
         return;
       }
-      // A transient not_found (webhook/order not visible yet) shows as
-      // processing while we keep polling, not a hard miss.
+      if (polls >= MAX_POLLS) {
+        setPhase("timeout");
+        return;
+      }
       setPhase("processing");
-      if (polls < MAX_POLLS) timer = setTimeout(() => void poll(), POLL_INTERVAL_MS);
+      timer = setTimeout(() => void poll(), POLL_INTERVAL_MS);
     };
 
     void poll();
@@ -117,6 +121,26 @@ function CheckoutReturn() {
           >
             <Button className="mt-6" nativeButton={false} render={<Link to="/cart" />}>
               Back to cart
+            </Button>
+          </View>
+        ) : phase === "timeout" ? (
+          <View
+            icon={<ClockIcon className="text-primary mx-auto size-10" />}
+            title="Payment still processing"
+            body="Your payment was submitted and is taking longer than usual to confirm. You'll get an email receipt when it completes — no need to order again."
+          >
+            <Button
+              className="mt-6"
+              nativeButton={false}
+              render={
+                orderNumber ? (
+                  <Link to="/orders/$orderNumber" params={{ orderNumber }} />
+                ) : (
+                  <Link to="/orders" />
+                )
+              }
+            >
+              {orderNumber ? "View order" : "View my orders"}
             </Button>
           </View>
         ) : phase === "not_found" ? (

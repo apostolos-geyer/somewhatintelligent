@@ -31,6 +31,7 @@ BNC_ATT_PRIV="${LOCAL_BNC_ATT_PRIV.replace(/\n/g, "\\n")}"
 # from 'stripe listen --print-secret'. Mirrors workers/guestlist/scripts/env-init.ts.
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SIGNING_SECRET=
+STRIPE_PUBLISHABLE_KEY=
 `;
 
 writeDevVarsIfMissing(`${pkgDir}/.dev.vars`, devVars, label);

@@ -201,20 +201,49 @@ describe("processStoreStripeEvent", () => {
     expect(again).toEqual<ProcessStripeEventResult>({ ok: true, outcome: "ignored" });
   });
 
-  it("(d2) foreign checkout session (no metadata.orderId) → ignored, order untouched, no ledger row", async () => {
-    // A matching order exists, so the ONLY reason to classify out is the absent
-    // metadata.orderId — a payment link / Dashboard checkout in the same Stripe
-    // account. Without the guard this would be retryable and pollute the DLQ.
-    await seedOrder("cs_x");
-
+  it("(d2) foreign checkout session (no metadata.orderId, no matching order) → ignored, no ledger row", async () => {
+    // A payment link / Dashboard checkout in the same Stripe account: no order
+    // carries the session id. Without the classification this would be
+    // retryable and pollute the DLQ.
     const foreign = await processStoreStripeEvent(
       db,
-      msg({ id: "evt_foreign", metadataOrderId: undefined }),
+      msg({ id: "evt_foreign", objectId: "cs_foreign", metadataOrderId: undefined }),
       STAGING,
     );
     expect(foreign).toEqual<ProcessStripeEventResult>({ ok: true, outcome: "ignored" });
     expect(await ledgerCount("evt_foreign")).toBe(0);
-    expect((await orderFor("cs_x"))?.paymentStatus).toBe("unpaid");
+  });
+
+  it("(d3) missing metadata.orderId but the session id matches an order → applied", async () => {
+    // Session-id matching is authoritative — a thin/truncated event payload
+    // that dropped metadata must not strand a real order's event.
+    await seedOrder("cs_x");
+
+    const r = await processStoreStripeEvent(
+      db,
+      msg({ id: "evt_thin", metadataOrderId: undefined }),
+      STAGING,
+    );
+    expect(r).toEqual<ProcessStripeEventResult>({ ok: true, outcome: "applied" });
+    expect((await orderFor("cs_x"))?.paymentStatus).toBe("paid");
+  });
+
+  it("(d4) metadata.orderId present, no session match, order already cancelled → ignored (moot)", async () => {
+    // The checkout reverse path cancelled the order before a session id was
+    // attached; the session's later event is moot, not DLQ noise.
+    await seedOrder("cs_never_attached");
+    await db
+      .update(customerOrder)
+      .set({ status: "cancelled", stripeCheckoutSessionId: null })
+      .where(eq(customerOrder.stripeCheckoutSessionId, "cs_never_attached"));
+
+    const r = await processStoreStripeEvent(
+      db,
+      msg({ id: "evt_moot", objectId: "cs_orphaned", metadataOrderId: "o-cs_never_attached" }),
+      STAGING,
+    );
+    expect(r).toEqual<ProcessStripeEventResult>({ ok: true, outcome: "ignored" });
+    expect(await ledgerCount("evt_moot")).toBe(0);
   });
 
   describe("(e) f07 livemode gate", () => {

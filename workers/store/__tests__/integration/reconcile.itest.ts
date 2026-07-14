@@ -13,6 +13,7 @@ import * as schema from "@/db/schema";
 import {
   reconcilePendingReservations,
   type RetrievedSession,
+  type SessionExpirer,
   type SessionRetriever,
 } from "@/lib/reconcile";
 
@@ -132,6 +133,8 @@ function retriever(map: Record<string, RetrievedSession>): SessionRetriever {
   });
 }
 
+const expireOk = (): SessionExpirer => vi.fn(async () => {});
+
 beforeEach(async () => {
   await db.delete(orderItem);
   await db.delete(customerOrder);
@@ -153,7 +156,12 @@ describe("reconcilePendingReservations — orphans", () => {
     });
 
     const retrieveSession = retriever({});
-    const result = await reconcilePendingReservations({ db, retrieveSession, now: NOW });
+    const result = await reconcilePendingReservations({
+      db,
+      retrieveSession,
+      expireSession: expireOk(),
+      now: NOW,
+    });
 
     expect(result.orphansReleased).toBe(1);
     expect(retrieveSession).not.toHaveBeenCalled();
@@ -176,6 +184,7 @@ describe("reconcilePendingReservations — orphans", () => {
     const result = await reconcilePendingReservations({
       db,
       retrieveSession: retriever({}),
+      expireSession: expireOk(),
       now: NOW,
     });
 
@@ -198,6 +207,7 @@ describe("reconcilePendingReservations — orphans", () => {
     const result = await reconcilePendingReservations({
       db,
       retrieveSession: retriever({}),
+      expireSession: expireOk(),
       now: NOW,
     });
 
@@ -223,7 +233,12 @@ describe("reconcilePendingReservations — stale-attached", () => {
     const retrieveSession = retriever({
       cs_expired: { status: "expired", payment_status: "unpaid" },
     });
-    const result = await reconcilePendingReservations({ db, retrieveSession, now: NOW });
+    const result = await reconcilePendingReservations({
+      db,
+      retrieveSession,
+      expireSession: expireOk(),
+      now: NOW,
+    });
 
     expect(result.staleReleased).toBe(1);
     expect(result.staleSkipped).toBe(0);
@@ -235,7 +250,7 @@ describe("reconcilePendingReservations — stale-attached", () => {
     });
   });
 
-  it("releases when the retrieved session is still open and unpaid (abandoned)", async () => {
+  it("expires then releases when the retrieved session is still open and unpaid (abandoned)", async () => {
     await seedReservation({
       orderId: "o-stale-open",
       variantId: "v1",
@@ -247,15 +262,46 @@ describe("reconcilePendingReservations — stale-attached", () => {
       createdAt: new Date(NOW - 40 * MIN),
     });
 
+    const expireSession = expireOk();
     const result = await reconcilePendingReservations({
       db,
       retrieveSession: retriever({ cs_open: { status: "open", payment_status: "unpaid" } }),
+      expireSession,
       now: NOW,
     });
 
     expect(result.staleReleased).toBe(1);
+    expect(expireSession).toHaveBeenCalledWith("cs_open");
     expect(await stockOf("v1")).toBe(10);
     expect((await orderRow("o-stale-open")).status).toBe("cancelled");
+  });
+
+  it("skips (no release) when expiring an open session throws — payment may have just landed", async () => {
+    await seedReservation({
+      orderId: "o-stale-open-racing",
+      variantId: "v1",
+      quantity: 2,
+      stock: 8,
+      stripeCustomerId: "cus_1",
+      stripeCheckoutSessionId: "cs_racing",
+      stripeSessionExpiresAt: new Date(NOW - 5 * MIN),
+      createdAt: new Date(NOW - 40 * MIN),
+    });
+
+    const expireSession: SessionExpirer = vi.fn(async () => {
+      throw new Error("session is not open");
+    });
+    const result = await reconcilePendingReservations({
+      db,
+      retrieveSession: retriever({ cs_racing: { status: "open", payment_status: "unpaid" } }),
+      expireSession,
+      now: NOW,
+    });
+
+    expect(result.staleReleased).toBe(0);
+    expect(result.staleSkipped).toBe(1);
+    expect(await stockOf("v1")).toBe(8);
+    expect((await orderRow("o-stale-open-racing")).status).toBe("pending");
   });
 
   it("does NOT release when the session is still processing (complete, async settling)", async () => {
@@ -277,6 +323,7 @@ describe("reconcilePendingReservations — stale-attached", () => {
       retrieveSession: retriever({
         cs_processing: { status: "complete", payment_status: "unpaid" },
       }),
+      expireSession: expireOk(),
       now: NOW,
     });
 
@@ -312,7 +359,12 @@ describe("reconcilePendingReservations — stale-attached", () => {
     const retrieveSession = retriever({
       cs_healme: { status: "complete", payment_status: "paid" },
     });
-    const result = await reconcilePendingReservations({ db, retrieveSession, now: NOW });
+    const result = await reconcilePendingReservations({
+      db,
+      retrieveSession,
+      expireSession: expireOk(),
+      now: NOW,
+    });
 
     expect(result.staleHealed).toBe(1);
     expect(result.staleReleased).toBe(0);
@@ -342,6 +394,7 @@ describe("reconcilePendingReservations — stale-attached", () => {
     const result = await reconcilePendingReservations({
       db,
       retrieveSession: retriever({ cs_dead: { status: "expired", payment_status: "unpaid" } }),
+      expireSession: expireOk(),
       now: NOW,
     });
 
@@ -362,7 +415,12 @@ describe("reconcilePendingReservations — stale-attached", () => {
     });
 
     const retrieveSession = retriever({});
-    const result = await reconcilePendingReservations({ db, retrieveSession, now: NOW });
+    const result = await reconcilePendingReservations({
+      db,
+      retrieveSession,
+      expireSession: expireOk(),
+      now: NOW,
+    });
 
     expect(result.staleReleased).toBe(0);
     expect(result.staleSkipped).toBe(0);
@@ -386,7 +444,12 @@ describe("reconcilePendingReservations — stale-attached", () => {
     });
 
     const retrieveSession = retriever({});
-    const result = await reconcilePendingReservations({ db, retrieveSession, now: NOW });
+    const result = await reconcilePendingReservations({
+      db,
+      retrieveSession,
+      expireSession: expireOk(),
+      now: NOW,
+    });
 
     expect(result.staleReleased).toBe(0);
     expect(retrieveSession).not.toHaveBeenCalled();

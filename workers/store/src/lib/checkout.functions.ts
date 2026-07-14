@@ -112,12 +112,15 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
 
 // Server-derived flag the checkout route reads to decide which branch renders:
 // the embedded Payment Element (true) or today's manual placeOrder form (false).
-// Uses the same stripeConfigured gate as createCheckoutSession/the webhook route,
-// so the client can never present a card form when the server can't complete a
-// Stripe checkout. Never returns the secret key — only the boolean.
+// Gates on the server secrets (same stripeConfigured gate as
+// createCheckoutSession/the webhook route) AND the client-required publishable
+// key, so the card form never renders when any piece of the flow is missing.
+// Never returns the secret key — only the boolean.
 export const getCheckoutConfig = createServerFn({ method: "GET" }).handler(
   async (): Promise<{ stripeEnabled: boolean }> => ({
-    stripeEnabled: stripeConfigured(env.STRIPE_SECRET_KEY, env.STRIPE_WEBHOOK_SIGNING_SECRET),
+    stripeEnabled:
+      stripeConfigured(env.STRIPE_SECRET_KEY, env.STRIPE_WEBHOOK_SIGNING_SECRET) &&
+      Boolean(env.STRIPE_PUBLISHABLE_KEY),
   }),
 );
 

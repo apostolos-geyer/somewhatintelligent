@@ -21,7 +21,7 @@ import type { PlatformSession } from "@somewhatintelligent/auth";
 import { ForbiddenError, NotFoundError } from "@/lib/errors";
 import { CARRIER_KEYS } from "@/lib/config";
 import { computeOrderTotals } from "@/lib/pricing";
-import { reserveStock } from "@/lib/reservation";
+import { reserveStockAndWrite } from "@/lib/reservation";
 
 // Cap admin order lists (query-hygiene §5 — no unbounded table scans).
 const ORDER_LIST_LIMIT = 200;
@@ -103,14 +103,6 @@ export const placeOrder = createServerFn({ method: "POST" })
     if (!priced.ok) return priced;
     const { lines, subtotalCents: subtotal, shippingCents, totalCents: total } = priced;
 
-    // Reserve stock with the SQL-guarded, compensating helper shared with the
-    // Stripe checkout path — the pricing pre-check above can pass while a
-    // concurrent request wins the last unit, so the guard is the authoritative
-    // gate. A failed guard fully reverses its own partial decrement before
-    // returning, so no order row is written on out_of_stock.
-    const reserved = await reserveStock(db, lines);
-    if (!reserved.ok) return reserved;
-
     const id = ulid();
     const num = orderNumber();
     const now = new Date();
@@ -136,8 +128,6 @@ export const placeOrder = createServerFn({ method: "POST" })
       createdAt: now,
       updatedAt: now,
     });
-    // Stock is already reserved above; the order + line-item inserts commit
-    // together (all-or-nothing).
     const lineStatements = lines.map((line) =>
       db.insert(orderItem).values({
         id: ulid(),
@@ -150,7 +140,17 @@ export const placeOrder = createServerFn({ method: "POST" })
         quantity: line.quantity,
       }),
     );
-    await db.batch([orderInsert, ...lineStatements]);
+
+    // Guards + order rows in one transaction; the SQL guard (not the pricing
+    // pre-check) is the authoritative stock gate.
+    const reserved = await reserveStockAndWrite(db, lines, {
+      statements: [orderInsert, ...lineStatements],
+      undo: [
+        db.delete(orderItem).where(eq(orderItem.orderId, id)),
+        db.delete(customerOrder).where(eq(customerOrder.id, id)),
+      ],
+    });
+    if (!reserved.ok) return reserved;
 
     return {
       ok: true,

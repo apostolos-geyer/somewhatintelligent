@@ -73,6 +73,9 @@ export default {
             const s = await stripe.checkout.sessions.retrieve(sessionId);
             return { status: s.status, payment_status: s.payment_status };
           },
+          expireSession: async (sessionId) => {
+            await stripe.checkout.sessions.expire(sessionId);
+          },
         });
         return;
       }

@@ -52,19 +52,6 @@ function buildEventMutations(db: Db, message: StoreStripeEventMessage) {
   // Defense-in-depth: a "payment" mode is expected; a subscription-mode session
   // routed here by an endpoint misconfiguration is ignored, never mutated.
   if (message.mode !== undefined && message.mode !== "payment") return null;
-  // Foreign-session guard: a checkout.session.* event carrying no
-  // `metadata.orderId` was not created by this app (a payment link, a
-  // Dashboard-created checkout, another integration sharing the Stripe
-  // account). It can never match one of our orders, so classify it out
-  // (`ignored`) instead of retrying it 6× into the DLQ as noise. Only our own
-  // createCheckoutSession stamps `metadata.orderId`. Compat: a message enqueued
-  // by pre-widening producer code also lacks the field, but local/staging
-  // queues are ephemeral and prod checkout has not shipped, so no in-flight
-  // legitimate message is misclassified. Events WITH the field but no matching
-  // order stay retryable (the order-creation-vs-webhook race, cases A/B/C1).
-  if (message.type.startsWith("checkout.session.") && message.metadataOrderId === undefined) {
-    return null;
-  }
   const now = new Date();
   const where = eq(customerOrder.stripeCheckoutSessionId, objectId);
 
@@ -199,10 +186,23 @@ export async function processStoreStripeEvent(
   const orderChanges = results.slice(0, -1).reduce((sum, r) => sum + (r?.meta?.changes ?? 0), 0);
 
   if (orderChanges === 0) {
-    // No order carries this session id (every real event today — checkout-
-    // session creation is deferred). The EXISTS-gated ledger recorded nothing,
-    // so a redelivery after the order appears still applies. The queue retries
-    // and, permanently unmatched, drains to the DLQ rather than looping forever.
+    // No order carries this session id. An event without `metadata.orderId`
+    // was not created by this app (payment link, Dashboard checkout, another
+    // integration) — classify it out instead of retrying it into the DLQ as
+    // noise. An event WITH the field whose order is already terminal is moot
+    // (the checkout reverse path cancelled it before attaching the session id).
+    // Everything else is the order-creation-vs-webhook race: retry.
+    if (message.metadataOrderId === undefined) {
+      return { ok: true, outcome: "ignored" };
+    }
+    const [order] = await db
+      .select({ status: customerOrder.status })
+      .from(customerOrder)
+      .where(eq(customerOrder.id, message.metadataOrderId))
+      .limit(1);
+    if (order && order.status === "cancelled") {
+      return { ok: true, outcome: "ignored" };
+    }
     return { ok: false, outcome: "retryable" };
   }
   if (ledgerChanges === 1) {

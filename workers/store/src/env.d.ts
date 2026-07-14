@@ -11,9 +11,8 @@ interface ImportMetaEnv {
   // or "/" in dev-direct). See src/lib/basepath.ts + src/router.tsx.
   readonly PUBLIC_BASE: string;
   // Stripe publishable key (pk_…), client-safe by design — feeds loadStripe on
-  // the embedded Payment Element. Whether the Stripe branch renders is gated by
-  // the server-derived getCheckoutConfig flag (the full stripeConfigured check),
-  // not by this var's mere presence.
+  // the embedded Payment Element. The server-derived getCheckoutConfig flag
+  // gates the Stripe branch on this var AND the server secrets.
   readonly STRIPE_PUBLISHABLE_KEY: string;
 }
 

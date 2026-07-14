@@ -32,6 +32,9 @@
     // Controlled apex (leading dot) — cross-subdomain cookie domain + the
     // auth server's `*.{apex}` trustedOrigins.
     "AUTH_DOMAIN": ".somewhatintelligent.ca",
+    // Stripe publishable key (pk_…, client-safe). Blank until Stripe
+    // onboarding; getCheckoutConfig gates the Payment Element on it.
+    "STRIPE_PUBLISHABLE_KEY": "",
   },
   "d1_databases": [
     {
@@ -50,11 +53,10 @@
         "dead_letter_queue": "si-stripe-events-dlq-staging",
         "max_retries": 5,
       },
-      // Terminal consumer: no dead_letter_queue behind it, no retries — the
-      // worker best-effort reprocesses then unconditionally acks (see worker.ts
-      // processDlqBatch), so dead events surface a log line instead of silently
-      // ageing out of the DLQ.
-      { "queue": "si-stripe-events-dlq-staging", "max_retries": 0 },
+      // Terminal consumer: no dead_letter_queue behind it. processDlqBatch acks
+      // after persisting evidence; max_retries only backs its one retry case —
+      // the dead-letter INSERT itself failing (see stripe-queue.ts).
+      { "queue": "si-stripe-events-dlq-staging", "max_retries": 5 },
     ],
   },
   // Reconciliation sweep — releases orphaned/stale-attached stock reservations
@@ -86,6 +88,7 @@
         "STORE_URL": "https://somewhatintelligent.ca/shop",
         "IDENTITY_URL": "https://somewhatintelligent.ca/account",
         "AUTH_DOMAIN": ".somewhatintelligent.ca",
+        "STRIPE_PUBLISHABLE_KEY": "",
       },
       "d1_databases": [
         {
@@ -105,7 +108,7 @@
             "max_retries": 5,
           },
           // Terminal consumer — see the staging note above.
-          { "queue": "si-stripe-events-dlq-production", "max_retries": 0 },
+          { "queue": "si-stripe-events-dlq-production", "max_retries": 5 },
         ],
       },
       "triggers": {

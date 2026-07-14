@@ -14,6 +14,13 @@ import type { OrderLine } from "@/lib/pricing";
 
 export type ReserveResult = { ok: true } | { ok: false; error: "out_of_stock"; message: string };
 
+// Caller writes committed atomically with the guards, plus the compensating
+// statements that remove them when a guard misses.
+export interface ReservationWrite {
+  statements: unknown[];
+  undo: unknown[];
+}
+
 /**
  * Reserve stock for every priced line atomically. Runs one guarded
  * `UPDATE … WHERE stock >= quantity` per line inside a single `db.batch`, then
@@ -26,7 +33,24 @@ export type ReserveResult = { ok: true } | { ok: false; error: "out_of_stock"; m
  * the same intent.
  */
 export async function reserveStock(db: Db, lines: readonly OrderLine[]): Promise<ReserveResult> {
-  if (lines.length === 0) return { ok: true };
+  return reserveStockAndWrite(db, lines, { statements: [], undo: [] });
+}
+
+/**
+ * reserveStock plus the caller's order writes in the SAME `db.batch` (one
+ * transaction — a thrown statement commits nothing). A zero-row guard UPDATE
+ * is not an error, so that case is compensated explicitly: re-increment the
+ * decremented lines and run `write.undo`.
+ */
+export async function reserveStockAndWrite(
+  db: Db,
+  lines: readonly OrderLine[],
+  write: ReservationWrite,
+): Promise<ReserveResult> {
+  if (lines.length === 0) {
+    if (write.statements.length > 0) await db.batch(write.statements as never);
+    return { ok: true };
+  }
 
   const guards = lines.map((line) =>
     db
@@ -36,27 +60,31 @@ export async function reserveStock(db: Db, lines: readonly OrderLine[]): Promise
         sql`${productVariant.id} = ${line.variantId} and ${productVariant.stock} >= ${line.quantity}`,
       ),
   );
-  const results = (await db.batch(guards as never)) as Array<{ meta?: { changes?: number } }>;
+  const results = (await db.batch([...guards, ...write.statements] as never)) as Array<{
+    meta?: { changes?: number };
+  }>;
 
   const succeeded: OrderLine[] = [];
   let firstFailing: OrderLine | undefined;
-  results.forEach((r, i) => {
+  results.slice(0, lines.length).forEach((r, i) => {
     if ((r?.meta?.changes ?? 0) === 1) succeeded.push(lines[i]!);
     else if (!firstFailing) firstFailing = lines[i];
   });
 
   if (!firstFailing) return { ok: true };
 
-  // Compensate: re-increment only the lines that actually decremented.
-  if (succeeded.length > 0) {
-    const compensations = succeeded.map((line) =>
+  // Compensate: re-increment only the lines that actually decremented, and
+  // undo the caller's writes that committed alongside the guards.
+  const compensations = [
+    ...succeeded.map((line) =>
       db
         .update(productVariant)
         .set({ stock: sql`${productVariant.stock} + ${line.quantity}` })
         .where(eq(productVariant.id, line.variantId)),
-    );
-    await db.batch(compensations as never);
-  }
+    ),
+    ...write.undo,
+  ];
+  if (compensations.length > 0) await db.batch(compensations as never);
 
   return {
     ok: false,

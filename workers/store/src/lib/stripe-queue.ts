@@ -74,8 +74,8 @@ function retryDelaySeconds(attempts: number): number {
  *
  * The one case this terminal consumer retries: the dead-letter INSERT itself
  * throws (D1 down). Then the evidence never landed, so acking would lose it —
- * log `stripe_dlq_persist_failed` and `message.retry()`, letting the DLQ's own
- * redelivery become the persistence retry.
+ * log `stripe_dlq_persist_failed` and retry with backoff; the DLQ consumer's
+ * own max_retries (wrangler.jsonc) backs the redelivery.
  */
 export async function processDlqBatch(
   db: Db,
@@ -84,6 +84,7 @@ export async function processDlqBatch(
 ): Promise<void> {
   for (const message of batch.messages) {
     let reason: "retryable_exhausted" | "reprocess_threw";
+    let reprocessError: string | undefined;
     try {
       const result = await processStoreStripeEvent(db, message.body, env);
       if (result.ok) {
@@ -100,8 +101,9 @@ export async function processDlqBatch(
         continue;
       }
       reason = "retryable_exhausted";
-    } catch {
+    } catch (err) {
       reason = "reprocess_threw";
+      reprocessError = err instanceof Error ? err.message : String(err);
     }
 
     // Persist forensics BEFORE the ack. If this write fails, do NOT ack —
@@ -135,7 +137,7 @@ export async function processDlqBatch(
         reason,
         error: err instanceof Error ? err.message : String(err),
       });
-      message.retry();
+      message.retry({ delaySeconds: retryDelaySeconds(message.attempts) });
       continue;
     }
 
@@ -145,6 +147,7 @@ export async function processDlqBatch(
       eventType: message.body?.type,
       objectId: message.body?.objectId,
       reason,
+      error: reprocessError,
       attempts: message.attempts,
       queue: batch.queue,
     });

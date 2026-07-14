@@ -25,10 +25,15 @@ const ORPHAN_GRACE_MS = 10 * 60 * 1000;
 export type RetrievedSession = { status: string | null; payment_status: string | null };
 export type SessionRetriever = (sessionId: string) => Promise<RetrievedSession>;
 
+// Injected `stripe.checkout.sessions.expire`: only resolves on an OPEN session,
+// so a resolved call proves the session can never be paid.
+export type SessionExpirer = (sessionId: string) => Promise<void>;
+
 export interface ReconcileDeps {
   db: Db;
   // Injected `stripe.checkout.sessions.retrieve` (status + payment_status only).
   retrieveSession: SessionRetriever;
+  expireSession: SessionExpirer;
   // Overridable clock for tests; defaults to now.
   now?: number;
   // Overridable orphan grace window for tests; defaults to ORPHAN_GRACE_MS.
@@ -194,15 +199,25 @@ export async function reconcilePendingReservations(deps: ReconcileDeps): Promise
       await resolveDeadEvents(db, sessionId, now);
       continue;
     }
-    // Release only a session Stripe agrees is dead: expired, or still
-    // open-and-unpaid past its window (abandoned). A `complete` session still
-    // unpaid (an async method settling) is left to its webhook.
+    // Release only a session PROVEN dead: already expired, or open-and-unpaid
+    // and successfully expired here (a resolved expire is the proof — the buyer
+    // can no longer pay it). A `complete` session still unpaid (an async method
+    // settling) is left to its webhook; a failed expire is inconclusive
+    // (payment may have just landed), so skip and let the next sweep re-check.
     const dead =
       session.status === "expired" ||
       (session.status === "open" && session.payment_status === "unpaid");
     if (!dead) {
       staleSkipped++;
       continue;
+    }
+    if (session.status === "open") {
+      try {
+        await deps.expireSession(sessionId);
+      } catch {
+        staleSkipped++;
+        continue;
+      }
     }
     await db.batch(releaseAndCancel(db, row.id, now) as never);
     staleReleased++;
