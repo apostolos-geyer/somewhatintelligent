@@ -81,6 +81,30 @@
           "path": "/_sfn/account",
           "mode": "passthrough",
         },
+        // Per-app asset dirs, passed through unstripped. Vite's
+        // preload-helper + TanStack Start's router-preload manifest resolve
+        // dynamically-imported chunk URLs from the build-time
+        // `import.meta.env.BASE_URL`, which can't be made mount-aware (the
+        // same build must also work unmounted in local dev) — so those
+        // requests fire at the bare apex path, not under `/account`/`/shop`.
+        // identity and store therefore each get a unique `build.assetsDir`
+        // (vite.config.ts) so they never collide in the shared apex
+        // `/assets/` namespace; these mounts route the bare-path requests to
+        // the correct upstream regardless of which HTML document originated
+        // them. Same rationale + longest-mount-first placement as the
+        // `/_sfn/<app>` bases above.
+        {
+          "binding": "IDENTITY",
+          "host": "staging.somewhatintelligent.ca",
+          "path": "/_assets/account",
+          "mode": "passthrough",
+        },
+        {
+          "binding": "STORE",
+          "host": "staging.somewhatintelligent.ca",
+          "path": "/_assets/store",
+          "mode": "passthrough",
+        },
         {
           "host": "staging.somewhatintelligent.ca",
           "path": "/",
@@ -149,6 +173,20 @@
               "path": "/_sfn/account",
               "mode": "passthrough",
             },
+            // Per-app asset dirs, passed through unstripped — see the
+            // staging ROUTES comment for the full rationale.
+            {
+              "binding": "IDENTITY",
+              "host": "somewhatintelligent.ca",
+              "path": "/_assets/account",
+              "mode": "passthrough",
+            },
+            {
+              "binding": "STORE",
+              "host": "somewhatintelligent.ca",
+              "path": "/_assets/store",
+              "mode": "passthrough",
+            },
             {
               "host": "somewhatintelligent.ca",
               "path": "/",
@@ -156,7 +194,7 @@
               "to": "/shop",
               "status": 308,
             },
-            // www mirrors the apex exactly (same six mounts).
+            // www mirrors the apex exactly (same mounts as above).
             {
               "binding": "GUESTLIST",
               "host": "www.somewhatintelligent.ca",
@@ -191,6 +229,18 @@
               "binding": "IDENTITY",
               "host": "www.somewhatintelligent.ca",
               "path": "/_sfn/account",
+              "mode": "passthrough",
+            },
+            {
+              "binding": "IDENTITY",
+              "host": "www.somewhatintelligent.ca",
+              "path": "/_assets/account",
+              "mode": "passthrough",
+            },
+            {
+              "binding": "STORE",
+              "host": "www.somewhatintelligent.ca",
+              "path": "/_assets/store",
               "mode": "passthrough",
             },
             {
