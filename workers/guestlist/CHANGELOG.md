@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.6](https://github.com/apostolos-geyer/somewhatintelligent/compare/guestlist-v0.0.5...guestlist-v0.0.6) (2026-07-14)
+
+
+### Features
+
+* **store,guestlist:** embedded Stripe checkout via Payment Element ([#27](https://github.com/apostolos-geyer/somewhatintelligent/issues/27)) ([4dd7903](https://github.com/apostolos-geyer/somewhatintelligent/commit/4dd790381c2b050ad442f5168244720f581b006b))
+
 ## [0.0.5](https://github.com/apostolos-geyer/somewhatintelligent/compare/guestlist-v0.0.4...guestlist-v0.0.5) (2026-07-12)
 
 ### Features
