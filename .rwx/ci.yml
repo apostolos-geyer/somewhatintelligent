@@ -232,6 +232,10 @@ tasks:
       - bunfig.toml
       - workers/*/package.json
       - packages/*/package.json
+      # inbox is a workspace member (root package.json lists it literally), so
+      # its manifest must be present for bun to resolve the workspace — it is
+      # otherwise fully outside CI (deploys manually via alchemy).
+      - inbox/package.json
     outputs:
       filesystem:
         filter:
