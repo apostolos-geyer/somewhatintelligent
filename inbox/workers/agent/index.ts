@@ -158,7 +158,7 @@ function createEmailTools(env: Env, mailboxId: string) {
       description:
         "Draft a new email (not a reply) and save it to the Drafts folder. This does NOT send — it saves a draft for the operator to review. Use this for composing new outbound emails. Write the body as plain text — no HTML tags.",
       parameters: z.object({
-        to: z.string().email().describe("Recipient email address"),
+        to: z.email().describe("Recipient email address"),
         subject: z.string().describe("Subject line"),
         body: z
           .string()
@@ -179,7 +179,7 @@ function createEmailTools(env: Env, mailboxId: string) {
         "Draft a reply to an existing email and save it to the Drafts folder. This does NOT send — it saves a draft for the operator to review and send from the UI. Write the body as plain text — no HTML tags.",
       parameters: z.object({
         originalEmailId: z.string().describe("The ID of the email being replied to"),
-        to: z.string().email().describe("Recipient email address"),
+        to: z.email().describe("Recipient email address"),
         subject: z.string().describe("Subject line (usually 'Re: ...')"),
         body: z
           .string()

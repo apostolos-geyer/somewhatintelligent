@@ -87,20 +87,27 @@ export class EmailMCP extends McpAgent<Env> {
     };
 
     // ── list_mailboxes ─────────────────────────────────────────
-    this.server.tool("list_mailboxes", "List all available mailboxes", {}, async () => {
-      const result = await toolListMailboxes(env);
-      return mcpText(result);
-    });
+    this.server.registerTool(
+      "list_mailboxes",
+      { description: "List all available mailboxes" },
+      async () => {
+        const result = await toolListMailboxes(env);
+        return mcpText(result);
+      },
+    );
 
     // ── list_emails ────────────────────────────────────────────
-    this.server.tool(
+    this.server.registerTool(
       "list_emails",
-      "List emails in a mailbox folder. Returns email metadata (id, subject, sender, recipient, date, read/starred status, thread_id).",
       {
-        mailboxId: z.string().describe("The mailbox email address (e.g. user@example.com)"),
-        folder: z.string().default(Folders.INBOX).describe(FOLDER_TOOL_DESCRIPTION),
-        limit: z.number().default(20).describe("Maximum number of emails to return"),
-        page: z.number().default(1).describe("Page number for pagination"),
+        description:
+          "List emails in a mailbox folder. Returns email metadata (id, subject, sender, recipient, date, read/starred status, thread_id).",
+        inputSchema: {
+          mailboxId: z.string().describe("The mailbox email address (e.g. user@example.com)"),
+          folder: z.string().default(Folders.INBOX).describe(FOLDER_TOOL_DESCRIPTION),
+          limit: z.number().default(20).describe("Maximum number of emails to return"),
+          page: z.number().default(1).describe("Page number for pagination"),
+        },
       },
       async ({ mailboxId, folder, limit, page }) => {
         const denied = await verifyMailbox(mailboxId);
@@ -111,12 +118,15 @@ export class EmailMCP extends McpAgent<Env> {
     );
 
     // ── get_email ──────────────────────────────────────────────
-    this.server.tool(
+    this.server.registerTool(
       "get_email",
-      "Get a single email with its full body content. Use this to read the actual content of an email.",
       {
-        mailboxId: z.string().describe("The mailbox email address"),
-        emailId: z.string().describe("The email ID to retrieve"),
+        description:
+          "Get a single email with its full body content. Use this to read the actual content of an email.",
+        inputSchema: {
+          mailboxId: z.string().describe("The mailbox email address"),
+          emailId: z.string().describe("The email ID to retrieve"),
+        },
       },
       async ({ mailboxId, emailId }) => {
         const denied = await verifyMailbox(mailboxId);
@@ -133,12 +143,15 @@ export class EmailMCP extends McpAgent<Env> {
     );
 
     // ── get_thread ─────────────────────────────────────────────
-    this.server.tool(
+    this.server.registerTool(
       "get_thread",
-      "Get all emails in a conversation thread. Returns all messages sorted chronologically.",
       {
-        mailboxId: z.string().describe("The mailbox email address"),
-        threadId: z.string().describe("The thread_id to retrieve all messages for"),
+        description:
+          "Get all emails in a conversation thread. Returns all messages sorted chronologically.",
+        inputSchema: {
+          mailboxId: z.string().describe("The mailbox email address"),
+          threadId: z.string().describe("The thread_id to retrieve all messages for"),
+        },
       },
       async ({ mailboxId, threadId }) => {
         const denied = await verifyMailbox(mailboxId);
@@ -149,13 +162,15 @@ export class EmailMCP extends McpAgent<Env> {
     );
 
     // ── search_emails ──────────────────────────────────────────
-    this.server.tool(
+    this.server.registerTool(
       "search_emails",
-      "Search for emails matching a query across subject and body fields.",
       {
-        mailboxId: z.string().describe("The mailbox email address"),
-        query: z.string().describe("Search query to match against subject and body"),
-        folder: z.string().optional().describe("Optional folder to restrict search to"),
+        description: "Search for emails matching a query across subject and body fields.",
+        inputSchema: {
+          mailboxId: z.string().describe("The mailbox email address"),
+          query: z.string().describe("Search query to match against subject and body"),
+          folder: z.string().optional().describe("Optional folder to restrict search to"),
+        },
       },
       async ({ mailboxId, query, folder }) => {
         const denied = await verifyMailbox(mailboxId);
@@ -166,15 +181,18 @@ export class EmailMCP extends McpAgent<Env> {
     );
 
     // ── draft_reply ────────────────────────────────────────────
-    this.server.tool(
+    this.server.registerTool(
       "draft_reply",
-      "Draft a reply to an email and save it to the Drafts folder. Does NOT send — saves a draft for review.",
       {
-        mailboxId: z.string().describe("The mailbox email address"),
-        originalEmailId: z.string().describe("The ID of the email being replied to"),
-        to: z.string().email().describe("Recipient email address"),
-        subject: z.string().describe("Subject line (usually 'Re: ...')"),
-        bodyHtml: z.string().describe("The HTML body of the reply"),
+        description:
+          "Draft a reply to an email and save it to the Drafts folder. Does NOT send — saves a draft for review.",
+        inputSchema: {
+          mailboxId: z.string().describe("The mailbox email address"),
+          originalEmailId: z.string().describe("The ID of the email being replied to"),
+          to: z.email().describe("Recipient email address"),
+          subject: z.string().describe("Subject line (usually 'Re: ...')"),
+          bodyHtml: z.string().describe("The HTML body of the reply"),
+        },
       },
       async ({ mailboxId, originalEmailId, to, subject, bodyHtml }) => {
         const denied = await verifyMailbox(mailboxId);
@@ -192,19 +210,21 @@ export class EmailMCP extends McpAgent<Env> {
     );
 
     // ── create_draft ───────────────────────────────────────────
-    this.server.tool(
+    this.server.registerTool(
       "create_draft",
-      "Create a new draft email. Can be a new email or a reply draft.",
       {
-        mailboxId: z.string().describe("The mailbox email address"),
-        to: z.string().optional().describe("Recipient email address (optional for early drafts)"),
-        subject: z.string().describe("Subject line"),
-        bodyHtml: z.string().describe("The HTML body of the draft"),
-        in_reply_to: z
-          .string()
-          .optional()
-          .describe("The ID of the email this draft is replying to (optional)"),
-        thread_id: z.string().optional().describe("Thread ID to attach this draft to (optional)"),
+        description: "Create a new draft email. Can be a new email or a reply draft.",
+        inputSchema: {
+          mailboxId: z.string().describe("The mailbox email address"),
+          to: z.string().optional().describe("Recipient email address (optional for early drafts)"),
+          subject: z.string().describe("Subject line"),
+          bodyHtml: z.string().describe("The HTML body of the draft"),
+          in_reply_to: z
+            .string()
+            .optional()
+            .describe("The ID of the email this draft is replying to (optional)"),
+          thread_id: z.string().optional().describe("Thread ID to attach this draft to (optional)"),
+        },
       },
       async ({ mailboxId, to, subject, bodyHtml, in_reply_to, thread_id }) => {
         const denied = await verifyMailbox(mailboxId);
@@ -232,15 +252,17 @@ export class EmailMCP extends McpAgent<Env> {
     );
 
     // ── update_draft ───────────────────────────────────────────
-    this.server.tool(
+    this.server.registerTool(
       "update_draft",
-      "Update an existing draft email's content.",
       {
-        mailboxId: z.string().describe("The mailbox email address"),
-        draftId: z.string().describe("The ID of the draft to update"),
-        to: z.string().optional().describe("Updated recipient email address"),
-        subject: z.string().optional().describe("Updated subject line"),
-        bodyHtml: z.string().optional().describe("Updated HTML body"),
+        description: "Update an existing draft email's content.",
+        inputSchema: {
+          mailboxId: z.string().describe("The mailbox email address"),
+          draftId: z.string().describe("The ID of the draft to update"),
+          to: z.string().optional().describe("Updated recipient email address"),
+          subject: z.string().optional().describe("Updated subject line"),
+          bodyHtml: z.string().optional().describe("Updated HTML body"),
+        },
       },
       async ({ mailboxId, draftId, to, subject, bodyHtml }) => {
         const denied = await verifyMailbox(mailboxId);
@@ -265,12 +287,14 @@ export class EmailMCP extends McpAgent<Env> {
     );
 
     // ── delete_email ───────────────────────────────────────────
-    this.server.tool(
+    this.server.registerTool(
       "delete_email",
-      "Permanently delete an email by ID.",
       {
-        mailboxId: z.string().describe("The mailbox email address"),
-        emailId: z.string().describe("The email ID to delete"),
+        description: "Permanently delete an email by ID.",
+        inputSchema: {
+          mailboxId: z.string().describe("The mailbox email address"),
+          emailId: z.string().describe("The email ID to delete"),
+        },
       },
       async ({ mailboxId, emailId }) => {
         const denied = await verifyMailbox(mailboxId);
@@ -281,15 +305,17 @@ export class EmailMCP extends McpAgent<Env> {
     );
 
     // ── send_reply ─────────────────────────────────────────────
-    this.server.tool(
+    this.server.registerTool(
       "send_reply",
-      "Send a reply to an email. Only call after drafting and getting confirmation.",
       {
-        mailboxId: z.string().describe("The mailbox email address to send from"),
-        originalEmailId: z.string().describe("The ID of the email being replied to"),
-        to: z.string().email().describe("Recipient email address"),
-        subject: z.string().describe("Subject line"),
-        bodyHtml: z.string().describe("The HTML body of the reply"),
+        description: "Send a reply to an email. Only call after drafting and getting confirmation.",
+        inputSchema: {
+          mailboxId: z.string().describe("The mailbox email address to send from"),
+          originalEmailId: z.string().describe("The ID of the email being replied to"),
+          to: z.email().describe("Recipient email address"),
+          subject: z.string().describe("Subject line"),
+          bodyHtml: z.string().describe("The HTML body of the reply"),
+        },
       },
       async ({ mailboxId, originalEmailId, to, subject, bodyHtml }) => {
         const denied = await verifyMailbox(mailboxId);
@@ -321,14 +347,16 @@ export class EmailMCP extends McpAgent<Env> {
     );
 
     // ── send_email ─────────────────────────────────────────────
-    this.server.tool(
+    this.server.registerTool(
       "send_email",
-      "Send a new email (not a reply). Only call after getting confirmation.",
       {
-        mailboxId: z.string().describe("The mailbox email address to send from"),
-        to: z.string().email().describe("Recipient email address"),
-        subject: z.string().describe("Subject line"),
-        bodyHtml: z.string().describe("The HTML body of the email"),
+        description: "Send a new email (not a reply). Only call after getting confirmation.",
+        inputSchema: {
+          mailboxId: z.string().describe("The mailbox email address to send from"),
+          to: z.email().describe("Recipient email address"),
+          subject: z.string().describe("Subject line"),
+          bodyHtml: z.string().describe("The HTML body of the email"),
+        },
       },
       async ({ mailboxId, to, subject, bodyHtml }) => {
         const denied = await verifyMailbox(mailboxId);
@@ -352,13 +380,15 @@ export class EmailMCP extends McpAgent<Env> {
     );
 
     // ── mark_email_read ────────────────────────────────────────
-    this.server.tool(
+    this.server.registerTool(
       "mark_email_read",
-      "Mark an email as read or unread.",
       {
-        mailboxId: z.string().describe("The mailbox email address"),
-        emailId: z.string().describe("The email ID"),
-        read: z.boolean().describe("true to mark as read, false for unread"),
+        description: "Mark an email as read or unread.",
+        inputSchema: {
+          mailboxId: z.string().describe("The mailbox email address"),
+          emailId: z.string().describe("The email ID"),
+          read: z.boolean().describe("true to mark as read, false for unread"),
+        },
       },
       async ({ mailboxId, emailId, read }) => {
         const denied = await verifyMailbox(mailboxId);
@@ -369,13 +399,15 @@ export class EmailMCP extends McpAgent<Env> {
     );
 
     // ── move_email ─────────────────────────────────────────────
-    this.server.tool(
+    this.server.registerTool(
       "move_email",
-      "Move an email to a different folder (inbox, sent, draft, archive, trash).",
       {
-        mailboxId: z.string().describe("The mailbox email address"),
-        emailId: z.string().describe("The email ID"),
-        folderId: z.string().describe(MOVE_FOLDER_TOOL_DESCRIPTION),
+        description: "Move an email to a different folder (inbox, sent, draft, archive, trash).",
+        inputSchema: {
+          mailboxId: z.string().describe("The mailbox email address"),
+          emailId: z.string().describe("The email ID"),
+          folderId: z.string().describe(MOVE_FOLDER_TOOL_DESCRIPTION),
+        },
       },
       async ({ mailboxId, emailId, folderId }) => {
         const denied = await verifyMailbox(mailboxId);

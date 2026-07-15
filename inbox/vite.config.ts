@@ -8,7 +8,6 @@ import { fileURLToPath } from "node:url";
 import { reactRouter } from "@react-router/dev/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
-import tsconfigPaths from "vite-tsconfig-paths";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
@@ -38,13 +37,10 @@ function readGitSha(): string {
 }
 
 export default defineConfig({
+  resolve: { tsconfigPaths: true },
   define: {
     __APP_VERSION__: JSON.stringify(readAppVersion()),
     __APP_COMMIT__: JSON.stringify(readGitSha()),
   },
-  // No Cloudflare plugin here: Alchemy's Website.Vite resource injects its
-  // own fork of the Cloudflare Vite plugin at build/dev time (upstream
-  // @cloudflare/vite-plugin is incompatible with it). Build, local dev, and
-  // deploy all run through `alchemy` — see alchemy.run.ts.
-  plugins: [tailwindcss(), reactRouter(), tsconfigPaths()],
+  plugins: [tailwindcss(), reactRouter()],
 });

@@ -9,6 +9,18 @@ import { formatDetailDate, formatListDate, formatQuotedDate, formatShortDate } f
 // deterministic. 2024-06-15 is a Saturday.
 const NOW = "2024-06-15T12:00:00Z";
 
+// The host-locale formatters pass `undefined` locale through to Intl, so
+// their rendering varies by machine (en-CA ICU says "12:00 p.m."). What the
+// functions own is WHICH parts render (today → time-only, this year →
+// month+day, older → +year) — assert that by rendering the same parts with
+// the same options, in whatever locale the host uses.
+const timeOnly = (d: string) =>
+  new Date(d).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+const monthDay = (d: string) =>
+  new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+const monthDayYear = (d: string) =>
+  new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+
 beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date(NOW));
@@ -20,15 +32,15 @@ afterEach(() => {
 
 describe("formatListDate", () => {
   it("renders a bare time for a date that is today", () => {
-    expect(formatListDate(NOW)).toBe("12:00 PM");
+    expect(formatListDate(NOW)).toBe(timeOnly(NOW));
   });
 
   it("renders month + day for a date earlier this year", () => {
-    expect(formatListDate("2024-01-05T00:00:00Z")).toBe("Jan 5");
+    expect(formatListDate("2024-01-05T00:00:00Z")).toBe(monthDay("2024-01-05T00:00:00Z"));
   });
 
   it("renders month + day + year for a date in a previous year", () => {
-    expect(formatListDate("2020-04-15T00:00:00Z")).toBe("Apr 15, 2020");
+    expect(formatListDate("2020-04-15T00:00:00Z")).toBe(monthDayYear("2020-04-15T00:00:00Z"));
   });
 
   it("falls back to the raw string for an unparsable date", () => {
@@ -38,7 +50,15 @@ describe("formatListDate", () => {
 
 describe("formatDetailDate", () => {
   it("renders weekday, month, day, and time", () => {
-    expect(formatDetailDate(NOW)).toBe("Sat, Jun 15, 12:00 PM");
+    expect(formatDetailDate(NOW)).toBe(
+      new Date(NOW).toLocaleDateString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      }),
+    );
   });
 
   it("falls back to the raw string for an unparsable date", () => {
@@ -48,7 +68,7 @@ describe("formatDetailDate", () => {
 
 describe("formatShortDate", () => {
   it("renders time only", () => {
-    expect(formatShortDate(NOW)).toBe("12:00 PM");
+    expect(formatShortDate(NOW)).toBe(timeOnly(NOW));
   });
 
   it("falls back to the raw string for an unparsable date", () => {
