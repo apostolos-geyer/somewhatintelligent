@@ -4,7 +4,8 @@
   "private": true,
   "workspaces": [
     "workers/*",
-    "packages/*"
+    "packages/*",
+    "inbox"
   ],
   "type": "module",
   "scripts": {
