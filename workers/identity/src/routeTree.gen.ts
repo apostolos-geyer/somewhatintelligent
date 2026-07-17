@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as DeviceRouteImport } from './routes/_device'
 import { Route as DashboardRouteImport } from './routes/_dashboard'
@@ -44,6 +45,11 @@ import { Route as DashboardAdminOrgsIdRouteImport } from './routes/_dashboard/ad
 import { Route as DashboardAdminClientsNewRouteImport } from './routes/_dashboard/admin/clients/new'
 import { Route as DashboardAdminClientsIdRouteImport } from './routes/_dashboard/admin/clients/$id'
 
+const WelcomeRoute = WelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
@@ -220,6 +226,7 @@ const DashboardAdminClientsIdRoute = DashboardAdminClientsIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/welcome': typeof WelcomeRoute
   '/consent': typeof AuthConsentRoute
   '/privacy': typeof AuthPrivacyRoute
   '/reset-password': typeof AuthResetPasswordRoute
@@ -253,6 +260,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/welcome': typeof WelcomeRoute
   '/consent': typeof AuthConsentRoute
   '/privacy': typeof AuthPrivacyRoute
   '/reset-password': typeof AuthResetPasswordRoute
@@ -289,6 +297,7 @@ export interface FileRoutesById {
   '/_dashboard': typeof DashboardRouteWithChildren
   '/_device': typeof DeviceRouteWithChildren
   '/about': typeof AboutRoute
+  '/welcome': typeof WelcomeRoute
   '/_auth/consent': typeof AuthConsentRoute
   '/_auth/privacy': typeof AuthPrivacyRoute
   '/_auth/reset-password': typeof AuthResetPasswordRoute
@@ -324,6 +333,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
+    | '/welcome'
     | '/consent'
     | '/privacy'
     | '/reset-password'
@@ -357,6 +367,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/welcome'
     | '/consent'
     | '/privacy'
     | '/reset-password'
@@ -392,6 +403,7 @@ export interface FileRouteTypes {
     | '/_dashboard'
     | '/_device'
     | '/about'
+    | '/welcome'
     | '/_auth/consent'
     | '/_auth/privacy'
     | '/_auth/reset-password'
@@ -429,12 +441,20 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRouteWithChildren
   DeviceRoute: typeof DeviceRouteWithChildren
   AboutRoute: typeof AboutRoute
+  WelcomeRoute: typeof WelcomeRoute
   ApiSplatRoute: typeof ApiSplatRoute
   OrgsAcceptInvitationIdRoute: typeof OrgsAcceptInvitationIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/welcome': {
+      id: '/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof WelcomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/about': {
       id: '/about'
       path: '/about'
@@ -783,6 +803,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRouteWithChildren,
   DeviceRoute: DeviceRouteWithChildren,
   AboutRoute: AboutRoute,
+  WelcomeRoute: WelcomeRoute,
   ApiSplatRoute: ApiSplatRoute,
   OrgsAcceptInvitationIdRoute: OrgsAcceptInvitationIdRoute,
 }
