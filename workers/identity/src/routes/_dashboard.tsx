@@ -25,7 +25,7 @@ function DashboardLayout() {
   // session) bounced straight back here, and round and round.
   useEffect(() => {
     if (!isPending && !liveSession && !ssrSession) {
-      void navigate({ href: "/sign-in", replace: true });
+      void navigate({ to: "/sign-in", replace: true });
     }
   }, [isPending, liveSession, ssrSession, navigate]);
 

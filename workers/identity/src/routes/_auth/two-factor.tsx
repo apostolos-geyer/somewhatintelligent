@@ -8,6 +8,7 @@ import { Field, FieldLabel } from "@si/ui/components/field";
 import { Input } from "@si/ui/components/input";
 import { GuestlistBrand } from "@/components/guestlist-brand";
 import { authClient } from "@/lib/auth-client";
+import { toBrowserHref } from "@/lib/basepath";
 import { decodeReturnTo } from "@/lib/return-to";
 
 type Method = "totp" | "backup";
@@ -53,7 +54,15 @@ function TwoFactorPage() {
     }
     const target = decodeReturnTo(returnTo) ?? "/account";
     await router.invalidate();
-    await navigate({ href: target });
+    // toBrowserHref: a raw internal path handed to navigate({ href }) is
+    // read in the browser frame (mount input-stripped), so the default
+    // `/account` would collapse to the mount root — see sign-in.tsx
+    // beforeLoad. Absolute returnTo URLs pass through untouched (navigate
+    // turns a full URL into a document navigation on its own).
+    await navigate({
+      href: toBrowserHref(target),
+      reloadDocument: target.startsWith("/api/"),
+    });
   }
 
   return (

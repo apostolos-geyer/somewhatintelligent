@@ -13,7 +13,10 @@ export const Route = createFileRoute("/_dashboard/admin")({
   // session bounce.)
   beforeLoad: ({ context }) => {
     if (context.session && !isAdminRole(context.session.user.role)) {
-      throw redirect({ href: "/account" });
+      // `to`-based (not href): under the /account vmf mount an href of
+      // "/account" is read in the browser frame and input-stripped to "/" —
+      // see routes/index.tsx.
+      throw redirect({ to: "/account" });
     }
   },
   component: AdminGate,
@@ -32,7 +35,7 @@ function AdminGate() {
   // — that's the hydration window that was sending admins to /account.
   useEffect(() => {
     if (!isPending && session && !isAdmin) {
-      void navigate({ href: "/account", replace: true });
+      void navigate({ to: "/account", replace: true });
     }
   }, [isPending, session, isAdmin, navigate]);
 
