@@ -28,8 +28,10 @@ export const Route = createFileRoute("/_auth/consent")({
     return out;
   },
   beforeLoad: ({ context, search }) => {
-    if (!context.session) throw redirect({ href: "/sign-in" });
-    if (!search.client_id) throw redirect({ href: "/sign-in" });
+    // `to`-based (not href) so the redirect stays mount-correct on the
+    // client — see routes/index.tsx.
+    if (!context.session) throw redirect({ to: "/sign-in" });
+    if (!search.client_id) throw redirect({ to: "/sign-in" });
   },
   loaderDeps: ({ search }) => ({ search }),
   loader: async ({ deps }) => {

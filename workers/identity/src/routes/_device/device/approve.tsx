@@ -15,8 +15,10 @@ export const Route = createFileRoute("/_device/device/approve")({
     user_code: typeof s.user_code === "string" ? s.user_code : undefined,
   }),
   beforeLoad: ({ context, search }) => {
-    if (!context.session) throw redirect({ href: "/sign-in" });
-    if (!search.user_code) throw redirect({ href: "/" });
+    // `to`-based (not href) so the redirect stays mount-correct on the
+    // client — see routes/index.tsx.
+    if (!context.session) throw redirect({ to: "/sign-in" });
+    if (!search.user_code) throw redirect({ to: "/" });
   },
   head: () => ({ meta: [{ title: "Approve Device — Identity" }] }),
   component: DeviceApprovePage,

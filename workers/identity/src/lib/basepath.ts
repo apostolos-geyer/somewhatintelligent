@@ -58,6 +58,32 @@ export function readMountMeta(): string | null {
 }
 
 /**
+ * The browser-frame (public) form of a root-relative app path: the vmf mount
+ * prepended when the client is running under one, the path unchanged
+ * otherwise (the server never sees the mount; dev-direct has none). Absolute
+ * URLs pass through untouched.
+ *
+ * Why this exists: `redirect({ href })` / `navigate({ href })` read `href`
+ * as a BROWSER URL — the router runs it through the mount rewrite's `input`
+ * (strip) before matching. A router-INTERNAL path handed to them raw
+ * therefore shifts meaning under the mount, and the post-auth default
+ * target `/account` is byte-identical to the mount itself, so it collapses
+ * to `/` and ping-pongs against the index route's own redirect forever (the
+ * "sign-in hangs calling loadSession" loop). Prefer `to`-based navigation
+ * for literal internal routes; use this for dynamic string targets
+ * (returnTo, the OAuth authorize URL) that must survive both frames.
+ */
+export function toBrowserHref(path: string): string {
+  if (!path.startsWith("/")) return path;
+  const mount = resolveBasepath({
+    isServer: typeof document === "undefined",
+    publicBase: null,
+    mountMeta: readMountMeta(),
+  });
+  return mount === "/" ? path : mount + path;
+}
+
+/**
  * The mount expressed as a TanStack Router `rewrite` pair (browser URL ↔
  * router-internal URL): strip the mount on input, prepend it on output.
  *
