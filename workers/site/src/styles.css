@@ -183,19 +183,6 @@ a:focus-visible {
   font-weight: 700;
 }
 
-.private-note {
-  position: absolute;
-  z-index: 2;
-  top: 47%;
-  right: 13%;
-  color: var(--color-primary);
-  font-family: var(--font-editorial);
-  font-size: clamp(20px, 2.2vw, 34px);
-  font-style: italic;
-  line-height: 1.05;
-  transform: rotate(-3deg);
-}
-
 .publishing-scope {
   position: absolute;
   z-index: 3;
@@ -218,8 +205,7 @@ a:focus-visible {
   border-left: 1px solid var(--color-border);
 }
 
-.hero-image img,
-.record-visual img {
+.hero-image img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -230,6 +216,8 @@ a:focus-visible {
 }
 
 .record-grid {
+  --record-scaffold-size: min(calc(12vw - 28px), 190px);
+
   display: grid;
   min-height: 0;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -267,66 +255,67 @@ a:focus-visible {
   overflow: hidden;
 }
 
-.object-visual img {
-  filter: grayscale(1) contrast(1.08);
-  object-position: 33% center;
-}
-
-.system-visual {
+.record-scaffold {
   position: relative;
   display: flex;
+  width: var(--record-scaffold-size);
+  height: var(--record-scaffold-size);
+  align-self: end;
   align-items: center;
   justify-content: center;
+  margin-top: 0;
+  margin-right: 14px;
+  margin-bottom: 18px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-sunken);
+  font-family: var(--font-display);
+  line-height: 0.82;
+  text-align: center;
+}
+
+.record-scaffold::before,
+.record-scaffold::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 150%;
+  height: 1px;
+  background: var(--color-border);
+  content: "";
+}
+
+.record-scaffold::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.record-scaffold::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.record-scaffold strong {
+  position: relative;
+  z-index: 1;
+  padding: 7px 10px;
   background: var(--color-surface-sunken);
   font-family: var(--font-mono);
-  font-size: 24px;
+  font-size: clamp(16px, 1.45vw, 23px);
   font-weight: 400;
-  line-height: 0.95;
-}
-
-.system-visual span {
-  position: absolute;
-  top: 8px;
-  right: 10px;
-  font-size: 28px;
-}
-
-.text-visual {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  width: calc(100% - 28px);
-  margin-right: 14px;
-  padding: 18px;
-  background: var(--color-inverse-foreground);
-  color: var(--color-inverse);
-  font-family: var(--font-mono);
-  font-size: 17px;
   line-height: 0.9;
 }
 
-.text-visual small {
-  color: var(--color-primary);
-  font-size: 8px;
-  line-height: 1.2;
-}
-
-.apostoli-visual img {
-  filter: grayscale(0.4) contrast(1.1);
-}
-
 .record-copy {
+  position: relative;
   display: flex;
   min-width: 0;
   flex-direction: column;
-  justify-content: flex-end;
-  padding: 44px 18px 18px;
+  justify-content: flex-start;
+  padding: 44px 18px 50px;
 }
 
 .record-copy p {
   font-family: var(--font-editorial);
-  font-size: clamp(15px, 1.12vw, 18px);
-  line-height: 1.25;
+  font-size: clamp(13px, 0.94vw, 15.5px);
+  line-height: 1.15;
 }
 
 .record-copy .record-state {
@@ -338,7 +327,9 @@ a:focus-visible {
 }
 
 .record-copy a {
-  margin-top: 18px;
+  position: absolute;
+  bottom: 18px;
+  left: 18px;
   color: var(--color-primary);
   font-family: var(--font-mono);
   font-size: 12px;
@@ -1149,12 +1140,6 @@ a:focus-visible {
     display: none;
   }
 
-  .private-note {
-    top: 45%;
-    right: 8%;
-    font-size: clamp(20px, 7vw, 31px);
-  }
-
   .publishing-scope {
     max-width: 92%;
     padding-left: 18px;
@@ -1163,6 +1148,8 @@ a:focus-visible {
   }
 
   .record-grid {
+    --record-scaffold-size: calc(52vw - 28px);
+
     display: block;
   }
 
@@ -1182,7 +1169,8 @@ a:focus-visible {
   }
 
   .record-copy p {
-    font-size: clamp(17px, 4.8vw, 23px);
+    font-size: 16px;
+    line-height: 1.15;
   }
 
   .site-footer {

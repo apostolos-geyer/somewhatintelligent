@@ -3,7 +3,6 @@ import Base from "../layouts/Base.astro";
 import SiteFooter from "../components/SiteFooter.astro";
 import SiteHeader from "../components/SiteHeader.astro";
 import heroImage from "../../../../docs/design/somewhatintelligent-brand-study/reference-images/01-friend-elevator-incident.png";
-import apparatusImage from "../../../../docs/design/somewhatintelligent-brand-study/reference-images/03-after-hours-apparatus.png";
 ---
 
 <Base>
@@ -29,10 +28,6 @@ import apparatusImage from "../../../../docs/design/somewhatintelligent-brand-st
               </text>
             </svg>
           </h1>
-          <p class="private-note">
-            public interface.<br />
-            private motive.
-          </p>
           <p class="publishing-scope">objects, texts, systems, &amp; side effects</p>
         </div>
         <figure class="hero-image">
@@ -42,49 +37,58 @@ import apparatusImage from "../../../../docs/design/somewhatintelligent-brand-st
 
       <section class="record-grid" aria-label="Current records">
         <article class="record" id="objects">
-          <p class="record-label">Object / friend-001</p>
-          <div class="record-visual object-visual">
-            <img src={heroImage.src} alt="Friend 001 garment" />
+          <p class="record-label">Objects</p>
+          <div class="record-visual record-scaffold" aria-hidden="true">
+            <strong>OBJECTS</strong>
           </div>
           <div class="record-copy">
-            <p>Wearable field notes.<br />Printed in small runs.<br />100% cotton.</p>
-            <p class="record-state">Release 1.0.0<br />Available</p>
+            <p>
+              Hand made and algorithmically marketed. What better way to express your subversion
+              than through consumption?
+            </p>
             <a href="/shop/friend-001/">Shop now <span aria-hidden="true">→</span></a>
           </div>
         </article>
 
         <article class="record" id="systems">
-          <p class="record-label">System / current</p>
-          <div class="record-visual system-visual" aria-hidden="true">
-            <span>+</span>
+          <p class="record-label">Software registry</p>
+          <div class="record-visual record-scaffold" aria-hidden="true">
             <strong>SOFTWARE<br />REGISTRY</strong>
           </div>
           <div class="record-copy">
-            <p>Software records forthcoming.</p>
+            <p>
+              Digital solutions to problems created by digital solutions to problems. People used
+              to live in longhouses. Now you want an MCP gateway.
+            </p>
             <a href="/software/">Explore systems <span aria-hidden="true">→</span></a>
           </div>
         </article>
 
         <article class="record" id="texts">
-          <p class="record-label">Text / the cyber other</p>
-          <div class="record-visual text-visual" aria-hidden="true">
-            <strong>THE<br />CYBER<br />OTHER</strong>
-            <small>notes on relation<br />beyond interface</small>
+          <p class="record-label">Texts</p>
+          <div class="record-visual record-scaffold" aria-hidden="true">
+            <strong>TEXTS</strong>
           </div>
           <div class="record-copy">
-            <p>Critical writing on technology, intimacy, and power.<br />Printed and digital.</p>
-            <a href="#texts">Read excerpt <span aria-hidden="true">→</span></a>
+            <p>
+              Critical writing on technology, intimacy, and power. Or a catalog of my arrogance.
+              Interpretation is left as an exercise to the reader.
+            </p>
+            <a href="/writing/">Read texts <span aria-hidden="true">→</span></a>
           </div>
         </article>
 
         <article class="record" id="apostoli">
-          <p class="record-label">Apostoli / not for hire</p>
-          <div class="record-visual apostoli-visual">
-            <img src={apparatusImage.src} alt="After-hours publishing apparatus" />
+          <p class="record-label">About</p>
+          <div class="record-visual record-scaffold" aria-hidden="true">
+            <strong>ABOUT</strong>
           </div>
           <div class="record-copy">
-            <p>Publisher, writer, operator.<br />The work is available. I am not.</p>
-            <a href="/about/">Read the work <span aria-hidden="true">→</span></a>
+            <p>
+              The mask behind the other, more abstract mask. Of course, the subject remains as
+              obscured as ever.
+            </p>
+            <a href="/about/">About <span aria-hidden="true">→</span></a>
           </div>
         </article>
       </section>
