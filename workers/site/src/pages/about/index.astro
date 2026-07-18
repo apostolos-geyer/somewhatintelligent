@@ -1,0 +1,60 @@
+---
+import Base from "../../layouts/Base.astro";
+import SiteFooter from "../../components/SiteFooter.astro";
+import SiteHeader from "../../components/SiteHeader.astro";
+import motiveImage from "../../../../../docs/design/somewhatintelligent-brand-study/reference-images/02-private-motive-still-life.png";
+import apparatusImage from "../../../../../docs/design/somewhatintelligent-brand-study/reference-images/03-after-hours-apparatus.png";
+---
+
+<Base
+  title="Apostoli — somewhatintelligent"
+  description="Apostoli is the publisher, writer, and operator responsible for somewhatintelligent. Not for hire."
+>
+  <div class="site-frame about-frame">
+    <SiteHeader active="about" />
+
+    <main class="about-main">
+      <section class="person-record" aria-labelledby="apostoli-title">
+        <h1 id="apostoli-title">
+          <span class="sr-only">Apostoli</span>
+          <svg
+            aria-hidden="true"
+            class="person-title-plane"
+            preserveAspectRatio="none"
+            viewBox="0 0 1000 1000"
+          >
+            <text x="18" y="930" font-size="1120" lengthAdjust="spacingAndGlyphs" textLength="940">
+              APOSTOLI
+            </text>
+          </svg>
+        </h1>
+
+        <figure class="person-portrait-placeholder" aria-label="Portrait placeholder">
+          <span>Image forthcoming</span>
+        </figure>
+      </section>
+
+      <section class="person-statement" aria-label="Statement">
+        <blockquote>
+          To be curious is to be intimate with your existence. There is no act more intimate than
+          understanding how something works. I build systems because I like deciding how things
+          should work. I make art because I like having license to comment on how they already do.
+          Should I be entrusted with such power? Perhaps not. But I wouldn't trust you to make that
+          judgement.
+        </blockquote>
+      </section>
+
+      <section class="person-evidence" aria-label="Selected work and evidence">
+        <figure><img src={apparatusImage.src} alt="After-hours publishing apparatus" /></figure>
+        <figure><img src={motiveImage.src} alt="Private motive object study" /></figure>
+        <div class="about-placeholder">
+          <p>Selected work</p>
+          <strong>COMING SOON</strong>
+          <span>Placeholder content</span>
+        </div>
+      </section>
+    </main>
+
+    <SiteFooter />
+  </div>
+</Base>

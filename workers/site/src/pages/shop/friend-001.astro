@@ -1,0 +1,60 @@
+---
+import Base from "../../layouts/Base.astro";
+import SiteFooter from "../../components/SiteFooter.astro";
+import SiteHeader from "../../components/SiteHeader.astro";
+import friendImage from "../../../../../docs/design/somewhatintelligent-brand-study/reference-images/01-friend-elevator-incident.png";
+import privateImage from "../../../../../docs/design/somewhatintelligent-brand-study/reference-images/02-private-motive-still-life.png";
+import backPrint from "../../../../../docs/design/somewhatintelligent-brand-study/source-assets/back_cppreference_print.png";
+---
+
+<Base
+  title="FRIEND-001 — somewhatintelligent"
+  description="Placeholder product record for the FRIEND-001 shirt by somewhatintelligent."
+>
+  <div class="site-frame product-frame">
+    <SiteHeader active="shop" />
+
+    <main class="product-main">
+      <section class="product-stage" aria-labelledby="product-title">
+        <figure class="product-hero-image">
+          <img src={friendImage.src} alt="FRIEND-001 shirt editorial study" />
+        </figure>
+
+        <div class="product-proof-column" aria-label="Garment evidence">
+          <figure><img src={privateImage.src} alt="FRIEND-001 material study" /></figure>
+          <figure><img src={backPrint.src} alt="FRIEND-001 back-print proof" /></figure>
+        </div>
+
+        <section class="product-sheet">
+          <p>Object / FRIEND-001 / release forthcoming</p>
+          <h1 id="product-title">I THINK WE<br />SHOULD BE<br />FRIENDS*</h1>
+          <small>*as defined by ISO/IEC 14882 · [class.friend] · [temp.friend]</small>
+          <div class="product-description">
+            <p>I mean, in the C++ way.</p>
+            <p>Product details forthcoming.</p>
+          </div>
+          <p class="product-price">— CAD</p>
+          <div class="product-size-field" aria-label="Size selection unavailable">
+            <p>Size</p>
+            <div class="product-sizes">
+              <button type="button" disabled>S</button><button type="button" disabled>M</button
+              ><button type="button" disabled>L</button><button type="button" disabled>XL</button
+              ><button type="button" disabled>2XL</button>
+            </div>
+          </div>
+          <button class="product-coming-button" type="button" disabled>Coming soon</button>
+          <p class="product-state">Release pending.</p>
+        </section>
+      </section>
+
+      <section class="product-notes" aria-label="Product placeholders">
+        <article><h2>Concept</h2><p>Product record forthcoming.</p></article>
+        <article><h2>Specification</h2><p>Material and sizing forthcoming.</p></article>
+        <article><h2>Provenance</h2><p>Release record forthcoming.</p></article>
+        <article><h2>Documentation</h2><p>Evidence and care details forthcoming.</p></article>
+      </section>
+    </main>
+
+    <SiteFooter />
+  </div>
+</Base>

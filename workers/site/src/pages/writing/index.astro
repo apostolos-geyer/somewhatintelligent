@@ -1,0 +1,33 @@
+---
+import Base from "../../layouts/Base.astro";
+import SiteFooter from "../../components/SiteFooter.astro";
+import SiteHeader from "../../components/SiteHeader.astro";
+---
+
+<Base
+  title="Writing — somewhatintelligent"
+  description="Writing by Apostoli, published by somewhatintelligent."
+>
+  <div class="site-frame writing-frame">
+    <SiteHeader active="writing" />
+
+    <main class="writing-main">
+      <section class="writing-placeholder" aria-labelledby="writing-title">
+        <h1 id="writing-title">WRITING</h1>
+        <p class="writing-deck">arguments, notes, and revisions</p>
+        <div class="writing-coming">
+          <span>Text / public record</span>
+          <strong>COMING<br />SOON</strong>
+        </div>
+      </section>
+
+      <aside class="writing-evidence" aria-label="Evidence placeholder">
+        <p>Evidence</p>
+        <div><span>Image forthcoming</span></div>
+        <footer>Writing records will appear here.</footer>
+      </aside>
+    </main>
+
+    <SiteFooter />
+  </div>
+</Base>
