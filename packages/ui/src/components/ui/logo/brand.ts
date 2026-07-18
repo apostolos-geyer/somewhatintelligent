@@ -30,11 +30,11 @@ export interface LogoBrand {
 
 export const brand: LogoBrand = {
   wordmarkFull: "somewhatintelligent",
-  wordmarkShort: "SI",
+  wordmarkShort: "si*",
   ariaLabel: "somewhatintelligent",
   ogColors: {
-    primary: "#F7F8FA",
-    light: "#0B0C0E",
+    primary: "#F7F7F3",
+    light: "#080908",
   },
 };
 
@@ -49,14 +49,11 @@ export const MARK_STROKE: Record<LogoColorScheme, string> = {
 };
 
 /**
- * The mark's geometry — a simple neutral registration symbol (a circle with
- * four cardinal tick marks and a plotted center point), expressed as raw
- * path/circle data rather than a component so it stays hook-free and
- * renders identically in the browser and in satori/OG image generation.
- * Swap these for a custom mark's own geometry.
+ * The mark is the FRIEND declaration's asterisk: a footnote, wildcard, and
+ * pointer to the material that complicates the public statement.
  */
 export const markPaths = {
-  circleRadius: 6.5,
-  ticks: ["M12 2.5v4", "M12 17.5v4", "M2.5 12h4", "M17.5 12h4"],
-  centerRadius: 0.9,
+  circleRadius: 0,
+  ticks: ["M12 4v16", "M4 12h16", "M6.4 6.4l11.2 11.2", "M17.6 6.4L6.4 17.6"],
+  centerRadius: 1.15,
 };

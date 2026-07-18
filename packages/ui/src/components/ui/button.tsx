@@ -6,11 +6,11 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@si/ui/lib/utils";
 import { interactiveMaterials } from "@si/ui/lib/materials";
 
-// Buttons are FULLY PILL with a quick, crisp press. Transitions are
-// 150–200ms ease-out; active state scales to 0.97. Focus is a 2px solid
+// Buttons are compact proof controls with a quick, crisp press. Transitions
+// are 150–200ms ease-out; active state scales to 0.97. Focus is a 2px solid
 // ring offset from the control — never a soft glow.
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-full text-sm font-semibold whitespace-nowrap transition-all duration-150 ease-out outline-none select-none active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center rounded-sm text-sm font-semibold whitespace-nowrap transition-all duration-150 ease-out outline-none select-none active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -34,11 +34,11 @@ const buttonVariants = cva(
 
         // === Backwards-compatible / platform variants ===
         // Secondary: quiet dashed-rule surface.
-        secondary: `bg-card text-foreground ${interactiveMaterials.soft} rounded-full`,
+        secondary: `bg-card text-foreground ${interactiveMaterials.soft}`,
         // Neumorphic — chiseled surface.
-        neo: `bg-secondary text-foreground ${interactiveMaterials.neo} rounded-full`,
+        neo: `bg-secondary text-foreground ${interactiveMaterials.neo}`,
         // Legacy "glass" — opaque fresh sheet with a solid rule.
-        glass: `text-foreground ${interactiveMaterials.glass} rounded-full`,
+        glass: `text-foreground ${interactiveMaterials.glass}`,
         // Success — confirmation state (also carried by copy/icon).
         success: "bg-success text-success-foreground hover:bg-success/90",
       },

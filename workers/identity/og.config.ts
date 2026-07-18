@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { defineOgConfig, type FontInput, type FontWeight } from "@somewhatintelligent/og";
+import { defineOgConfig, type FontInput } from "@somewhatintelligent/og";
 
 /**
  * Fonts for the OG raster pipeline (`platform-og build`, wired into
@@ -11,28 +11,36 @@ import { defineOgConfig, type FontInput, type FontWeight } from "@somewhatintell
 const designFont = (rel: string): string =>
   fileURLToPath(import.meta.resolve(`@si/design/fonts/${rel}`));
 
-const weights: Array<[FontWeight, string]> = [
-  [300, "IosevkaAile-Light.ttf"],
-  [400, "IosevkaAile-Regular.ttf"],
-  [500, "IosevkaAile-Medium.ttf"],
-  [600, "IosevkaAile-SemiBold.ttf"],
-  [700, "IosevkaAile-Bold.ttf"],
-];
-
 const fonts: FontInput[] = [
-  ...weights.map(
-    ([weight, file]): FontInput => ({
-      name: "Iosevka Aile",
-      weight,
-      style: "normal",
-      path: designFont(`iosevka-aile/${file}`),
-    }),
-  ),
   {
-    name: "Iosevka Aile",
+    name: "Barlow Condensed",
+    weight: 300,
+    style: "normal",
+    path: designFont("barlow-condensed/BarlowCondensed-Light.ttf"),
+  },
+  {
+    name: "Barlow Condensed",
+    weight: 400,
+    style: "normal",
+    path: designFont("barlow-condensed/BarlowCondensed-Regular.ttf"),
+  },
+  {
+    name: "Barlow Condensed",
+    weight: 700,
+    style: "normal",
+    path: designFont("barlow-condensed/BarlowCondensed-Bold.ttf"),
+  },
+  {
+    name: "Source Serif 4",
+    weight: 400,
+    style: "normal",
+    path: designFont("source-serif-4/SourceSerif4-Variable.ttf"),
+  },
+  {
+    name: "Source Serif 4",
     weight: 400,
     style: "italic",
-    path: designFont("iosevka-aile/IosevkaAile-Italic.ttf"),
+    path: designFont("source-serif-4/SourceSerif4-Italic-Variable.ttf"),
   },
   {
     name: "Iosevka",

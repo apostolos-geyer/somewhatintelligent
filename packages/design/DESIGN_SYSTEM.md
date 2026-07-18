@@ -1,11 +1,10 @@
-# Design System — "FRIEND"
+# Design System — somewhatintelligent
 
-**The UI is a code editor.** A near-black canvas, syntax-highlighted
-color, generous rounding. Nothing glows, nothing blurs, nothing floats on
-a soft shadow — depth is _drawn_, with border treatment and hard-offset
-lines, the way a terminal communicates structure. The name and the pink
-are both lifted straight off the shirt that funds this store: C++'s
-`friend` keyword, white-on-black, printed in small runs.
+**A publishing apparatus, not a themed dashboard.** The system joins black
+cotton, cold proof paper, steel rules, editorial type, and terminal evidence.
+Nothing glows or blurs. Depth is drawn with rules and occasional hard-offset
+lines. Signal pink is a scarce private correction crossing a public record,
+not ambient decoration.
 
 This document is the contract. Every component in `@si/ui`, every app
 surface, and every future agent run is held to it.
@@ -14,11 +13,9 @@ surface, and every future agent run is held to it.
 
 ## 1. The five rules
 
-1. **Neutral canvas, one loud accent slot.** A cool near-black/white
-   grayscale ramp for backgrounds/surfaces/text, plus a single hot-pink
-   `primary` accent (the brand slot — see README.md, the `friend` pink)
-   and the conventional `destructive` / `success` / `warning` triad, each
-   its own syntax-highlighter hue (red / green / amber). See
+1. **Cold neutral canvas, one signal.** A nearly achromatic paper/garment
+   ramp for backgrounds, surfaces, and text, plus signal-pink `primary` and
+   the conventional `destructive` / `success` / `warning` triad. See
    src/tokens/brand.ts for the literal values and src/tokens/colors.ts for
    the full semantic token contract.
 2. **No soft shadows. No blur. Ever.** `box-shadow` blur radii are 0
@@ -32,13 +29,12 @@ surface, and every future agent run is held to it.
    | `border-dashed` | secondary surface, interactive affordance, warning/pending |
    | `border-dotted` | tertiary, hints, dividers, informational |
    | `shadow-brutal-*` | a hard offset — the "duplicate line" that stands a card/CTA off the canvas |
-4. **Rounded.** The radius scale is generous (`sm`=10px is the control
-   default, `md`=16 cards, up to `xl`=30). Crisp rules + soft corners is
-   the signature tension.
-5. **Iosevka is the voice.** `Iosevka Aile` for display/body/editorial,
-   `Iosevka` (mono) for code, IDs, timestamps, and uppercase annotation
-   labels — the annotation voice of the terminal. No other typefaces are
-   vendored or permitted.
+4. **Nearly square.** The radius scale runs from 0–6px. Controls default to
+   2px and cards to 3px; only switches, radio controls, and avatars should be
+   fully round.
+5. **Three distinct voices.** Barlow Condensed makes public claims and
+   release identifiers. Source Serif 4 carries interface copy and long-form
+   reading. Iosevka carries IDs, timestamps, code, and terse state labels.
 
 ## 2. Palette
 
@@ -79,7 +75,7 @@ commit to solid on hover), `neo` = chisel, `glass` = opaque sheet.
 
 ## 5. Component conventions
 
-- **Buttons**: full pill. `default`/`strong` = solid primary fill (strong
+- **Buttons**: tight 2px proof controls. `default`/`strong` = solid primary fill (strong
   adds the signature offset); `outline` = 1.5px heavy rule; `link` = dotted
   underline that commits to solid on hover; `destructive` = the destructive
   token. Focus is a 2px solid ring, offset — never a glow.

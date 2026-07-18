@@ -6,16 +6,17 @@ const meta: Meta = {
 };
 export default meta;
 
-/** Hero type moment + full Zerove weight specimens */
+/** Hero type moment + Barlow Condensed weight specimens */
 export const Display: StoryObj = {
-  name: "Display — Zerove",
+  name: "Display — Barlow Condensed",
   render: () => (
     <div className="max-w-5xl space-y-12 p-8">
       <div>
-        <h3 className="mb-1 type-section-label text-muted-foreground">Display — Zerove</h3>
+        <h3 className="mb-1 type-section-label text-muted-foreground">
+          Display — Barlow Condensed
+        </h3>
         <p className="mb-8 font-mono text-xs text-muted-foreground">
-          Headlines, hero, brand · rounded unicase · USE BIG — keep it at display sizes, up to 200px
-          for hero moments
+          Headlines, releases, public claims · condensed · use big, dense, and deliberately
         </p>
       </div>
 
@@ -25,13 +26,13 @@ export const Display: StoryObj = {
           className="font-display leading-[0.95] tracking-[0.005em]"
           style={{ fontSize: "clamp(80px, 14vw, 200px)", fontWeight: 400 }}
         >
-          ink
+          somewhat
         </div>
         <div
-          className="font-display italic leading-[0.95] tracking-[0.005em] text-muted-foreground"
-          style={{ fontSize: "clamp(80px, 14vw, 200px)", fontWeight: 400 }}
+          className="font-display leading-[0.95] tracking-[0.005em] text-muted-foreground"
+          style={{ fontSize: "clamp(80px, 14vw, 200px)", fontWeight: 700 }}
         >
-          green
+          intelligent
         </div>
       </div>
 
@@ -46,18 +47,6 @@ export const Display: StoryObj = {
           }}
         >
           Extralight
-        </div>
-        <div
-          className="text-muted-foreground"
-          style={{
-            fontSize: "clamp(60px, 10vw, 160px)",
-            fontWeight: 200,
-            fontStyle: "italic",
-            lineHeight: 0.92,
-            letterSpacing: "-0.02em",
-          }}
-        >
-          Italic
         </div>
         <div
           style={{
@@ -79,28 +68,18 @@ export const Display: StoryObj = {
         >
           Regular
         </div>
-        <div
-          style={{
-            fontSize: "clamp(48px, 8vw, 120px)",
-            fontWeight: 600,
-            lineHeight: 0.95,
-            marginTop: 8,
-          }}
-        >
-          Semibold
-        </div>
         <div style={{ fontSize: "clamp(48px, 8vw, 120px)", fontWeight: 700, lineHeight: 0.95 }}>
           Bold
         </div>
-        <div style={{ fontSize: "clamp(48px, 8vw, 120px)", fontWeight: 800, lineHeight: 0.95 }}>
-          Extrabold
+        <div style={{ fontSize: "clamp(48px, 8vw, 120px)", fontWeight: 900, lineHeight: 0.95 }}>
+          Black
         </div>
       </div>
 
       {/* Accent lockup */}
       <div>
         <div
-          className="font-display italic text-primary"
+          className="font-accent italic text-primary"
           style={{
             fontSize: "clamp(48px, 8vw, 120px)",
             fontWeight: 400,
@@ -127,13 +106,13 @@ export const Display: StoryObj = {
   parameters: { layout: "fullscreen" },
 };
 
-/** Switzer — the default body/UI font */
+/** Source Serif 4 — the default body/UI font */
 export const Body: StoryObj = {
-  name: "Body — Switzer",
+  name: "Body — Source Serif 4",
   render: () => (
     <div className="max-w-4xl space-y-8 p-8">
       <div>
-        <h3 className="mb-1 type-section-label text-muted-foreground">Body — Switzer</h3>
+        <h3 className="mb-1 type-section-label text-muted-foreground">Body — Source Serif 4</h3>
         <p className="mb-6 font-mono text-xs text-muted-foreground">
           THE DEFAULT · UI, labels, buttons, nav, descriptions · 14–18px · weight 400–700
         </p>
@@ -143,8 +122,8 @@ export const Body: StoryObj = {
         <div>
           <p className="mb-2 type-mono-label text-muted-foreground">16px / 400</p>
           <p className="text-base leading-relaxed text-muted-foreground">
-            Drawn, not decorated. Crisp borders meet generous rounding — the design system is the
-            material itself, independent of whichever brand palette sits on top of it.
+            Drawn, not decorated. Cold paper, black cotton, and steel rules make the interface a
+            publishing surface rather than a themed dashboard.
           </p>
         </div>
         <div>
@@ -194,14 +173,14 @@ export const Body: StoryObj = {
   parameters: { layout: "fullscreen" },
 };
 
-/** IBM Plex Serif — editorial serif for long-form prose */
+/** Source Serif 4 — editorial serif for long-form prose */
 export const Editorial: StoryObj = {
-  name: "Editorial — IBM Plex Serif",
+  name: "Editorial — Source Serif 4",
   render: () => (
     <div className="max-w-4xl space-y-8 p-8">
       <div>
         <h3 className="mb-1 type-section-label text-muted-foreground">
-          Editorial — IBM Plex Serif
+          Editorial — Source Serif 4
         </h3>
         <p className="mb-6 font-mono text-xs text-muted-foreground">
           Long-form prose, articles, pull quotes · 18–22px · light weight
@@ -212,8 +191,8 @@ export const Editorial: StoryObj = {
         <div>
           <p className="mb-2 type-mono-label text-muted-foreground">18px / 300 — Article body</p>
           <p className="font-editorial text-lg leading-[1.75] text-muted-foreground">
-            Ruled structure with generous rounding — crisp lines and friendly corners, neutral
-            surfaces and a single accent color. The material speaks for itself.
+            Ruled structure with nearly square corners, neutral surfaces, and one scarce signal. The
+            material speaks before the ornament does.
           </p>
         </div>
         <div>

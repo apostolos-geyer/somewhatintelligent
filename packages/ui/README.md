@@ -40,11 +40,11 @@ Stories live next to their components (`*.stories.tsx`).
 
 Every component follows the design system defined in `templates/design/DESIGN_SYSTEM.md`. The key principles:
 
-- **Monochrome foreground on background** — one neutral ramp, inverted for dark mode; `destructive` for danger, `success` for confirmation
+- **Cold paper / garment black** — a near-achromatic system with signal pink reserved for primary action and authorial correction
 - **No soft shadows, no blur** — depth is drawn with border treatment and hard-offset lines, never a diffused shadow or `backdrop-filter`
 - **Depth is border treatment** — solid / dashed / dotted rules carry emphasis and state; `shadow-brutal-*` adds a hard offset
-- **Generous rounding** — `rounded-sm` (10px) is the control default, scaling up to `rounded-xl` (30px) for large surfaces
-- **Iosevka is the voice** — `Iosevka Aile` for display/body/editorial, `Iosevka` (mono) for code, IDs, and uppercase annotation labels
+- **Nearly square** — `rounded-sm` (2px) is the control default and `rounded-xl` tops out at 6px; circles remain circular
+- **Three voices** — Barlow Condensed for public claims, Source Serif 4 for interface/editorial copy, and Iosevka for evidence and state
 
 ### Materials
 
