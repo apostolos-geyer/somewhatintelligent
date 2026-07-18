@@ -1,0 +1,29 @@
+---
+import "../styles.css";
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = "somewhatintelligent — objects, systems, texts",
+  description = "Objects, systems, texts, and other side effects by Apostoli.",
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="en" data-theme="dark" style="color-scheme: dark;">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <title>{title}</title>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
