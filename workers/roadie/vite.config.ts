@@ -28,6 +28,12 @@ export default defineConfig({
         miniflare: {
           bindings: {
             TEST_MIGRATIONS: migrations,
+            // Pin the default (non-dev) read path: `.dev.vars` seeds
+            // ENVIRONMENT=development for local dev, and the pool loads it —
+            // so pin it here (bindings win over .dev.vars) to keep the
+            // presign path deterministic. Dev-branch tests override
+            // ENVIRONMENT on their own synthetic env.
+            ENVIRONMENT: "staging",
             // Fake SigV4 creds — miniflare doesn't validate SigV4 against R2.
             // They're needed only so aws4fetch's AwsClient can construct;
             // signed-header enforcement and presigned-URL round-trips are

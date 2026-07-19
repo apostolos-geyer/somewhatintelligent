@@ -136,18 +136,24 @@ type RetOf<F extends (...args: never[]) => unknown> = Promise<
 // @somewhatintelligent/kit's version module no longer reads them off env),
 // 404 for everything else: Roadie has no other public HTTP surface in v1
 // (ADR-RD-001). Consumers reach Roadie exclusively over service bindings.
+// In local dev only, a `/__dev/blob/<id>` route serves bytes back out of the
+// miniflare R2 sim so `getReadUrl`'s dev URL round-trips fully offline.
 // `scheduled` dispatches the configured cron entries; v1 ships only the
 // pending reaper. The other scheduled tasks are stubbed via
 // adminTriggerTask (see spec §Deferrals).
 export default {
   async fetch(request: Request, env: RoadieEnv): Promise<Response> {
-    return (
-      handleVersionRequest(request, {
-        worker: "roadie",
-        env,
-        overrides: { version: env.WORKER_VERSION, commit: env.WORKER_COMMIT },
-      }) ?? new Response(null, { status: 404 })
-    );
+    const version = handleVersionRequest(request, {
+      worker: "roadie",
+      env,
+      overrides: { version: env.WORKER_VERSION, commit: env.WORKER_COMMIT },
+    });
+    if (version) return version;
+    if (env.ENVIRONMENT === "development") {
+      const devBlob = await handleDevBlob(request, env);
+      if (devBlob) return devBlob;
+    }
+    return new Response(null, { status: 404 });
   },
   async scheduled(
     controller: ScheduledController,
@@ -161,3 +167,34 @@ export default {
     }
   },
 } satisfies ExportedHandler<RoadieEnv>;
+
+// Dev-only blob-serving route. `getReadUrl` points browsers here in
+// development instead of a presigned S3 URL, so bytes written through `put`
+// into the miniflare R2 sim are servable back. Returns `null` for anything
+// it does not own so the caller falls through to the ADR-RD-001 404; the
+// route is never mounted outside `ENVIRONMENT === "development"`. Physical
+// blob ids are opaque (`ids.ts`) and never contain separators — an id
+// carrying one is rejected, which also blocks path traversal. No auth: this
+// is local dev, and object ids are unguessable enough for that scope.
+const DEV_BLOB_PREFIX = "/__dev/blob/";
+
+async function handleDevBlob(request: Request, env: RoadieEnv): Promise<Response | null> {
+  if (request.method !== "GET") return null;
+  const { pathname } = new URL(request.url);
+  if (!pathname.startsWith(DEV_BLOB_PREFIX)) return null;
+
+  const id = decodeURIComponent(pathname.slice(DEV_BLOB_PREFIX.length));
+  if (!id || id.includes("/") || id.includes("\\") || id.includes("..")) {
+    return new Response(null, { status: 400 });
+  }
+
+  const object = await env.BLOBS.get(id);
+  if (!object) return new Response(null, { status: 404 });
+
+  const headers = new Headers();
+  const contentType = object.httpMetadata?.contentType;
+  if (contentType) headers.set("content-type", contentType);
+  headers.set("content-length", String(object.size));
+  headers.set("cache-control", "private, max-age=60");
+  return new Response(object.body, { headers });
+}

@@ -12,8 +12,10 @@
  *
  * Uses wrangler CLI (must be authenticated via `wrangler login`).
  *
+ * Deployed environments only — local dev round-trips blobs entirely offline
+ * through roadie's `/__dev/blob/<id>` route (no presigning, no CORS).
+ *
  * Usage:
- *   vp run cors:setup -- --env local
  *   vp run cors:setup -- --env staging
  *   vp run cors:setup -- --env production
  *   vp run cors:setup -- --env all
@@ -25,16 +27,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 
-type Env = "local" | "staging" | "production";
+type Env = "staging" | "production";
 
 const BUCKETS: Record<Env, string> = {
-  local: "roadie-local-blobs",
   staging: "roadie-staging-blobs",
   production: "roadie-production-blobs",
 };
 
 const ORIGINS: Record<Env, string[]> = {
-  local: ["https://*.somewhatintelligent.localhost"],
   staging: ["https://*.example-account.workers.dev"],
   production: ["https://*.somewhatintelligent.ca"],
 };
@@ -100,17 +100,17 @@ const { values } = parseArgs({
 
 const envArg = values.env;
 if (!envArg) {
-  console.error("Usage: --env <local|staging|production|all>");
+  console.error("Usage: --env <staging|production|all>");
   process.exit(1);
 }
 
 const targets: Env[] =
   envArg === "all"
-    ? ["local", "staging", "production"]
-    : envArg === "local" || envArg === "staging" || envArg === "production"
+    ? ["staging", "production"]
+    : envArg === "staging" || envArg === "production"
       ? [envArg]
       : (() => {
-          console.error(`Invalid --env: ${envArg}. Must be local|staging|production|all.`);
+          console.error(`Invalid --env: ${envArg}. Must be staging|production|all.`);
           process.exit(1);
         })();
 

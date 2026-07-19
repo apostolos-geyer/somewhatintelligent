@@ -2,7 +2,30 @@
 
 Everything an agent needs to make Roadie-backed images (guestlist user
 avatars, store brand/product images; any future consumer app follows the
-same pattern) actually render. Two independent things must both be true.
+same pattern) actually render **in staging/production**. Two independent
+things must both be true. Local dev needs none of it — see "Local
+development" below.
+
+---
+
+## 0. Local development (fully offline)
+
+Local dev round-trips blobs without any R2 credentials or CORS. The write
+path (`put`, upload finalize) uses only the `BLOBS` binding, which resolves to
+the miniflare R2 sim. The read path is closed by roadie's own dev route:
+`getReadUrl` detects `ENVIRONMENT === "development"` and returns a URL to
+`GET /__dev/blob/<physicalBlobId>` (served by roadie's `fetch` handler,
+`workers/roadie/src/index.ts`) instead of presigning against the real S3 host.
+That route streams the object straight back out of the miniflare sim. The dev
+route is mounted **only** in development — deployed roadie keeps the ADR-RD-001
+404 for every path but `/__version`.
+
+`bun run seed` does not yet seed demo media, so images render once a consumer
+(store/publisher) uploads through roadie in a running stack. The seeded
+`ROADIE_DEV_ORIGIN` (`https://roadie.somewhatintelligent.localhost`, via
+portless) keeps the redirect on HTTPS so an HTTPS page isn't blocked as mixed
+content; it falls back to `http://127.0.0.1:8790` when unset. The S3 keypair +
+CORS below stay deployed-env-only concerns.
 
 ---
 
@@ -91,12 +114,12 @@ Admin uploads are **presigned browser-direct PUTs** to
 are presigned GETs loaded as `<img src>`, which do _not_ need CORS.)
 
 The canonical policy lives in code — `workers/roadie/scripts/setup-cors.ts`
-(`vp run cors:setup -- --env <local|staging|production|all>`, from
+(`vp run cors:setup -- --env <staging|production|all>`, from
 `workers/roadie`) — not a hand-run `curl`/`wrangler` one-off. Origins are
 wildcarded per env so any current or future Roadie consumer app on that
-domain gets access without a script change:
+domain gets access without a script change (local dev needs no CORS — see
+"Local development" below):
 
-- **local**: `https://*.somewhatintelligent.localhost`
 - **staging**: `https://*.example-account.workers.dev` (bouncer's staging host
   is `staging.somewhatintelligent.ca`; the wildcard also covers `workers.dev`
   preview URLs — update `ORIGINS.staging` in the script if uploads need to

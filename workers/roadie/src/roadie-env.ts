@@ -12,6 +12,10 @@ export interface RoadieEnv {
   R2_ACCOUNT_ID: string;
   S3_ACCESS_KEY_ID: string;
   S3_SECRET_ACCESS_KEY: string;
+  // Dev-only: browser-reachable origin of roadie's `/__dev/blob/<id>` route,
+  // seeded into `.dev.vars` (absent in staging/production). `getReadUrl`
+  // points local read URLs here; falls back to `http://127.0.0.1:8790`.
+  ROADIE_DEV_ORIGIN?: string;
   // Ship-time-injected by scripts/deploy-worker.sh / generate-preview-tasks.sh
   // (--var flags, not checked into wrangler.jsonc vars); fed to
   // @somewhatintelligent/kit's version module via `overrides`, since that

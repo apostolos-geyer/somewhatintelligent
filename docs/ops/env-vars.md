@@ -125,16 +125,28 @@ Email transport. `env-init` seeds only the Resend key; `ENVIRONMENT` /
 
 ## roadie (`workers/roadie`)
 
-R2 blob service. Has local D1. Local dev uses miniflare R2 emulation (needs no
-S3 keys); the keypair is only required if you flip `BLOBS` to `remote: true`.
+R2 blob service. Has local D1. The **write path** (`put`, upload finalize,
+`removeReference`) uses only the `BLOBS` R2 binding, so it works against the
+miniflare R2 sim locally with no S3 keys. The **read path** (`getReadUrl`)
+presigns an S3-compat GET against the real R2 host in staging/production — but
+in local dev it returns a URL to roadie's own `/__dev/blob/<id>` route instead,
+which streams the bytes straight back out of the miniflare sim. So the full
+round-trip runs offline; the S3 keypair is a deployed-env concern only (or if
+you flip `BLOBS` to `remote: true`).
 
-| name                   | consumed by           | dev source                                   | staging + production source                                                |
-| ---------------------- | --------------------- | -------------------------------------------- | -------------------------------------------------------------------------- |
-| `ENVIRONMENT`          | worker runtime        | wrangler top-level (staging), not overridden | wrangler var                                                               |
-| `R2_BUCKET`            | `src/sign.ts`         | wrangler top-level (staging), not overridden | wrangler var — `roadie-staging-blobs` / `roadie-production-blobs`          |
-| `R2_ACCOUNT_ID`        | `src/sign.ts`         | wrangler top-level (staging), not overridden | wrangler var (CF account id)                                               |
-| `S3_ACCESS_KEY_ID`     | `src/sign.ts` (SigV4) | `env-init` (blank placeholder)               | **secret (packages/secrets)** — `provided`/optional, per-env R2 S3 keypair |
-| `S3_SECRET_ACCESS_KEY` | `src/sign.ts` (SigV4) | `env-init` (blank placeholder)               | **secret (packages/secrets)** — `provided`/optional                        |
+| name                   | consumed by                           | dev source                                                    | staging + production source                                                |
+| ---------------------- | ------------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `ENVIRONMENT`          | worker runtime, `src/methods/read.ts` | `env-init` (`development`)                                    | wrangler var                                                               |
+| `ROADIE_DEV_ORIGIN`    | `src/methods/read.ts`                 | `env-init` (`https://roadie.somewhatintelligent.localhost`)   | absent (dev-only; read URLs presign against R2)                            |
+| `R2_BUCKET`            | `src/sign.ts`                         | wrangler top-level (staging), not overridden                  | wrangler var — `roadie-staging-blobs` / `roadie-production-blobs`          |
+| `R2_ACCOUNT_ID`        | `src/sign.ts`                         | wrangler top-level (staging), not overridden                  | wrangler var (CF account id)                                               |
+| `S3_ACCESS_KEY_ID`     | `src/sign.ts` (SigV4)                 | `env-init` (blank placeholder — read path uses the dev route) | **secret (packages/secrets)** — `provided`/optional, per-env R2 S3 keypair |
+| `S3_SECRET_ACCESS_KEY` | `src/sign.ts` (SigV4)                 | `env-init` (blank placeholder)                                | **secret (packages/secrets)** — `provided`/optional                        |
+
+`ROADIE_DEV_ORIGIN` is the browser-reachable origin of the dev blob route
+(portless HTTPS, so an HTTPS page's redirect to it isn't blocked as mixed
+content); it falls back to `http://127.0.0.1:8790` when unset. `ROADIE_PORT`
+still shifts the underlying listener — portless auto-detects it.
 
 Making roadie images actually render needs the keypair **plus** bucket CORS
 **plus** `props.callerApp` on every `ROADIE` service binding — see
