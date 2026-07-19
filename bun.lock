@@ -157,6 +157,16 @@
         "@si/typescript-config": "workspace:*",
       },
     },
+    "packages/contracts": {
+      "name": "@si/contracts",
+      "version": "0.0.0",
+      "dependencies": {
+        "arktype": "catalog:",
+      },
+      "devDependencies": {
+        "@si/typescript-config": "workspace:*",
+      },
+    },
     "packages/design": {
       "name": "@si/design",
       "version": "0.0.1",
@@ -1494,6 +1504,8 @@
     "@si/bouncer-service": ["@si/bouncer-service@workspace:workers/bouncer"],
 
     "@si/config": ["@si/config@workspace:packages/config"],
+
+    "@si/contracts": ["@si/contracts@workspace:packages/contracts"],
 
     "@si/design": ["@si/design@workspace:packages/design"],
 

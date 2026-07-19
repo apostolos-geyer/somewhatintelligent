@@ -1,0 +1,29 @@
+{
+  "name": "@si/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./result": "./src/result.ts",
+    "./operator": "./src/operator.ts",
+    "./deletion": "./src/deletion.ts",
+    "./access": "./src/access.ts",
+    "./media": "./src/media.ts",
+    "./version": "./src/version.ts",
+    "./cart": "./src/cart.ts",
+    "./pages": "./src/pages.ts",
+    "./store": "./src/store.ts",
+    "./publisher": "./src/publisher.ts",
+    "./http": "./src/store-http.ts"
+  },
+  "scripts": {
+    "typecheck": "tsgo --noEmit"
+  },
+  "dependencies": {
+    "arktype": "catalog:"
+  },
+  "devDependencies": {
+    "@si/typescript-config": "workspace:*"
+  }
+}
