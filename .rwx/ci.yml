@@ -346,6 +346,16 @@ tasks:
     filter: [*gate-filter, workers/store/**, *gate-neg]
     run: cd workers/store && bun run typecheck
     timeout: 8m
+  - key: typecheck-publisher
+    use: types
+    filter: [*gate-filter, workers/publisher/**, *gate-neg]
+    run: cd workers/publisher && bun run typecheck
+    timeout: 8m
+  - key: typecheck-site
+    use: types
+    filter: [*gate-filter, workers/site/**, *gate-neg]
+    run: cd workers/site && bun run typecheck
+    timeout: 8m
   - key: typecheck-config
     use: types
     filter: [*gate-filter, packages/config/**, *gate-neg]
@@ -453,6 +463,8 @@ tasks:
       - typecheck-promoter
       - typecheck-roadie
       - typecheck-store
+      - typecheck-publisher
+      - typecheck-site
       - typecheck-config
       - typecheck-design
       - typecheck-email

@@ -6,7 +6,7 @@
  * process tree beyond spawn+group-kill).
  *
  * Usage:
- *   bun run dev                    # guestlist identity roadie
+ *   bun run dev                    # guestlist identity roadie store publisher site
  *   bun run dev guestlist identity # any subset of workers/<name>
  *
  * Sequence: cached prep (env:init + local D1 migrations via vp — warm re-runs
@@ -21,7 +21,9 @@ import { connect } from "node:net";
 import { resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dir, "..");
-const DEFAULT_WORKERS = ["guestlist", "identity", "roadie", "store"];
+// Operator stays out of the default graph — selectable by name only
+// (`bun run dev operator`), matching its manual-deploy posture.
+const DEFAULT_WORKERS = ["guestlist", "identity", "roadie", "store", "publisher", "site"];
 const COLORS = ["\x1b[36m", "\x1b[35m", "\x1b[33m", "\x1b[32m", "\x1b[34m", "\x1b[31m"];
 const RESET = "\x1b[0m";
 

@@ -178,6 +178,40 @@ are baked into the client bundle at build time by `vite.config.ts`
 (allowlisted in `CLIENT_VARS`), gated by `SI_BUILD` / `CLOUDFLARE_ENV` so a dev
 `.dev.vars` never leaks into a shipped bundle.
 
+## operator (`workers/operator`)
+
+Access-protected operator console (RFC-0001 D1/D6) on its own `desk.*`
+hostname, outside bouncer — deploys manually (no CI deploy lane, no
+release-please component). Fails closed: outside development, missing Access
+configuration is a 500, never a fallback.
+
+| name           | consumed by           | dev source                                                                    | staging + production source                                                                                            |
+| -------------- | --------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `OPERATOR_URL` | `src/operator-env.ts` | local URL (contract — dev currently falls through; see Known inconsistencies) | wrangler var — staging `https://desk.staging.somewhatintelligent.ca`, production `https://desk.somewhatintelligent.ca` |
+| `POLICY_AUD`   | `src/lib/access.ts`   | omitted (dev actor `DEV_OPERATOR` stands in)                                  | Wrangler **secret**, required — written by the Access setup script (`wrangler secret put`), not packages/secrets       |
+| `TEAM_DOMAIN`  | `src/lib/access.ts`   | omitted (dev actor `DEV_OPERATOR` stands in)                                  | Wrangler **secret**, required — same writer as `POLICY_AUD`                                                            |
+| `DEV_OPERATOR` | `src/lib/access.ts`   | `env-init` (fixed dev actor, `<sub>:<email>`)                                 | absent                                                                                                                 |
+
+## publisher (`workers/publisher`)
+
+Publisher service (RFC-0001) — texts, software records, and fixed pages. Has
+local D1. The public read RPC is consumed over a service binding, not a URL;
+`PUBLISHER_URL` is a contract row for diagnostics only.
+
+| name            | consumed by                | dev source | staging + production source             |
+| --------------- | -------------------------- | ---------- | --------------------------------------- |
+| `PUBLISHER_URL` | Publisher diagnostics only | local URL  | worker URL if a diagnostic route exists |
+
+## site (`workers/site`)
+
+Astro public site (RFC-0001) — an SSR worker bound by bouncer (no custom
+domain of its own). `SITE_URL` is a contract row: the consumers are the site's
+read models and the Store checkout return.
+
+| name       | consumed by                  | dev source      | staging + production source |
+| ---------- | ---------------------------- | --------------- | --------------------------- |
+| `SITE_URL` | Site / Store checkout return | Astro local URL | public apex                 |
+
 ---
 
 ## Cross-cutting / build / CI / CD
@@ -246,3 +280,9 @@ only if a fork wants a per-env project.
   `STRIPE_SECRET_KEY=` / `STRIPE_WEBHOOK_SIGNING_SECRET=` placeholder lines
   to `workers/store/scripts/env-init.ts`, mirroring
   `workers/guestlist/scripts/env-init.ts`.
+- **Operator's `OPERATOR_URL` is not seeded locally.** The RFC-0001 contract
+  gives dev a local URL, but `workers/operator/scripts/env-init.ts` seeds only
+  `ENVIRONMENT` + `DEV_OPERATOR`, so local dev resolves the staging wrangler
+  value (`https://desk.staging.somewhatintelligent.ca`). Nothing in dev
+  dereferences it, but the seeder should write the local URL to match the
+  contract.

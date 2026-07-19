@@ -1,11 +1,11 @@
 ---
 rfc: 0001
 title: Unify publishing and commerce behind one operator console
-status: draft
+status: accepted
 authors:
   - Apostoli
 created: 2026-07-18
-updated: 2026-07-18
+updated: 2026-07-19
 depends-on: []
 supersedes: []
 superseded-by: null
