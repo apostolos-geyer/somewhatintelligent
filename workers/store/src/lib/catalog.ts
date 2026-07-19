@@ -147,7 +147,7 @@ export function decodeCursor(raw: string): { updatedAt: number; id: string } | n
   }
 }
 
-function clampLimit(limit: number | undefined): number {
+export function clampLimit(limit: number | undefined): number {
   if (limit === undefined || !Number.isFinite(limit)) return DEFAULT_PAGE_LIMIT;
   return Math.max(1, Math.min(MAX_PAGE_LIMIT, Math.trunc(limit)));
 }

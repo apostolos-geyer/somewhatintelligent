@@ -13,10 +13,12 @@ import { reconcilePendingReservations } from "./lib/reconcile";
 import { extractSessionSnapshot } from "./lib/stripe-session-fields";
 import type { StoreStripeEventMessage } from "./lib/stripe-webhook";
 
-// Named RPC entrypoint bound to Site (RFC-0001 "StoreCatalog RPC"). Wrangler
-// resolves service bindings by exported class name — `entrypoint: "StoreCatalog"`
-// on Site's STORE binding matches this re-export from the worker's main module.
+// Named RPC entrypoints resolved by exported class name (RFC-0001 "Worker
+// bindings"). Site's STORE binding uses `entrypoint: "StoreCatalog"` (read-only);
+// Operator's STORE binding uses `entrypoint: "StoreOperator"` (mutation). Both
+// re-export from the worker's main module so wrangler resolves them.
 export { StoreCatalog } from "./store-catalog";
+export { StoreOperator } from "./store-operator";
 
 declare module "@tanstack/react-start" {
   interface Register {
