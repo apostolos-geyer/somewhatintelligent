@@ -101,6 +101,11 @@ workers.forEach((w, i) => {
       // because env does not survive the portless/vp spawn chain.
       WRANGLER_REGISTRY_PATH: resolve(ROOT, ".wrangler", "dev-registry"),
       MINIFLARE_REGISTRY_PATH: resolve(ROOT, ".wrangler", "dev-registry"),
+      // Astro 7 auto-daemonizes `astro dev` when it detects an agentic
+      // environment; the detached child drops this env (breaking registry
+      // discovery) and the wrapper's exit(0) reads as a worker death. This
+      // sentinel forces the foreground path.
+      ASTRO_DEV_BACKGROUND: "1",
     },
   });
   const forward = (chunk: Buffer) => {

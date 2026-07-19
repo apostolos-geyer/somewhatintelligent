@@ -14,7 +14,7 @@
  *  3. Prints the exact remediation for each finding instead of a wall of red.
  */
 import { spawnSync } from "node:child_process";
-import { readdirSync, readFileSync, readlinkSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, readlinkSync } from "node:fs";
 
 let failures = 0;
 
@@ -37,7 +37,8 @@ probe("identity sign-in ", "https://identity.somewhatintelligent.localhost/sign-
 // One vite dev server per worker dir is healthy; two means an orphaned fleet.
 console.log("\n── fleet processes ───────────────────────────────────────────");
 const byCwd = new Map<string, number[]>();
-for (const pid of readdirSync("/proc").filter((p) => /^\d+$/.test(p))) {
+const procPids = existsSync("/proc") ? readdirSync("/proc").filter((p) => /^\d+$/.test(p)) : [];
+for (const pid of procPids) {
   try {
     const cmd = readFileSync(`/proc/${pid}/cmdline`, "utf8").replaceAll("\0", " ");
     if (!/vite\/node\/cli\.js dev/.test(cmd)) continue;
