@@ -7,54 +7,91 @@
  * machine-authorization boundary — neither entrypoint is exposed over public
  * HTTP.
  *
- * SCAFFOLD (exec-plan 0004 track T14). The classes expose a representative
- * slice of their contract so the worker builds, imports @si/contracts, and
- * declares the dual-entrypoint RPC shape. The full entrypoints land in T15
- * (public reads), T16 (text + software), T17 (pages + validators), and T18
+ * `PublisherPublic` (T15) is a thin adapter: it constructs the D1 handle and the
+ * Roadie-backed MediaStorage adapter, then delegates to `PublisherPublicReads`
+ * in `./public/reads`. `PublisherOperator` remains a scaffold; the full mutation
+ * surface lands in T16 (text + software), T17 (pages + validators), and T18
  * (deletion + media GC).
  */
 import { WorkerEntrypoint } from "cloudflare:workers";
+import { drizzle } from "drizzle-orm/d1";
 
-import { err, ok } from "@si/contracts/result";
 import type {
   DomainResult,
   OperatorCall,
   PageKey,
   PublishedPageDTO,
+  PublishedSoftwareDTO,
+  PublishedSoftwareSummaryDTO,
+  PublishedTextDTO,
   PublishedTextSummaryDTO,
+  PublisherPublicEntrypoint,
 } from "@si/contracts";
 
 import type { PublisherEnv } from "./publisher-env";
+import * as schema from "./schema";
+import { createRoadieMediaStorage, PUBLISHER_MEDIA_APPLICATION } from "./lib/media-storage-roadie";
+import { getRoadie } from "./lib/roadie";
+import { PublisherPublicReads } from "./public/reads";
 
 /**
  * `PublisherPublic` — Site-bound, read-only (RFC-0001 "PublisherPublic RPC").
  * Returns only active immutable releases and published software snapshots.
  */
-export class PublisherPublic extends WorkerEntrypoint<PublisherEnv> {
-  async getPage<K extends PageKey>(_input: {
-    key: K;
-  }): Promise<DomainResult<PublishedPageDTO<K>, "not_found">> {
-    // TODO(T15): read the active page release for `key` from D1.
-    return err("not_found", "publisher not yet implemented");
+export class PublisherPublic
+  extends WorkerEntrypoint<PublisherEnv>
+  implements PublisherPublicEntrypoint
+{
+  /** Read core over the live D1 + the Roadie-backed MediaStorage port. */
+  protected reads(): PublisherPublicReads {
+    return new PublisherPublicReads({
+      db: drizzle(this.env.DB, { schema }),
+      media: createRoadieMediaStorage(getRoadie(this.env), {
+        application: PUBLISHER_MEDIA_APPLICATION,
+      }),
+    });
   }
 
-  async listTexts(_input: {
+  listTexts(input: {
     tag?: string;
     limit?: number;
     cursor?: string;
   }): Promise<
     DomainResult<{ texts: PublishedTextSummaryDTO[]; nextCursor: string | null }, "invalid_cursor">
   > {
-    // TODO(T15): list published text summaries from active release pointers.
-    return ok({ texts: [], nextCursor: null });
+    return this.reads().listTexts(input);
   }
 
-  async openPublishedMedia(_input: {
-    mediaId: string;
-  }): Promise<DomainResult<Response, "not_found">> {
-    // TODO(T15 + T5): confirm the media is snapshotted by a public release, then
-    // stream it through the private MediaStorage port.
-    return err("not_found");
+  getTextBySlug(input: { slug: string }): Promise<DomainResult<PublishedTextDTO, "not_found">> {
+    return this.reads().getTextBySlug(input);
+  }
+
+  listSoftware(input: {
+    limit?: number;
+    cursor?: string;
+  }): Promise<
+    DomainResult<
+      { software: PublishedSoftwareSummaryDTO[]; nextCursor: string | null },
+      "invalid_cursor"
+    >
+  > {
+    return this.reads().listSoftware(input);
+  }
+
+  getSoftwareBySlug(input: {
+    slug: string;
+  }): Promise<DomainResult<PublishedSoftwareDTO, "not_found">> {
+    return this.reads().getSoftwareBySlug(input);
+  }
+
+  getPage<K extends PageKey>(input: {
+    key: K;
+  }): Promise<DomainResult<PublishedPageDTO<K>, "not_found">> {
+    return this.reads().getPage(input);
+  }
+
+  openPublishedMedia(input: { mediaId: string }): Promise<DomainResult<Response, "not_found">> {
+    return this.reads().openPublishedMedia(input);
   }
 }
 

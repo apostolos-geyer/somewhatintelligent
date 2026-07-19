@@ -12,11 +12,14 @@
     "deploy:staging": "wrangler deploy",
     "deploy:production": "wrangler deploy --env production",
     "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:migrate:staging": "wrangler d1 migrations apply DB --remote",
     "db:migrate:production": "wrangler d1 migrations apply DB --remote --env production",
+    "seed": "bun scripts/seed.ts",
     "types": "wrangler types -c wrangler.jsonc -c ../roadie/wrangler.jsonc",
     "typecheck": "tsgo --noEmit",
-    "test": "vp test run"
+    "test": "vp test run",
+    "test:pool": "vp test run -c ./vitest.pool.config.ts"
   },
   "dependencies": {
     "@si/contracts": "workspace:*",
