@@ -21,22 +21,55 @@
     // client-only router basepath fed by PUBLIC_BASE (decision #14 in
     // docs/exec-plans/active/0001-greenfield-bootstrap.md).
     "IDENTITY_URL": "https://staging.somewhatintelligent.ca/account",
-    // Bouncer is the attestation MINTER (src/envelope.ts signs with
-    // env.BNC_ATT_KID + the BNC_ATT_PRIV secret) — unlike identity,
-    // where BNC_ATT_KID is a dev-only self-mint fallback kept out of this
-    // file, bouncer NEEDS a kid in every environment. Staging signs with the
-    // well-known dev keypair; packages/config/src/bouncer-attestation.ts maps
-    // kid → public key.
+    // Bouncer is the attestation MINTER (the @somewhatintelligent/bouncer
+    // package's envelope stamper signs with env.BNC_ATT_KID + the
+    // BNC_ATT_PRIV secret) — unlike identity, where BNC_ATT_KID is a
+    // dev-only self-mint fallback kept out of this file, bouncer NEEDS a kid
+    // in every environment. Staging signs with the well-known dev keypair;
+    // packages/config/src/bouncer-attestation.ts maps kid → public key.
     "BNC_ATT_KID": "dev",
     "ROUTES": {
+      // RFC-0001 D12 target table — one final owner per public path.
+      //
+      // Site (Astro) owns the apex ROOT as a passthrough catch-all. The mode
+      // is intentional (INV-ROUTE-1): vmf is the rewrite protocol for a
+      // mount-naive app served below a non-root prefix, and the root mount
+      // has no prefix to strip or restore — root vmf would only run a no-op
+      // HTML/CSS/cookie transformation. Site requests arrive with the path
+      // unchanged and Site HTML gets no asset rewriting and no si-mount
+      // metadata.
+      //
+      // Dispatch is longest-mount-wins (matchRoute scores by matched mount
+      // length): `/api/store` beats `/api`, and every non-root mount beats
+      // the `/` catch-all regardless of declaration order (declared
+      // longest-first for readability).
+      //
+      // Identity remains the sole account UI owner (INV-AUTH-1), vmf-mounted
+      // at `/account`: bouncer strips the mount inbound and rewrites assets,
+      // Location, and Set-Cookie paths back under the mount outbound; the
+      // `/_sfn/account` server-fn base and `/_assets/account` build-assets
+      // dir are passed through unstripped (they fire at bare apex paths from
+      // the hydrated client — same rationale as the donor decision log's
+      // per-app bases). Identity closes the client-side-navigation gap with
+      // its own router basepath (see the IDENTITY_URL note above).
+      //
+      // Store is headless behind bouncer: the buyer checkout/order HTTP API
+      // at `/api/store` (D11) and Stripe webhook ingress at `/hooks/store`,
+      // both passthrough. Store owns no vmf mount and no server-fn/asset
+      // base at the apex — the storefront pages are Site's.
       "routes": [
-        // `/api` (passthrough) + `/account` + `/shop` (both vmf) coexist on one
-        // host — the mode-consistency rule is per-(host, mount), not per-host.
-        // `/account` (identity) and `/shop` (store) are vmf-mounted SPAs:
-        // bouncer strips the mount inbound + rewrites assets/Location/cookies
-        // outbound; each SPA carries a client-only router basepath (PUBLIC_BASE)
-        // for the client-side navigation the HTTP-layer rewrite can't reach.
-        // `/` is a catch-all redirect to `/shop`.
+        {
+          "binding": "STORE",
+          "host": "staging.somewhatintelligent.ca",
+          "path": "/api/store",
+          "mode": "passthrough",
+        },
+        {
+          "binding": "STORE",
+          "host": "staging.somewhatintelligent.ca",
+          "path": "/hooks/store",
+          "mode": "passthrough",
+        },
         {
           "binding": "GUESTLIST",
           "host": "staging.somewhatintelligent.ca",
@@ -50,49 +83,11 @@
           "mode": "vmf",
         },
         {
-          "binding": "STORE",
-          "host": "staging.somewhatintelligent.ca",
-          "path": "/shop",
-          "mode": "vmf",
-        },
-        // Server-function callbacks. TanStack Start compiles a single
-        // root-relative server-fn base (TSS_SERVER_FN_BASE) into BOTH the
-        // server handler and the client bundle, so a vmf-mounted app's
-        // hydrated client fetches its loaders/server fns at the APEX, not
-        // under the mount. Each app therefore gets a unique base
-        // (vite.config.ts `tanstackStart({ serverFns: { base } })`) that
-        // bouncer passes through UNSTRIPPED to the owning worker — the
-        // longest-mount rule keeps these ahead of the `/` redirect.
-        {
-          "binding": "STORE",
-          "host": "staging.somewhatintelligent.ca",
-          "path": "/_sfn/store",
-          "mode": "passthrough",
-        },
-        {
-          "binding": "STORE",
-          "host": "staging.somewhatintelligent.ca",
-          "path": "/hooks/store",
-          "mode": "passthrough",
-        },
-        {
           "binding": "IDENTITY",
           "host": "staging.somewhatintelligent.ca",
           "path": "/_sfn/account",
           "mode": "passthrough",
         },
-        // Per-app asset dirs, passed through unstripped. Vite's
-        // preload-helper + TanStack Start's router-preload manifest resolve
-        // dynamically-imported chunk URLs from the build-time
-        // `import.meta.env.BASE_URL`, which can't be made mount-aware (the
-        // same build must also work unmounted in local dev) — so those
-        // requests fire at the bare apex path, not under `/account`/`/shop`.
-        // identity and store therefore each get a unique `build.assetsDir`
-        // (vite.config.ts) so they never collide in the shared apex
-        // `/assets/` namespace; these mounts route the bare-path requests to
-        // the correct upstream regardless of which HTML document originated
-        // them. Same rationale + longest-mount-first placement as the
-        // `/_sfn/<app>` bases above.
         {
           "binding": "IDENTITY",
           "host": "staging.somewhatintelligent.ca",
@@ -100,17 +95,10 @@
           "mode": "passthrough",
         },
         {
-          "binding": "STORE",
-          "host": "staging.somewhatintelligent.ca",
-          "path": "/_assets/store",
-          "mode": "passthrough",
-        },
-        {
+          "binding": "SITE",
           "host": "staging.somewhatintelligent.ca",
           "path": "/",
-          "mode": "redirect",
-          "to": "/shop",
-          "status": 308,
+          "mode": "passthrough",
         },
       ],
     },
@@ -119,6 +107,7 @@
     { "binding": "GUESTLIST", "service": "si-guestlist-staging", "entrypoint": "Guestlist" },
     { "binding": "IDENTITY", "service": "si-identity-staging" },
     { "binding": "STORE", "service": "si-store-staging" },
+    { "binding": "SITE", "service": "si-site-staging" },
   ],
   "routes": [{ "pattern": "staging.somewhatintelligent.ca", "custom_domain": true }],
   "env": {
@@ -134,7 +123,23 @@
         // wrangler secret.
         "BNC_ATT_KID": "production",
         "ROUTES": {
+          // RFC-0001 D12 target table — see the staging ROUTES comment for
+          // the full rationale (Site passthrough at root is intentional;
+          // longest mount wins; Identity vmf at /account; Store headless
+          // behind /api/store + /hooks/store).
           "routes": [
+            {
+              "binding": "STORE",
+              "host": "somewhatintelligent.ca",
+              "path": "/api/store",
+              "mode": "passthrough",
+            },
+            {
+              "binding": "STORE",
+              "host": "somewhatintelligent.ca",
+              "path": "/hooks/store",
+              "mode": "passthrough",
+            },
             {
               "binding": "GUESTLIST",
               "host": "somewhatintelligent.ca",
@@ -148,33 +153,11 @@
               "mode": "vmf",
             },
             {
-              "binding": "STORE",
-              "host": "somewhatintelligent.ca",
-              "path": "/shop",
-              "mode": "vmf",
-            },
-            // Per-app server-fn bases, passed through unstripped — see the
-            // staging ROUTES comment for the full rationale.
-            {
-              "binding": "STORE",
-              "host": "somewhatintelligent.ca",
-              "path": "/_sfn/store",
-              "mode": "passthrough",
-            },
-            {
-              "binding": "STORE",
-              "host": "somewhatintelligent.ca",
-              "path": "/hooks/store",
-              "mode": "passthrough",
-            },
-            {
               "binding": "IDENTITY",
               "host": "somewhatintelligent.ca",
               "path": "/_sfn/account",
               "mode": "passthrough",
             },
-            // Per-app asset dirs, passed through unstripped — see the
-            // staging ROUTES comment for the full rationale.
             {
               "binding": "IDENTITY",
               "host": "somewhatintelligent.ca",
@@ -182,20 +165,25 @@
               "mode": "passthrough",
             },
             {
-              "binding": "STORE",
-              "host": "somewhatintelligent.ca",
-              "path": "/_assets/store",
-              "mode": "passthrough",
-            },
-            {
+              "binding": "SITE",
               "host": "somewhatintelligent.ca",
               "path": "/",
-              "mode": "redirect",
-              "to": "/shop",
-              "status": 308,
+              "mode": "passthrough",
             },
             // www mirrors the apex exactly (same mounts as above).
             {
+              "binding": "STORE",
+              "host": "www.somewhatintelligent.ca",
+              "path": "/api/store",
+              "mode": "passthrough",
+            },
+            {
+              "binding": "STORE",
+              "host": "www.somewhatintelligent.ca",
+              "path": "/hooks/store",
+              "mode": "passthrough",
+            },
+            {
               "binding": "GUESTLIST",
               "host": "www.somewhatintelligent.ca",
               "path": "/api",
@@ -206,24 +194,6 @@
               "host": "www.somewhatintelligent.ca",
               "path": "/account",
               "mode": "vmf",
-            },
-            {
-              "binding": "STORE",
-              "host": "www.somewhatintelligent.ca",
-              "path": "/shop",
-              "mode": "vmf",
-            },
-            {
-              "binding": "STORE",
-              "host": "www.somewhatintelligent.ca",
-              "path": "/_sfn/store",
-              "mode": "passthrough",
-            },
-            {
-              "binding": "STORE",
-              "host": "www.somewhatintelligent.ca",
-              "path": "/hooks/store",
-              "mode": "passthrough",
             },
             {
               "binding": "IDENTITY",
@@ -238,17 +208,10 @@
               "mode": "passthrough",
             },
             {
-              "binding": "STORE",
-              "host": "www.somewhatintelligent.ca",
-              "path": "/_assets/store",
-              "mode": "passthrough",
-            },
-            {
+              "binding": "SITE",
               "host": "www.somewhatintelligent.ca",
               "path": "/",
-              "mode": "redirect",
-              "to": "/shop",
-              "status": 308,
+              "mode": "passthrough",
             },
           ],
         },
@@ -257,6 +220,7 @@
         { "binding": "GUESTLIST", "service": "si-guestlist-production", "entrypoint": "Guestlist" },
         { "binding": "IDENTITY", "service": "si-identity-production" },
         { "binding": "STORE", "service": "si-store-production" },
+        { "binding": "SITE", "service": "si-site-production" },
       ],
       "routes": [
         // www as a custom domain — wrangler auto-creates its proxied DNS
