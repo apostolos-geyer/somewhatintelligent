@@ -33,7 +33,7 @@ const MODULES = [
   { path: "/texts", label: "Texts", icon: FileTextIcon, ready: false },
   { path: "/software", label: "Software", icon: TerminalIcon, ready: false },
   { path: "/pages", label: "Pages", icon: LayoutPanelLeftIcon, ready: false },
-  { path: "/orders", label: "Orders", icon: ReceiptIcon, ready: false },
+  { path: "/orders", label: "Orders", icon: ReceiptIcon, ready: true },
   { path: "/media", label: "Media", icon: ImageIcon, ready: false },
   { path: "/settings", label: "Settings", icon: SettingsIcon, ready: false },
 ] as const;
@@ -112,7 +112,7 @@ function Sidebar() {
           // Built modules use the typed router Link; not-yet-built modules are
           // plain links that land on the "coming soon" not-found stub.
           return m.ready ? (
-            <Link key={m.path} to="/" className={className}>
+            <Link key={m.path} to={m.path} className={className}>
               {inner}
             </Link>
           ) : (
