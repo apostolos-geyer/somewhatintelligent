@@ -30,12 +30,12 @@ const THEME_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getIte
 const MODULES = [
   { path: "/", label: "Overview", icon: LayoutDashboardIcon, ready: true },
   { path: "/objects", label: "Objects", icon: BoxesIcon, ready: true },
-  { path: "/texts", label: "Texts", icon: FileTextIcon, ready: false },
-  { path: "/software", label: "Software", icon: TerminalIcon, ready: false },
-  { path: "/pages", label: "Pages", icon: LayoutPanelLeftIcon, ready: false },
+  { path: "/texts", label: "Texts", icon: FileTextIcon, ready: true },
+  { path: "/software", label: "Software", icon: TerminalIcon, ready: true },
+  { path: "/pages", label: "Pages", icon: LayoutPanelLeftIcon, ready: true },
   { path: "/orders", label: "Orders", icon: ReceiptIcon, ready: true },
-  { path: "/media", label: "Media", icon: ImageIcon, ready: false },
-  { path: "/settings", label: "Settings", icon: SettingsIcon, ready: false },
+  { path: "/media", label: "Media", icon: ImageIcon, ready: true },
+  { path: "/settings", label: "Settings", icon: SettingsIcon, ready: true },
 ] as const;
 
 export const Route = createRootRouteWithContext<RouterContext>()({

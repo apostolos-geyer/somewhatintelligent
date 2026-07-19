@@ -10,8 +10,16 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TextsIndexRouteImport } from './routes/texts.index'
+import { Route as SoftwareIndexRouteImport } from './routes/software.index'
+import { Route as SettingsIndexRouteImport } from './routes/settings.index'
+import { Route as PagesIndexRouteImport } from './routes/pages.index'
 import { Route as OrdersIndexRouteImport } from './routes/orders.index'
 import { Route as ObjectsIndexRouteImport } from './routes/objects.index'
+import { Route as MediaIndexRouteImport } from './routes/media.index'
+import { Route as TextsTextIdRouteImport } from './routes/texts.$textId'
+import { Route as SoftwareSoftwareIdRouteImport } from './routes/software.$softwareId'
+import { Route as PagesKeyRouteImport } from './routes/pages.$key'
 import { Route as OrdersOrderNumberRouteImport } from './routes/orders.$orderNumber'
 import { Route as ObjectsProductIdRouteImport } from './routes/objects.$productId'
 import { Route as OperatorMediaStoreProductsProductIdRouteImport } from './routes/[_]operator.media.store.products.$productId'
@@ -19,6 +27,26 @@ import { Route as OperatorMediaStoreProductsProductIdRouteImport } from './route
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TextsIndexRoute = TextsIndexRouteImport.update({
+  id: '/texts/',
+  path: '/texts/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SoftwareIndexRoute = SoftwareIndexRouteImport.update({
+  id: '/software/',
+  path: '/software/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsIndexRoute = SettingsIndexRouteImport.update({
+  id: '/settings/',
+  path: '/settings/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PagesIndexRoute = PagesIndexRouteImport.update({
+  id: '/pages/',
+  path: '/pages/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrdersIndexRoute = OrdersIndexRouteImport.update({
@@ -29,6 +57,26 @@ const OrdersIndexRoute = OrdersIndexRouteImport.update({
 const ObjectsIndexRoute = ObjectsIndexRouteImport.update({
   id: '/objects/',
   path: '/objects/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MediaIndexRoute = MediaIndexRouteImport.update({
+  id: '/media/',
+  path: '/media/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TextsTextIdRoute = TextsTextIdRouteImport.update({
+  id: '/texts/$textId',
+  path: '/texts/$textId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SoftwareSoftwareIdRoute = SoftwareSoftwareIdRouteImport.update({
+  id: '/software/$softwareId',
+  path: '/software/$softwareId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PagesKeyRoute = PagesKeyRouteImport.update({
+  id: '/pages/$key',
+  path: '/pages/$key',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrdersOrderNumberRoute = OrdersOrderNumberRouteImport.update({
@@ -52,16 +100,32 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/objects/$productId': typeof ObjectsProductIdRoute
   '/orders/$orderNumber': typeof OrdersOrderNumberRoute
+  '/pages/$key': typeof PagesKeyRoute
+  '/software/$softwareId': typeof SoftwareSoftwareIdRoute
+  '/texts/$textId': typeof TextsTextIdRoute
+  '/media/': typeof MediaIndexRoute
   '/objects/': typeof ObjectsIndexRoute
   '/orders/': typeof OrdersIndexRoute
+  '/pages/': typeof PagesIndexRoute
+  '/settings/': typeof SettingsIndexRoute
+  '/software/': typeof SoftwareIndexRoute
+  '/texts/': typeof TextsIndexRoute
   '/_operator/media/store/products/$productId': typeof OperatorMediaStoreProductsProductIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/objects/$productId': typeof ObjectsProductIdRoute
   '/orders/$orderNumber': typeof OrdersOrderNumberRoute
+  '/pages/$key': typeof PagesKeyRoute
+  '/software/$softwareId': typeof SoftwareSoftwareIdRoute
+  '/texts/$textId': typeof TextsTextIdRoute
+  '/media': typeof MediaIndexRoute
   '/objects': typeof ObjectsIndexRoute
   '/orders': typeof OrdersIndexRoute
+  '/pages': typeof PagesIndexRoute
+  '/settings': typeof SettingsIndexRoute
+  '/software': typeof SoftwareIndexRoute
+  '/texts': typeof TextsIndexRoute
   '/_operator/media/store/products/$productId': typeof OperatorMediaStoreProductsProductIdRoute
 }
 export interface FileRoutesById {
@@ -69,8 +133,16 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/objects/$productId': typeof ObjectsProductIdRoute
   '/orders/$orderNumber': typeof OrdersOrderNumberRoute
+  '/pages/$key': typeof PagesKeyRoute
+  '/software/$softwareId': typeof SoftwareSoftwareIdRoute
+  '/texts/$textId': typeof TextsTextIdRoute
+  '/media/': typeof MediaIndexRoute
   '/objects/': typeof ObjectsIndexRoute
   '/orders/': typeof OrdersIndexRoute
+  '/pages/': typeof PagesIndexRoute
+  '/settings/': typeof SettingsIndexRoute
+  '/software/': typeof SoftwareIndexRoute
+  '/texts/': typeof TextsIndexRoute
   '/_operator/media/store/products/$productId': typeof OperatorMediaStoreProductsProductIdRoute
 }
 export interface FileRouteTypes {
@@ -79,24 +151,48 @@ export interface FileRouteTypes {
     | '/'
     | '/objects/$productId'
     | '/orders/$orderNumber'
+    | '/pages/$key'
+    | '/software/$softwareId'
+    | '/texts/$textId'
+    | '/media/'
     | '/objects/'
     | '/orders/'
+    | '/pages/'
+    | '/settings/'
+    | '/software/'
+    | '/texts/'
     | '/_operator/media/store/products/$productId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/objects/$productId'
     | '/orders/$orderNumber'
+    | '/pages/$key'
+    | '/software/$softwareId'
+    | '/texts/$textId'
+    | '/media'
     | '/objects'
     | '/orders'
+    | '/pages'
+    | '/settings'
+    | '/software'
+    | '/texts'
     | '/_operator/media/store/products/$productId'
   id:
     | '__root__'
     | '/'
     | '/objects/$productId'
     | '/orders/$orderNumber'
+    | '/pages/$key'
+    | '/software/$softwareId'
+    | '/texts/$textId'
+    | '/media/'
     | '/objects/'
     | '/orders/'
+    | '/pages/'
+    | '/settings/'
+    | '/software/'
+    | '/texts/'
     | '/_operator/media/store/products/$productId'
   fileRoutesById: FileRoutesById
 }
@@ -104,8 +200,16 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ObjectsProductIdRoute: typeof ObjectsProductIdRoute
   OrdersOrderNumberRoute: typeof OrdersOrderNumberRoute
+  PagesKeyRoute: typeof PagesKeyRoute
+  SoftwareSoftwareIdRoute: typeof SoftwareSoftwareIdRoute
+  TextsTextIdRoute: typeof TextsTextIdRoute
+  MediaIndexRoute: typeof MediaIndexRoute
   ObjectsIndexRoute: typeof ObjectsIndexRoute
   OrdersIndexRoute: typeof OrdersIndexRoute
+  PagesIndexRoute: typeof PagesIndexRoute
+  SettingsIndexRoute: typeof SettingsIndexRoute
+  SoftwareIndexRoute: typeof SoftwareIndexRoute
+  TextsIndexRoute: typeof TextsIndexRoute
   OperatorMediaStoreProductsProductIdRoute: typeof OperatorMediaStoreProductsProductIdRoute
 }
 
@@ -116,6 +220,34 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/texts/': {
+      id: '/texts/'
+      path: '/texts'
+      fullPath: '/texts/'
+      preLoaderRoute: typeof TextsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/software/': {
+      id: '/software/'
+      path: '/software'
+      fullPath: '/software/'
+      preLoaderRoute: typeof SoftwareIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/': {
+      id: '/settings/'
+      path: '/settings'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof SettingsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pages/': {
+      id: '/pages/'
+      path: '/pages'
+      fullPath: '/pages/'
+      preLoaderRoute: typeof PagesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/orders/': {
@@ -130,6 +262,34 @@ declare module '@tanstack/react-router' {
       path: '/objects'
       fullPath: '/objects/'
       preLoaderRoute: typeof ObjectsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/media/': {
+      id: '/media/'
+      path: '/media'
+      fullPath: '/media/'
+      preLoaderRoute: typeof MediaIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/texts/$textId': {
+      id: '/texts/$textId'
+      path: '/texts/$textId'
+      fullPath: '/texts/$textId'
+      preLoaderRoute: typeof TextsTextIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/software/$softwareId': {
+      id: '/software/$softwareId'
+      path: '/software/$softwareId'
+      fullPath: '/software/$softwareId'
+      preLoaderRoute: typeof SoftwareSoftwareIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pages/$key': {
+      id: '/pages/$key'
+      path: '/pages/$key'
+      fullPath: '/pages/$key'
+      preLoaderRoute: typeof PagesKeyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/orders/$orderNumber': {
@@ -160,8 +320,16 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ObjectsProductIdRoute: ObjectsProductIdRoute,
   OrdersOrderNumberRoute: OrdersOrderNumberRoute,
+  PagesKeyRoute: PagesKeyRoute,
+  SoftwareSoftwareIdRoute: SoftwareSoftwareIdRoute,
+  TextsTextIdRoute: TextsTextIdRoute,
+  MediaIndexRoute: MediaIndexRoute,
   ObjectsIndexRoute: ObjectsIndexRoute,
   OrdersIndexRoute: OrdersIndexRoute,
+  PagesIndexRoute: PagesIndexRoute,
+  SettingsIndexRoute: SettingsIndexRoute,
+  SoftwareIndexRoute: SoftwareIndexRoute,
+  TextsIndexRoute: TextsIndexRoute,
   OperatorMediaStoreProductsProductIdRoute:
     OperatorMediaStoreProductsProductIdRoute,
 }
