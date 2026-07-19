@@ -38,8 +38,16 @@ const {
 const SUB = "op-sub";
 const EMAIL = "op@example.com";
 
+// T16 exercises no page publish, so a StoreCatalog that resolves nothing is
+// sufficient here; the page-reference path is covered by pages.itest.ts.
+const notFoundStoreCatalog = {
+  async getProductById(): Promise<{ ok: false; error: "not_found" }> {
+    return { ok: false, error: "not_found" };
+  },
+};
+
 function writes(environment = "production"): PublisherOperatorWrites {
-  return new PublisherOperatorWrites({ db, environment });
+  return new PublisherOperatorWrites({ db, environment, storeCatalog: notFoundStoreCatalog });
 }
 
 // Build an OperatorCall; a fresh idempotency key per call unless one is pinned.

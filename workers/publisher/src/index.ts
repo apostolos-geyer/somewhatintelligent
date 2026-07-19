@@ -9,10 +9,11 @@
  *
  * `PublisherPublic` (T15) is a thin adapter: it constructs the D1 handle and the
  * Roadie-backed MediaStorage adapter, then delegates to `PublisherPublicReads`
- * in `./public/reads`. `PublisherOperator` (T16) is likewise a thin adapter over
+ * in `./public/reads`. `PublisherOperator` is likewise a thin adapter over
  * `PublisherOperatorWrites` in `./operator/writes` for the text + software
- * lifecycles; pages land in T17 and deletion in T18 (their methods throw a clear
- * not-implemented until then).
+ * lifecycles (T16) and the page lifecycle (T17, whose publish gates references
+ * through the `StoreCatalog` binding); deletion lands in T18 (its methods throw
+ * a clear not-implemented until then).
  */
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { drizzle } from "drizzle-orm/d1";
@@ -109,19 +110,21 @@ export class PublisherPublic
 /**
  * `PublisherOperator` — Operator-bound, mutation (RFC-0001 "PublisherOperator
  * RPC"). Each success produces exactly one domain mutation and one
- * `operator_event` in the same D1 batch (INV-AUDIT-1). Text + software
- * lifecycles delegate to `PublisherOperatorWrites` (T16); page and deletion
- * methods throw until T17/T18.
+ * `operator_event` in the same D1 batch (INV-AUDIT-1). Text + software (T16) and
+ * page (T17) lifecycles delegate to `PublisherOperatorWrites`; deletion methods
+ * throw until T18.
  */
 export class PublisherOperator
   extends WorkerEntrypoint<PublisherEnv>
   implements PublisherOperatorEntrypoint
 {
-  /** Mutation core over the live D1, gated on the `ENVIRONMENT` destination rule. */
+  /** Mutation core over the live D1, gated on the `ENVIRONMENT` destination rule
+   *  and the read-only `StoreCatalog` binding used for page-reference validation. */
   protected writes(): PublisherOperatorWrites {
     return new PublisherOperatorWrites({
       db: drizzle(this.env.DB, { schema }),
       environment: this.env.ENVIRONMENT,
+      storeCatalog: this.env.STORE,
     });
   }
 
@@ -266,37 +269,37 @@ export class PublisherOperator
   // ── pages (T17) ─────────────────────────────────────────────────────────────
 
   getPage<K extends PageKey>(
-    _call: OperatorCall<{ key: K }>,
+    call: OperatorCall<{ key: K }>,
   ): Promise<DomainResult<PageDraftDTO<K>, "not_found">> {
-    throw new Error("PublisherOperator.getPage not implemented (RFC-0001 T17)");
+    return this.writes().getPage(call);
   }
 
   createPage<K extends PageKey>(
-    _call: OperatorCall<{ key: K; document: PageDocumentByKey[K] }>,
+    call: OperatorCall<{ key: K; document: PageDocumentByKey[K] }>,
   ): Promise<DomainResult<PageDraftDTO<K>, "page_exists" | "invalid_document">> {
-    throw new Error("PublisherOperator.createPage not implemented (RFC-0001 T17)");
+    return this.writes().createPage(call);
   }
 
   savePageDraft<K extends PageKey>(
-    _call: OperatorCall<{ key: K; expectedRevision: number; document: PageDocumentByKey[K] }>,
+    call: OperatorCall<{ key: K; expectedRevision: number; document: PageDocumentByKey[K] }>,
   ): Promise<
     DomainResult<
       { revision: number; updatedAt: number },
       "not_found" | "revision_conflict" | "invalid_document"
     >
   > {
-    throw new Error("PublisherOperator.savePageDraft not implemented (RFC-0001 T17)");
+    return this.writes().savePageDraft(call);
   }
 
   publishPage(
-    _call: OperatorCall<{ key: PageKey; expectedRevision: number; version: string }>,
+    call: OperatorCall<{ key: PageKey; expectedRevision: number; version: string }>,
   ): Promise<
     DomainResult<
       { releaseId: string; version: string; publishedAt: number },
       "not_found" | "revision_conflict" | "invalid_version" | "version_exists" | "invalid_reference"
     >
   > {
-    throw new Error("PublisherOperator.publishPage not implemented (RFC-0001 T17)");
+    return this.writes().publishPage(call);
   }
 
   // ── deletion + media GC (T18) ─────────────────────────────────────────────────

@@ -6,9 +6,10 @@
   // env.production = production. Bound by nothing public — Publisher is a
   // backend authority, not a routed app (no `routes` block).
   //
-  // SCAFFOLD (exec-plan 0004 track T14). The full 18-table schema (T14) and
-  // the STORE -> StoreCatalog binding for page-reference validation (T17)
-  // are added by their tracks.
+  // The STORE -> StoreCatalog binding (entrypoint "StoreCatalog") is used only
+  // to validate a page document's featuredProductId at publish time (T17);
+  // Publisher stores the foreign product id as an external reference and never
+  // copies product data into the document (INV-DOM-1).
   "name": "si-publisher-staging",
   "main": "src/index.ts",
   "account_id": "c735c5a53d864bee37400befb7f4c7f4",
@@ -41,6 +42,11 @@
       "entrypoint": "Roadie",
       "props": { "callerApp": "publisher" },
     },
+    {
+      "binding": "STORE",
+      "service": "si-store-staging",
+      "entrypoint": "StoreCatalog",
+    },
   ],
   "env": {
     "production": {
@@ -63,6 +69,11 @@
           "service": "si-roadie-production",
           "entrypoint": "Roadie",
           "props": { "callerApp": "publisher" },
+        },
+        {
+          "binding": "STORE",
+          "service": "si-store-production",
+          "entrypoint": "StoreCatalog",
         },
       ],
       "observability": {
