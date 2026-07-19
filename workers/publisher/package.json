@@ -1,0 +1,29 @@
+{
+  "name": "@si/publisher-service",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "WRANGLER_REGISTRY_PATH=${WRANGLER_REGISTRY_PATH:-$PWD/../../.wrangler/dev-registry} wrangler dev --port ${PUBLISHER_PORT:-8791} --inspector-port ${PUBLISHER_INSPECTOR_PORT:-0}",
+    "deploy:staging": "wrangler deploy",
+    "deploy:production": "wrangler deploy --env production",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:staging": "wrangler d1 migrations apply DB --remote",
+    "db:migrate:production": "wrangler d1 migrations apply DB --remote --env production",
+    "types": "wrangler types -c wrangler.jsonc",
+    "typecheck": "tsgo --noEmit"
+  },
+  "dependencies": {
+    "@si/contracts": "workspace:*",
+    "drizzle-orm": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4",
+    "@si/typescript-config": "workspace:*",
+    "drizzle-kit": "catalog:",
+    "wrangler": "^4"
+  }
+}

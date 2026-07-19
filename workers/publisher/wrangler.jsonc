@@ -1,0 +1,58 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Publisher — texts, software records, and fixed pages (RFC-0001 D2). D1 +
+  // two RPC entrypoints: PublisherPublic (Site-bound, read-only) and
+  // PublisherOperator (Operator-bound, mutation). Top level = staging;
+  // env.production = production. Bound by nothing public — Publisher is a
+  // backend authority, not a routed app (no `routes` block).
+  //
+  // SCAFFOLD (exec-plan 0004 track T14). The full 18-table schema (T14), the
+  // STORE -> StoreCatalog binding for page-reference validation (T17), and the
+  // private MEDIA_STORAGE adapter (T5) are added by their tracks.
+  "name": "si-publisher-staging",
+  "main": "src/index.ts",
+  "account_id": "c735c5a53d864bee37400befb7f4c7f4",
+  "compatibility_date": "2026-04-19",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+  },
+  "upload_source_maps": true,
+  "workers_dev": false,
+  "preview_urls": true,
+  "vars": {
+    "ENVIRONMENT": "staging",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "publisher-staging-db",
+      // TODO(provision): real D1 database_id from this fork's Cloudflare account.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "env": {
+    "production": {
+      "name": "si-publisher-production",
+      "vars": {
+        "ENVIRONMENT": "production",
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "publisher-production-db",
+          // TODO(provision): real D1 database_id from this fork's Cloudflare account.
+          "database_id": "00000000-0000-0000-0000-000000000000",
+          "migrations_dir": "migrations",
+        },
+      ],
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+      },
+      "preview_urls": false,
+      // No "routes" block — Publisher has no public HTTP surface.
+    },
+  },
+}

@@ -385,6 +385,20 @@
         "wrangler": "^4",
       },
     },
+    "workers/publisher": {
+      "name": "@si/publisher-service",
+      "version": "0.0.0",
+      "dependencies": {
+        "@si/contracts": "workspace:*",
+        "drizzle-orm": "catalog:",
+      },
+      "devDependencies": {
+        "@cloudflare/workers-types": "^4",
+        "@si/typescript-config": "workspace:*",
+        "drizzle-kit": "catalog:",
+        "wrangler": "^4",
+      },
+    },
     "workers/roadie": {
       "name": "@si/roadie-service",
       "version": "0.0.2",
@@ -1516,6 +1530,8 @@
     "@si/og": ["@si/og@workspace:packages/og"],
 
     "@si/promoter-service": ["@si/promoter-service@workspace:workers/promoter"],
+
+    "@si/publisher-service": ["@si/publisher-service@workspace:workers/publisher"],
 
     "@si/roadie-service": ["@si/roadie-service@workspace:workers/roadie"],
 

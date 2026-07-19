@@ -33,6 +33,10 @@
     "workers/store": {
       "component": "store",
       "extra-files": [{ "type": "json", "path": "package.json", "jsonpath": "$.version" }]
+    },
+    "workers/publisher": {
+      "component": "publisher",
+      "extra-files": [{ "type": "json", "path": "package.json", "jsonpath": "$.version" }]
     }
   },
   "changelog-sections": [
