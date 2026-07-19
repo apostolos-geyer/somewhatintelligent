@@ -195,6 +195,25 @@ describe("Roadie MediaStorage adapter — delete", () => {
     const result = await storage.delete({ key: "ref" });
     expect(result).toEqual({ ok: false, error: "unavailable" });
   });
+
+  test.each([["reference_not_found"], ["deleted"]] as const)(
+    "already-gone error %s passes through as not_found so the GC drain can retire the row",
+    async (error) => {
+      const { storage } = makeStorage({
+        removeReference: async () => ({ ok: false, error }),
+      });
+      const result = await storage.delete({ key: "gone" });
+      expect(result).toEqual({ ok: false, error: "not_found" });
+    },
+  );
+
+  test("an unrecognized removeReference error maps to unavailable (transient)", async () => {
+    const { storage } = makeStorage({
+      removeReference: async () => ({ ok: false, error: "backend_unavailable" }),
+    });
+    const result = await storage.delete({ key: "ref" });
+    expect(result).toEqual({ ok: false, error: "unavailable" });
+  });
 });
 
 describe("port surface — no Roadie vocabulary crosses it (INV-MEDIA-1 / D10)", () => {

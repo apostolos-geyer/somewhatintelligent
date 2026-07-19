@@ -22,12 +22,16 @@ import { seedOrder, seedOrderItem } from "./helpers";
 
 const {
   productBase,
+  productDraft,
+  productRelease,
   productImage,
   productReleaseImage,
   productVariant,
   customerOrder,
   orderItem,
   storeOperatorEvent,
+  storeOperatorDeletionIntent,
+  storeMediaGcOutbox,
 } = schema;
 const db = drizzle(env.DB, { schema });
 
@@ -107,6 +111,8 @@ beforeEach(async () => {
   await db.delete(orderItem);
   await db.delete(customerOrder);
   await db.delete(storeOperatorEvent);
+  await db.delete(storeOperatorDeletionIntent);
+  await db.delete(storeMediaGcOutbox);
   await db.delete(productBase); // cascades draft / release / image / variant / release-image
 });
 
@@ -649,5 +655,367 @@ describe("listProducts / getProduct — operator view (draft fields)", () => {
       ok: false,
       error: "not_found",
     });
+  });
+});
+
+// ── Hard delete: two-step plan/confirm + media GC (D8/D10, INV-DEL-1..4) ──────
+
+/** Publish a product at a version, bumping the draft first if a prior release
+ *  exists (publish never bumps the revision, and versions must differ). Returns
+ *  the new release id. */
+async function publish(
+  productId: string,
+  version: string,
+  expectedRevision: number,
+): Promise<string> {
+  const res = await operator().publishProduct(call({ productId, expectedRevision, version }));
+  if (!res.ok) throw new Error(`publish failed: ${res.error}`);
+  return res.value.releaseId;
+}
+
+async function intentRows() {
+  return db.select().from(storeOperatorDeletionIntent);
+}
+async function gcRows() {
+  return db.select().from(storeMediaGcOutbox);
+}
+
+describe("planProductDeletion / deleteProduct — aggregate hard delete", () => {
+  it("plan reports accurate delete/retained counts and mints a bound token", async () => {
+    const id = await makePublishable("counts"); // 1 ready cover image + 1 variant
+    await publish(id, "1.0.0", 1); // 1 release, 1 release-image snapshot
+    // A second image added AFTER publish is NOT in the frozen release snapshot.
+    await seedImage({ id: "counts-2", productId: id, role: "gallery", position: 1 });
+    await operator().putVariant(call({ productId: id, size: "L", sku: "counts-L", stock: 2 }));
+
+    const eventsBeforePlan = (await events()).length;
+    const plan = await operator().planProductDeletion(call({ productId: id }));
+    if (!plan.ok) throw new Error(`plan failed: ${plan.error}`);
+    expect(plan.value.impact).toMatchObject({
+      targetType: "product",
+      targetId: id,
+      activeReleaseAffected: true,
+      deleteCounts: { drafts: 1, releases: 1, releaseImages: 1, variants: 2, images: 2 },
+      retainedCounts: { orders: 0, orderItems: 0 },
+    });
+    expect(typeof plan.value.confirmationToken).toBe("string");
+    expect(plan.value.expiresAt).toBeGreaterThan(Date.now());
+    // Planning is read-only: exactly one intent row, and the product still stands.
+    expect(await intentRows()).toHaveLength(1);
+    expect(await db.select().from(productBase).where(eq(productBase.id, id))).toHaveLength(1);
+    // Plans record no operator event (only the destructive confirm does).
+    expect(await events()).toHaveLength(eventsBeforePlan);
+  });
+
+  it("confirm removes drafts/releases/variants/images and queues gc outbox rows", async () => {
+    const id = await makePublishable("agg-del");
+    await publish(id, "1.0.0", 1);
+    await seedImage({ id: "agg-del-2", productId: id, role: "gallery", position: 1 });
+
+    const plan = await operator().planProductDeletion(call({ productId: id }));
+    if (!plan.ok) throw new Error("plan failed");
+    const res = await operator().deleteProduct(
+      call({ confirmationToken: plan.value.confirmationToken }),
+    );
+    expect(res).toEqual({ ok: true, value: { deleted: true } });
+
+    expect(await db.select().from(productBase).where(eq(productBase.id, id))).toHaveLength(0);
+    expect(await db.select().from(productDraft).where(eq(productDraft.productId, id))).toHaveLength(
+      0,
+    );
+    expect(
+      await db.select().from(productRelease).where(eq(productRelease.productId, id)),
+    ).toHaveLength(0);
+    expect(
+      await db.select().from(productVariant).where(eq(productVariant.productId, id)),
+    ).toHaveLength(0);
+    expect(await db.select().from(productImage).where(eq(productImage.productId, id))).toHaveLength(
+      0,
+    );
+    // One gc outbox row per physical storage_key of a deleted image.
+    const gc = await gcRows();
+    expect(gc.map((r) => r.storageKey).sort()).toEqual(
+      [`store/${id}/img-agg-del`, `store/${id}/agg-del-2`].sort(),
+    );
+    expect(gc.every((r) => r.attempts === 0 && r.lastError === null)).toBe(true);
+    // Intent consumed exactly once.
+    const [intent] = await intentRows();
+    expect(intent!.consumedAt).not.toBeNull();
+  });
+
+  it("a wrong token, an expired plan, and a consumed plan each map to their DeletionError", async () => {
+    const id = await makePublishable("errs");
+    const plan = await operator().planProductDeletion(call({ productId: id }));
+    if (!plan.ok) throw new Error("plan failed");
+
+    // Unknown token → mismatch.
+    expect(await operator().deleteProduct(call({ confirmationToken: "not-a-real-token" }))).toEqual(
+      { ok: false, error: "deletion_plan_mismatch" },
+    );
+
+    // Expire the outstanding intent → expired.
+    await db.update(storeOperatorDeletionIntent).set({ expiresAt: new Date(0) });
+    expect(
+      await operator().deleteProduct(call({ confirmationToken: plan.value.confirmationToken })),
+    ).toEqual({ ok: false, error: "deletion_plan_expired" });
+
+    // Fresh plan, execute once, then a DIFFERENT idempotency key reusing the
+    // consumed token → already_executed (the consume gate precedes re-derivation).
+    const id2 = await makePublishable("errs2");
+    const plan2 = await operator().planProductDeletion(call({ productId: id2 }));
+    if (!plan2.ok) throw new Error("plan2 failed");
+    const first = await operator().deleteProduct(
+      call({ confirmationToken: plan2.value.confirmationToken }),
+    );
+    expect(first).toEqual({ ok: true, value: { deleted: true } });
+    expect(
+      await operator().deleteProduct(call({ confirmationToken: plan2.value.confirmationToken })),
+    ).toEqual({ ok: false, error: "deletion_already_executed" });
+  });
+
+  it("a token minted for another operator cannot be confirmed (bound to sub)", async () => {
+    const id = await makePublishable("bound");
+    const plan = await operator().planProductDeletion(call({ productId: id }, { sub: "op-a" }));
+    if (!plan.ok) throw new Error("plan failed");
+    expect(
+      await operator().deleteProduct(
+        call({ confirmationToken: plan.value.confirmationToken }, { sub: "op-b" }),
+      ),
+    ).toEqual({ ok: false, error: "deletion_plan_mismatch" });
+  });
+
+  it("impact drift between plan and confirm (a new order lands) → mismatch", async () => {
+    const id = await makePublishable("drift");
+    const plan = await operator().planProductDeletion(call({ productId: id })); // retained orders: 0
+    if (!plan.ok) throw new Error("plan failed");
+
+    // A new order referencing the product lands after planning.
+    await seedOrder({ id: "od-1", orderNumber: "SI-OD1", status: "paid" });
+    await seedOrderItem({
+      id: "oi-1",
+      orderId: "od-1",
+      productId: id,
+      variantId: "v-x",
+      quantity: 1,
+    });
+
+    expect(
+      await operator().deleteProduct(call({ confirmationToken: plan.value.confirmationToken })),
+    ).toEqual({ ok: false, error: "deletion_plan_mismatch" });
+    // Drift rejection consumes nothing and deletes nothing.
+    expect(await db.select().from(productBase).where(eq(productBase.id, id))).toHaveLength(1);
+    const [intent] = await intentRows();
+    expect(intent!.consumedAt).toBeNull();
+  });
+
+  it("INV-DEL-2: deleting a product leaves order_item snapshots byte-identical", async () => {
+    const id = await makePublishable("hist");
+    const [variant] = await db
+      .select()
+      .from(productVariant)
+      .where(eq(productVariant.productId, id));
+    await seedOrder({ id: "oh-1", orderNumber: "SI-OH1", status: "delivered" });
+    await seedOrderItem({
+      id: "ohi-1",
+      orderId: "oh-1",
+      productId: id,
+      variantId: variant!.id,
+      titleSnapshot: "Field Tee",
+      sizeSnapshot: "M",
+      unitPriceCents: 4200,
+      quantity: 3,
+    });
+    const [before] = await db.select().from(orderItem).where(eq(orderItem.id, "ohi-1"));
+
+    // Plan AFTER the order exists so there is no drift, then confirm.
+    const plan = await operator().planProductDeletion(call({ productId: id }));
+    if (!plan.ok) throw new Error("plan failed");
+    expect(plan.value.impact.retainedCounts).toEqual({ orders: 1, orderItems: 1 });
+    const res = await operator().deleteProduct(
+      call({ confirmationToken: plan.value.confirmationToken }),
+    );
+    expect(res).toEqual({ ok: true, value: { deleted: true } });
+
+    const [after] = await db.select().from(orderItem).where(eq(orderItem.id, "ohi-1"));
+    expect(after).toEqual(before); // untouched — no catalog FK, no cascade
+    // The order itself is untouched too.
+    expect(await db.select().from(customerOrder).where(eq(customerOrder.id, "oh-1"))).toHaveLength(
+      1,
+    );
+  });
+
+  it("idempotency-key replay returns the prior success without a second delete", async () => {
+    const id = await makePublishable("replay");
+    const plan = await operator().planProductDeletion(call({ productId: id }));
+    if (!plan.ok) throw new Error("plan failed");
+    const c = call(
+      { confirmationToken: plan.value.confirmationToken },
+      { action: "deleteProduct", commandId: "d1" },
+    );
+    const first = await operator().deleteProduct(c);
+    const second = await operator().deleteProduct(c);
+    expect(first).toEqual({ ok: true, value: { deleted: true } });
+    expect(second).toEqual(first); // replayed from store_operator_event, no re-run
+    expect((await events()).filter((e) => e.action === "deleteProduct")).toHaveLength(1);
+  });
+
+  it("the audit tombstone carries identifiers + counts only, never the body", async () => {
+    const id = await makePublishable("tomb");
+    await operator().saveProductDraft(
+      call({ productId: id, expectedRevision: 1, title: "Secret Body Copy" }),
+    );
+    const plan = await operator().planProductDeletion(call({ productId: id }));
+    if (!plan.ok) throw new Error("plan failed");
+    await operator().deleteProduct(call({ confirmationToken: plan.value.confirmationToken }));
+
+    const [ev] = (await events()).filter((e) => e.action === "deleteProduct");
+    expect(ev!.detailJson).not.toContain("Secret Body Copy");
+    expect(ev!.responseJson).toBe(JSON.stringify({ deleted: true }));
+    const detail = JSON.parse(ev!.detailJson!);
+    expect(detail).toMatchObject({ drafts: 1, retained: { orders: 0, orderItems: 0 } });
+  });
+});
+
+describe("planProductReleaseDeletion / deleteProductRelease — active pointer", () => {
+  it("deleting the active release with a replacement repoints the public pointer", async () => {
+    const id = await makePublishable("repoint");
+    const relA = await publish(id, "1.0.0", 1);
+    await operator().saveProductDraft(call({ productId: id, expectedRevision: 1 })); // rev 2
+    const relB = await publish(id, "1.1.0", 2); // active now B
+
+    const plan = await operator().planProductReleaseDeletion(
+      call({ productId: id, releaseId: relB, replacementReleaseId: relA }),
+    );
+    if (!plan.ok) throw new Error(`plan failed: ${plan.error}`);
+    expect(plan.value.impact).toMatchObject({
+      targetType: "product_release",
+      activeReleaseAffected: true,
+      deleteCounts: { releases: 1, releaseImages: 1 },
+    });
+
+    const res = await operator().deleteProductRelease(
+      call({ confirmationToken: plan.value.confirmationToken }),
+    );
+    expect(res).toEqual({ ok: true, value: { deleted: true, activeVersion: "1.0.0" } });
+    const [prod] = await db.select().from(productBase).where(eq(productBase.id, id));
+    expect(prod!.activeReleaseId).toBe(relA);
+    expect(prod!.status).toBe("active");
+    expect(await db.select().from(productRelease).where(eq(productRelease.id, relB))).toHaveLength(
+      0,
+    );
+  });
+
+  it("deleting the active release with no replacement nulls the pointer and marks unavailable", async () => {
+    const id = await makePublishable("pull");
+    const relA = await publish(id, "1.0.0", 1); // active
+
+    const plan = await operator().planProductReleaseDeletion(
+      call({ productId: id, releaseId: relA }),
+    );
+    if (!plan.ok) throw new Error("plan failed");
+    expect(plan.value.impact.warnings.length).toBeGreaterThan(0);
+
+    const res = await operator().deleteProductRelease(
+      call({ confirmationToken: plan.value.confirmationToken }),
+    );
+    expect(res).toEqual({ ok: true, value: { deleted: true, activeVersion: null } });
+    const [prod] = await db.select().from(productBase).where(eq(productBase.id, id));
+    expect(prod!.activeReleaseId).toBeNull();
+    expect(prod!.status).toBe("unavailable");
+  });
+
+  it("plan rejects an invalid replacement (missing, or the target itself)", async () => {
+    const id = await makePublishable("badrep");
+    const relA = await publish(id, "1.0.0", 1);
+    expect(
+      await operator().planProductReleaseDeletion(
+        call({ productId: id, releaseId: relA, replacementReleaseId: "ghost" }),
+      ),
+    ).toEqual({ ok: false, error: "invalid_replacement" });
+    expect(
+      await operator().planProductReleaseDeletion(
+        call({ productId: id, releaseId: relA, replacementReleaseId: relA }),
+      ),
+    ).toEqual({ ok: false, error: "invalid_replacement" });
+    expect(
+      await operator().planProductReleaseDeletion(call({ productId: "ghost", releaseId: relA })),
+    ).toEqual({ ok: false, error: "not_found" });
+  });
+});
+
+describe("planVariantDeletion / deleteVariant — INV-DEL-2", () => {
+  it("deletes only the variant and never touches referencing order_items", async () => {
+    const id = await makePublishable("vdel");
+    const created = await operator().putVariant(
+      call({ productId: id, size: "XL", sku: "vdel-XL", stock: 4 }),
+    );
+    if (!created.ok) throw new Error("putVariant failed");
+    const variantId = created.value.variantId;
+    await seedOrder({ id: "vo-1", orderNumber: "SI-VO1", status: "paid" });
+    await seedOrderItem({ id: "voi-1", orderId: "vo-1", productId: id, variantId, quantity: 2 });
+    const [beforeItem] = await db.select().from(orderItem).where(eq(orderItem.id, "voi-1"));
+
+    const plan = await operator().planVariantDeletion(call({ productId: id, variantId }));
+    if (!plan.ok) throw new Error("plan failed");
+    expect(plan.value.impact).toMatchObject({
+      targetType: "product_variant",
+      deleteCounts: { variants: 1 },
+      retainedCounts: { orders: 1, orderItems: 1 },
+    });
+    const res = await operator().deleteVariant(
+      call({ confirmationToken: plan.value.confirmationToken }),
+    );
+    expect(res).toEqual({ ok: true, value: { deleted: true } });
+
+    expect(
+      await db.select().from(productVariant).where(eq(productVariant.id, variantId)),
+    ).toHaveLength(0);
+    const [afterItem] = await db.select().from(orderItem).where(eq(orderItem.id, "voi-1"));
+    expect(afterItem).toEqual(beforeItem); // snapshot untouched
+    expect(await gcRows()).toHaveLength(0); // variants have no media bytes
+  });
+});
+
+describe("planProductMediaDeletion / deleteProductMedia — logical delete + gc", () => {
+  it("removes the image, queues its bytes, and reports current product status", async () => {
+    const id = await makePublishable("mdel"); // status active after publish
+    await publish(id, "1.0.0", 1);
+    await seedImage({ id: "mdel-extra", productId: id, role: "gallery", position: 1 });
+
+    const plan = await operator().planProductMediaDeletion(
+      call({ productId: id, mediaId: "mdel-extra" }),
+    );
+    if (!plan.ok) throw new Error("plan failed");
+    expect(plan.value.impact).toMatchObject({
+      targetType: "media",
+      targetId: "mdel-extra",
+      activeReleaseAffected: false, // added after publish → not in the snapshot
+      deleteCounts: { images: 1, releaseImages: 0 },
+    });
+
+    const res = await operator().deleteProductMedia(
+      call({ confirmationToken: plan.value.confirmationToken }),
+    );
+    expect(res).toEqual({ ok: true, value: { deleted: true, productStatus: "active" } });
+    expect(
+      await db.select().from(productImage).where(eq(productImage.id, "mdel-extra")),
+    ).toHaveLength(0);
+    const gc = await gcRows();
+    expect(gc.map((r) => r.storageKey)).toEqual([`store/${id}/mdel-extra`]);
+    // The cover image (in the active snapshot) is untouched.
+    expect(
+      await db.select().from(productImage).where(eq(productImage.id, "img-mdel")),
+    ).toHaveLength(1);
+  });
+
+  it("flags an image that is part of the active release snapshot", async () => {
+    const id = await makePublishable("msnap"); // cover img-msnap is ready at publish
+    await publish(id, "1.0.0", 1); // snapshots img-msnap into the active release
+    const plan = await operator().planProductMediaDeletion(
+      call({ productId: id, mediaId: "img-msnap" }),
+    );
+    if (!plan.ok) throw new Error("plan failed");
+    expect(plan.value.impact.activeReleaseAffected).toBe(true);
+    expect(plan.value.impact.deleteCounts).toMatchObject({ images: 1, releaseImages: 1 });
   });
 });

@@ -9,14 +9,18 @@
 // returns the recorded `response_json` without re-mutating (INV-AUDIT-1). Each
 // success writes exactly one domain mutation AND one event in the SAME D1 batch;
 // a typed-error return writes no event, so a failed call is safely retryable.
-import { and, asc, count, desc, eq, lt, ne, or, sql } from "drizzle-orm";
+import { and, asc, count, countDistinct, desc, eq, inArray, lt, ne, or, sql } from "drizzle-orm";
 import { ulid } from "@somewhatintelligent/kit/ids";
 import { err, isValidVersion, ok } from "@si/contracts";
 import type {
+  DeletionError,
+  DeletionImpact,
+  DeletionPlan,
   OperatorMeta,
   OrderDetailDTO,
   OrderStatus,
   ProductMediaDTO,
+  ProductStatus,
   ProductVariantDTO,
   StoreOperatorEntrypoint,
 } from "@si/contracts";
@@ -36,6 +40,8 @@ import {
   productRelease,
   productReleaseImage,
   productVariant,
+  storeMediaGcOutbox,
+  storeOperatorDeletionIntent,
   storeOperatorEvent,
 } from "@/db/schema";
 
@@ -945,4 +951,722 @@ export async function markDelivered(db: Db, call: Call<"markDelivered">): Res<"m
     ),
   ]);
   return ok(dto);
+}
+
+// ── Hard delete: two-step plan/confirm (RFC-0001 D8, INV-DEL-1..4) ────────────
+//
+// plan* is a read-only impact preview that mints a short-lived confirmation
+// token: it stores ONLY the token's SHA-256 hash, a canonical impact hash, the
+// operator sub, the confirm action, and the plan subject — never a dependency
+// graph. delete* consumes the token: it re-derives the impact from CURRENT data
+// and rejects any drift, then performs ONE ordered batch (explicit child
+// deletes → aggregate, active-pointer repoint BEFORE the release row is
+// removed, media-GC outbox inserts, intent consume, audit event LAST). No
+// statement here ever touches customer_order, order_item, the Stripe ledgers,
+// reservations, or fulfillment (INV-DEL-2): order history stays byte-identical
+// across a catalog delete.
+
+const DELETION_TTL_MS = 10 * 60 * 1000;
+
+// The plan subject persisted in the intent's `target_id` — every field delete*
+// needs to re-derive the impact and drive the batch. (The token carries no
+// target of its own; the subject is recovered from the intent, so an operator
+// cannot redirect a confirmed token at a different aggregate.)
+type ReleaseSubject = { productId: string; releaseId: string; replacementReleaseId: string | null };
+type ProductSubject = { productId: string };
+type VariantSubject = { productId: string; variantId: string };
+type MediaSubject = { productId: string; mediaId: string };
+
+function base64url(bytes: Uint8Array): string {
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+async function sha256Hex(input: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function newConfirmationToken(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return base64url(bytes);
+}
+
+// Recursively key-sorted serialization so the impact hash is stable regardless
+// of property insertion order — the drift check compares hashes, not objects.
+function canonicalize(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value && typeof value === "object") {
+    const sorted: Record<string, unknown> = {};
+    for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+      sorted[key] = canonicalize((value as Record<string, unknown>)[key]);
+    }
+    return sorted;
+  }
+  return value;
+}
+
+function impactHashOf(impact: DeletionImpact): Promise<string> {
+  return sha256Hex(JSON.stringify(canonicalize(impact)));
+}
+
+/** Mint + persist a deletion intent and return the plan the operator confirms
+ *  against. `action` is the confirm method's name (matched at execution). */
+async function writeDeletionPlan(
+  db: Db,
+  meta: OperatorMeta,
+  action: string,
+  subject: unknown,
+  impact: DeletionImpact,
+): Promise<DeletionPlan> {
+  const token = newConfirmationToken();
+  const [tokenHash, impactHash] = await Promise.all([sha256Hex(token), impactHashOf(impact)]);
+  const expiresAt = new Date(Date.now() + DELETION_TTL_MS);
+  await db.insert(storeOperatorDeletionIntent).values({
+    tokenHash,
+    operatorSub: meta.actor.sub,
+    action,
+    targetId: JSON.stringify(subject),
+    impactHash,
+    expiresAt,
+    consumedAt: null,
+  });
+  return { impact, confirmationToken: token, expiresAt: expiresAt.getTime() };
+}
+
+type VerifiedIntent<S> =
+  | { ok: false; error: DeletionError }
+  | { ok: true; tokenHash: string; impactHash: string; subject: S };
+
+// Verify a confirmation token against its intent: existence, operator, action,
+// expiry, and prior consumption — every mismatch its own DeletionError. Token
+// consumption is checked here; idempotency-key replay is a separate, earlier
+// gate (recordedResponse), so a retried OperatorCall never reaches this.
+async function verifyDeletionIntent<S>(
+  db: Db,
+  token: string,
+  operatorSub: string,
+  action: string,
+  nowMs: number,
+): Promise<VerifiedIntent<S>> {
+  const tokenHash = await sha256Hex(token);
+  const [intent] = await db
+    .select()
+    .from(storeOperatorDeletionIntent)
+    .where(eq(storeOperatorDeletionIntent.tokenHash, tokenHash))
+    .limit(1);
+  if (!intent) return { ok: false, error: "deletion_plan_mismatch" };
+  if (intent.operatorSub !== operatorSub) return { ok: false, error: "deletion_plan_mismatch" };
+  if (intent.action !== action) return { ok: false, error: "deletion_plan_mismatch" };
+  if (intent.expiresAt.getTime() < nowMs) return { ok: false, error: "deletion_plan_expired" };
+  if (intent.consumedAt !== null) return { ok: false, error: "deletion_already_executed" };
+  return {
+    ok: true,
+    tokenHash,
+    impactHash: intent.impactHash,
+    subject: JSON.parse(intent.targetId) as S,
+  };
+}
+
+/** One media-GC outbox row: the physical byte delete deferred to the drain. */
+function gcOutboxInsert(db: Db, storageKey: string, now: Date): DbBatchItem {
+  return db.insert(storeMediaGcOutbox).values({
+    id: ulid(),
+    storageKey,
+    attempts: 0,
+    nextAttemptAt: now,
+    lastError: null,
+    createdAt: now,
+  });
+}
+
+/** Consume the verified intent as part of the deletion batch. */
+function consumeIntent(db: Db, tokenHash: string, now: Date): DbBatchItem {
+  return db
+    .update(storeOperatorDeletionIntent)
+    .set({ consumedAt: now })
+    .where(eq(storeOperatorDeletionIntent.tokenHash, tokenHash));
+}
+
+// ── Product release deletion ─────────────────────────────────────────────────
+
+type ReleaseDeletion =
+  | { kind: "gone" }
+  | { kind: "replacement_gone" }
+  | {
+      kind: "ok";
+      impact: DeletionImpact;
+      isActive: boolean;
+      replacementReleaseId: string | null;
+      activeVersionAfter: string | null;
+    };
+
+async function deriveReleaseDeletion(db: Db, subject: ReleaseSubject): Promise<ReleaseDeletion> {
+  const [product] = await db
+    .select({ id: productBase.id, activeReleaseId: productBase.activeReleaseId })
+    .from(productBase)
+    .where(eq(productBase.id, subject.productId))
+    .limit(1);
+  if (!product) return { kind: "gone" };
+  const [target] = await db
+    .select({ id: productRelease.id, version: productRelease.version })
+    .from(productRelease)
+    .where(
+      and(
+        eq(productRelease.id, subject.releaseId),
+        eq(productRelease.productId, subject.productId),
+      ),
+    )
+    .limit(1);
+  if (!target) return { kind: "gone" };
+
+  let replacementVersion: string | null = null;
+  if (subject.replacementReleaseId !== null) {
+    const [rep] = await db
+      .select({ version: productRelease.version })
+      .from(productRelease)
+      .where(
+        and(
+          eq(productRelease.id, subject.replacementReleaseId),
+          eq(productRelease.productId, subject.productId),
+        ),
+      )
+      .limit(1);
+    if (!rep) return { kind: "replacement_gone" };
+    replacementVersion = rep.version;
+  }
+
+  const [riAgg] = await db
+    .select({ n: count() })
+    .from(productReleaseImage)
+    .where(eq(productReleaseImage.releaseId, subject.releaseId));
+  const releaseImages = riAgg?.n ?? 0;
+
+  const isActive = product.activeReleaseId === subject.releaseId;
+  let activeVersionAfter: string | null;
+  if (isActive) {
+    activeVersionAfter = replacementVersion;
+  } else if (product.activeReleaseId) {
+    const [cur] = await db
+      .select({ version: productRelease.version })
+      .from(productRelease)
+      .where(eq(productRelease.id, product.activeReleaseId))
+      .limit(1);
+    activeVersionAfter = cur?.version ?? null;
+  } else {
+    activeVersionAfter = null;
+  }
+
+  const warnings: string[] = [];
+  if (isActive && subject.replacementReleaseId === null) {
+    warnings.push("Deleting the active release with no replacement marks the product unavailable.");
+  }
+
+  const impact: DeletionImpact = {
+    targetType: "product_release",
+    targetId: subject.releaseId,
+    label: target.version,
+    activeReleaseAffected: isActive,
+    deleteCounts: { releases: 1, releaseImages },
+    retainedCounts: {},
+    warnings,
+  };
+  return {
+    kind: "ok",
+    impact,
+    isActive,
+    replacementReleaseId: subject.replacementReleaseId,
+    activeVersionAfter,
+  };
+}
+
+export async function planProductReleaseDeletion(
+  db: Db,
+  call: Call<"planProductReleaseDeletion">,
+): Res<"planProductReleaseDeletion"> {
+  const { input, meta } = call;
+  const [product] = await db
+    .select({ id: productBase.id })
+    .from(productBase)
+    .where(eq(productBase.id, input.productId))
+    .limit(1);
+  if (!product) return err("not_found");
+  const [target] = await db
+    .select({ id: productRelease.id })
+    .from(productRelease)
+    .where(
+      and(eq(productRelease.id, input.releaseId), eq(productRelease.productId, input.productId)),
+    )
+    .limit(1);
+  if (!target) return err("not_found");
+
+  const replacementReleaseId = input.replacementReleaseId ?? null;
+  if (replacementReleaseId !== null) {
+    if (replacementReleaseId === input.releaseId) return err("invalid_replacement");
+    const [rep] = await db
+      .select({ id: productRelease.id })
+      .from(productRelease)
+      .where(
+        and(
+          eq(productRelease.id, replacementReleaseId),
+          eq(productRelease.productId, input.productId),
+        ),
+      )
+      .limit(1);
+    if (!rep) return err("invalid_replacement");
+  }
+
+  const subject: ReleaseSubject = {
+    productId: input.productId,
+    releaseId: input.releaseId,
+    replacementReleaseId,
+  };
+  const derived = await deriveReleaseDeletion(db, subject);
+  if (derived.kind !== "ok") return err("not_found");
+  return ok(await writeDeletionPlan(db, meta, "deleteProductRelease", subject, derived.impact));
+}
+
+export async function deleteProductRelease(
+  db: Db,
+  call: Call<"deleteProductRelease">,
+): Res<"deleteProductRelease"> {
+  const { input, meta } = call;
+  const replay = await recordedResponse<{ deleted: true; activeVersion: string | null }>(
+    db,
+    meta,
+    "deleteProductRelease",
+  );
+  if (replay) return ok(replay);
+
+  const verified = await verifyDeletionIntent<ReleaseSubject>(
+    db,
+    input.confirmationToken,
+    meta.actor.sub,
+    "deleteProductRelease",
+    Date.now(),
+  );
+  if (!verified.ok) return err(verified.error);
+
+  const derived = await deriveReleaseDeletion(db, verified.subject);
+  if (derived.kind === "gone") return err("not_found");
+  if (derived.kind === "replacement_gone") return err("deletion_plan_mismatch");
+  if ((await impactHashOf(derived.impact)) !== verified.impactHash) {
+    return err("deletion_plan_mismatch");
+  }
+
+  const now = new Date();
+  const { productId, releaseId } = verified.subject;
+  const value = { deleted: true as const, activeVersion: derived.activeVersionAfter };
+  const statements: DbBatchItem[] = [];
+  if (derived.isActive) {
+    // Repoint (or clear) the public pointer BEFORE the release row is removed.
+    const set: Partial<typeof productBase.$inferInsert> =
+      derived.replacementReleaseId !== null
+        ? { activeReleaseId: derived.replacementReleaseId, updatedAt: now }
+        : { activeReleaseId: null, status: "unavailable", updatedAt: now };
+    statements.push(db.update(productBase).set(set).where(eq(productBase.id, productId)));
+  }
+  statements.push(
+    db.delete(productReleaseImage).where(eq(productReleaseImage.releaseId, releaseId)),
+    db.delete(productRelease).where(eq(productRelease.id, releaseId)),
+    consumeIntent(db, verified.tokenHash, now),
+    eventInsert(
+      db,
+      meta,
+      "deleteProductRelease",
+      {
+        targetType: "product_release",
+        targetId: releaseId,
+        detail: {
+          productId,
+          activeReleaseAffected: derived.isActive,
+          replaced: derived.replacementReleaseId !== null,
+          ...derived.impact.deleteCounts,
+        },
+      },
+      value,
+    ),
+  );
+  await runBatch(db, statements);
+  return ok(value);
+}
+
+// ── Product (aggregate) deletion ─────────────────────────────────────────────
+
+interface ProductDeletion {
+  impact: DeletionImpact;
+  releaseIds: string[];
+  imageKeys: Array<{ storageKey: string }>;
+}
+
+async function deriveProductDeletion(
+  db: Db,
+  subject: ProductSubject,
+): Promise<ProductDeletion | null> {
+  const [product] = await db
+    .select({
+      id: productBase.id,
+      slug: productBase.slug,
+      activeReleaseId: productBase.activeReleaseId,
+      title: productDraft.title,
+    })
+    .from(productBase)
+    .innerJoin(productDraft, eq(productDraft.productId, productBase.id))
+    .where(eq(productBase.id, subject.productId))
+    .limit(1);
+  if (!product) return null;
+
+  const releases = await db
+    .select({ id: productRelease.id })
+    .from(productRelease)
+    .where(eq(productRelease.productId, subject.productId));
+  const releaseIds = releases.map((r) => r.id);
+  const imageKeys = await db
+    .select({ storageKey: productImage.storageKey })
+    .from(productImage)
+    .where(eq(productImage.productId, subject.productId));
+  const [variantAgg] = await db
+    .select({ n: count() })
+    .from(productVariant)
+    .where(eq(productVariant.productId, subject.productId));
+  let releaseImages = 0;
+  if (releaseIds.length) {
+    const [ri] = await db
+      .select({ n: count() })
+      .from(productReleaseImage)
+      .where(inArray(productReleaseImage.releaseId, releaseIds));
+    releaseImages = ri?.n ?? 0;
+  }
+  // Snapshot order references (never touched — INV-DEL-2); the counts fold into
+  // the impact hash, so a new order between plan and confirm is drift.
+  const [orderAgg] = await db
+    .select({ orders: countDistinct(orderItem.orderId), items: count() })
+    .from(orderItem)
+    .where(eq(orderItem.productId, subject.productId));
+  const orders = orderAgg?.orders ?? 0;
+  const orderItems = orderAgg?.items ?? 0;
+
+  const warnings: string[] = [];
+  if (orders > 0) {
+    warnings.push(`Referenced by ${orders} order(s); order history is retained, not deleted.`);
+  }
+  if (product.activeReleaseId) warnings.push("The active release will be removed.");
+
+  const impact: DeletionImpact = {
+    targetType: "product",
+    targetId: subject.productId,
+    label: product.title ?? product.slug,
+    activeReleaseAffected: product.activeReleaseId !== null,
+    deleteCounts: {
+      drafts: 1,
+      releases: releaseIds.length,
+      releaseImages,
+      variants: variantAgg?.n ?? 0,
+      images: imageKeys.length,
+    },
+    retainedCounts: { orders, orderItems },
+    warnings,
+  };
+  return { impact, releaseIds, imageKeys };
+}
+
+export async function planProductDeletion(
+  db: Db,
+  call: Call<"planProductDeletion">,
+): Res<"planProductDeletion"> {
+  const { input, meta } = call;
+  const data = await deriveProductDeletion(db, { productId: input.productId });
+  if (!data) return err("not_found");
+  return ok(
+    await writeDeletionPlan(db, meta, "deleteProduct", { productId: input.productId }, data.impact),
+  );
+}
+
+export async function deleteProduct(db: Db, call: Call<"deleteProduct">): Res<"deleteProduct"> {
+  const { input, meta } = call;
+  const replay = await recordedResponse<{ deleted: true }>(db, meta, "deleteProduct");
+  if (replay) return ok(replay);
+
+  const verified = await verifyDeletionIntent<ProductSubject>(
+    db,
+    input.confirmationToken,
+    meta.actor.sub,
+    "deleteProduct",
+    Date.now(),
+  );
+  if (!verified.ok) return err(verified.error);
+
+  const data = await deriveProductDeletion(db, verified.subject);
+  if (!data) return err("not_found");
+  if ((await impactHashOf(data.impact)) !== verified.impactHash) {
+    return err("deletion_plan_mismatch");
+  }
+
+  const now = new Date();
+  const { productId } = verified.subject;
+  const value = { deleted: true as const };
+  // Explicit ordered child removal then the aggregate — never relying on FK
+  // cascade alone. The active pointer is cleared first (it references a release
+  // deleted below); order_item is deliberately absent from this batch.
+  const statements: DbBatchItem[] = [
+    db
+      .update(productBase)
+      .set({ activeReleaseId: null, updatedAt: now })
+      .where(eq(productBase.id, productId)),
+  ];
+  if (data.releaseIds.length) {
+    statements.push(
+      db.delete(productReleaseImage).where(inArray(productReleaseImage.releaseId, data.releaseIds)),
+    );
+  }
+  statements.push(
+    db.delete(productVariant).where(eq(productVariant.productId, productId)),
+    db.delete(productImage).where(eq(productImage.productId, productId)),
+    db.delete(productRelease).where(eq(productRelease.productId, productId)),
+    db.delete(productDraft).where(eq(productDraft.productId, productId)),
+    db.delete(productBase).where(eq(productBase.id, productId)),
+  );
+  for (const img of data.imageKeys) statements.push(gcOutboxInsert(db, img.storageKey, now));
+  statements.push(
+    consumeIntent(db, verified.tokenHash, now),
+    eventInsert(
+      db,
+      meta,
+      "deleteProduct",
+      {
+        targetType: "product",
+        targetId: productId,
+        detail: { ...data.impact.deleteCounts, retained: data.impact.retainedCounts },
+      },
+      value,
+    ),
+  );
+  await runBatch(db, statements);
+  return ok(value);
+}
+
+// ── Variant deletion ─────────────────────────────────────────────────────────
+
+async function deriveVariantDeletion(
+  db: Db,
+  subject: VariantSubject,
+): Promise<{ impact: DeletionImpact } | null> {
+  const [variant] = await db
+    .select({ id: productVariant.id, size: productVariant.size, sku: productVariant.sku })
+    .from(productVariant)
+    .where(
+      and(
+        eq(productVariant.id, subject.variantId),
+        eq(productVariant.productId, subject.productId),
+      ),
+    )
+    .limit(1);
+  if (!variant) return null;
+  const [orderAgg] = await db
+    .select({ orders: countDistinct(orderItem.orderId), items: count() })
+    .from(orderItem)
+    .where(eq(orderItem.variantId, subject.variantId));
+  const orders = orderAgg?.orders ?? 0;
+  const orderItems = orderAgg?.items ?? 0;
+
+  const warnings: string[] = [];
+  if (orders > 0) {
+    warnings.push(
+      `Referenced by ${orders} order(s); stale browser carts will fail checkout availability.`,
+    );
+  }
+
+  const impact: DeletionImpact = {
+    targetType: "product_variant",
+    targetId: subject.variantId,
+    label: `${variant.size} (${variant.sku})`,
+    activeReleaseAffected: false,
+    deleteCounts: { variants: 1 },
+    retainedCounts: { orders, orderItems },
+    warnings,
+  };
+  return { impact };
+}
+
+export async function planVariantDeletion(
+  db: Db,
+  call: Call<"planVariantDeletion">,
+): Res<"planVariantDeletion"> {
+  const { input, meta } = call;
+  const data = await deriveVariantDeletion(db, {
+    productId: input.productId,
+    variantId: input.variantId,
+  });
+  if (!data) return err("not_found");
+  const subject: VariantSubject = { productId: input.productId, variantId: input.variantId };
+  return ok(await writeDeletionPlan(db, meta, "deleteVariant", subject, data.impact));
+}
+
+export async function deleteVariant(db: Db, call: Call<"deleteVariant">): Res<"deleteVariant"> {
+  const { input, meta } = call;
+  const replay = await recordedResponse<{ deleted: true }>(db, meta, "deleteVariant");
+  if (replay) return ok(replay);
+
+  const verified = await verifyDeletionIntent<VariantSubject>(
+    db,
+    input.confirmationToken,
+    meta.actor.sub,
+    "deleteVariant",
+    Date.now(),
+  );
+  if (!verified.ok) return err(verified.error);
+
+  const data = await deriveVariantDeletion(db, verified.subject);
+  if (!data) return err("not_found");
+  if ((await impactHashOf(data.impact)) !== verified.impactHash) {
+    return err("deletion_plan_mismatch");
+  }
+
+  const now = new Date();
+  const { productId, variantId } = verified.subject;
+  const value = { deleted: true as const };
+  // Only the variant row — order_item lines that snapshot this variant are
+  // never touched (INV-DEL-2).
+  await runBatch(db, [
+    db.delete(productVariant).where(eq(productVariant.id, variantId)),
+    consumeIntent(db, verified.tokenHash, now),
+    eventInsert(
+      db,
+      meta,
+      "deleteVariant",
+      { targetType: "product_variant", targetId: variantId, detail: { productId } },
+      value,
+    ),
+  ]);
+  return ok(value);
+}
+
+// ── Product media deletion ───────────────────────────────────────────────────
+
+async function deriveMediaDeletion(
+  db: Db,
+  subject: MediaSubject,
+): Promise<{ impact: DeletionImpact; storageKey: string; productStatus: ProductStatus } | null> {
+  const [image] = await db
+    .select({
+      id: productImage.id,
+      storageKey: productImage.storageKey,
+      alt: productImage.alt,
+      role: productImage.role,
+    })
+    .from(productImage)
+    .where(and(eq(productImage.id, subject.mediaId), eq(productImage.productId, subject.productId)))
+    .limit(1);
+  if (!image) return null;
+  const [product] = await db
+    .select({ activeReleaseId: productBase.activeReleaseId, status: productBase.status })
+    .from(productBase)
+    .where(eq(productBase.id, subject.productId))
+    .limit(1);
+  if (!product) return null;
+
+  const [riAgg] = await db
+    .select({ n: count() })
+    .from(productReleaseImage)
+    .where(eq(productReleaseImage.imageId, subject.mediaId));
+  const releaseImages = riAgg?.n ?? 0;
+
+  let activeReleaseAffected = false;
+  if (product.activeReleaseId) {
+    const [inActive] = await db
+      .select({ imageId: productReleaseImage.imageId })
+      .from(productReleaseImage)
+      .where(
+        and(
+          eq(productReleaseImage.releaseId, product.activeReleaseId),
+          eq(productReleaseImage.imageId, subject.mediaId),
+        ),
+      )
+      .limit(1);
+    activeReleaseAffected = !!inActive;
+  }
+
+  const warnings: string[] = [];
+  if (activeReleaseAffected) {
+    warnings.push("This image is part of the current active release snapshot.");
+  }
+
+  const impact: DeletionImpact = {
+    targetType: "media",
+    targetId: subject.mediaId,
+    label: `${image.role}: ${image.alt}`,
+    activeReleaseAffected,
+    deleteCounts: { images: 1, releaseImages },
+    retainedCounts: {},
+    warnings,
+  };
+  return { impact, storageKey: image.storageKey, productStatus: product.status };
+}
+
+export async function planProductMediaDeletion(
+  db: Db,
+  call: Call<"planProductMediaDeletion">,
+): Res<"planProductMediaDeletion"> {
+  const { input, meta } = call;
+  const data = await deriveMediaDeletion(db, {
+    productId: input.productId,
+    mediaId: input.mediaId,
+  });
+  if (!data) return err("not_found");
+  const subject: MediaSubject = { productId: input.productId, mediaId: input.mediaId };
+  return ok(await writeDeletionPlan(db, meta, "deleteProductMedia", subject, data.impact));
+}
+
+export async function deleteProductMedia(
+  db: Db,
+  call: Call<"deleteProductMedia">,
+): Res<"deleteProductMedia"> {
+  const { input, meta } = call;
+  const replay = await recordedResponse<{ deleted: true; productStatus: ProductStatus }>(
+    db,
+    meta,
+    "deleteProductMedia",
+  );
+  if (replay) return ok(replay);
+
+  const verified = await verifyDeletionIntent<MediaSubject>(
+    db,
+    input.confirmationToken,
+    meta.actor.sub,
+    "deleteProductMedia",
+    Date.now(),
+  );
+  if (!verified.ok) return err(verified.error);
+
+  const data = await deriveMediaDeletion(db, verified.subject);
+  if (!data) return err("not_found");
+  if ((await impactHashOf(data.impact)) !== verified.impactHash) {
+    return err("deletion_plan_mismatch");
+  }
+
+  const now = new Date();
+  const { productId, mediaId } = verified.subject;
+  const value = { deleted: true as const, productStatus: data.productStatus };
+  // Logical media delete + physical-byte GC outbox insert commit atomically;
+  // the release-image joins for this image are removed explicitly first.
+  await runBatch(db, [
+    db.delete(productReleaseImage).where(eq(productReleaseImage.imageId, mediaId)),
+    db.delete(productImage).where(eq(productImage.id, mediaId)),
+    gcOutboxInsert(db, data.storageKey, now),
+    consumeIntent(db, verified.tokenHash, now),
+    eventInsert(
+      db,
+      meta,
+      "deleteProductMedia",
+      {
+        targetType: "media",
+        targetId: mediaId,
+        detail: { productId, ...data.impact.deleteCounts },
+      },
+      value,
+    ),
+  ]);
+  return ok(value);
 }

@@ -12,8 +12,8 @@
  * writes exactly one mutation + one event per success (INV-AUDIT-1).
  *
  * `implements StoreOperatorEntrypoint` locks the surface to the @si/contracts
- * SSOT. Plan/confirm hard-delete lands in T13 — those methods are stubbed
- * not-implemented here.
+ * SSOT. Two-step hard-delete (plan/confirm) delegates to the same `lib/operator`
+ * cores; media GC drains on the scheduled handler (`lib/media-gc`).
  */
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { desc, eq } from "drizzle-orm";
@@ -192,33 +192,31 @@ export class StoreOperator extends WorkerEntrypoint<Env> implements StoreOperato
     });
   }
 
-  // ── Hard-delete plan/confirm — lands in T13 (Store hard-delete + media GC) ──
-  async planProductReleaseDeletion(
-    _call: P<"planProductReleaseDeletion">,
+  // ── Hard-delete plan/confirm + media GC (RFC-0001 D8/D10, INV-DEL-1..4) ──────
+  planProductReleaseDeletion(
+    call: P<"planProductReleaseDeletion">,
   ): R<"planProductReleaseDeletion"> {
-    throw new Error("not_implemented");
+    return ops.planProductReleaseDeletion(this.db(), call);
   }
-  async deleteProductRelease(_call: P<"deleteProductRelease">): R<"deleteProductRelease"> {
-    throw new Error("not_implemented");
+  deleteProductRelease(call: P<"deleteProductRelease">): R<"deleteProductRelease"> {
+    return ops.deleteProductRelease(this.db(), call);
   }
-  async planProductDeletion(_call: P<"planProductDeletion">): R<"planProductDeletion"> {
-    throw new Error("not_implemented");
+  planProductDeletion(call: P<"planProductDeletion">): R<"planProductDeletion"> {
+    return ops.planProductDeletion(this.db(), call);
   }
-  async deleteProduct(_call: P<"deleteProduct">): R<"deleteProduct"> {
-    throw new Error("not_implemented");
+  deleteProduct(call: P<"deleteProduct">): R<"deleteProduct"> {
+    return ops.deleteProduct(this.db(), call);
   }
-  async planVariantDeletion(_call: P<"planVariantDeletion">): R<"planVariantDeletion"> {
-    throw new Error("not_implemented");
+  planVariantDeletion(call: P<"planVariantDeletion">): R<"planVariantDeletion"> {
+    return ops.planVariantDeletion(this.db(), call);
   }
-  async deleteVariant(_call: P<"deleteVariant">): R<"deleteVariant"> {
-    throw new Error("not_implemented");
+  deleteVariant(call: P<"deleteVariant">): R<"deleteVariant"> {
+    return ops.deleteVariant(this.db(), call);
   }
-  async planProductMediaDeletion(
-    _call: P<"planProductMediaDeletion">,
-  ): R<"planProductMediaDeletion"> {
-    throw new Error("not_implemented");
+  planProductMediaDeletion(call: P<"planProductMediaDeletion">): R<"planProductMediaDeletion"> {
+    return ops.planProductMediaDeletion(this.db(), call);
   }
-  async deleteProductMedia(_call: P<"deleteProductMedia">): R<"deleteProductMedia"> {
-    throw new Error("not_implemented");
+  deleteProductMedia(call: P<"deleteProductMedia">): R<"deleteProductMedia"> {
+    return ops.deleteProductMedia(this.db(), call);
   }
 }

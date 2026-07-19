@@ -139,7 +139,16 @@ export function createRoadieMediaStorage(
     async delete(input) {
       try {
         const result = await client.removeReference({ referenceId: input.key });
-        if (!result.ok) return UNAVAILABLE;
+        if (!result.ok) {
+          // Distinguish already-gone from a transient backend failure so the
+          // media-GC drain can retire an outbox row that has nothing left to
+          // delete instead of backing off forever. Roadie's removeReference is
+          // itself idempotent (a missing reference returns ok), so this branch
+          // only fires on a genuine backend error.
+          return result.error === "reference_not_found" || result.error === "deleted"
+            ? NOT_FOUND
+            : UNAVAILABLE;
+        }
         return { ok: true, value: undefined };
       } catch {
         return UNAVAILABLE;
