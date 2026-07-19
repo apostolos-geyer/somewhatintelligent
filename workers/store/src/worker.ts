@@ -1,12 +1,13 @@
 // Hand-written entry; do not wrap in a kit factory. Mirrors
 // workers/identity/src/worker.ts (docs/ARCHITECTURE.md §3.3 + §4.4).
 import startEntry from "@tanstack/react-start/server-entry";
+import { requestHandler } from "@tanstack/react-start/server";
 import { extractPlatformStartContext } from "@somewhatintelligent/kit/react-start";
 import { runWithExecutionContext } from "@somewhatintelligent/kit/execution-context";
 import { stripeConfigured } from "@somewhatintelligent/stripe";
 import { makeStripeClient } from "./lib/stripe-client";
 import { devEnvelopeStamper } from "./lib/platform";
-import { handleStoreStripeWebhook, STORE_STRIPE_WEBHOOK_PATH } from "./lib/stripe-webhook";
+import storeApi from "./api/store-api";
 import { createDb } from "./lib/db";
 import { consumeStripeEventBatch, DLQ_QUEUE_PATTERN, processDlqBatch } from "./lib/stripe-queue";
 import { reconcilePendingReservations } from "./lib/reconcile";
@@ -26,13 +27,45 @@ declare module "@tanstack/react-start" {
   }
 }
 
+// Append the dev envelope stamper's Set-Cookie headers without disturbing the
+// response body (dev-direct only — the stamper is a hard no-op in staging/prod).
+function appendSetCookies(response: Response, setCookies: string[]): Response {
+  if (setCookies.length === 0) return response;
+  const headers = new Headers(response.headers);
+  for (const sc of setCookies) headers.append("set-cookie", sc);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    // Webhook ingestion short-circuits before the analytics execution context
-    // and SSR — it only verifies + enqueues, so it needs neither.
     const url = new URL(request.url);
-    if (url.pathname === STORE_STRIPE_WEBHOOK_PATH) {
-      return handleStoreStripeWebhook(request, env);
+
+    // The public Store HTTP API (/api/store/*, RFC-0001 D11/T12) and the Stripe
+    // webhook (/hooks/store/stripe) are answered by the Hono app ahead of SSR.
+    // Buyer resolution runs getSession against the bouncer envelope, which
+    // enriches through a guestlist RPC that reads request cookies from the
+    // TanStack Start request ALS — requestHandler establishes it here exactly as
+    // startEntry.fetch does for SSR, and the dev stamper self-mints the envelope
+    // dev-direct. Every other path (including the doomed admin/public routes)
+    // falls through to SSR unchanged.
+    if (url.pathname.startsWith("/api/store") || url.pathname.startsWith("/hooks/store")) {
+      return runWithExecutionContext(ctx, async () => {
+        const { request: stamped, setCookies } = devEnvelopeStamper
+          ? await devEnvelopeStamper(request)
+          : { request, setCookies: [] as string[] };
+        // requestHandler wraps the dispatch in the TanStack Start request ALS
+        // (h3 event) so getSession's guestlist enrichment can read cookies; its
+        // returned fn takes a second `requestOpts` the Hono handler never reads.
+        const response = await requestHandler((req: Request) => storeApi.fetch(req, env, ctx))(
+          stamped,
+          undefined,
+        );
+        return appendSetCookies(response, setCookies);
+      });
     }
 
     return runWithExecutionContext(ctx, async () => {
@@ -46,14 +79,7 @@ export default {
       const response = await startEntry.fetch(stamped, {
         context: extractPlatformStartContext(stamped),
       });
-      if (setCookies.length === 0) return response;
-      const headers = new Headers(response.headers);
-      for (const sc of setCookies) headers.append("set-cookie", sc);
-      return new Response(response.body, {
-        status: response.status,
-        statusText: response.statusText,
-        headers,
-      });
+      return appendSetCookies(response, setCookies);
     });
   },
   async queue(batch: MessageBatch<StoreStripeEventMessage>, env: Env): Promise<void> {

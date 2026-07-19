@@ -24,6 +24,10 @@
     // The store's own PUBLIC address (vmf-mounted at `/shop`). Used for
     // self-referencing absolute links.
     "STORE_URL": "https://staging.somewhatintelligent.ca/shop",
+    // Site's PUBLIC apex — the base for the `/api/store` checkout return URL
+    // (`${SITE_URL}/checkout/return`), which renders on Site, not the headless
+    // Store worker (RFC-0001 D11). See docs/ops/env-vars.md.
+    "SITE_URL": "https://staging.somewhatintelligent.ca",
     // Identity's PUBLIC address — the store links here for sign-in
     // (`${IDENTITY_URL}/sign-in`) and derives the same-origin `/api` auth base
     // from it on the SSR side (new URL(IDENTITY_URL).origin), mirroring
@@ -91,6 +95,7 @@
         "ENVIRONMENT": "production",
         "PUBLIC_BASE": "/shop",
         "STORE_URL": "https://somewhatintelligent.ca/shop",
+        "SITE_URL": "https://somewhatintelligent.ca",
         "IDENTITY_URL": "https://somewhatintelligent.ca/account",
         "AUTH_DOMAIN": ".somewhatintelligent.ca",
         "STRIPE_PUBLISHABLE_KEY": "",

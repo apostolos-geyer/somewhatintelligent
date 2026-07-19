@@ -15,12 +15,14 @@ type BouncerWrangler = {
   env?: { production?: { vars?: { ROUTES?: { routes?: BouncerRoute[] } } } };
 };
 
-// Drift guard: STORE_STRIPE_WEBHOOK_PATH (workers/store/src/lib/stripe-webhook.ts)
-// is duplicated as literal route entries in workers/bouncer/wrangler.jsonc
-// (staging top-level + env.production apex + env.production www). Per
-// CLAUDE.md, per-env routes live directly in each worker's wrangler.jsonc
-// (not centralized in @si/config), so this test enforces the parity that
-// would otherwise be silently unenforced.
+// Drift guard: bouncer's STORE `/hooks/store` mount (workers/bouncer/wrangler.jsonc,
+// staging top-level + env.production apex + www) must be a PREFIX of
+// STORE_STRIPE_WEBHOOK_PATH (workers/store/src/lib/stripe-webhook.ts) so the
+// webhook actually reaches Store. Bouncer matches by longest mount prefix, so
+// the mount `/hooks/store` forwards the exact path `/hooks/store/stripe`. Per
+// CLAUDE.md, per-env routes live directly in each worker's wrangler.jsonc (not
+// centralized in @si/config), so this test enforces the parity that would
+// otherwise be silently unenforced.
 //
 // This reaches into a SIBLING worker's file, so it only runs where the whole
 // repo is checked out (local `bun run test`, root `vp test run`). The isolated
@@ -51,40 +53,40 @@ function webhookRoutesFor(routes: BouncerRoute[] | undefined, host: string): Bou
 describe.skipIf(!bouncerWrangler)(
   "bouncer webhook route parity with STORE_STRIPE_WEBHOOK_PATH",
   () => {
-    test("staging top-level route matches the store constant", () => {
+    test("staging top-level mount is a prefix of the store constant", () => {
       const matches = webhookRoutesFor(
         bouncerWrangler?.vars?.ROUTES?.routes,
         "staging.somewhatintelligent.ca",
       );
       expect(matches).toHaveLength(1);
-      expect(matches[0]?.path).toBe(STORE_STRIPE_WEBHOOK_PATH);
+      expect(STORE_STRIPE_WEBHOOK_PATH.startsWith(matches[0]!.path!)).toBe(true);
     });
 
-    test("production apex route matches the store constant", () => {
+    test("production apex mount is a prefix of the store constant", () => {
       const matches = webhookRoutesFor(
         bouncerWrangler?.env?.production?.vars?.ROUTES?.routes,
         "somewhatintelligent.ca",
       );
       expect(matches).toHaveLength(1);
-      expect(matches[0]?.path).toBe(STORE_STRIPE_WEBHOOK_PATH);
+      expect(STORE_STRIPE_WEBHOOK_PATH.startsWith(matches[0]!.path!)).toBe(true);
     });
 
-    test("production www route matches the store constant", () => {
+    test("production www mount is a prefix of the store constant", () => {
       const matches = webhookRoutesFor(
         bouncerWrangler?.env?.production?.vars?.ROUTES?.routes,
         "www.somewhatintelligent.ca",
       );
       expect(matches).toHaveLength(1);
-      expect(matches[0]?.path).toBe(STORE_STRIPE_WEBHOOK_PATH);
+      expect(STORE_STRIPE_WEBHOOK_PATH.startsWith(matches[0]!.path!)).toBe(true);
     });
   },
 );
 
 // Filesystem-independent, so it runs everywhere (incl. the isolated CI
-// test-store task). Proves the comparison logic above isn't vacuously true: a
-// route whose path drifted from the TS constant must NOT compare equal.
+// test-store task). Proves the prefix logic above isn't vacuously true: a mount
+// whose path drifted off the webhook namespace must NOT be a prefix of it.
 describe("route-parity self-check", () => {
-  test("self-check: a drifted path does not equal STORE_STRIPE_WEBHOOK_PATH", () => {
+  test("self-check: a drifted mount is not a prefix of STORE_STRIPE_WEBHOOK_PATH", () => {
     const driftedRoutes: BouncerRoute[] = [
       {
         binding: "STORE",
@@ -95,6 +97,6 @@ describe("route-parity self-check", () => {
     ];
     const matches = webhookRoutesFor(driftedRoutes, "staging.somewhatintelligent.ca");
     expect(matches).toHaveLength(1);
-    expect(matches[0]?.path).not.toBe(STORE_STRIPE_WEBHOOK_PATH);
+    expect(STORE_STRIPE_WEBHOOK_PATH.startsWith(matches[0]!.path!)).toBe(false);
   });
 });

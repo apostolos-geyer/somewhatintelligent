@@ -3,7 +3,10 @@ import { stripeConfigured } from "@somewhatintelligent/stripe";
 import { makeStripeClient } from "@/lib/stripe-client";
 import { extractSessionSnapshot, type StripeShippingDetails } from "@/lib/stripe-session-fields";
 
-export const STORE_STRIPE_WEBHOOK_PATH = "/hooks/store";
+// Namespaced under /hooks/store so the bouncer `/hooks/store` mount forwards it
+// to Store while leaving room for other hook paths (RFC-0001 exec-plan open
+// decision 7). The Stripe dashboard endpoint is updated to match in ops.
+export const STORE_STRIPE_WEBHOOK_PATH = "/hooks/store/stripe";
 
 export type StoreStripeEventMessage = {
   id: string;
