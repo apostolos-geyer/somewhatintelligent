@@ -23,6 +23,11 @@ export type {
   PublicMediaRef,
 } from "@si/contracts";
 
+// Pure display helpers live in ./format so browser islands can import them
+// without pulling in the `cloudflare:workers` binding; re-exported here for the
+// server pages that already import them from this module.
+export { formatPrice, storeMediaHref } from "./format";
+
 /** The STORE service binding, typed to the read-only catalog contract. */
 function catalog(): StoreCatalogEntrypoint {
   return env.STORE as unknown as StoreCatalogEntrypoint;
@@ -44,18 +49,13 @@ export function getProductBySlug(
   return catalog().getProductBySlug({ slug });
 }
 
-/** Stable public URL for a Store media id — the `/api/store/media/:id` path Store
- *  serves (RFC-0001 D11/D12). Card DTOs carry only `coverMediaId`; detail media
- *  already carry a resolved `href`, so this only builds card cover URLs. */
-export function storeMediaHref(mediaId: string): string {
-  return `/api/store/media/${mediaId}`;
-}
-
-/** Format integer cents as `$68 CAD` (whole) or `$68.50 CAD` (fractional). */
-export function formatPrice(priceCents: number, currency: "CAD"): string {
-  const dollars = priceCents / 100;
-  const body = Number.isInteger(dollars) ? String(dollars) : dollars.toFixed(2);
-  return `$${body} ${currency}`;
+/** The active-release detail DTO for a product id, or a typed `not_found`. Used
+ *  by the /cart display lookup — the browser cart holds only variant ids, so the
+ *  cart island resolves each unique product's current title/price/media here. */
+export function getProductById(
+  productId: string,
+): Promise<DomainResult<ProductDetailDTO, "not_found">> {
+  return catalog().getProductById({ productId });
 }
 
 /** Human availability label; `null` means exclude from the buyer listing —

@@ -41,7 +41,15 @@ const seoDescription =
           ))}
         </div>
 
-        <section class="product-sheet">
+        <section
+          class="product-sheet"
+          data-product-id={product.id}
+          data-slug={product.slug}
+          data-title={product.title}
+          data-price-cents={String(product.priceCents)}
+          data-currency={product.currency}
+          data-cover-media-id={product.coverMediaId ?? ""}
+        >
           <p>Object / {product.slug} / release {product.version}</p>
           <h1 id="product-title">{product.title}</h1>
           {
@@ -58,9 +66,16 @@ const seoDescription =
             product.variants.length > 0 && (
               <div class="product-size-field" aria-label="Size selection">
                 <p>Size</p>
-                <div class="product-sizes">
+                <div class="product-sizes" role="group">
                   {product.variants.map((v) => (
-                    <button type="button" disabled={!v.available}>
+                    <button
+                      class="product-size"
+                      type="button"
+                      data-variant-id={v.id}
+                      data-size={v.size}
+                      aria-pressed="false"
+                      disabled={!v.available}
+                    >
                       {v.size}
                     </button>
                   ))}
@@ -68,11 +83,17 @@ const seoDescription =
               </div>
             )
           }
-          <button class="product-coming-button" type="button" disabled>
+          <button class="product-coming-button" id="add-to-cart" type="button" disabled>
             {product.availability === "sold_out" ? "Sold out" : "Add to cart"}
           </button>
-          <p class="product-state">
-            {product.availability === "sold_out" ? "Sold out." : "Checkout available soon."}
+          <p class="product-state" id="add-feedback" aria-live="polite">
+            {
+              product.availability === "sold_out"
+                ? "Sold out."
+                : product.variants.length === 0
+                  ? "Unavailable."
+                  : "Select a size to add to cart."
+            }
           </p>
         </section>
       </section>
@@ -81,3 +102,58 @@ const seoDescription =
     <SiteFooter />
   </div>
 </Base>
+
+<script>
+  import { addLine, type CartLineHint } from "../../lib/cart-client";
+
+  const sheet = document.querySelector<HTMLElement>(".product-sheet[data-product-id]");
+  const addBtn = document.getElementById("add-to-cart") as HTMLButtonElement | null;
+  const feedback = document.getElementById("add-feedback");
+  const sizeButtons = Array.from(document.querySelectorAll<HTMLButtonElement>(".product-size"));
+
+  let selected: { variantId: string; size: string } | null = null;
+
+  for (const btn of sizeButtons) {
+    if (btn.disabled) continue;
+    btn.addEventListener("click", () => {
+      selected = { variantId: btn.dataset.variantId ?? "", size: btn.dataset.size ?? "" };
+      for (const b of sizeButtons) b.setAttribute("aria-pressed", b === btn ? "true" : "false");
+      if (addBtn) addBtn.disabled = false;
+      if (feedback) feedback.textContent = `Size ${selected.size} selected.`;
+    });
+  }
+
+  addBtn?.addEventListener("click", () => {
+    if (!selected || !sheet) return;
+    const coverMediaId = sheet.dataset.coverMediaId ? sheet.dataset.coverMediaId : null;
+    const hint: CartLineHint = {
+      productId: sheet.dataset.productId ?? "",
+      slug: sheet.dataset.slug ?? "",
+      title: sheet.dataset.title ?? "",
+      size: selected.size,
+      priceCents: Number(sheet.dataset.priceCents ?? "0"),
+      currency: "CAD",
+      coverMediaId,
+    };
+    addLine(selected.variantId, 1, hint);
+    if (feedback) feedback.textContent = "Added to cart.";
+  });
+</script>
+
+<style>
+  .product-size:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  .product-size[aria-pressed="true"] {
+    border-color: var(--color-foreground);
+    background: var(--color-foreground);
+    color: var(--color-background);
+  }
+
+  #add-to-cart:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+</style>
