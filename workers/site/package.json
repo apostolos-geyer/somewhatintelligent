@@ -7,6 +7,10 @@
     "dev": "astro dev --host 127.0.0.1 --port 4321",
     "build": "astro build",
     "preview": "astro preview --host 127.0.0.1 --port 4321",
+    "env:init": "bun scripts/env-init.ts",
+    "deploy:staging": "astro build && wrangler deploy",
+    "deploy:production": "astro build && wrangler deploy --env production",
+    "types": "wrangler types -c wrangler.jsonc",
     "typecheck": "astro check"
   },
   "dependencies": {
