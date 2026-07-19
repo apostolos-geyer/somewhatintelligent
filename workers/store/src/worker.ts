@@ -1,8 +1,6 @@
-// Hand-written entry; do not wrap in a kit factory. Mirrors
-// workers/identity/src/worker.ts (docs/ARCHITECTURE.md §3.3 + §4.4).
-import startEntry from "@tanstack/react-start/server-entry";
-import { requestHandler } from "@tanstack/react-start/server";
-import { extractPlatformStartContext } from "@somewhatintelligent/kit/react-start";
+// Hand-written entry. Store is a pure backend (RFC-0001 D3/D12): no routes, no
+// SSR, no client bundle — the RPC entrypoints below plus the Hono `/api/store`
+// + `/hooks/store` HTTP surface are the entire public API.
 import { runWithExecutionContext } from "@somewhatintelligent/kit/execution-context";
 import { stripeConfigured } from "@somewhatintelligent/stripe";
 import { makeStripeClient } from "./lib/stripe-client";
@@ -21,12 +19,6 @@ import type { StoreStripeEventMessage } from "./lib/stripe-webhook";
 export { StoreCatalog } from "./store-catalog";
 export { StoreOperator } from "./store-operator";
 
-declare module "@tanstack/react-start" {
-  interface Register {
-    server: { requestContext: { requestId: string; callerApp?: string } };
-  }
-}
-
 // Append the dev envelope stamper's Set-Cookie headers without disturbing the
 // response body (dev-direct only — the stamper is a hard no-op in staging/prod).
 function appendSetCookies(response: Response, setCookies: string[]): Response {
@@ -42,43 +34,16 @@ function appendSetCookies(response: Response, setCookies: string[]): Response {
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    const url = new URL(request.url);
-
-    // The public Store HTTP API (/api/store/*, RFC-0001 D11/T12) and the Stripe
-    // webhook (/hooks/store/stripe) are answered by the Hono app ahead of SSR.
-    // Buyer resolution runs getSession against the bouncer envelope, which
-    // enriches through a guestlist RPC that reads request cookies from the
-    // TanStack Start request ALS — requestHandler establishes it here exactly as
-    // startEntry.fetch does for SSR, and the dev stamper self-mints the envelope
-    // dev-direct. Every other path (including the doomed admin/public routes)
-    // falls through to SSR unchanged.
-    if (url.pathname.startsWith("/api/store") || url.pathname.startsWith("/hooks/store")) {
-      return runWithExecutionContext(ctx, async () => {
-        const { request: stamped, setCookies } = devEnvelopeStamper
-          ? await devEnvelopeStamper(request)
-          : { request, setCookies: [] as string[] };
-        // requestHandler wraps the dispatch in the TanStack Start request ALS
-        // (h3 event) so getSession's guestlist enrichment can read cookies; its
-        // returned fn takes a second `requestOpts` the Hono handler never reads.
-        const response = await requestHandler((req: Request) => storeApi.fetch(req, env, ctx))(
-          stamped,
-          undefined,
-        );
-        return appendSetCookies(response, setCookies);
-      });
-    }
-
     return runWithExecutionContext(ctx, async () => {
       // Dev-direct stamper mints an attestation envelope from the session cookie
-      // so the principal (and the admin gate / admin server fns) resolves without
-      // a bouncer in front. Hard no-op outside dev — see ARCHITECTURE.md §4.5.
+      // so the principal resolves without a bouncer in front. Hard no-op
+      // outside dev — see ARCHITECTURE.md §4.5. getSession(headers) reads
+      // cookies straight off the (stamped) request headers — no ambient
+      // request context required.
       const { request: stamped, setCookies } = devEnvelopeStamper
         ? await devEnvelopeStamper(request)
         : { request, setCookies: [] as string[] };
-
-      const response = await startEntry.fetch(stamped, {
-        context: extractPlatformStartContext(stamped),
-      });
+      const response = await storeApi.fetch(stamped, env, ctx);
       return appendSetCookies(response, setCookies);
     });
   },
