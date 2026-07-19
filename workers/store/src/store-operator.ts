@@ -16,16 +16,38 @@
  * not-implemented here.
  */
 import { WorkerEntrypoint } from "cloudflare:workers";
+import { desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
-import type { StoreOperatorEntrypoint } from "@si/contracts";
+import { err, ok } from "@si/contracts";
+import type {
+  DomainResult,
+  MediaMutationError,
+  ProductMediaDTO,
+  StoreOperatorEntrypoint,
+} from "@si/contracts";
 
+import { ulid } from "@somewhatintelligent/kit/ids";
 import * as schema from "@/db/schema";
+import { mediaHref } from "@/lib/catalog";
 import type { Db } from "@/lib/db";
 import * as ops from "@/lib/operator";
 
 type P<M extends keyof StoreOperatorEntrypoint> = Parameters<StoreOperatorEntrypoint[M]>[0];
 type R<M extends keyof StoreOperatorEntrypoint> = ReturnType<StoreOperatorEntrypoint[M]>;
+
+// Domain media validation ceiling above the private port (RFC-0001 D10). The
+// 100 MB bound is Roadie's single-part limit (media-storage-roadie.ts); the
+// accepted image types are the browser-encodable set the storefront serves.
+const MAX_MEDIA_BYTES = 100 * 1024 * 1024;
+const ALLOWED_MEDIA_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/avif",
+  "image/gif",
+]);
+const MEDIA_ROLES = new Set(["cover", "gallery", "evidence"]);
 
 export class StoreOperator extends WorkerEntrypoint<Env> implements StoreOperatorEntrypoint {
   private db(): Db {
@@ -73,6 +95,101 @@ export class StoreOperator extends WorkerEntrypoint<Env> implements StoreOperato
   }
   markDelivered(call: P<"markDelivered">): R<"markDelivered"> {
     return ops.markDelivered(this.db(), call);
+  }
+
+  // ── Operator-only media ingest (RFC-0001 D10 / T19) ─────────────────────────
+  // NOT part of the frozen StoreOperatorEntrypoint contract: the storage
+  // lifecycle is not an RPC method on the documented surface (INV-MEDIA-1). This
+  // private path is reached only over the same Operator→Store service binding,
+  // undocumented in @si/contracts. Operator streams the file here; Store
+  // validates it, writes the bytes through the private MediaStorage port, and
+  // returns the completed domain media DTO — no register/finalize/signed-URL
+  // vocabulary crosses the boundary. Cloudflare Workers RPC carries the
+  // byte-oriented `body` ReadableStream across the binding without buffering
+  // (docs: "Streams over RPC").
+  async ingestProductMedia(input: {
+    productId: string;
+    body: ReadableStream<Uint8Array>;
+    contentType: string;
+    size: number;
+    sha256: string;
+    alt: string;
+    role: "cover" | "gallery" | "evidence";
+  }): Promise<DomainResult<ProductMediaDTO, MediaMutationError>> {
+    if (!MEDIA_ROLES.has(input.role)) return err("invalid_role");
+    if (!ALLOWED_MEDIA_TYPES.has(input.contentType)) return err("unsupported_type");
+    if (!Number.isInteger(input.size) || input.size <= 0 || input.size > MAX_MEDIA_BYTES) {
+      return err("invalid_size");
+    }
+
+    const db = this.db();
+    const [product] = await db
+      .select({ id: schema.productBase.id })
+      .from(schema.productBase)
+      .where(eq(schema.productBase.id, input.productId))
+      .limit(1);
+    if (!product) return err("not_found");
+
+    // Resolve the private port lazily (keeps the Roadie SDK out of non-request
+    // module graphs), mirroring StoreCatalog.mediaStorage().
+    const [{ createRoadieMediaStorage, STORE_MEDIA_APPLICATION }, { getRoadie }] =
+      await Promise.all([import("@/lib/media-storage-roadie"), import("@/lib/roadie")]);
+    const media = createRoadieMediaStorage(
+      getRoadie() as unknown as Parameters<typeof createRoadieMediaStorage>[0],
+      { application: STORE_MEDIA_APPLICATION },
+    );
+
+    // Mint the domain media id and hand it to the port as `key`; the port
+    // returns the private storage_key we persist (T5 convention).
+    const mediaId = ulid();
+    const put = await media.put({
+      key: mediaId,
+      body: input.body,
+      contentType: input.contentType,
+      size: input.size,
+      sha256: input.sha256,
+    });
+    if (!put.ok) return err("storage_unavailable");
+
+    const [last] = await db
+      .select({ position: schema.productImage.position })
+      .from(schema.productImage)
+      .where(eq(schema.productImage.productId, input.productId))
+      .orderBy(desc(schema.productImage.position))
+      .limit(1);
+    const position = last ? last.position + 1 : 0;
+    const now = new Date();
+    await db.insert(schema.productImage).values({
+      id: mediaId,
+      productId: input.productId,
+      storageKey: put.value.key,
+      contentSha256: input.sha256,
+      contentType: input.contentType,
+      sizeBytes: input.size,
+      width: null,
+      height: null,
+      alt: input.alt,
+      role: input.role,
+      position,
+      state: "ready",
+      createdAt: now,
+      readyAt: now,
+    });
+
+    return ok({
+      id: mediaId,
+      productId: input.productId,
+      alt: input.alt,
+      role: input.role,
+      position,
+      state: "ready",
+      href: mediaHref(mediaId),
+      contentType: input.contentType,
+      size: input.size,
+      sha256: input.sha256,
+      width: null,
+      height: null,
+    });
   }
 
   // ── Hard-delete plan/confirm — lands in T13 (Store hard-delete + media GC) ──

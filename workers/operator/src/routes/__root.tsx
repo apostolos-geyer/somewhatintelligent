@@ -29,7 +29,7 @@ const THEME_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getIte
 // land. `path` is the app-root path (Operator carries no mount prefix).
 const MODULES = [
   { path: "/", label: "Overview", icon: LayoutDashboardIcon, ready: true },
-  { path: "/objects", label: "Objects", icon: BoxesIcon, ready: false },
+  { path: "/objects", label: "Objects", icon: BoxesIcon, ready: true },
   { path: "/texts", label: "Texts", icon: FileTextIcon, ready: false },
   { path: "/software", label: "Software", icon: TerminalIcon, ready: false },
   { path: "/pages", label: "Pages", icon: LayoutPanelLeftIcon, ready: false },

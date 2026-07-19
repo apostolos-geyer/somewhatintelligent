@@ -11,7 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as OrdersIndexRouteImport } from './routes/orders.index'
+import { Route as ObjectsIndexRouteImport } from './routes/objects.index'
 import { Route as OrdersOrderNumberRouteImport } from './routes/orders.$orderNumber'
+import { Route as ObjectsProductIdRouteImport } from './routes/objects.$productId'
+import { Route as OperatorMediaStoreProductsProductIdRouteImport } from './routes/[_]operator.media.store.products.$productId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -23,40 +26,87 @@ const OrdersIndexRoute = OrdersIndexRouteImport.update({
   path: '/orders/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ObjectsIndexRoute = ObjectsIndexRouteImport.update({
+  id: '/objects/',
+  path: '/objects/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OrdersOrderNumberRoute = OrdersOrderNumberRouteImport.update({
   id: '/orders/$orderNumber',
   path: '/orders/$orderNumber',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ObjectsProductIdRoute = ObjectsProductIdRouteImport.update({
+  id: '/objects/$productId',
+  path: '/objects/$productId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OperatorMediaStoreProductsProductIdRoute =
+  OperatorMediaStoreProductsProductIdRouteImport.update({
+    id: '/_operator/media/store/products/$productId',
+    path: '/_operator/media/store/products/$productId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/objects/$productId': typeof ObjectsProductIdRoute
   '/orders/$orderNumber': typeof OrdersOrderNumberRoute
+  '/objects/': typeof ObjectsIndexRoute
   '/orders/': typeof OrdersIndexRoute
+  '/_operator/media/store/products/$productId': typeof OperatorMediaStoreProductsProductIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/objects/$productId': typeof ObjectsProductIdRoute
   '/orders/$orderNumber': typeof OrdersOrderNumberRoute
+  '/objects': typeof ObjectsIndexRoute
   '/orders': typeof OrdersIndexRoute
+  '/_operator/media/store/products/$productId': typeof OperatorMediaStoreProductsProductIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/objects/$productId': typeof ObjectsProductIdRoute
   '/orders/$orderNumber': typeof OrdersOrderNumberRoute
+  '/objects/': typeof ObjectsIndexRoute
   '/orders/': typeof OrdersIndexRoute
+  '/_operator/media/store/products/$productId': typeof OperatorMediaStoreProductsProductIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/orders/$orderNumber' | '/orders/'
+  fullPaths:
+    | '/'
+    | '/objects/$productId'
+    | '/orders/$orderNumber'
+    | '/objects/'
+    | '/orders/'
+    | '/_operator/media/store/products/$productId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/orders/$orderNumber' | '/orders'
-  id: '__root__' | '/' | '/orders/$orderNumber' | '/orders/'
+  to:
+    | '/'
+    | '/objects/$productId'
+    | '/orders/$orderNumber'
+    | '/objects'
+    | '/orders'
+    | '/_operator/media/store/products/$productId'
+  id:
+    | '__root__'
+    | '/'
+    | '/objects/$productId'
+    | '/orders/$orderNumber'
+    | '/objects/'
+    | '/orders/'
+    | '/_operator/media/store/products/$productId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ObjectsProductIdRoute: typeof ObjectsProductIdRoute
   OrdersOrderNumberRoute: typeof OrdersOrderNumberRoute
+  ObjectsIndexRoute: typeof ObjectsIndexRoute
   OrdersIndexRoute: typeof OrdersIndexRoute
+  OperatorMediaStoreProductsProductIdRoute: typeof OperatorMediaStoreProductsProductIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -75,6 +125,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrdersIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/objects/': {
+      id: '/objects/'
+      path: '/objects'
+      fullPath: '/objects/'
+      preLoaderRoute: typeof ObjectsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/orders/$orderNumber': {
       id: '/orders/$orderNumber'
       path: '/orders/$orderNumber'
@@ -82,13 +139,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrdersOrderNumberRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/objects/$productId': {
+      id: '/objects/$productId'
+      path: '/objects/$productId'
+      fullPath: '/objects/$productId'
+      preLoaderRoute: typeof ObjectsProductIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_operator/media/store/products/$productId': {
+      id: '/_operator/media/store/products/$productId'
+      path: '/_operator/media/store/products/$productId'
+      fullPath: '/_operator/media/store/products/$productId'
+      preLoaderRoute: typeof OperatorMediaStoreProductsProductIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ObjectsProductIdRoute: ObjectsProductIdRoute,
   OrdersOrderNumberRoute: OrdersOrderNumberRoute,
+  ObjectsIndexRoute: ObjectsIndexRoute,
   OrdersIndexRoute: OrdersIndexRoute,
+  OperatorMediaStoreProductsProductIdRoute:
+    OperatorMediaStoreProductsProductIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
