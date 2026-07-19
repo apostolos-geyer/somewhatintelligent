@@ -13,6 +13,11 @@ import { reconcilePendingReservations } from "./lib/reconcile";
 import { extractSessionSnapshot } from "./lib/stripe-session-fields";
 import type { StoreStripeEventMessage } from "./lib/stripe-webhook";
 
+// Named RPC entrypoint bound to Site (RFC-0001 "StoreCatalog RPC"). Wrangler
+// resolves service bindings by exported class name — `entrypoint: "StoreCatalog"`
+// on Site's STORE binding matches this re-export from the worker's main module.
+export { StoreCatalog } from "./store-catalog";
+
 declare module "@tanstack/react-start" {
   interface Register {
     server: { requestContext: { requestId: string; callerApp?: string } };

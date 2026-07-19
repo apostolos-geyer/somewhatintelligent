@@ -9,7 +9,7 @@ import type { OrderLine } from "@/lib/pricing";
 import { reserveStock } from "@/lib/reservation";
 import { db, seedProduct, seedVariant, stockOf } from "./helpers";
 
-const { product, productVariant, customerOrder, orderItem } = schema;
+const { productBase, productVariant, customerOrder, orderItem } = schema;
 
 const line = (variantId: string, quantity: number, over: Partial<OrderLine> = {}): OrderLine => ({
   variantId,
@@ -25,7 +25,7 @@ beforeEach(async () => {
   await db.delete(orderItem);
   await db.delete(customerOrder);
   await db.delete(productVariant);
-  await db.delete(product);
+  await db.delete(productBase);
 });
 
 describe("reserveStock against real D1", () => {

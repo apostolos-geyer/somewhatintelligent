@@ -16,7 +16,7 @@ import {
 } from "@/lib/reconcile";
 import { db, seedOrder, seedOrderItem, seedProduct, seedVariant, stockOf } from "./helpers";
 
-const { product, productVariant, customerOrder, orderItem, deadStripeEvent } = schema;
+const { productBase, productVariant, customerOrder, orderItem, deadStripeEvent } = schema;
 
 const NOW = Date.UTC(2026, 6, 12, 12, 0, 0);
 const MIN = 60 * 1000;
@@ -118,7 +118,7 @@ beforeEach(async () => {
   await db.delete(orderItem);
   await db.delete(customerOrder);
   await db.delete(productVariant);
-  await db.delete(product);
+  await db.delete(productBase);
   await db.delete(deadStripeEvent);
 });
 

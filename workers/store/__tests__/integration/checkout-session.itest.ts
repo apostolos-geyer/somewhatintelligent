@@ -25,7 +25,7 @@ import {
 } from "@/lib/checkout";
 import { db, seedOrder, seedOrderItem, seedProduct, seedVariant, stockOf } from "./helpers";
 
-const { product, productVariant, customerOrder, orderItem } = schema;
+const { productBase, productVariant, customerOrder, orderItem } = schema;
 
 const STRIPE_ENV = {
   STRIPE_SECRET_KEY: "sk_test_x",
@@ -97,7 +97,7 @@ beforeEach(async () => {
   await db.delete(orderItem);
   await db.delete(customerOrder);
   await db.delete(productVariant);
-  await db.delete(product);
+  await db.delete(productBase);
 });
 
 describe("createCheckoutSessionCore", () => {

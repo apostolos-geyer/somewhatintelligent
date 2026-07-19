@@ -5,10 +5,14 @@ import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import type { OrderStatus, ProductStatus } from "@/lib/config";
 
-const { product, productVariant, customerOrder, orderItem } = schema;
+const { productBase, productDraft, productVariant, customerOrder, orderItem } = schema;
 
 export const db = drizzle(env.DB, { schema });
 
+// Seed a product in the release model: the thin identity row plus its editable
+// draft (which carries title/price). The `product_flat` compat view joins the
+// two, so the pre-release read paths still see the old flat shape. Delete via
+// `productBase` (cascades draft/release/image/variant); `product` is a view.
 export async function seedProduct(opts: {
   id: string;
   slug?: string;
@@ -18,14 +22,20 @@ export async function seedProduct(opts: {
   createdAt?: Date;
 }) {
   const now = opts.createdAt ?? new Date();
-  await db.insert(product).values({
+  await db.insert(productBase).values({
     id: opts.id,
     slug: opts.slug ?? `slug-${opts.id}`,
+    status: opts.status ?? "active",
+    createdBySub: "admin",
+    createdAt: now,
+    updatedAt: now,
+  });
+  await db.insert(productDraft).values({
+    productId: opts.id,
+    revision: 1,
     title: opts.title ?? `Tee ${opts.id}`,
     priceCents: opts.priceCents ?? 3000,
-    status: opts.status ?? "active",
-    createdBy: "admin",
-    createdAt: now,
+    updatedBySub: "admin",
     updatedAt: now,
   });
 }

@@ -1,58 +1,205 @@
 // Storefront schema. All timestamps are unix milliseconds. User ids are bare
-// `text` columns holding bouncer user ids — this app owns no auth tables
+// `text` columns holding bouncer/Access subjects — this app owns no auth tables
 // (cross-subdomain SSO via bouncer; see docs/adding-an-app.md §2).
-import { check, index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
-import { sql } from "drizzle-orm";
-import { ORDER_STATUSES, PRODUCT_STATUSES } from "@/lib/config";
+//
+// The product aggregate follows the RFC-0001 "Store D1 catalog revisions"
+// release model: a thin `product` identity row, an editable `product_draft`
+// working copy, immutable-while-retained `product_release` snapshots, and
+// storage-neutral `product_image` rows (`product_release_image` freezes the
+// image set at publish). The live domain tables (`product_variant`,
+// `customer_order`, `order_item`, the Stripe ledgers) are unchanged.
+import {
+  type AnySQLiteColumn,
+  check,
+  index,
+  integer,
+  primaryKey,
+  sqliteTable,
+  sqliteView,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core";
+import { eq, sql } from "drizzle-orm";
 
-// ── Catalog ────────────────────────────────────────────────────────────────
+// Status domains are defined locally rather than imported from lib/config.ts:
+// config.ts reads `import.meta.env.STORE_LIVE` at module load, which the
+// drizzle-kit CJS loader cannot provide (db:generate would throw). Keep these in
+// sync with lib/config.ts.
+//   • ORDER_STATUSES mirrors lib/config.ts exactly (type-only; no DB CHECK).
+//   • PRODUCT_STATUSES is the RFC-0001 release-model set — it adds 'unavailable'
+//     to the pre-release draft/active/archived that lib/config.ts still lists
+//     (T11 widens config; the DB CHECK below is the authoritative domain).
+const ORDER_STATUSES = ["pending", "paid", "shipped", "delivered", "cancelled"] as const;
+const PRODUCT_STATUSES = ["draft", "active", "unavailable", "archived"] as const;
 
-// A sellable product (a T-shirt design). Admin-managed.
-export const product = sqliteTable(
+// Product-image classification + upload lifecycle. These are the DB CHECK
+// domains for `product_image.role` / `.state`; the frozen release snapshot
+// (`product_release_image`) copies `role` as free text, never re-validated.
+export const PRODUCT_IMAGE_ROLES = ["cover", "gallery", "evidence"] as const;
+export type ProductImageRole = (typeof PRODUCT_IMAGE_ROLES)[number];
+export const PRODUCT_IMAGE_STATES = ["pending", "ready", "failed"] as const;
+export type ProductImageState = (typeof PRODUCT_IMAGE_STATES)[number];
+
+// ── Catalog: release model ───────────────────────────────────────────────────
+
+// Product identity. Thin by design: copy, price, and media live in the draft /
+// release rows. `active_release_id` points at the live immutable release (null
+// while draft-only or after the active release is deleted). Status admits
+// 'unavailable' (published but temporarily not for sale) alongside the RFC set.
+export const productBase = sqliteTable(
   "product",
   {
     id: text("id").primaryKey(),
-    slug: text("slug").notNull().unique(), // url key, e.g. "heavyweight-black-tee"
-    title: text("title").notNull(),
-    description: text("description"), // markdown / plain
-    priceCents: integer("price_cents").notNull().default(0),
-    // draft = hidden from storefront; active = listed; archived = soft-retired.
+    slug: text("slug").notNull().unique(),
     status: text("status", { enum: PRODUCT_STATUSES }).notNull().default("draft"),
-    createdBy: text("created_by").notNull(), // bouncer admin user id
+    // Forward reference to product_release (declared below) — the return type is
+    // annotated to break the product ↔ product_release circular FK inference.
+    activeReleaseId: text("active_release_id").references(
+      (): AnySQLiteColumn => productRelease.id,
+      {
+        onDelete: "set null",
+      },
+    ),
+    createdBySub: text("created_by_sub").notNull(),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
   },
-  (t) => [index("idx_product_status").on(t.status)],
+  (t) => [
+    index("idx_product_status_updated").on(t.status, t.updatedAt),
+    check("product_status_valid", sql`status IN ('draft', 'active', 'unavailable', 'archived')`),
+  ],
 );
 
-// Product images live in R2 via Roadie; we store the Roadie reference id and
-// serve bytes through /api/img/$refId (302 to a signed URL). `position` orders
-// the gallery; position 0 is the cover.
+// Editable working copy — exactly one per product, replaced in place on each
+// autosave. `revision` bumps monotonically; publish snapshots this into a
+// release. Never read by public/checkout paths (those read the active release).
+export const productDraft = sqliteTable(
+  "product_draft",
+  {
+    productId: text("product_id")
+      .primaryKey()
+      .references(() => productBase.id, { onDelete: "cascade" }),
+    revision: integer("revision").notNull().default(1),
+    title: text("title").notNull(),
+    descriptionMarkdown: text("description_markdown"),
+    priceCents: integer("price_cents").notNull(),
+    updatedBySub: text("updated_by_sub").notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  () => [
+    check("product_draft_revision_min", sql`revision >= 1`),
+    check("product_draft_price_non_negative", sql`price_cents >= 0`),
+  ],
+);
+
+// Immutable-while-retained published snapshot. Checkout/public reads source
+// title + price from the product's active release. Deletable (a release may be
+// removed), but never mutated in place — hence UNIQUE(product_id, version).
+export const productRelease = sqliteTable(
+  "product_release",
+  {
+    id: text("id").primaryKey(),
+    productId: text("product_id")
+      .notNull()
+      .references(() => productBase.id, { onDelete: "cascade" }),
+    version: text("version").notNull(),
+    slug: text("slug").notNull(),
+    title: text("title").notNull(),
+    descriptionMarkdown: text("description_markdown"),
+    priceCents: integer("price_cents").notNull(),
+    publishedBySub: text("published_by_sub").notNull(),
+    publishedAt: integer("published_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [
+    uniqueIndex("product_release_product_version_unique").on(t.productId, t.version),
+    check("product_release_price_non_negative", sql`price_cents >= 0`),
+  ],
+);
+
+// Storage-neutral product media. `storage_key` is the opaque key the private
+// MediaStorage port returns from put() — never a Roadie referenceId, never a
+// public URL (INV-MEDIA-1). `state` gates eligibility: only 'ready' rows serve.
 export const productImage = sqliteTable(
   "product_image",
   {
     id: text("id").primaryKey(),
     productId: text("product_id")
       .notNull()
-      .references(() => product.id, { onDelete: "cascade" }),
-    roadieReferenceId: text("roadie_reference_id").notNull(),
-    alt: text("alt"),
+      .references(() => productBase.id, { onDelete: "cascade" }),
+    storageKey: text("storage_key").notNull().unique(),
+    contentSha256: text("content_sha256").notNull(),
+    contentType: text("content_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    width: integer("width"),
+    height: integer("height"),
+    alt: text("alt").notNull(),
+    role: text("role", { enum: PRODUCT_IMAGE_ROLES }).notNull(),
     position: integer("position").notNull().default(0),
-    // null until the browser PUT + finalize round-trip completes.
-    uploadedAt: integer("uploaded_at", { mode: "timestamp_ms" }),
+    state: text("state", { enum: PRODUCT_IMAGE_STATES }).notNull().default("pending"),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    readyAt: integer("ready_at", { mode: "timestamp_ms" }),
   },
-  (t) => [index("idx_image_product").on(t.productId, t.position)],
+  (t) => [
+    index("idx_product_image_product").on(t.productId, t.position),
+    check("product_image_role_valid", sql`role IN ('cover', 'gallery', 'evidence')`),
+    check("product_image_state_valid", sql`state IN ('pending', 'ready', 'failed')`),
+    check("product_image_size_non_negative", sql`size_bytes >= 0`),
+  ],
+);
+
+// Frozen image set for a release: a copy of the ready images (with their alt /
+// role / position) at publish time, so later media edits never rewrite a
+// published snapshot. Both sides cascade so deleting a release or a source
+// image removes the join row.
+export const productReleaseImage = sqliteTable(
+  "product_release_image",
+  {
+    releaseId: text("release_id")
+      .notNull()
+      .references(() => productRelease.id, { onDelete: "cascade" }),
+    imageId: text("image_id")
+      .notNull()
+      .references(() => productImage.id, { onDelete: "cascade" }),
+    alt: text("alt").notNull(),
+    role: text("role").notNull(),
+    position: integer("position").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.releaseId, t.imageId] })],
+);
+
+// Backward-compatible read view of the pre-release flat `product` shape, joining
+// the identity row to its draft (title/description/price). It exists ONLY so the
+// pre-release read paths (checkout re-pricing, order placement, admin catalog)
+// keep compiling and behaving while T9/T10 repoint them at the active release;
+// it carries no writes. Every product created in the new model has a draft, so
+// the inner join never drops a row. Removed once the release repoint lands.
+export const product = sqliteView("product_flat").as((qb) =>
+  qb
+    .select({
+      id: productBase.id,
+      slug: productBase.slug,
+      title: productDraft.title,
+      description: productDraft.descriptionMarkdown,
+      priceCents: productDraft.priceCents,
+      status: productBase.status,
+      createdBy: productBase.createdBySub,
+      createdAt: productBase.createdAt,
+      updatedAt: productBase.updatedAt,
+    })
+    .from(productBase)
+    .innerJoin(productDraft, eq(productBase.id, productDraft.productId)),
 );
 
 // A purchasable variant of a product — a size, with its own SKU and stock.
+// Live domain state (unchanged by the release model): the non-negative stock
+// check and the unique SKU / (product, size) constraints stay mandatory.
 export const productVariant = sqliteTable(
   "product_variant",
   {
     id: text("id").primaryKey(),
     productId: text("product_id")
       .notNull()
-      .references(() => product.id, { onDelete: "cascade" }),
+      .references(() => productBase.id, { onDelete: "cascade" }),
     size: text("size").notNull(), // S / M / L / XL ...
     sku: text("sku").notNull().unique(),
     stock: integer("stock").notNull().default(0),
@@ -163,7 +310,8 @@ export const deadStripeEvent = sqliteTable("dead_stripe_event", {
 });
 
 // Line items — snapshot title/size/price at purchase time so later catalog
-// edits never rewrite a customer's order history.
+// edits never rewrite a customer's order history. Deliberately NO catalog FK:
+// deleting a product/release never cascades into order history (INV-ORDER-1).
 export const orderItem = sqliteTable(
   "order_item",
   {
@@ -181,10 +329,68 @@ export const orderItem = sqliteTable(
   (t) => [index("idx_item_order").on(t.orderId)],
 );
 
-export type Product = typeof product.$inferSelect;
+// ── Operator audit + deletion + media GC (RFC-0001) ──────────────────────────
+
+// One idempotent row per operator mutation. UNIQUE(idempotency_key, action)
+// makes a replayed command a no-op; `response_json` lets the replay return the
+// original response (INV-AUDIT-1).
+export const storeOperatorEvent = sqliteTable(
+  "store_operator_event",
+  {
+    id: text("id").primaryKey(),
+    operatorSub: text("operator_sub").notNull(),
+    operatorEmail: text("operator_email").notNull(),
+    action: text("action").notNull(),
+    targetType: text("target_type").notNull(),
+    targetId: text("target_id").notNull(),
+    requestId: text("request_id").notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    outcome: text("outcome").notNull(),
+    detailJson: text("detail_json"),
+    responseJson: text("response_json"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [
+    uniqueIndex("store_operator_event_idempotency_action_unique").on(t.idempotencyKey, t.action),
+  ],
+);
+
+// Short-lived deletion plan. Stores only a token hash + an impact hash; at
+// execution the owning service re-verifies subject/action/target/expiry/impact
+// before consuming (`consumed_at`). No dependency graph is persisted here.
+export const storeOperatorDeletionIntent = sqliteTable("store_operator_deletion_intent", {
+  tokenHash: text("token_hash").primaryKey(),
+  operatorSub: text("operator_sub").notNull(),
+  action: text("action").notNull(),
+  targetId: text("target_id").notNull(),
+  impactHash: text("impact_hash").notNull(),
+  expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+  consumedAt: integer("consumed_at", { mode: "timestamp_ms" }),
+});
+
+// Async physical-byte cleanup queue. A logical media delete commits atomically
+// with an outbox row; a retryable drain (alongside the reconcile cron) deletes
+// the bytes. A failed cleanup never resurfaces the deleted logical record.
+export const storeMediaGcOutbox = sqliteTable("store_media_gc_outbox", {
+  id: text("id").primaryKey(),
+  storageKey: text("storage_key").notNull(),
+  attempts: integer("attempts").notNull().default(0),
+  nextAttemptAt: integer("next_attempt_at", { mode: "timestamp_ms" }).notNull(),
+  lastError: text("last_error"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+});
+
+export type ProductBase = typeof productBase.$inferSelect;
+export type ProductDraft = typeof productDraft.$inferSelect;
+export type ProductRelease = typeof productRelease.$inferSelect;
 export type ProductImage = typeof productImage.$inferSelect;
+export type ProductReleaseImage = typeof productReleaseImage.$inferSelect;
+export type Product = typeof product.$inferSelect; // compat read view (flat pre-release row)
 export type ProductVariant = typeof productVariant.$inferSelect;
 export type CustomerOrder = typeof customerOrder.$inferSelect;
 export type OrderItem = typeof orderItem.$inferSelect;
 export type ProcessedStripeEvent = typeof processedStripeEvent.$inferSelect;
 export type DeadStripeEvent = typeof deadStripeEvent.$inferSelect;
+export type StoreOperatorEvent = typeof storeOperatorEvent.$inferSelect;
+export type StoreOperatorDeletionIntent = typeof storeOperatorDeletionIntent.$inferSelect;
+export type StoreMediaGcOutbox = typeof storeMediaGcOutbox.$inferSelect;

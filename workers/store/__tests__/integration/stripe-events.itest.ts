@@ -18,7 +18,7 @@ import {
   stockOf,
 } from "./helpers";
 
-const { product, productVariant, customerOrder, orderItem, processedStripeEvent } = schema;
+const { productBase, productVariant, customerOrder, orderItem, processedStripeEvent } = schema;
 
 const STAGING = { ENVIRONMENT: "staging" } as const;
 const PRODUCTION = { ENVIRONMENT: "production" } as const;
@@ -146,7 +146,7 @@ beforeEach(async () => {
   await db.delete(orderItem);
   await db.delete(customerOrder);
   await db.delete(productVariant);
-  await db.delete(product);
+  await db.delete(productBase);
 });
 
 describe("processStoreStripeEvent", () => {

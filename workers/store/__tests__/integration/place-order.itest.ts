@@ -14,7 +14,7 @@ import { runBatch } from "@/lib/db-batch";
 import { updateOrderShippingCore } from "@/lib/orders-core";
 import { db, seedOrder, seedOrderItem, seedProduct, seedVariant } from "./helpers";
 
-const { product, productVariant, customerOrder, orderItem } = schema;
+const { product, productBase, productDraft, productVariant, customerOrder, orderItem } = schema;
 
 // Mirror placeOrder's batch construction against the real db.
 async function placeOrderBatch(
@@ -64,7 +64,7 @@ beforeEach(async () => {
   await db.delete(orderItem);
   await db.delete(customerOrder);
   await db.delete(productVariant);
-  await db.delete(product);
+  await db.delete(productBase); // cascades product_draft; `product` is a view
 });
 
 describe("placeOrder D1 write path", () => {
@@ -113,8 +113,9 @@ describe("placeOrder D1 write path", () => {
     if (!priced.ok) throw new Error("priced");
     await placeOrderBatch("o1", "SI-AAA222", priced, new Map(variants.map((v) => [v.id, v.stock])));
 
-    // Admin raises the price afterwards.
-    await db.update(product).set({ priceCents: 9999 }).where(eq(product.id, "p1"));
+    // Admin raises the price afterwards (edits the draft, the current price
+    // source; `product` is the read-only flat view).
+    await db.update(productDraft).set({ priceCents: 9999 }).where(eq(productDraft.productId, "p1"));
 
     const [item] = await db.select().from(orderItem).where(eq(orderItem.orderId, "o1"));
     expect(item!.unitPriceCents).toBe(3000); // frozen at purchase
