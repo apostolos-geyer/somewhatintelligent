@@ -19,6 +19,7 @@
     "@si/contracts": "workspace:*",
     "@si/design": "workspace:*",
     "astro": "7.0.9",
+    "hono": "^4.12.31",
     "typescript": "5.9.2"
   },
   "devDependencies": {

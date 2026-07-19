@@ -43,6 +43,7 @@
     "@tanstack/react-start": "catalog:",
     "arktype": "catalog:",
     "drizzle-orm": "catalog:",
+    "hono": "^4.12.31",
     "lucide-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
