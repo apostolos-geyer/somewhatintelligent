@@ -40,7 +40,7 @@ const markDeliveredInput = type({
 
 export const listOrders = createServerFn({ method: "GET" })
   .middleware([requireOperatorActor])
-  .inputValidator((data: typeof listInput.infer) => listInput.assert(data ?? {}))
+  .validator((data: typeof listInput.infer) => listInput.assert(data ?? {}))
   .handler(({ data, context }) => {
     const meta = buildOperatorMeta(context.actor, "listOrders", crypto.randomUUID());
     return storeOperator().listOrders({ input: data, meta });
@@ -48,7 +48,7 @@ export const listOrders = createServerFn({ method: "GET" })
 
 export const getOrder = createServerFn({ method: "GET" })
   .middleware([requireOperatorActor])
-  .inputValidator((data: typeof orderNumberInput.infer) => orderNumberInput.assert(data))
+  .validator((data: typeof orderNumberInput.infer) => orderNumberInput.assert(data))
   .handler(({ data, context }) => {
     const meta = buildOperatorMeta(context.actor, "getOrder", crypto.randomUUID());
     return storeOperator().getOrder({ input: data, meta });
@@ -56,7 +56,7 @@ export const getOrder = createServerFn({ method: "GET" })
 
 export const setOrderStatus = createServerFn({ method: "POST" })
   .middleware([requireOperatorActor])
-  .inputValidator((data: typeof setStatusInput.infer) => setStatusInput.assert(data))
+  .validator((data: typeof setStatusInput.infer) => setStatusInput.assert(data))
   .handler(({ data, context }) => {
     const { commandId, ...input } = data;
     const meta = buildOperatorMeta(context.actor, "setOrderStatus", commandId);
@@ -65,7 +65,7 @@ export const setOrderStatus = createServerFn({ method: "POST" })
 
 export const fulfillOrder = createServerFn({ method: "POST" })
   .middleware([requireOperatorActor])
-  .inputValidator((data: typeof fulfillInput.infer) => fulfillInput.assert(data))
+  .validator((data: typeof fulfillInput.infer) => fulfillInput.assert(data))
   .handler(({ data, context }) => {
     const { commandId, ...input } = data;
     const meta = buildOperatorMeta(context.actor, "fulfillOrder", commandId);
@@ -74,7 +74,7 @@ export const fulfillOrder = createServerFn({ method: "POST" })
 
 export const markDelivered = createServerFn({ method: "POST" })
   .middleware([requireOperatorActor])
-  .inputValidator((data: typeof markDeliveredInput.infer) => markDeliveredInput.assert(data))
+  .validator((data: typeof markDeliveredInput.infer) => markDeliveredInput.assert(data))
   .handler(({ data, context }) => {
     const { commandId, ...input } = data;
     const meta = buildOperatorMeta(context.actor, "markDelivered", commandId);

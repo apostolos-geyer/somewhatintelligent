@@ -9,6 +9,7 @@
  * domain `input` and the server-derived `OperatorMeta` (from `buildOperatorMeta`).
  */
 import { env } from "cloudflare:workers";
+import { createServerOnlyFn } from "@tanstack/react-start";
 import type { StoreOperatorEntrypoint } from "@si/contracts";
 
 export type {
@@ -22,6 +23,6 @@ export type {
 } from "@si/contracts";
 
 /** The STORE service binding, typed to the operator-mutation contract. */
-export function storeOperator(): StoreOperatorEntrypoint {
+export const storeOperator = createServerOnlyFn(function storeOperator(): StoreOperatorEntrypoint {
   return env.STORE as unknown as StoreOperatorEntrypoint;
-}
+});

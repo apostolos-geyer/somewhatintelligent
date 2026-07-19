@@ -69,7 +69,7 @@ const setStatusInput = type({
 
 export const listProducts = createServerFn({ method: "GET" })
   .middleware([requireOperatorActor])
-  .inputValidator((data: typeof listInput.infer) => listInput.assert(data ?? {}))
+  .validator((data: typeof listInput.infer) => listInput.assert(data ?? {}))
   .handler(({ data, context }) => {
     const meta = buildOperatorMeta(context.actor, "listProducts", crypto.randomUUID());
     return storeOperator().listProducts({ input: data, meta });
@@ -77,7 +77,7 @@ export const listProducts = createServerFn({ method: "GET" })
 
 export const getProduct = createServerFn({ method: "GET" })
   .middleware([requireOperatorActor])
-  .inputValidator((data: typeof getInput.infer) => getInput.assert(data))
+  .validator((data: typeof getInput.infer) => getInput.assert(data))
   .handler(({ data, context }) => {
     const meta = buildOperatorMeta(context.actor, "getProduct", crypto.randomUUID());
     return storeOperator().getProduct({ input: data, meta });
@@ -85,7 +85,7 @@ export const getProduct = createServerFn({ method: "GET" })
 
 export const createProduct = createServerFn({ method: "POST" })
   .middleware([requireOperatorActor])
-  .inputValidator((data: typeof createInput.infer) => createInput.assert(data))
+  .validator((data: typeof createInput.infer) => createInput.assert(data))
   .handler(({ data, context }) => {
     const { commandId, ...input } = data;
     const meta = buildOperatorMeta(context.actor, "createProduct", commandId);
@@ -94,7 +94,7 @@ export const createProduct = createServerFn({ method: "POST" })
 
 export const saveProductDraft = createServerFn({ method: "POST" })
   .middleware([requireOperatorActor])
-  .inputValidator((data: typeof saveInput.infer) => saveInput.assert(data))
+  .validator((data: typeof saveInput.infer) => saveInput.assert(data))
   .handler(({ data, context }) => {
     const { commandId, ...input } = data;
     const meta = buildOperatorMeta(context.actor, "saveProductDraft", commandId);
@@ -103,7 +103,7 @@ export const saveProductDraft = createServerFn({ method: "POST" })
 
 export const publishProduct = createServerFn({ method: "POST" })
   .middleware([requireOperatorActor])
-  .inputValidator((data: typeof publishInput.infer) => publishInput.assert(data))
+  .validator((data: typeof publishInput.infer) => publishInput.assert(data))
   .handler(({ data, context }) => {
     const { commandId, ...input } = data;
     const meta = buildOperatorMeta(context.actor, "publishProduct", commandId);
@@ -112,7 +112,7 @@ export const publishProduct = createServerFn({ method: "POST" })
 
 export const putVariant = createServerFn({ method: "POST" })
   .middleware([requireOperatorActor])
-  .inputValidator((data: typeof putVariantInput.infer) => putVariantInput.assert(data))
+  .validator((data: typeof putVariantInput.infer) => putVariantInput.assert(data))
   .handler(({ data, context }) => {
     const { commandId, ...input } = data;
     const meta = buildOperatorMeta(context.actor, "putVariant", commandId);
@@ -121,7 +121,7 @@ export const putVariant = createServerFn({ method: "POST" })
 
 export const adjustStock = createServerFn({ method: "POST" })
   .middleware([requireOperatorActor])
-  .inputValidator((data: typeof adjustStockInput.infer) => adjustStockInput.assert(data))
+  .validator((data: typeof adjustStockInput.infer) => adjustStockInput.assert(data))
   .handler(({ data, context }) => {
     const { commandId, ...input } = data;
     const meta = buildOperatorMeta(context.actor, "adjustStock", commandId);
@@ -130,7 +130,7 @@ export const adjustStock = createServerFn({ method: "POST" })
 
 export const setProductStatus = createServerFn({ method: "POST" })
   .middleware([requireOperatorActor])
-  .inputValidator((data: typeof setStatusInput.infer) => setStatusInput.assert(data))
+  .validator((data: typeof setStatusInput.infer) => setStatusInput.assert(data))
   .handler(({ data, context }) => {
     const { commandId, ...input } = data;
     const meta = buildOperatorMeta(context.actor, "setProductStatus", commandId);

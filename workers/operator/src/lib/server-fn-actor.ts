@@ -7,7 +7,7 @@
  * only an opaque UUID `commandId`, never `actor`, `requestId`, or
  * `idempotencyKey`.
  */
-import { createMiddleware, getGlobalStartContext } from "@tanstack/react-start";
+import { createMiddleware, createServerOnlyFn, getGlobalStartContext } from "@tanstack/react-start";
 import { type } from "arktype";
 import { ulid } from "@somewhatintelligent/kit/ids";
 import { commandIdSchema, deriveIdempotencyKey } from "@si/contracts/operator";
@@ -19,14 +19,14 @@ import type { OperatorActor, OperatorMeta } from "@si/contracts";
  * absence means the boundary was bypassed, so fail closed with 500.
  */
 export const requireOperatorActor = createMiddleware({ type: "function" }).server(
-  async ({ next }) => {
+  createServerOnlyFn(async ({ next }) => {
     const ctx = getGlobalStartContext() as { actor?: OperatorActor } | undefined;
     const actor = ctx?.actor;
     if (!actor) {
       throw new Response("operator actor unavailable", { status: 500 });
     }
     return next({ context: { actor } });
-  },
+  }),
 );
 
 /**
@@ -34,7 +34,7 @@ export const requireOperatorActor = createMiddleware({ type: "function" }).serve
  * command name; `commandId` is the browser's opaque UUID, validated here before
  * it is namespaced into `<actor.sub>:<action>:<commandId>`. Server-side only.
  */
-export function buildOperatorMeta(
+export const buildOperatorMeta = createServerOnlyFn(function buildOperatorMeta(
   actor: OperatorActor,
   action: string,
   commandId: string,
@@ -48,4 +48,4 @@ export function buildOperatorMeta(
     requestId: ulid(),
     idempotencyKey: deriveIdempotencyKey(actor.sub, action, commandId),
   };
-}
+});

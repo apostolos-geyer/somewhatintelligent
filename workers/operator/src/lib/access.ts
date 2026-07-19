@@ -1,3 +1,4 @@
+import { createServerOnlyFn } from "@tanstack/react-start";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { JWTVerifyGetKey } from "jose";
 import { err, ok } from "@si/contracts/result";
@@ -11,10 +12,12 @@ export type AccessError = "unauthorized" | "misconfigured";
  * Read the Access application config from env, or `null` when it is incomplete.
  * Both values are required together in deployed environments.
  */
-export function readAccessConfig(env: OperatorEnv): OperatorAccessConfig | null {
+export const readAccessConfig = createServerOnlyFn(function readAccessConfig(
+  env: OperatorEnv,
+): OperatorAccessConfig | null {
   if (!env.POLICY_AUD || !env.TEAM_DOMAIN) return null;
   return { teamDomain: env.TEAM_DOMAIN, policyAud: env.POLICY_AUD };
-}
+});
 
 // One remote JWKS resolver per team domain per isolate: createRemoteJWKSet
 // keeps its own key cache and fetch cooldown, so reusing the instance avoids
@@ -38,7 +41,7 @@ function remoteJwksFor(teamDomain: string): JWTVerifyGetKey {
  * to `unauthorized` so the caller fails closed with 403. Tests inject a local
  * JWKS resolver so verification never touches the network.
  */
-export async function verifyAccessToken(
+export const verifyAccessToken = createServerOnlyFn(async function verifyAccessToken(
   token: string,
   config: OperatorAccessConfig,
   getKey: JWTVerifyGetKey,
@@ -59,7 +62,7 @@ export async function verifyAccessToken(
   } catch {
     return err("unauthorized", "Access token failed verification");
   }
-}
+});
 
 /**
  * Resolve the operator for a request, failing CLOSED (RFC-0001 D6/D7,
@@ -74,7 +77,7 @@ export async function verifyAccessToken(
  * `getKey` defaults to the team domain's remote JWKS resolver; callers
  * (tests) may inject any jose key resolver.
  */
-export async function resolveOperator(
+export const resolveOperator = createServerOnlyFn(async function resolveOperator(
   request: Request,
   env: OperatorEnv,
   getKey?: JWTVerifyGetKey,
@@ -97,4 +100,4 @@ export async function resolveOperator(
   if (!token) return err("unauthorized", "missing Access assertion");
 
   return verifyAccessToken(token, config, getKey ?? remoteJwksFor(config.teamDomain));
-}
+});

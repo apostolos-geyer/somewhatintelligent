@@ -83,6 +83,22 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // Verified chain: start.ts imports createLoggingFunctionMiddleware /
+      // createRequestLogger from the @somewhatintelligent/kit/react-start
+      // BARREL. Vite dev serves unbundled ESM with no tree-shaking, so any
+      // import from that barrel forces the browser to fetch every sibling
+      // module in it too — including service-clients.ts / dev-envelope.ts /
+      // platform-start-app.ts, which import @somewhatintelligent/auth ->
+      // @better-auth/passkey -> @simplewebauthn/server -> @peculiar/x509 ->
+      // pvtsutils/asn1js. Those two packages ship a CJS build (`main`) that
+      // Vite's cjs-module-lexer can't fully statically scan (tslib's
+      // __exportStar-emitted named exports aren't detected), so the dev
+      // client crashes with "does not provide an export named
+      // 'BufferSourceConverter'" the moment that chain loads client-side.
+      // Aliasing straight to each package's ESM build sidesteps the CJS
+      // scan entirely — confirmed present in both compiled ESM files.
+      pvtsutils: path.resolve(__dirname, "../../node_modules/pvtsutils/build/index.es.js"),
+      asn1js: path.resolve(__dirname, "../../node_modules/asn1js/build/index.es.js"),
     },
   },
   define: clientDefines,
