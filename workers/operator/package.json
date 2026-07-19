@@ -5,18 +5,24 @@
   "type": "module",
   "scripts": {
     "dev": "WRANGLER_REGISTRY_PATH=${WRANGLER_REGISTRY_PATH:-$PWD/../../.wrangler/dev-registry} wrangler dev --port ${OPERATOR_PORT:-8792} --inspector-port ${OPERATOR_INSPECTOR_PORT:-0}",
+    "env:init": "bun scripts/env-init.ts",
     "deploy:staging": "wrangler deploy",
     "deploy:production": "wrangler deploy --env production",
     "access:setup": "bun scripts/setup-access.ts",
     "types": "wrangler types -c wrangler.jsonc",
-    "typecheck": "tsgo --noEmit"
+    "typecheck": "tsgo --noEmit",
+    "test": "vp test run"
   },
   "dependencies": {
-    "@si/contracts": "workspace:*"
+    "@si/contracts": "workspace:*",
+    "jose": "^6.2.2"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4",
     "@si/typescript-config": "workspace:*",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:",
     "wrangler": "^4"
   }
 }

@@ -8,22 +8,29 @@
   },
   "scripts": {
     "dev": "WRANGLER_REGISTRY_PATH=${WRANGLER_REGISTRY_PATH:-$PWD/../../.wrangler/dev-registry} wrangler dev --port ${PUBLISHER_PORT:-8791} --inspector-port ${PUBLISHER_INSPECTOR_PORT:-0}",
+    "env:init": "bun scripts/env-init.ts",
     "deploy:staging": "wrangler deploy",
     "deploy:production": "wrangler deploy --env production",
     "db:generate": "drizzle-kit generate",
     "db:migrate:staging": "wrangler d1 migrations apply DB --remote",
     "db:migrate:production": "wrangler d1 migrations apply DB --remote --env production",
     "types": "wrangler types -c wrangler.jsonc",
-    "typecheck": "tsgo --noEmit"
+    "typecheck": "tsgo --noEmit",
+    "test": "vp test run"
   },
   "dependencies": {
     "@si/contracts": "workspace:*",
+    "@si/roadie-service": "workspace:*",
     "drizzle-orm": "catalog:"
   },
   "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.14.6",
     "@cloudflare/workers-types": "^4",
     "@si/typescript-config": "workspace:*",
     "drizzle-kit": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:",
     "wrangler": "^4"
   }
 }
