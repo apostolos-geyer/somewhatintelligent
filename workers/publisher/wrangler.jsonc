@@ -6,9 +6,9 @@
   // env.production = production. Bound by nothing public — Publisher is a
   // backend authority, not a routed app (no `routes` block).
   //
-  // SCAFFOLD (exec-plan 0004 track T14). The full 18-table schema (T14), the
-  // STORE -> StoreCatalog binding for page-reference validation (T17), and the
-  // private MEDIA_STORAGE adapter (T5) are added by their tracks.
+  // SCAFFOLD (exec-plan 0004 track T14). The full 18-table schema (T14) and
+  // the STORE -> StoreCatalog binding for page-reference validation (T17)
+  // are added by their tracks.
   "name": "si-publisher-staging",
   "main": "src/index.ts",
   "account_id": "c735c5a53d864bee37400befb7f4c7f4",
@@ -32,6 +32,16 @@
       "migrations_dir": "migrations",
     },
   ],
+  // Blob storage for text/page/software media. `entrypoint` + `props.callerApp`
+  // are required — roadie's readCallerApp throws on every call without them.
+  "services": [
+    {
+      "binding": "ROADIE",
+      "service": "si-roadie-staging",
+      "entrypoint": "Roadie",
+      "props": { "callerApp": "publisher" },
+    },
+  ],
   "env": {
     "production": {
       "name": "si-publisher-production",
@@ -45,6 +55,14 @@
           // TODO(provision): real D1 database_id from this fork's Cloudflare account.
           "database_id": "00000000-0000-0000-0000-000000000000",
           "migrations_dir": "migrations",
+        },
+      ],
+      "services": [
+        {
+          "binding": "ROADIE",
+          "service": "si-roadie-production",
+          "entrypoint": "Roadie",
+          "props": { "callerApp": "publisher" },
         },
       ],
       "observability": {

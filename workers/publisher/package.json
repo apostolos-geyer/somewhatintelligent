@@ -14,7 +14,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate:staging": "wrangler d1 migrations apply DB --remote",
     "db:migrate:production": "wrangler d1 migrations apply DB --remote --env production",
-    "types": "wrangler types -c wrangler.jsonc",
+    "types": "wrangler types -c wrangler.jsonc -c ../roadie/wrangler.jsonc",
     "typecheck": "tsgo --noEmit",
     "test": "vp test run"
   },
