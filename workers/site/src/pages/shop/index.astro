@@ -2,7 +2,20 @@
 import Base from "../../layouts/Base.astro";
 import SiteFooter from "../../components/SiteFooter.astro";
 import SiteHeader from "../../components/SiteHeader.astro";
-import friendImage from "../../../../../docs/design/somewhatintelligent-brand-study/reference-images/01-friend-elevator-incident.png";
+import {
+  listProducts,
+  storeMediaHref,
+  formatPrice,
+  availabilityLabel,
+  type ProductCardDTO,
+} from "../../lib/store-catalog";
+
+const result = await listProducts({ limit: 24 });
+// Only 'available'/'sold_out' are buyer-visible; 'unavailable' is filtered
+// defensively (the StoreCatalog postcondition means it should never appear).
+const products: ProductCardDTO[] = result.ok
+  ? result.value.products.filter((p) => availabilityLabel(p.availability) !== null)
+  : [];
 ---
 
 <Base
@@ -32,66 +45,78 @@ import friendImage from "../../../../../docs/design/somewhatintelligent-brand-st
       </section>
 
       <section class="object-ledger" aria-label="Object releases">
-        <article class="object-entry object-entry-current" id="friend-001">
-          <span class="object-number">01</span>
-          <div class="object-meta">
-            <h2>FRIEND-001</h2>
-            <p>Release 1.0.0</p>
-            <p>I think we should be friends*</p>
-            <dl>
-              <div><dt>Status</dt><dd>Available</dd></div>
-              <div><dt>Price</dt><dd>$68 CAD</dd></div>
-            </dl>
-          </div>
-          <figure class="object-image friend-front">
-            <img src={friendImage.src} alt="Friend 001 front garment" />
-          </figure>
-          <figure class="object-image friend-back">
-            <img src={friendImage.src} alt="Friend 001 back garment" />
-          </figure>
-          <div class="object-operational">
-            <dl>
-              <div><dt>Version</dt><dd>1.0.0</dd></div>
-              <div><dt>Material</dt><dd>100% cotton</dd></div>
-              <div><dt>Run</dt><dd>150 units</dd></div>
-            </dl>
-            <a href="/shop/friend-001/">View object <span aria-hidden="true">→</span></a>
-          </div>
-        </article>
-
-        <article class="object-entry object-entry-compact object-entry-placeholder">
-          <span class="object-number">02</span>
-          <div class="object-meta">
-            <h2>OBJECT FORTHCOMING</h2>
-            <p>Release pending</p>
-            <p>Placeholder record</p>
-            <dl>
-              <div><dt>Status</dt><dd>Unpublished</dd></div>
-              <div><dt>Price</dt><dd>—</dd></div>
-            </dl>
-          </div>
-          <div class="object-placeholder-field" aria-label="Object placeholder">
-            <span>Object / unpublished</span>
-            <strong>COMING SOON</strong>
-          </div>
-        </article>
-
-        <article class="object-entry object-entry-compact object-entry-placeholder">
-          <span class="object-number">03</span>
-          <div class="object-meta">
-            <h2>OBJECT FORTHCOMING</h2>
-            <p>Release pending</p>
-            <p>Placeholder record</p>
-            <dl>
-              <div><dt>Status</dt><dd>Unpublished</dd></div>
-              <div><dt>Price</dt><dd>—</dd></div>
-            </dl>
-          </div>
-          <div class="object-placeholder-field" aria-label="Object placeholder">
-            <span>Object / unpublished</span>
-            <strong>COMING SOON</strong>
-          </div>
-        </article>
+        {
+          products.length === 0 ? (
+            <article class="object-entry object-entry-compact object-entry-placeholder">
+              <span class="object-number">01</span>
+              <div class="object-meta">
+                <h2>No objects yet</h2>
+                <p>Releases pending</p>
+                <p>Check back soon</p>
+                <dl>
+                  <div>
+                    <dt>Status</dt>
+                    <dd>Unpublished</dd>
+                  </div>
+                  <div>
+                    <dt>Price</dt>
+                    <dd>—</dd>
+                  </div>
+                </dl>
+              </div>
+              <div class="object-placeholder-field" aria-label="No objects published">
+                <span>Object / unpublished</span>
+                <strong>COMING SOON</strong>
+              </div>
+            </article>
+          ) : (
+            products.map((product, i) => (
+              <article class="object-entry object-entry-current" id={product.slug}>
+                <span class="object-number">{String(i + 1).padStart(2, "0")}</span>
+                <div class="object-meta">
+                  <h2>{product.title}</h2>
+                  <p>Release {product.version}</p>
+                  {product.descriptionExcerpt && <p>{product.descriptionExcerpt}</p>}
+                  <dl>
+                    <div>
+                      <dt>Status</dt>
+                      <dd>{availabilityLabel(product.availability)}</dd>
+                    </div>
+                    <div>
+                      <dt>Price</dt>
+                      <dd>{formatPrice(product.priceCents, product.currency)}</dd>
+                    </div>
+                  </dl>
+                </div>
+                {product.coverMediaId ? (
+                  <figure class="object-image">
+                    <img src={storeMediaHref(product.coverMediaId)} alt={`${product.title} cover`} />
+                  </figure>
+                ) : (
+                  <div class="object-placeholder-field" aria-label="No cover image">
+                    <span>Object / {product.slug}</span>
+                    <strong>NO IMAGE</strong>
+                  </div>
+                )}
+                <div class="object-operational">
+                  <dl>
+                    <div>
+                      <dt>Version</dt>
+                      <dd>{product.version}</dd>
+                    </div>
+                    <div>
+                      <dt>Stock</dt>
+                      <dd>{product.totalStock} units</dd>
+                    </div>
+                  </dl>
+                  <a href={`/shop/${product.slug}`}>
+                    View object <span aria-hidden="true">→</span>
+                  </a>
+                </div>
+              </article>
+            ))
+          )
+        }
       </section>
     </main>
 

@@ -1,0 +1,83 @@
+---
+import Base from "../../layouts/Base.astro";
+import SiteFooter from "../../components/SiteFooter.astro";
+import SiteHeader from "../../components/SiteHeader.astro";
+import { getProductBySlug, formatPrice } from "../../lib/store-catalog";
+
+const { slug } = Astro.params;
+const result = slug
+  ? await getProductBySlug(slug)
+  : ({ ok: false, error: "not_found" } as const);
+if (!result.ok) {
+  return new Response(null, { status: 404 });
+}
+const product = result.value;
+const [hero, ...proof] = product.media;
+// Operator markdown is rendered as escaped paragraphs only — never `set:html`
+// (INV-PAGE-1 render-safety; full markdown rendering is a later track).
+const paragraphs = (product.descriptionMarkdown ?? "")
+  .split(/\n{2,}/)
+  .map((p) => p.trim())
+  .filter(Boolean);
+const seoDescription =
+  product.descriptionExcerpt ?? `${product.title} — object by somewhatintelligent.`;
+---
+
+<Base title={`${product.title} — somewhatintelligent`} description={seoDescription}>
+  <div class="site-frame product-frame">
+    <SiteHeader active="shop" />
+
+    <main class="product-main">
+      <section class="product-stage" aria-labelledby="product-title">
+        <figure class="product-hero-image">
+          {hero && <img src={hero.href} alt={hero.alt || product.title} />}
+        </figure>
+
+        <div class="product-proof-column" aria-label="Object evidence">
+          {proof.slice(0, 2).map((m) => (
+            <figure>
+              <img src={m.href} alt={m.alt || product.title} />
+            </figure>
+          ))}
+        </div>
+
+        <section class="product-sheet">
+          <p>Object / {product.slug} / release {product.version}</p>
+          <h1 id="product-title">{product.title}</h1>
+          {
+            paragraphs.length > 0 && (
+              <div class="product-description">
+                {paragraphs.map((p) => (
+                  <p>{p}</p>
+                ))}
+              </div>
+            )
+          }
+          <p class="product-price">{formatPrice(product.priceCents, product.currency)}</p>
+          {
+            product.variants.length > 0 && (
+              <div class="product-size-field" aria-label="Size selection">
+                <p>Size</p>
+                <div class="product-sizes">
+                  {product.variants.map((v) => (
+                    <button type="button" disabled={!v.available}>
+                      {v.size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )
+          }
+          <button class="product-coming-button" type="button" disabled>
+            {product.availability === "sold_out" ? "Sold out" : "Add to cart"}
+          </button>
+          <p class="product-state">
+            {product.availability === "sold_out" ? "Sold out." : "Checkout available soon."}
+          </p>
+        </section>
+      </section>
+    </main>
+
+    <SiteFooter />
+  </div>
+</Base>

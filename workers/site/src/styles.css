@@ -408,7 +408,7 @@ a:focus-visible {
 .object-ledger {
   display: grid;
   min-height: 0;
-  grid-template-rows: 45% 26% 29%;
+  grid-auto-rows: minmax(0, 1fr);
   margin: 0 24px;
   border-right: 1px solid var(--color-border);
   border-bottom: 1px solid var(--color-border);
@@ -429,7 +429,7 @@ a:focus-visible {
 }
 
 .object-entry-current {
-  grid-template-columns: 56px 28.6% 28.7% 22.5% minmax(0, 1fr);
+  grid-template-columns: 56px 28.6% minmax(0, 1fr) 24%;
 }
 
 .object-entry-compact {
