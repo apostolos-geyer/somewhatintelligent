@@ -1,0 +1,22 @@
+{
+  "name": "operator",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "WRANGLER_REGISTRY_PATH=${WRANGLER_REGISTRY_PATH:-$PWD/../../.wrangler/dev-registry} wrangler dev --port ${OPERATOR_PORT:-8792} --inspector-port ${OPERATOR_INSPECTOR_PORT:-0}",
+    "deploy:staging": "wrangler deploy",
+    "deploy:production": "wrangler deploy --env production",
+    "access:setup": "bun scripts/setup-access.ts",
+    "types": "wrangler types -c wrangler.jsonc",
+    "typecheck": "tsgo --noEmit"
+  },
+  "dependencies": {
+    "@si/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4",
+    "@si/typescript-config": "workspace:*",
+    "wrangler": "^4"
+  }
+}

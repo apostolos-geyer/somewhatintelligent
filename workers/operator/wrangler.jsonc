@@ -1,0 +1,59 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Operator — the single Access-protected operator console (RFC-0001 D1/D6).
+  // Deploys DIRECTLY on desk.* (NOT behind Bouncer) and is fronted by a
+  // self-hosted Cloudflare Access application. `workers_dev` and `preview_urls`
+  // are OFF in every deployed environment so no alternate unprotected hostname
+  // can bypass Access (D6).
+  //
+  // INV-OP-2: Operator has NO D1, R2, Stripe, or Guestlist binding. Its server
+  // code reaches domain state ONLY through the StoreOperator / PublisherOperator
+  // service bindings, which are added in track T22. The Access secrets
+  // (POLICY_AUD / TEAM_DOMAIN) are written by the idempotent setup script (T4),
+  // never checked in here.
+  //
+  // SCAFFOLD (exec-plan 0004 track T2). The TanStack Start console + the vite
+  // build pipeline replace the plain fetch entry in track T22.
+  "name": "si-operator-staging",
+  "main": "src/worker.ts",
+  "account_id": "c735c5a53d864bee37400befb7f4c7f4",
+  "compatibility_date": "2026-04-19",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+  },
+  "upload_source_maps": true,
+  "workers_dev": false,
+  "preview_urls": false,
+  "vars": {
+    "ENVIRONMENT": "staging",
+    "OPERATOR_URL": "https://desk.staging.somewhatintelligent.ca",
+  },
+  "routes": [
+    {
+      "pattern": "desk.staging.somewhatintelligent.ca",
+      "custom_domain": true,
+    },
+  ],
+  "env": {
+    "production": {
+      "name": "si-operator-production",
+      "workers_dev": false,
+      "preview_urls": false,
+      "vars": {
+        "ENVIRONMENT": "production",
+        "OPERATOR_URL": "https://desk.somewhatintelligent.ca",
+      },
+      "routes": [
+        {
+          "pattern": "desk.somewhatintelligent.ca",
+          "custom_domain": true,
+        },
+      ],
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+      },
+    },
+  },
+}
