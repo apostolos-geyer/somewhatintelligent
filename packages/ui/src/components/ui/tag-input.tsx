@@ -80,7 +80,8 @@ export function TagInput({
       case "Enter":
       case ",":
         e.preventDefault();
-        if (showDropdown && activeIndex >= 0) addTag(filtered[activeIndex]);
+        if (showDropdown && activeIndex >= 0 && filtered[activeIndex] !== undefined)
+          addTag(filtered[activeIndex]);
         else addTag(query);
         break;
       case "Backspace":

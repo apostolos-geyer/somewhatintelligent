@@ -156,10 +156,13 @@ export function useWikilinkAutocomplete({
           setActiveIndex((i) => (i - 1 + suggestions.length) % suggestions.length);
           return true;
         case "Enter":
-        case "Tab":
+        case "Tab": {
+          const active = suggestions[activeIndex];
+          if (active === undefined) return false;
           event.preventDefault();
-          select(suggestions[activeIndex]);
+          select(active);
           return true;
+        }
         case "Escape":
           event.preventDefault();
           dismiss();
