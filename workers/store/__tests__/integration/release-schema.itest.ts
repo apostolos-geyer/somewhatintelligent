@@ -60,7 +60,7 @@ beforeEach(async () => {
 
 describe("product_release immutability (UNIQUE(product_id, version))", () => {
   it("rejects a second retained release with the same product + version", async () => {
-    await seedProduct({ id: "p1", slug: "one" });
+    await seedProduct({ id: "p1", slug: "one", withRelease: false });
     await seedRelease({ id: "r1", version: "1.0.0" });
     await expect(
       seedRelease({ id: "r2", version: "1.0.0" }), // same (product_id, version) → throws
@@ -68,7 +68,7 @@ describe("product_release immutability (UNIQUE(product_id, version))", () => {
   });
 
   it("allows distinct versions of the same product", async () => {
-    await seedProduct({ id: "p1", slug: "one" });
+    await seedProduct({ id: "p1", slug: "one", withRelease: false });
     await seedRelease({ id: "r1", version: "1.0.0" });
     await seedRelease({ id: "r2", version: "1.1.0" });
     const rows = await db.select().from(productRelease).where(eq(productRelease.productId, "p1"));
@@ -78,7 +78,7 @@ describe("product_release immutability (UNIQUE(product_id, version))", () => {
 
 describe("product_image role/state CHECKs", () => {
   it("rejects an out-of-domain role", async () => {
-    await seedProduct({ id: "p1", slug: "one" });
+    await seedProduct({ id: "p1", slug: "one", withRelease: false });
     await expect(
       db
         .insert(productImage)
@@ -87,7 +87,7 @@ describe("product_image role/state CHECKs", () => {
   });
 
   it("rejects an out-of-domain state", async () => {
-    await seedProduct({ id: "p1", slug: "one" });
+    await seedProduct({ id: "p1", slug: "one", withRelease: false });
     await expect(
       db
         .insert(productImage)
@@ -98,14 +98,14 @@ describe("product_image role/state CHECKs", () => {
   });
 
   it("rejects a negative size_bytes", async () => {
-    await seedProduct({ id: "p1", slug: "one" });
+    await seedProduct({ id: "p1", slug: "one", withRelease: false });
     await expect(db.insert(productImage).values(imageValues({ sizeBytes: -1 }))).rejects.toThrow();
   });
 });
 
 describe("product.active_release_id ON DELETE SET NULL", () => {
   it("deleting the active release nulls the pointer and keeps the product", async () => {
-    await seedProduct({ id: "p1", slug: "one" });
+    await seedProduct({ id: "p1", slug: "one", withRelease: false });
     await seedRelease({ id: "r1", version: "1.0.0" });
     await db.update(productBase).set({ activeReleaseId: "r1" }).where(eq(productBase.id, "p1"));
 
@@ -119,15 +119,15 @@ describe("product.active_release_id ON DELETE SET NULL", () => {
 
 describe("product_variant constraints unchanged", () => {
   it("rejects negative stock (stock_non_negative CHECK)", async () => {
-    await seedProduct({ id: "p1", slug: "one" });
+    await seedProduct({ id: "p1", slug: "one", withRelease: false });
     await expect(
       seedVariant({ id: "v1", productId: "p1", size: "M", stock: -1 }),
     ).rejects.toThrow();
   });
 
   it("rejects a duplicate global SKU", async () => {
-    await seedProduct({ id: "p1", slug: "one" });
-    await seedProduct({ id: "p2", slug: "two" });
+    await seedProduct({ id: "p1", slug: "one", withRelease: false });
+    await seedProduct({ id: "p2", slug: "two", withRelease: false });
     await seedVariant({ id: "v1", productId: "p1", size: "M", stock: 1, sku: "DUP" });
     await expect(
       seedVariant({ id: "v2", productId: "p2", size: "L", stock: 1, sku: "DUP" }),
@@ -137,7 +137,7 @@ describe("product_variant constraints unchanged", () => {
 
 describe("order_item has no catalog FK (INV-ORDER-1)", () => {
   it("deleting a product's release — and the product itself — never touches order history", async () => {
-    await seedProduct({ id: "p1", slug: "one" });
+    await seedProduct({ id: "p1", slug: "one", withRelease: false });
     await seedVariant({ id: "v1", productId: "p1", size: "M", stock: 5 });
     await seedRelease({ id: "r1", version: "1.0.0" });
     await seedOrder({ id: "o1", orderNumber: "SI-ITEMFK" });

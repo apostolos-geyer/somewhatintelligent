@@ -5,14 +5,20 @@ import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import type { OrderStatus, ProductStatus } from "@/lib/config";
 
-const { productBase, productDraft, productVariant, customerOrder, orderItem } = schema;
+const { productBase, productDraft, productRelease, productVariant, customerOrder, orderItem } =
+  schema;
 
 export const db = drizzle(env.DB, { schema });
 
-// Seed a product in the release model: the thin identity row plus its editable
-// draft (which carries title/price). The `product_flat` compat view joins the
-// two, so the pre-release read paths still see the old flat shape. Delete via
-// `productBase` (cascades draft/release/image/variant); `product` is a view.
+// Seed a product in the release model: the thin identity row, its editable draft,
+// and (unless `withRelease: false`) an active immutable release the identity row
+// points at. Checkout and the public reads source title + price from the active
+// release, so `title`/`priceCents` set the RELEASE values; `draftTitle`/
+// `draftPriceCents` override the draft independently (default: mirror the
+// release) to model a post-publish draft edit that must not reach checkout.
+// `withRelease: false` seeds a draft-only product (no active release) for suites
+// that manage releases themselves. Delete via `productBase` (cascades
+// draft/release/image/variant); `product` is a view.
 export async function seedProduct(opts: {
   id: string;
   slug?: string;
@@ -20,11 +26,18 @@ export async function seedProduct(opts: {
   priceCents?: number;
   status?: ProductStatus;
   createdAt?: Date;
+  draftTitle?: string;
+  draftPriceCents?: number;
+  releaseVersion?: string;
+  withRelease?: boolean;
 }) {
   const now = opts.createdAt ?? new Date();
+  const slug = opts.slug ?? `slug-${opts.id}`;
+  const title = opts.title ?? `Tee ${opts.id}`;
+  const priceCents = opts.priceCents ?? 3000;
   await db.insert(productBase).values({
     id: opts.id,
-    slug: opts.slug ?? `slug-${opts.id}`,
+    slug,
     status: opts.status ?? "active",
     createdBySub: "admin",
     createdAt: now,
@@ -33,11 +46,27 @@ export async function seedProduct(opts: {
   await db.insert(productDraft).values({
     productId: opts.id,
     revision: 1,
-    title: opts.title ?? `Tee ${opts.id}`,
-    priceCents: opts.priceCents ?? 3000,
+    title: opts.draftTitle ?? title,
+    priceCents: opts.draftPriceCents ?? priceCents,
     updatedBySub: "admin",
     updatedAt: now,
   });
+  if (opts.withRelease === false) return;
+  const releaseId = `rel-${opts.id}`;
+  await db.insert(productRelease).values({
+    id: releaseId,
+    productId: opts.id,
+    version: opts.releaseVersion ?? "1.0.0",
+    slug,
+    title,
+    priceCents,
+    publishedBySub: "admin",
+    publishedAt: now,
+  });
+  await db
+    .update(productBase)
+    .set({ activeReleaseId: releaseId })
+    .where(eq(productBase.id, opts.id));
 }
 
 export async function seedVariant(opts: {

@@ -1,8 +1,13 @@
-// Pure order-pricing + stock-validation core, extracted from placeOrder
-// (orders.functions.ts) so the money math, the price-from-product rule, and the
-// stock/availability guards are unit-testable without the server-fn + D1 batch
-// (behavior-identical extraction). placeOrder fetches the rows, calls this, then
-// performs the D1 batch (order + line inserts + stock decrements).
+// Order-pricing + stock-validation core, extracted from placeOrder
+// (orders.functions.ts) so the money math, the price-from-release rule, and the
+// stock/availability guards are unit-testable without the server-fn + D1 batch.
+// `computeOrderTotals` stays a pure function over already-loaded rows;
+// `loadPricingInputs` is the one D1 read that sources those rows — live variant
+// stock/size plus each product's title + price from its ACTIVE release. The
+// checkout and place-order paths call the loader, then the pure compute.
+import { eq, inArray } from "drizzle-orm";
+import { productBase, productRelease, productVariant } from "@/db/schema";
+import type { Db } from "@/lib/db";
 import { calculateShipping } from "@/lib/config";
 
 export interface OrderItemInput {
@@ -87,4 +92,45 @@ export function computeOrderTotals(
     shippingCents,
     totalCents: subtotalCents + shippingCents,
   };
+}
+
+/**
+ * Load the authoritative pricing inputs for a set of cart variant ids: live
+ * size + stock from product_variant, and each product's title + price from its
+ * ACTIVE release (product.active_release_id → product_release). The draft copy
+ * and price are never read — only the immutable active release drives checkout
+ * money (INV-CHK-1). A product with no active release contributes no
+ * PricingProduct row, so computeOrderTotals fails it closed as
+ * product_unavailable. The result feeds straight into computeOrderTotals.
+ */
+export async function loadPricingInputs(
+  db: Db,
+  variantIds: readonly string[],
+): Promise<{ variants: PricingVariant[]; products: PricingProduct[] }> {
+  if (variantIds.length === 0) return { variants: [], products: [] };
+  const variants = await db
+    .select({
+      id: productVariant.id,
+      productId: productVariant.productId,
+      size: productVariant.size,
+      stock: productVariant.stock,
+    })
+    .from(productVariant)
+    .where(inArray(productVariant.id, [...variantIds]));
+
+  const productIds = [...new Set(variants.map((v) => v.productId))];
+  const products = productIds.length
+    ? await db
+        .select({
+          id: productBase.id,
+          title: productRelease.title,
+          priceCents: productRelease.priceCents,
+          status: productBase.status,
+        })
+        .from(productBase)
+        .innerJoin(productRelease, eq(productRelease.id, productBase.activeReleaseId))
+        .where(inArray(productBase.id, productIds))
+    : [];
+
+  return { variants, products };
 }

@@ -4,10 +4,10 @@
 // Payment is a manual stub for now (no gateway wired): a placed order starts
 // "pending"; an admin marks it "paid", then ships it with a tracking number.
 import { createServerFn } from "@tanstack/react-start";
-import { count, desc, eq, inArray, sql } from "drizzle-orm";
+import { count, desc, eq, sql } from "drizzle-orm";
 import { type } from "arktype";
 
-import { customerOrder, orderItem, product, productVariant } from "@/db/schema";
+import { customerOrder, orderItem, product } from "@/db/schema";
 import { getDb } from "@/lib/db";
 import { ulid } from "@somewhatintelligent/kit/ids";
 import { analyticsEvent } from "@/lib/middleware/analytics";
@@ -20,7 +20,7 @@ import { isAdminRole } from "@somewhatintelligent/kit/roles";
 import type { PlatformSession } from "@somewhatintelligent/auth";
 import { ForbiddenError, NotFoundError } from "@/lib/errors";
 import { CARRIER_KEYS, isOrderStatus, orderNumber } from "@/lib/config";
-import { computeOrderTotals } from "@/lib/pricing";
+import { computeOrderTotals, loadPricingInputs } from "@/lib/pricing";
 import { reserveStockAndWrite } from "@/lib/reservation";
 import { updateOrderShippingCore } from "@/lib/orders-core";
 
@@ -91,17 +91,11 @@ export const placeOrder = createServerFn({ method: "POST" })
     const input = data as typeof placeOrderInput.infer;
     const session = context.session as PlatformSession;
     const variantIds = input.items.map((i) => i.variantId);
-    const variants = await db
-      .select()
-      .from(productVariant)
-      .where(inArray(productVariant.id, variantIds));
-    const productIds = [...new Set(variants.map((v) => v.productId))];
-    const products = productIds.length
-      ? await db.select().from(product).where(inArray(product.id, productIds))
-      : [];
+    const { variants, products } = await loadPricingInputs(db, variantIds);
 
-    // Pure pricing + stock validation (src/lib/pricing.ts). Price is taken from
-    // the product row, never the client cart.
+    // Pure pricing + stock validation (src/lib/pricing.ts). Title + price come
+    // from the product's active release, size + stock from the live variant —
+    // never the client cart.
     const priced = computeOrderTotals(input.items, variants, products);
     if (!priced.ok) return priced;
     const { lines, subtotalCents: subtotal, shippingCents, totalCents: total } = priced;
