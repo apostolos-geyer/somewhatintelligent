@@ -84,8 +84,7 @@ const ACCESS_POLICY_NAME = `${WORKER_NAME}-access`;
  * adopt-by-domain, declare the app here and replace this const with the
  * application resource's `aud` output.
  */
-const ACCESS_APP_AUD: string =
-  "a0046cb0773459b27a32ff7123e52e18d985c2e4aa75df35ba35828ca096443f";
+const ACCESS_APP_AUD: string = "a0046cb0773459b27a32ff7123e52e18d985c2e4aa75df35ba35828ca096443f";
 
 /** Addresses the UI pre-creates mailboxes for (app's EMAIL_ADDRESSES var). */
 const EMAIL_ADDRESSES: string[] = [];

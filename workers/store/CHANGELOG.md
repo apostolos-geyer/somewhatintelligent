@@ -2,18 +2,16 @@
 
 ## [0.0.6](https://github.com/apostolos-geyer/somewhatintelligent/compare/store-v0.0.5...store-v0.0.6) (2026-07-14)
 
-
 ### Bug Fixes
 
-* **bouncer,identity,store:** scope vmf app assets to unique dirs to stop cross-app collision ([#30](https://github.com/apostolos-geyer/somewhatintelligent/issues/30)) ([3403c3c](https://github.com/apostolos-geyer/somewhatintelligent/commit/3403c3cb131c47eb9295743ab903b7c53e1ec562))
+- **bouncer,identity,store:** scope vmf app assets to unique dirs to stop cross-app collision ([#30](https://github.com/apostolos-geyer/somewhatintelligent/issues/30)) ([3403c3c](https://github.com/apostolos-geyer/somewhatintelligent/commit/3403c3cb131c47eb9295743ab903b7c53e1ec562))
 
 ## [0.0.5](https://github.com/apostolos-geyer/somewhatintelligent/compare/store-v0.0.4...store-v0.0.5) (2026-07-14)
 
-
 ### Features
 
-* **store,guestlist:** embedded Stripe checkout via Payment Element ([#27](https://github.com/apostolos-geyer/somewhatintelligent/issues/27)) ([4dd7903](https://github.com/apostolos-geyer/somewhatintelligent/commit/4dd790381c2b050ad442f5168244720f581b006b))
-* **store:** pre-launch landing + sign-up funnel, gate shop to admins ([#26](https://github.com/apostolos-geyer/somewhatintelligent/issues/26)) ([e2fa719](https://github.com/apostolos-geyer/somewhatintelligent/commit/e2fa719c66498ba377bd1a740dbd6ec16df6f72a))
+- **store,guestlist:** embedded Stripe checkout via Payment Element ([#27](https://github.com/apostolos-geyer/somewhatintelligent/issues/27)) ([4dd7903](https://github.com/apostolos-geyer/somewhatintelligent/commit/4dd790381c2b050ad442f5168244720f581b006b))
+- **store:** pre-launch landing + sign-up funnel, gate shop to admins ([#26](https://github.com/apostolos-geyer/somewhatintelligent/issues/26)) ([e2fa719](https://github.com/apostolos-geyer/somewhatintelligent/commit/e2fa719c66498ba377bd1a740dbd6ec16df6f72a))
 
 ## [0.0.4](https://github.com/apostolos-geyer/somewhatintelligent/compare/store-v0.0.3...store-v0.0.4) (2026-07-12)
 
