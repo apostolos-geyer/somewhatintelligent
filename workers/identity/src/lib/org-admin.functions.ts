@@ -79,7 +79,7 @@ export const listOrgsForAdmin = createServerFn({ method: "GET" })
 
 export const searchUsersByEmail = createServerFn({ method: "GET" })
   .middleware([requireAdminMiddleware])
-  .inputValidator((data: { email: string }) => data)
+  .validator((data: { email: string }) => data)
   .handler(async ({ data }): Promise<{ users: UserSearchHit[] }> => {
     const res = await env.GUESTLIST.adminSearchUsersByEmail({
       cookie: requestCookie(),
@@ -91,7 +91,7 @@ export const searchUsersByEmail = createServerFn({ method: "GET" })
 
 export const getOrgForAdmin = createServerFn({ method: "GET" })
   .middleware([requireAdminMiddleware])
-  .inputValidator((data: { orgId: string }) => data)
+  .validator((data: { orgId: string }) => data)
   .handler(async ({ data }): Promise<OrgDetailPayload> => {
     const res = await env.GUESTLIST.adminGetOrg({ cookie: requestCookie(), id: data.orgId });
     if (!res.ok) {
@@ -107,7 +107,7 @@ export const getOrgForAdmin = createServerFn({ method: "GET" })
 
 export const createOrgAsOperator = createServerFn({ method: "POST" })
   .middleware([requireAdminMiddleware])
-  .inputValidator((data: { name: string; slug: string; ownerUserId: string }) => data)
+  .validator((data: { name: string; slug: string; ownerUserId: string }) => data)
   .handler(
     async ({
       data,
@@ -141,7 +141,7 @@ export const createOrgAsOperator = createServerFn({ method: "POST" })
 
 export const updateOrgAsOperator = createServerFn({ method: "POST" })
   .middleware([requireAdminMiddleware])
-  .inputValidator((data: { orgId: string; name: string; slug: string }) => data)
+  .validator((data: { orgId: string; name: string; slug: string }) => data)
   .handler(
     async ({
       data,
@@ -175,7 +175,7 @@ export const updateOrgAsOperator = createServerFn({ method: "POST" })
 
 export const addOrgMember = createServerFn({ method: "POST" })
   .middleware([requireAdminMiddleware])
-  .inputValidator((data: { orgId: string; userId: string; role: OrgRole }) => data)
+  .validator((data: { orgId: string; userId: string; role: OrgRole }) => data)
   .handler(async ({ data }) => {
     const res = await env.GUESTLIST.adminAddOrgMember({
       cookie: requestCookie(),
@@ -197,7 +197,7 @@ export const addOrgMember = createServerFn({ method: "POST" })
 
 export const updateOrgMemberRole = createServerFn({ method: "POST" })
   .middleware([requireAdminMiddleware])
-  .inputValidator((data: { orgId: string; userId: string; role: OrgRole }) => data)
+  .validator((data: { orgId: string; userId: string; role: OrgRole }) => data)
   .handler(async ({ data }) => {
     const res = await env.GUESTLIST.adminUpdateOrgMemberRole({
       cookie: requestCookie(),
@@ -219,7 +219,7 @@ export const updateOrgMemberRole = createServerFn({ method: "POST" })
 
 export const removeOrgMember = createServerFn({ method: "POST" })
   .middleware([requireAdminMiddleware])
-  .inputValidator((data: { orgId: string; userId: string }) => data)
+  .validator((data: { orgId: string; userId: string }) => data)
   .handler(async ({ data }) => {
     const res = await env.GUESTLIST.adminRemoveOrgMember({
       cookie: requestCookie(),
@@ -240,7 +240,7 @@ export const removeOrgMember = createServerFn({ method: "POST" })
 
 export const createOrgInvitation = createServerFn({ method: "POST" })
   .middleware([requireAdminMiddleware])
-  .inputValidator((data: { orgId: string; email: string; role: OrgRole }) => data)
+  .validator((data: { orgId: string; email: string; role: OrgRole }) => data)
   .handler(async ({ data }): Promise<{ invitationId: string; emailSent: boolean }> => {
     const res = await env.GUESTLIST.adminCreateOrgInvitation({
       cookie: requestCookie(),
@@ -260,7 +260,7 @@ export const createOrgInvitation = createServerFn({ method: "POST" })
 
 export const resendOrgInvitation = createServerFn({ method: "POST" })
   .middleware([requireAdminMiddleware])
-  .inputValidator((data: { orgId: string; invitationId: string }) => data)
+  .validator((data: { orgId: string; invitationId: string }) => data)
   .handler(
     async ({
       data,
@@ -298,7 +298,7 @@ export const resendOrgInvitation = createServerFn({ method: "POST" })
 
 export const cancelOrgInvitation = createServerFn({ method: "POST" })
   .middleware([requireAdminMiddleware])
-  .inputValidator((data: { orgId: string; invitationId: string }) => data)
+  .validator((data: { orgId: string; invitationId: string }) => data)
   .handler(async ({ data }) => {
     const res = await env.GUESTLIST.adminCancelOrgInvitation({
       cookie: requestCookie(),

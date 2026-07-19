@@ -55,7 +55,7 @@ export const getClients = createServerFn({ method: "GET" })
 
 export const getClient = createServerFn({ method: "GET" })
   .middleware([requireAdminMiddleware])
-  .inputValidator((data: { id: string }) => data)
+  .validator((data: { id: string }) => data)
   .handler(async ({ data }): Promise<ClientDetailPayload> => {
     // The RPC's success arm (a drizzle row) isn't `Rpc.Serializable`, so the
     // stub type drops it and leaves only the `RpcErr` arms; re-assert the
@@ -84,7 +84,7 @@ export const getClient = createServerFn({ method: "GET" })
 
 export const createClient = createServerFn({ method: "POST" })
   .middleware([requireAdminMiddleware])
-  .inputValidator((data: CreateClientInput) => data)
+  .validator((data: CreateClientInput) => data)
   .handler(async ({ data }): Promise<CreateClientResult> => {
     const res = await env.GUESTLIST.adminCreateClient({
       cookie: requestCookie(),
@@ -98,7 +98,7 @@ export const createClient = createServerFn({ method: "POST" })
 
 export const updateClient = createServerFn({ method: "POST" })
   .middleware([requireAdminMiddleware])
-  .inputValidator(
+  .validator(
     (data: { id: string; name?: string; redirectUris?: string[]; skipConsent?: boolean }) => data,
   )
   .handler(async ({ data }) => {
@@ -115,7 +115,7 @@ export const updateClient = createServerFn({ method: "POST" })
 
 export const rotateSecret = createServerFn({ method: "POST" })
   .middleware([requireAdminMiddleware])
-  .inputValidator((data: { id: string }) => data)
+  .validator((data: { id: string }) => data)
   .handler(async ({ data }): Promise<{ clientSecret: string }> => {
     const res = await env.GUESTLIST.adminRotateClientSecret({
       cookie: requestCookie(),
@@ -127,7 +127,7 @@ export const rotateSecret = createServerFn({ method: "POST" })
 
 export const deleteClient = createServerFn({ method: "POST" })
   .middleware([requireAdminMiddleware])
-  .inputValidator((data: { id: string }) => data)
+  .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     const res = await env.GUESTLIST.adminDeleteClient({ cookie: requestCookie(), id: data.id });
     if (!res.ok) {

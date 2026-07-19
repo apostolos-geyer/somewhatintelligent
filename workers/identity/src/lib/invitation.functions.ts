@@ -62,7 +62,7 @@ function forwardHeaders(): Record<string, string> {
  * extra round-trip.
  */
 export const getInvitationForAccept = createServerFn({ method: "GET" })
-  .inputValidator((data: { invitationId: string }) => data)
+  .validator((data: { invitationId: string }) => data)
   .handler(async ({ data }): Promise<InvitationFetchResult> => {
     const session = await getSession(getRequestHeaders());
     if (!session) return { kind: "no-session" };
@@ -142,7 +142,7 @@ export type AcceptInvitationResult =
   | { ok: false; error: string };
 
 export const acceptInvitation = createServerFn({ method: "POST" })
-  .inputValidator((data: { invitationId: string }) => data)
+  .validator((data: { invitationId: string }) => data)
   .handler(async ({ data }): Promise<AcceptInvitationResult> => {
     const res = await env.GUESTLIST.fetch(
       new Request(`${GUESTLIST_INTERNAL}/api/auth/organization/accept-invitation`, {
@@ -182,7 +182,7 @@ export const acceptInvitation = createServerFn({ method: "POST" })
 export type RejectInvitationResult = { ok: true } | { ok: false; error: string };
 
 export const rejectInvitation = createServerFn({ method: "POST" })
-  .inputValidator((data: { invitationId: string }) => data)
+  .validator((data: { invitationId: string }) => data)
   .handler(async ({ data }): Promise<RejectInvitationResult> => {
     const res = await env.GUESTLIST.fetch(
       new Request(`${GUESTLIST_INTERNAL}/api/auth/organization/reject-invitation`, {
