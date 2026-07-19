@@ -16,6 +16,10 @@ the customer IdP hostname.
   one owning RPC (D7).
 - `workers_dev` and `preview_urls` are **off** in every deployed environment, so
   no alternate unprotected hostname can bypass Access.
+- **Deploys manually, like `inbox`** — Operator owns its own `desk.*` hostname
+  and is **not** a release-please component and has **no CI deploy lane**. Ship
+  it with `bun run deploy:staging` / `bun run deploy:production`; it is versioned
+  informally.
 
 ## Status — SCAFFOLD
 

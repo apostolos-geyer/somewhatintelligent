@@ -37,10 +37,6 @@
     "workers/publisher": {
       "component": "publisher",
       "extra-files": [{ "type": "json", "path": "package.json", "jsonpath": "$.version" }]
-    },
-    "workers/operator": {
-      "component": "operator",
-      "extra-files": [{ "type": "json", "path": "package.json", "jsonpath": "$.version" }]
     }
   },
   "changelog-sections": [

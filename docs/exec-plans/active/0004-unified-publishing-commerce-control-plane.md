@@ -62,29 +62,29 @@ directly against source (`release-please-config.json`, `packages/config`,
 Grounded per subsystem. "Delta" is what RFC-0001 requires that does not exist
 today.
 
-| Subsystem | Exists today | Delta (net-new vs refactor) |
-| --- | --- | --- |
-| `workers/site` | Static Astro 7.0.9 (`output: "static"`), **no `wrangler.jsonc`**, hardcoded pages (`/`, `/shop`, `/shop/friend-001`, `/software`, `/software/system-001`, `/writing`, `/about`), build-time image imports from `docs/design/...`. `@si/design` consumed **CSS-only**; single `data-theme="dark"`; fixed-count 100dvh grids. Absent from bouncer routes and `scripts/dev-stack.ts`. | **Refactor to on-demand SSR Worker** (`output: "server"` + `@astrojs/cloudflare`, new `wrangler.jsonc`, read bindings). **Net-new** dynamic `/shop/:slug`, `/writing/:slug`, `/software/:slug`, `/cart`, `/checkout`, `/checkout/return`, `/orders/:number`, `/media/:mediaId`; typed loaders; cart/checkout islands; SEO from page docs; render-safety on the markdown path. |
-| `workers/store` | TanStack Start SPA at `/shop` (vmf) using server **functions** (`*.functions.ts`) — **no `WorkerEntrypoint`/RPC class**, **no `/api/store` JSON API** (only `routes/api/img.$refId.ts`). Flat `product` row (no drafts/releases/SemVer). `order_item` already snapshots title/size/price with **no catalog FK**. Guarded stock reservation, Stripe elements checkout, DLQ + reconcile cron all present. Webhook constant is `/hooks/store`. | **Net-new** `StoreCatalog` + `StoreOperator` RPC entrypoints, `/api/store` HTTP surface, `MediaStorage` port, release-model schema (`product_draft` / immutable `product_release` / `product_release_image` / `store_operator_event` / deletion-intent / `store_media_gc_outbox`). **Refactor** pricing to source from the active release; keep every existing checkout/stock/Stripe/order invariant. |
-| `workers/bouncer` | Single `src/index.ts`; ROUTES in `wrangler.jsonc` (staging top-level + `env.production`). Modes passthrough / vmf / redirect; `/`→308→`/shop`; `/shop`→STORE vmf; `/account`→IDENTITY vmf; per-app `/_sfn/*` passthrough. No SITE binding. | **Add** `/api/store/*` (passthrough, longest-prefix ahead of `/api`), `/hooks/store/*`, a `SITE` binding + root `/*` passthrough to Site; **remove** the `/`→`/shop` redirect and the `/shop` vmf mount. Operator is **not** in bouncer (own `desk.*` host + Access). |
-| Media (`workers/roadie` + store) | Browser-direct **register → presigned PUT (single/multipart) → finalize** keyed by `referenceId`, served by **signed-URL 302** (`/api/img/$refId`, no eligibility check). `ROADIE` binding **requires** `entrypoint:"Roadie"` + `props.callerApp`; `readCallerApp` throws otherwise. Server-side `roadie.put` (stream-through) exists but caps at **100 MB, no multipart**. | Hide the entire lifecycle behind a private `MediaStorage {put/read/delete}` port (one adapter per backend, initially wrapping Roadie). **Net-new** domain media IDs distinct from `referenceId`; eligibility-checked public reads; logical-first delete + `media_gc_outbox`. No register/finalize/signed-URL/referenceId concept may cross a DTO/URL/schema/RPC boundary. |
-| Operator + Access | **No `workers/operator`.** Donor exists: `inbox/scripts/setup-access.mjs` (idempotent self-hosted Access app + reusable policy). `workers/identity` is a usable TanStack Start template. | **Greenfield** TanStack Start worker on `desk.somewhatintelligent.ca` (prod) / `desk.staging.somewhatintelligent.ca` (staging), outside bouncer, behind self-hosted Access. Fail-closed JWT middleware → `OperatorActor`; idempotent setup script writing `POLICY_AUD`/`TEAM_DOMAIN`; `DEV_OPERATOR` dev-only; `workers_dev:false`/`preview_urls:false` deployed. |
-| Publisher | **Does not exist.** `workers/guestlist` is a structural template (D1 + RPC entrypoint). No `@si/contracts`. | **Greenfield** D1 worker: ~18 tables (texts/text_release, software_draft/publication, page/page_release, tags, links, media + `media_gc_outbox`, `operator_event`), `PublisherPublic` (read) + `PublisherOperator` (mutation) entrypoints, 5 fixed-page discriminated-union documents + validators, plan/confirm delete, donor-adapted editor primitives. |
-| Release / CI / config | `release-please-config.json` components: bouncer, guestlist, promoter, roadie, identity, store. Scopes table in `docs/ops/commit-scoping.md` matches. `dev-stack.ts` `DEFAULT_WORKERS = [guestlist, identity, roadie, store]`. Workers deploy as `si-<service>-<env>` (`deploy.ts`). `docs/ops/env-vars.md` is a strict contract. | **Add** `workers/publisher`, `workers/operator`, `workers/site` as release-please components + manifest entries; **add** `publisher`/`operator`/`site` commit scopes; wire the three into the dev graph; add env-var rows; new `@si/contracts` package. |
+| Subsystem                        | Exists today                                                                                                                                                                                                                                                                                                                                                                                                                                | Delta (net-new vs refactor)                                                                                                                                                                                                                                                                                                                                                                           |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `workers/site`                   | Static Astro 7.0.9 (`output: "static"`), **no `wrangler.jsonc`**, hardcoded pages (`/`, `/shop`, `/shop/friend-001`, `/software`, `/software/system-001`, `/writing`, `/about`), build-time image imports from `docs/design/...`. `@si/design` consumed **CSS-only**; single `data-theme="dark"`; fixed-count 100dvh grids. Absent from bouncer routes and `scripts/dev-stack.ts`.                                                          | **Refactor to on-demand SSR Worker** (`output: "server"` + `@astrojs/cloudflare`, new `wrangler.jsonc`, read bindings). **Net-new** dynamic `/shop/:slug`, `/writing/:slug`, `/software/:slug`, `/cart`, `/checkout`, `/checkout/return`, `/orders/:number`, `/media/:mediaId`; typed loaders; cart/checkout islands; SEO from page docs; render-safety on the markdown path.                         |
+| `workers/store`                  | TanStack Start SPA at `/shop` (vmf) using server **functions** (`*.functions.ts`) — **no `WorkerEntrypoint`/RPC class**, **no `/api/store` JSON API** (only `routes/api/img.$refId.ts`). Flat `product` row (no drafts/releases/SemVer). `order_item` already snapshots title/size/price with **no catalog FK**. Guarded stock reservation, Stripe elements checkout, DLQ + reconcile cron all present. Webhook constant is `/hooks/store`. | **Net-new** `StoreCatalog` + `StoreOperator` RPC entrypoints, `/api/store` HTTP surface, `MediaStorage` port, release-model schema (`product_draft` / immutable `product_release` / `product_release_image` / `store_operator_event` / deletion-intent / `store_media_gc_outbox`). **Refactor** pricing to source from the active release; keep every existing checkout/stock/Stripe/order invariant. |
+| `workers/bouncer`                | Single `src/index.ts`; ROUTES in `wrangler.jsonc` (staging top-level + `env.production`). Modes passthrough / vmf / redirect; `/`→308→`/shop`; `/shop`→STORE vmf; `/account`→IDENTITY vmf; per-app `/_sfn/*` passthrough. No SITE binding.                                                                                                                                                                                                  | **Add** `/api/store/*` (passthrough, longest-prefix ahead of `/api`), `/hooks/store/*`, a `SITE` binding + root `/*` passthrough to Site; **remove** the `/`→`/shop` redirect and the `/shop` vmf mount. Operator is **not** in bouncer (own `desk.*` host + Access).                                                                                                                                 |
+| Media (`workers/roadie` + store) | Browser-direct **register → presigned PUT (single/multipart) → finalize** keyed by `referenceId`, served by **signed-URL 302** (`/api/img/$refId`, no eligibility check). `ROADIE` binding **requires** `entrypoint:"Roadie"` + `props.callerApp`; `readCallerApp` throws otherwise. Server-side `roadie.put` (stream-through) exists but caps at **100 MB, no multipart**.                                                                 | Hide the entire lifecycle behind a private `MediaStorage {put/read/delete}` port (one adapter per backend, initially wrapping Roadie). **Net-new** domain media IDs distinct from `referenceId`; eligibility-checked public reads; logical-first delete + `media_gc_outbox`. No register/finalize/signed-URL/referenceId concept may cross a DTO/URL/schema/RPC boundary.                             |
+| Operator + Access                | **No `workers/operator`.** Donor exists: `inbox/scripts/setup-access.mjs` (idempotent self-hosted Access app + reusable policy). `workers/identity` is a usable TanStack Start template.                                                                                                                                                                                                                                                    | **Greenfield** TanStack Start worker on `desk.somewhatintelligent.ca` (prod) / `desk.staging.somewhatintelligent.ca` (staging), outside bouncer, behind self-hosted Access. Fail-closed JWT middleware → `OperatorActor`; idempotent setup script writing `POLICY_AUD`/`TEAM_DOMAIN`; `DEV_OPERATOR` dev-only; `workers_dev:false`/`preview_urls:false` deployed.                                     |
+| Publisher                        | **Does not exist.** `workers/guestlist` is a structural template (D1 + RPC entrypoint). No `@si/contracts`.                                                                                                                                                                                                                                                                                                                                 | **Greenfield** D1 worker: ~18 tables (texts/text_release, software_draft/publication, page/page_release, tags, links, media + `media_gc_outbox`, `operator_event`), `PublisherPublic` (read) + `PublisherOperator` (mutation) entrypoints, 5 fixed-page discriminated-union documents + validators, plan/confirm delete, donor-adapted editor primitives.                                             |
+| Release / CI / config            | `release-please-config.json` components: bouncer, guestlist, promoter, roadie, identity, store. Scopes table in `docs/ops/commit-scoping.md` matches. `dev-stack.ts` `DEFAULT_WORKERS = [guestlist, identity, roadie, store]`. Workers deploy as `si-<service>-<env>` (`deploy.ts`). `docs/ops/env-vars.md` is a strict contract.                                                                                                           | **Add** `workers/publisher` + `workers/site` as release-please components + manifest entries (Operator is inbox-style manual — a scope with **no** component/CI lane); **add** `publisher`/`operator`/`site` commit scopes; wire the three into the dev graph; add env-var rows; new `@si/contracts` package.                                                                                         |
 
 ## Target state
 
 The RFC's [D12 route table](../../rfc/0001-unified-publishing-commerce-control-plane.md#d12--the-route-table-has-one-final-owner-per-public-path)
 is the north star:
 
-| Host / path | Owner | Bouncer mode |
-| --- | --- | --- |
-| `…/api/store/*` | Store | passthrough |
-| `…/hooks/store/*` | Store | passthrough |
-| `…/api/*` | Guestlist | passthrough |
-| `…/account`, `…/_sfn/account`, `…/_assets/account` | Identity | vmf / passthrough |
-| `…/*` (root) | Site | passthrough |
-| `desk.somewhatintelligent.ca/*` | Operator | **direct + Access** (not bouncer) |
+| Host / path                                        | Owner     | Bouncer mode                      |
+| -------------------------------------------------- | --------- | --------------------------------- |
+| `…/api/store/*`                                    | Store     | passthrough                       |
+| `…/hooks/store/*`                                  | Store     | passthrough                       |
+| `…/api/*`                                          | Guestlist | passthrough                       |
+| `…/account`, `…/_sfn/account`, `…/_assets/account` | Identity  | vmf / passthrough                 |
+| `…/*` (root)                                       | Site      | passthrough                       |
+| `desk.somewhatintelligent.ca/*`                    | Operator  | **direct + Access** (not bouncer) |
 
 Reached when: one Access-protected Operator manages texts / software / pages /
 products / stock / media / orders / fulfillment with impact-preview hard-delete;
@@ -186,9 +186,11 @@ coverage maps below.
   runtime validators shared by write/read boundaries. `D=D7,D8,D9,D11`.
   `INV=INV-CART-1,INV-DOM-1,INV-SW-1`.
 - **T1 — Release / CI / dev-graph / env-docs rails.** Owner: repo. Deps: T2/T6/T14
-  scaffolds exist. Deliverables: add `workers/publisher`, `workers/operator`,
-  `workers/site` to `release-please-config.json` + `.release-please-manifest.json`;
-  add `publisher`/`operator`/`site` rows to `docs/ops/commit-scoping.md`; add the
+  scaffolds exist. Deliverables: add `workers/publisher` and `workers/site` to
+  `release-please-config.json` + `.release-please-manifest.json`; add
+  `publisher`/`operator`/`site` rows to `docs/ops/commit-scoping.md` (Operator is
+  a valid scope but, like `inbox`, has **no** release-please component and **no**
+  CI deploy lane — it deploys manually on its own `desk.*` hostname); add the
   three to `scripts/dev-stack.ts` selectable workers (Site + Publisher into the
   default graph; Operator selectable); add `docs/ops/env-vars.md` rows; RWX CI
   lanes. `D=D1,D12`.
@@ -232,7 +234,7 @@ coverage maps below.
 
 - **T8 — Store release-model schema migration.** Owner: `workers/store`. Deps:
   T0, T5. Deliverables: thin `product` (`id, slug, status incl. 'unavailable',
-  active_release_id, created_by_sub`), `product_draft`, immutable `product_release`
+active_release_id, created_by_sub`), `product_draft`, immutable `product_release`
   (`UNIQUE(product_id, version)`), `product_release_image`, storage-neutral
   `product_image` (`storage_key`/`sha256`/`content_type`/`size`/`role`/`state`),
   `store_operator_event` (`UNIQUE(idempotency_key, action)` + `response_json`),
@@ -252,13 +254,13 @@ coverage maps below.
 - **T11 — `StoreOperator` mutation RPC.** Owner: `workers/store`. Deps: T8, T5.
   Deliverables: Operator-bound entrypoint (product draft/publish/status, variant,
   `adjustStock(delta,reason)`, media reorder, orders/fulfillment); `idempotencyKey
-  = <sub>:<action>:<commandId>` + `store_operator_event` per mutation; **publish
+= <sub>:<action>:<commandId>` + `store_operator_event` per mutation; **publish
   snapshots current ready images into `product_release_image` in the same batch**;
   requires ≥1 ready image + ≥1 variant to publish. `D=D3,D8,D13`.
   `INV=INV-OP-1,INV-STOCK-1,INV-AUDIT-1,INV-REL-1`.
 - **T12 — Store `/api/store` HTTP API.** Owner: `workers/store`. Deps: T0, T10,
   T7 (authored). Deliverables: `GET /config`, `POST /checkout-sessions`, `GET
-  /checkout-sessions/:id`, `GET /orders/:number`, `PATCH /orders/:number/shipping`,
+/checkout-sessions/:id`, `GET /orders/:number`, `PATCH /orders/:number/shipping`,
   `GET /media/:mediaId` wrapping existing cores; `CartV1` normalization
   (≤50 lines, qty 1–10, dedupe); buyer resolution via the bouncer envelope +
   Guestlist session (verify the envelope is minted on the `/api/store` mount);
@@ -342,11 +344,11 @@ coverage maps below.
 ### Cutover & verification
 
 - **T24 — Bouncer live cutover + Store `/shop` demount.** Owner: `workers/bouncer`
-  + `workers/store`. Deps: **T12, T20, T21** (gate). Deliverables: make the T7
-  route change live (Site owns `/`, `/api/store`+`/hooks/store` to Store,
-  redirect/`/shop`-vmf removed); remove the Store `/shop` SPA routes; Store becomes
-  headless. Never executed until the replacement renders. `D=D12`.
-  `INV=INV-OP-1,INV-AUTH-1,INV-ROUTE-1`.
+  - `workers/store`. Deps: **T12, T20, T21** (gate). Deliverables: make the T7
+    route change live (Site owns `/`, `/api/store`+`/hooks/store` to Store,
+    redirect/`/shop`-vmf removed); remove the Store `/shop` SPA routes; Store becomes
+    headless. Never executed until the replacement renders. `D=D12`.
+    `INV=INV-OP-1,INV-AUTH-1,INV-ROUTE-1`.
 - **T25 — End-to-end + binding inventory + DoD.** Owner: repo + `e2e`. Deps: T24,
   T22, T23, T4, T13, T18. Deliverables: RFC browser tests 1–14 (incl. #14
   desktop+mobile screenshots) run against the real local Worker graph;
@@ -361,15 +363,15 @@ coverage maps below.
 Phases are sequenced; tracks inside a phase run in parallel subject to their
 deps. Each phase has a hard exit gate.
 
-| Phase | Tracks | Entry | Exit gate |
-| --- | --- | --- | --- |
-| **P0 Foundations** | T0, T1 | RFC accepted | `@si/contracts` compiles and is imported by a stub in each of the four workers; three new workers appear in release-please + dev-graph. |
-| **P1 Risk spine** | T2, T3, T4, T5, T6, T7 | P0 | Access middleware fails closed on absent/expired/wrong-aud tokens and the setup dry-run proves the intended writes; `MediaStorage` port shape frozen; Site deploys as a Worker (still serving current pages); bouncer route change authored + stub-tested (**not live**). |
-| **P2 Domain authorities** | T8, T9, T10, T11, T14, T15, T16, T17 | P1 | Both authorities **fully contract-tested** (RPC union fixtures + Publisher/Store integration suites) **before any consumer binds real (non-stub) bindings**. Publisher page-ref validation exercises a real `StoreCatalog`. |
-| **P3 HTTP + media + deletion** | T12, T13, T18, T19 | P2 | `/api/store` answers with buyer resolution verified on the mount; media flows browser→Operator→backend with no lifecycle leak; deletion plan/confirm + GC drains pass. **Vertical smoke checkpoint:** create→autosave→publish `1.0.0` a text → `PublisherPublic` → a temporary Site `/writing/:slug` render proves the full seam once. |
-| **P4 Presentation + console** | T20, T21, T22, T23 | P3 | Site renders every public route from read models (incl. `/shop`), commerce islands work against `/api/store`, Operator console drives all eight modules, preview shows drafts. **Per-phase browser walk** on each increment. |
-| **P5 Live cutover** | T24 | P4 (Site renders `/shop` + T12 live) | Route table flipped, `/shop` SPA removed, storefront served by Site with **zero dark window** in production. |
-| **P6 Integration & DoD** | T25 | P5 | RFC browser tests 1–14 + binding-inventory tests + Access dry-run pass; `bun run check` green; docs updated. |
+| Phase                          | Tracks                               | Entry                                | Exit gate                                                                                                                                                                                                                                                                                                                              |
+| ------------------------------ | ------------------------------------ | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **P0 Foundations**             | T0, T1                               | RFC accepted                         | `@si/contracts` compiles and is imported by a stub in each of the four workers; three new workers appear in release-please + dev-graph.                                                                                                                                                                                                |
+| **P1 Risk spine**              | T2, T3, T4, T5, T6, T7               | P0                                   | Access middleware fails closed on absent/expired/wrong-aud tokens and the setup dry-run proves the intended writes; `MediaStorage` port shape frozen; Site deploys as a Worker (still serving current pages); bouncer route change authored + stub-tested (**not live**).                                                              |
+| **P2 Domain authorities**      | T8, T9, T10, T11, T14, T15, T16, T17 | P1                                   | Both authorities **fully contract-tested** (RPC union fixtures + Publisher/Store integration suites) **before any consumer binds real (non-stub) bindings**. Publisher page-ref validation exercises a real `StoreCatalog`.                                                                                                            |
+| **P3 HTTP + media + deletion** | T12, T13, T18, T19                   | P2                                   | `/api/store` answers with buyer resolution verified on the mount; media flows browser→Operator→backend with no lifecycle leak; deletion plan/confirm + GC drains pass. **Vertical smoke checkpoint:** create→autosave→publish `1.0.0` a text → `PublisherPublic` → a temporary Site `/writing/:slug` render proves the full seam once. |
+| **P4 Presentation + console**  | T20, T21, T22, T23                   | P3                                   | Site renders every public route from read models (incl. `/shop`), commerce islands work against `/api/store`, Operator console drives all eight modules, preview shows drafts. **Per-phase browser walk** on each increment.                                                                                                           |
+| **P5 Live cutover**            | T24                                  | P4 (Site renders `/shop` + T12 live) | Route table flipped, `/shop` SPA removed, storefront served by Site with **zero dark window** in production.                                                                                                                                                                                                                           |
+| **P6 Integration & DoD**       | T25                                  | P5                                   | RFC browser tests 1–14 + binding-inventory tests + Access dry-run pass; `bun run check` green; docs updated.                                                                                                                                                                                                                           |
 
 ## Critical path & parallelism
 
@@ -406,41 +408,41 @@ lifecycles (T16) parallelize with Store because only **page** publish (T17) need
 
 ## Decision coverage map
 
-| Decision | Track(s) |
-| --- | --- |
-| D1 One operator app / distributed authorities | T2, T22 |
-| D2 Focused Publisher, not a general CMS | T14, T22 (editor donors) |
-| D3 Domain ownership distributed | T8/T9/T11 (store), T15/T16/T17 (publisher) |
-| D4 Astro is sole public presentation | T6, T20, T21 |
-| D5 Account remains its own worker | T7, T24 (route table keeps `/account`) |
-| D6 Operator matches Agentic Inbox Access | T3, T4 |
-| D7 Operator server fns wrap domain RPCs | T0, T22 |
-| D8 Immutable-while-retained, deletable releases | T8, T11, T13, T16, T17, T18 |
-| D9 / D9.1 Typed page documents / software record | T17, T15, T20 |
-| D10 Media domain-owned + storage-neutral | T5, T9, T13, T15, T18, T19, T21 |
-| D11 Checkout is `/api/store` consumed by islands | T12, T21 |
-| D12 One final owner per public path | T7, T24 |
-| D13 Every operator mutation auditable | T11, T16, T22 |
-| D14 Design system shared, not route code (+ preview) | T20, T23 |
+| Decision                                             | Track(s)                                   |
+| ---------------------------------------------------- | ------------------------------------------ |
+| D1 One operator app / distributed authorities        | T2, T22                                    |
+| D2 Focused Publisher, not a general CMS              | T14, T22 (editor donors)                   |
+| D3 Domain ownership distributed                      | T8/T9/T11 (store), T15/T16/T17 (publisher) |
+| D4 Astro is sole public presentation                 | T6, T20, T21                               |
+| D5 Account remains its own worker                    | T7, T24 (route table keeps `/account`)     |
+| D6 Operator matches Agentic Inbox Access             | T3, T4                                     |
+| D7 Operator server fns wrap domain RPCs              | T0, T22                                    |
+| D8 Immutable-while-retained, deletable releases      | T8, T11, T13, T16, T17, T18                |
+| D9 / D9.1 Typed page documents / software record     | T17, T15, T20                              |
+| D10 Media domain-owned + storage-neutral             | T5, T9, T13, T15, T18, T19, T21            |
+| D11 Checkout is `/api/store` consumed by islands     | T12, T21                                   |
+| D12 One final owner per public path                  | T7, T24                                    |
+| D13 Every operator mutation auditable                | T11, T16, T22                              |
+| D14 Design system shared, not route code (+ preview) | T20, T23                                   |
 
 ## Invariant ownership map
 
-| Invariant | Owning track |
-| --- | --- |
-| INV-OP-1, INV-OP-2 | T3 / T2 + T19 + T25 (config test) |
-| INV-ACCESS-1, INV-ACCESS-2 | T3, T4 |
-| INV-AUTH-1, INV-ROUTE-1 | T7, T24 |
-| INV-DOM-1 | T8, T17 |
-| INV-PUB-1 | T15, T20 |
-| INV-SW-1, INV-SW-2 | T16 |
-| INV-REL-1 | T8, T11, T16 |
-| INV-DEL-1…4 | T13, T18 (INV-DEL-2 also T8; INV-DEL-4 also T5) |
-| INV-PAGE-1 | T17 (validators) + T20 (Site render-safety) |
-| INV-SITE-1 | T6, T20, T25 (config test) |
-| INV-CART-1, INV-CHK-1, INV-STOCK-1, INV-PAY-1 | T10, T12 |
-| INV-ORDER-1 | T8, T10 |
-| INV-MEDIA-1 | T5, T9, T15, T19, T21 |
-| INV-AUDIT-1 | T11, T16 |
+| Invariant                                     | Owning track                                    |
+| --------------------------------------------- | ----------------------------------------------- |
+| INV-OP-1, INV-OP-2                            | T3 / T2 + T19 + T25 (config test)               |
+| INV-ACCESS-1, INV-ACCESS-2                    | T3, T4                                          |
+| INV-AUTH-1, INV-ROUTE-1                       | T7, T24                                         |
+| INV-DOM-1                                     | T8, T17                                         |
+| INV-PUB-1                                     | T15, T20                                        |
+| INV-SW-1, INV-SW-2                            | T16                                             |
+| INV-REL-1                                     | T8, T11, T16                                    |
+| INV-DEL-1…4                                   | T13, T18 (INV-DEL-2 also T8; INV-DEL-4 also T5) |
+| INV-PAGE-1                                    | T17 (validators) + T20 (Site render-safety)     |
+| INV-SITE-1                                    | T6, T20, T25 (config test)                      |
+| INV-CART-1, INV-CHK-1, INV-STOCK-1, INV-PAY-1 | T10, T12                                        |
+| INV-ORDER-1                                   | T8, T10                                         |
+| INV-MEDIA-1                                   | T5, T9, T15, T19, T21                           |
+| INV-AUDIT-1                                   | T11, T16                                        |
 
 ## Test strategy
 
@@ -495,14 +497,15 @@ For each of `publisher`, `operator`, `site` (see `docs/adding-an-app.md`):
 
 - [ ] Workspace entry + `package.json` (version `0.0.0`) + `tsconfig`.
 - [ ] `wrangler.jsonc`: staging top-level + single `env.production`, name
-  `si-<svc>-<env>`, `account_id`, `compatibility_date`, `nodejs_compat`. Site +
-  Publisher are bound by bouncer (**no** `routes`/`custom_domain`); Operator
-  declares its own `desk.*` custom domain and `workers_dev:false`/`preview_urls:false`.
+      `si-<svc>-<env>`, `account_id`, `compatibility_date`, `nodejs_compat`. Site +
+      Publisher are bound by bouncer (**no** `routes`/`custom_domain`); Operator
+      declares its own `desk.*` custom domain and `workers_dev:false`/`preview_urls:false`.
 - [ ] `release-please-config.json` component + `.release-please-manifest.json`
-  entry.
+      entry — **`publisher` and `site` only**. Operator is inbox-style: no
+      release-please component and no CI deploy lane; it deploys manually.
 - [ ] `docs/ops/commit-scoping.md` scope row.
 - [ ] `scripts/dev-stack.ts`: Site + Publisher into `DEFAULT_WORKERS`; Operator
-  selectable.
+      selectable.
 - [ ] `docs/ops/env-vars.md` rows (below).
 - [ ] `bun run types` after every wrangler edit.
 - [ ] RWX CI/CD lane (or explicit note if manual, like `inbox`).
@@ -511,14 +514,14 @@ For each of `publisher`, `operator`, `site` (see `docs/adding-an-app.md`):
 
 New `docs/ops/env-vars.md` rows (RFC "Required environment contract additions"):
 
-| Variable | Consumer | Dev | Staging / production |
-| --- | --- | --- | --- |
-| `OPERATOR_URL` | Operator / bouncer docs | local URL | `https://desk.staging.somewhatintelligent.ca` / `https://desk.somewhatintelligent.ca` |
-| `POLICY_AUD` | Operator | omitted (dev actor) | Wrangler **secret**, required |
-| `TEAM_DOMAIN` | Operator | omitted (dev actor) | Wrangler **secret**, required |
-| `DEV_OPERATOR` | Operator (dev only) | fixed dev actor | absent |
-| `SITE_URL` | Site / Store checkout return | Astro local URL | public apex |
-| `PUBLISHER_URL` | Publisher diagnostics only | local URL | worker URL if a diagnostic route exists |
+| Variable        | Consumer                     | Dev                 | Staging / production                                                                  |
+| --------------- | ---------------------------- | ------------------- | ------------------------------------------------------------------------------------- |
+| `OPERATOR_URL`  | Operator / bouncer docs      | local URL           | `https://desk.staging.somewhatintelligent.ca` / `https://desk.somewhatintelligent.ca` |
+| `POLICY_AUD`    | Operator                     | omitted (dev actor) | Wrangler **secret**, required                                                         |
+| `TEAM_DOMAIN`   | Operator                     | omitted (dev actor) | Wrangler **secret**, required                                                         |
+| `DEV_OPERATOR`  | Operator (dev only)          | fixed dev actor     | absent                                                                                |
+| `SITE_URL`      | Site / Store checkout return | Astro local URL     | public apex                                                                           |
+| `PUBLISHER_URL` | Publisher diagnostics only   | local URL           | worker URL if a diagnostic route exists                                               |
 
 Config notes: workers already deploy as `si-<service>-<env>` from
 `packages/config/src/deploy.ts` (`workerPrefix:"si"`, `baseDomain:"somewhatintelligent.ca"`).
@@ -565,15 +568,15 @@ Resolve each before the phase it gates; recommendations in **bold**.
 
 ## Risks & mitigations
 
-| Risk | Mitigation |
-| --- | --- |
-| Access fails open (silent, catastrophic) | Fail-closed middleware + `ENVIRONMENT`-gated dev actor + setup dry-run land in P1 before the console (T3/T4); binding-inventory test in T25. |
-| Storefront goes dark during cutover | Never-dark rule; T24 gated on T12+T20+T21; old `/shop` kept live until replacement renders. |
-| Roadie referenceId leaks into a public contract | `MediaStorage` port frozen in P1 before schemas (T5); domain media IDs distinct from keys; T25 render/URL audits. |
-| Checkout regression when repricing off releases | T10 preserves `reserveStockAndWrite`/`computeOrderTotals`/Stripe idempotency; keep all existing Store tests green (RFC "preserve all existing … tests"). |
-| Publish batch mis-ordered → broken pointer/audit | Cross-cutting rule 2; contract + integration tests assert release-before-pointer + same-batch event. |
-| `product_release_image` snapshot forgotten | Named explicitly in T11 deliverables; browser test #6 covers publish→`/shop/:slug`. |
-| `@astrojs/cloudflare`/island choices block Site | Resolved in P1 open decisions before T6/T20 build. |
+| Risk                                             | Mitigation                                                                                                                                               |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Access fails open (silent, catastrophic)         | Fail-closed middleware + `ENVIRONMENT`-gated dev actor + setup dry-run land in P1 before the console (T3/T4); binding-inventory test in T25.             |
+| Storefront goes dark during cutover              | Never-dark rule; T24 gated on T12+T20+T21; old `/shop` kept live until replacement renders.                                                              |
+| Roadie referenceId leaks into a public contract  | `MediaStorage` port frozen in P1 before schemas (T5); domain media IDs distinct from keys; T25 render/URL audits.                                        |
+| Checkout regression when repricing off releases  | T10 preserves `reserveStockAndWrite`/`computeOrderTotals`/Stripe idempotency; keep all existing Store tests green (RFC "preserve all existing … tests"). |
+| Publish batch mis-ordered → broken pointer/audit | Cross-cutting rule 2; contract + integration tests assert release-before-pointer + same-batch event.                                                     |
+| `product_release_image` snapshot forgotten       | Named explicitly in T11 deliverables; browser test #6 covers publish→`/shop/:slug`.                                                                      |
+| `@astrojs/cloudflare`/island choices block Site  | Resolved in P1 open decisions before T6/T20 build.                                                                                                       |
 
 ## Definition of done
 
@@ -601,7 +604,9 @@ The RFC DoD, plus the proofs the critic added:
 PR titles are conventional commits `type(scope): description` (squash merges
 become the main-branch commit; release-please versions each worker). New valid
 scopes introduced by this plan: **`publisher`**, **`operator`**, **`site`**
-(added to `docs/ops/commit-scoping.md` + `release-please-config.json` in T1).
+(added to `docs/ops/commit-scoping.md` in T1). `publisher` and `site` are also
+release-please components; **`operator` is a scope only** — like `inbox` it has
+no release-please component and no CI deploy lane, and deploys manually.
 Package changes are scoped by the worker whose version must bump; `@si/contracts`
 changes scope to the consuming worker most affected. Use multi-scope
 (`feat(store,publisher): …`) when a change genuinely bumps more than one.

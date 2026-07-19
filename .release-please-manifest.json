@@ -5,6 +5,5 @@
   "workers/roadie": "0.0.2",
   "workers/identity": "0.0.8",
   "workers/store": "0.0.6",
-  "workers/publisher": "0.0.0",
-  "workers/operator": "0.0.0"
+  "workers/publisher": "0.0.0"
 }
