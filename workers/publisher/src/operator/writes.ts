@@ -33,12 +33,17 @@
  * the SAME batch as the immutable `page_release` (inserted BEFORE the pointer
  * move) and the audit event. Page deletion lands in T18.
  */
-import { type SQL, and, asc, desc, eq, inArray, isNotNull, lt, or, sql } from "drizzle-orm";
+import { type SQL, and, asc, count, desc, eq, inArray, isNotNull, lt, or, sql } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
+import type { SQLiteTable } from "drizzle-orm/sqlite-core";
 
 import { err, ok } from "@si/contracts/result";
 import { isValidVersion, validatePageDocument } from "@si/contracts";
 import type {
+  ConfirmDeletionInput,
+  DeletionError,
+  DeletionImpact,
+  DeletionPlan,
   DomainResult,
   OperatorCall,
   OperatorMeta,
@@ -74,6 +79,8 @@ const {
   pageDraft,
   pageRelease,
   operatorEvent,
+  operatorDeletionIntent,
+  mediaGcOutbox,
 } = schema;
 
 type Stmt = BatchItem<"sqlite">;
@@ -104,11 +111,60 @@ const ACTIONS = {
   pageCreate: "page.create",
   pageSave: "page.save",
   pagePublish: "page.publish",
+  // Hard-delete plan/confirm pairs (D8). The PLAN action is stamped on the
+  // `operator_deletion_intent` row (matched by confirm); the DELETE action is
+  // the `operator_event` action + the replay-idempotency key on execution.
+  textReleaseDeletePlan: "textRelease.deletePlan",
+  textReleaseDelete: "textRelease.delete",
+  textDeletePlan: "text.deletePlan",
+  textDelete: "text.delete",
+  softwareDeletePlan: "software.deletePlan",
+  softwareDelete: "software.delete",
+  tagDeletePlan: "tag.deletePlan",
+  tagDelete: "tag.delete",
+  pageReleaseDeletePlan: "pageRelease.deletePlan",
+  pageReleaseDelete: "pageRelease.delete",
+  pageDeletePlan: "page.deletePlan",
+  pageDelete: "page.delete",
+  mediaDeletePlan: "media.deletePlan",
+  mediaDelete: "media.delete",
 } as const;
 
 const ACTION_LABEL_MAX = 40;
 const DEFAULT_ACTION_LABEL = "Open system";
 const WIKILINK_RE = /\[\[([^[\]]+)\]\]/g;
+
+// A deletion plan's confirmation token is valid for ten minutes (D8).
+const DELETION_TTL_MS = 10 * 60 * 1000;
+
+/** 32-byte random confirmation token, hex-encoded (never persisted in clear). */
+function randomToken(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** Lowercase hex SHA-256 of a UTF-8 string — token hash + impact hash. */
+async function sha256Hex(input: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** Order-independent JSON: object keys sorted recursively so the impact hash is
+ *  stable regardless of `deleteCounts`/`retainedCounts` insertion order. */
+function canonicalJson(value: unknown): string {
+  const normalize = (v: unknown): unknown => {
+    if (Array.isArray(v)) return v.map(normalize);
+    if (v !== null && typeof v === "object") {
+      const out: Record<string, unknown> = {};
+      for (const key of Object.keys(v as Record<string, unknown>).sort()) {
+        out[key] = normalize((v as Record<string, unknown>)[key]);
+      }
+      return out;
+    }
+    return v;
+  };
+  return JSON.stringify(normalize(value));
+}
 
 /** Deterministic, race-safe tag id derived from its slug (INSERT-OR-IGNORE key). */
 function tagId(slug: string): string {
@@ -1255,6 +1311,9 @@ export class PublisherOperatorWrites {
     meta: OperatorMeta;
     value: unknown;
     now: number;
+    // Compact tombstone payload for deletions — identifiers + counts ONLY, never
+    // bodies or blobs (D8). Omitted (null) for ordinary mutations.
+    detail?: unknown;
   }): Stmt {
     return this.db.insert(operatorEvent).values({
       id: crypto.randomUUID(),
@@ -1266,10 +1325,18 @@ export class PublisherOperatorWrites {
       requestId: p.meta.requestId,
       idempotencyKey: p.meta.idempotencyKey,
       outcome: "success",
-      detailJson: null,
+      detailJson: p.detail === undefined ? null : JSON.stringify(p.detail),
       responseJson: JSON.stringify(p.value),
       createdAt: p.now,
     });
+  }
+
+  // The compact count-only tombstone detail for a deletion event.
+  private tombstone(impact: DeletionImpact): {
+    deleteCounts: Record<string, number>;
+    retainedCounts: Record<string, number>;
+  } {
+    return { deleteCounts: impact.deleteCounts, retainedCounts: impact.retainedCounts };
   }
 
   // ── tags + wikilinks ─────────────────────────────────────────────────────────
@@ -1642,5 +1709,1069 @@ export class PublisherOperatorWrites {
       actionLabel: row.actionLabel,
       media,
     };
+  }
+
+  // ── deletion + media GC (T18, D8/D10, INV-DEL-1/3/4) ──────────────────────────
+
+  // Mint a short-lived deletion intent: persist the token HASH + canonical impact
+  // hash bound to operator/plan-action/target, hand the clear token to the caller
+  // (INV-DEL-3). The token is never stored in clear; the impact hash lets confirm
+  // detect any dependency-graph drift.
+  private async mintPlan(
+    planAction: string,
+    descriptor: string,
+    impact: DeletionImpact,
+    meta: OperatorMeta,
+  ): Promise<DeletionPlan> {
+    const token = randomToken();
+    const now = Date.now();
+    const expiresAt = now + DELETION_TTL_MS;
+    await this.db.insert(operatorDeletionIntent).values({
+      tokenHash: await sha256Hex(token),
+      operatorSub: meta.actor.sub,
+      action: planAction,
+      targetId: descriptor,
+      impactHash: await sha256Hex(canonicalJson(impact)),
+      expiresAt,
+      consumedAt: null,
+    });
+    return { impact, confirmationToken: token, expiresAt };
+  }
+
+  // Resolve a confirmation token to its live intent, enforcing the actor/action
+  // binding, single-use (consumedAt), and expiry rules. Impact-drift is checked
+  // by the caller after re-deriving the impact from the stored descriptor.
+  private async loadValidIntent(
+    planAction: string,
+    meta: OperatorMeta,
+    token: string,
+  ): Promise<
+    { ok: true; intent: schema.OperatorDeletionIntentRow } | { ok: false; error: DeletionError }
+  > {
+    const [intent] = await this.db
+      .select()
+      .from(operatorDeletionIntent)
+      .where(eq(operatorDeletionIntent.tokenHash, await sha256Hex(token)))
+      .limit(1);
+    // Unknown token, or one minted for a different operator/plan-action, is not a
+    // usable intent for this call.
+    if (!intent) return { ok: false, error: "not_found" };
+    if (intent.operatorSub !== meta.actor.sub) return { ok: false, error: "not_found" };
+    if (intent.action !== planAction) return { ok: false, error: "not_found" };
+    if (intent.consumedAt !== null) return { ok: false, error: "deletion_already_executed" };
+    if (intent.expiresAt <= Date.now()) return { ok: false, error: "deletion_plan_expired" };
+    return { ok: true, intent };
+  }
+
+  // Consume a validated intent in the SAME batch as its deletion (single-use).
+  private consumeIntentStmt(tokenHash: string, now: number): Stmt {
+    return this.db
+      .update(operatorDeletionIntent)
+      .set({ consumedAt: now })
+      .where(eq(operatorDeletionIntent.tokenHash, tokenHash));
+  }
+
+  // A media_gc_outbox row for a logically-deleted storage key (INV-DEL-4). The
+  // physical byte delete is async + retryable and can never restore eligibility.
+  private gcOutboxStmt(storageKey: string, now: number): Stmt {
+    return this.db.insert(mediaGcOutbox).values({
+      id: crypto.randomUUID(),
+      storageKey,
+      attempts: 0,
+      nextAttemptAt: now,
+      lastError: null,
+      createdAt: now,
+    });
+  }
+
+  private async countRows(table: SQLiteTable, where: SQL | undefined): Promise<number> {
+    const [row] = await this.db.select({ value: count() }).from(table).where(where);
+    return row?.value ?? 0;
+  }
+
+  // publisher_release_media rows snapshotting a set of releases of one owner type.
+  private async releaseMediaCount(
+    ownerType: "text" | "page",
+    releaseIds: string[],
+  ): Promise<number> {
+    if (releaseIds.length === 0) return 0;
+    const [row] = await this.db
+      .select({ value: count() })
+      .from(publisherReleaseMedia)
+      .where(
+        and(
+          eq(publisherReleaseMedia.ownerType, ownerType),
+          inArray(publisherReleaseMedia.releaseId, releaseIds),
+        ),
+      );
+    return row?.value ?? 0;
+  }
+
+  private async releaseVersion(releaseId: string, kind: "text" | "page"): Promise<string | null> {
+    const table = kind === "text" ? textRelease : pageRelease;
+    const [row] = await this.db
+      .select({ version: table.version })
+      .from(table)
+      .where(eq(table.id, releaseId))
+      .limit(1);
+    return row?.version ?? null;
+  }
+
+  // Count active fixed pages whose published document features a given text or
+  // software record — the "safe dangling references" a deletion warns about (D8).
+  private async countPagesFeaturing(kind: "text" | "software", id: string): Promise<number> {
+    const rows = await this.db
+      .select({ key: pageEntry.pageKey, documentJson: pageRelease.documentJson })
+      .from(pageEntry)
+      .innerJoin(pageRelease, eq(pageRelease.id, pageEntry.activeReleaseId));
+    let n = 0;
+    for (const row of rows) {
+      const doc = this.parsePageDocument(row.key, row.documentJson);
+      if (doc === null || doc.key !== "home") continue;
+      if (kind === "text" && doc.sections.texts.featuredTextId === id) n += 1;
+      else if (kind === "software" && doc.sections.systems.featuredSoftwareId === id) n += 1;
+    }
+    return n;
+  }
+
+  // Number of ACTIVE public references to a media id: the active release of a
+  // published text/page, or a published software publication (mirrors the public
+  // reads eligibility rule).
+  private async countActiveMediaRefs(mediaId: string): Promise<number> {
+    const [textRow] = await this.db
+      .select({ value: count() })
+      .from(publisherReleaseMedia)
+      .innerJoin(textEntry, eq(textEntry.activeReleaseId, publisherReleaseMedia.releaseId))
+      .where(
+        and(
+          eq(publisherReleaseMedia.mediaId, mediaId),
+          eq(publisherReleaseMedia.ownerType, "text"),
+          eq(textEntry.state, "published"),
+        ),
+      );
+    const [pageRow] = await this.db
+      .select({ value: count() })
+      .from(publisherReleaseMedia)
+      .innerJoin(pageEntry, eq(pageEntry.activeReleaseId, publisherReleaseMedia.releaseId))
+      .where(
+        and(
+          eq(publisherReleaseMedia.mediaId, mediaId),
+          eq(publisherReleaseMedia.ownerType, "page"),
+        ),
+      );
+    const [softwareRow] = await this.db
+      .select({ value: count() })
+      .from(softwarePublicationMedia)
+      .innerJoin(softwareEntry, eq(softwareEntry.id, softwarePublicationMedia.softwareId))
+      .where(
+        and(eq(softwarePublicationMedia.mediaId, mediaId), eq(softwareEntry.state, "published")),
+      );
+    return (textRow?.value ?? 0) + (pageRow?.value ?? 0) + (softwareRow?.value ?? 0);
+  }
+
+  // ── text release deletion ────────────────────────────────────────────────────
+
+  // Impact preview for deleting one text release; null when the release/entry no
+  // longer exists or the named replacement is invalid (confirm-time drift).
+  private async buildTextReleaseImpact(
+    textId: string,
+    releaseId: string,
+    replacementReleaseId: string | null,
+  ): Promise<DeletionImpact | null> {
+    const [entry] = await this.db
+      .select({ activeReleaseId: textEntry.activeReleaseId })
+      .from(textEntry)
+      .where(eq(textEntry.id, textId))
+      .limit(1);
+    if (!entry) return null;
+    const [release] = await this.db
+      .select({ version: textRelease.version })
+      .from(textRelease)
+      .where(and(eq(textRelease.id, releaseId), eq(textRelease.textId, textId)))
+      .limit(1);
+    if (!release) return null;
+
+    let replacementVersion: string | null = null;
+    if (replacementReleaseId !== null) {
+      const [r] = await this.db
+        .select({ version: textRelease.version })
+        .from(textRelease)
+        .where(and(eq(textRelease.id, replacementReleaseId), eq(textRelease.textId, textId)))
+        .limit(1);
+      if (!r || replacementReleaseId === releaseId) return null;
+      replacementVersion = r.version;
+    }
+
+    const releaseMedia = await this.releaseMediaCount("text", [releaseId]);
+    const totalReleases = await this.countRows(textRelease, eq(textRelease.textId, textId));
+    const activeAffected = entry.activeReleaseId === releaseId;
+    const warnings: string[] = [];
+    if (activeAffected && replacementVersion !== null) {
+      warnings.push(`The active release will be repointed to version ${replacementVersion}.`);
+    } else if (activeAffected) {
+      warnings.push("Deleting the active release returns this text to draft.");
+    }
+    return {
+      targetType: "text_release",
+      targetId: releaseId,
+      label: release.version,
+      activeReleaseAffected: activeAffected,
+      deleteCounts: { releases: 1, releaseMedia },
+      retainedCounts: { siblingReleases: totalReleases - 1 },
+      warnings,
+    };
+  }
+
+  async planTextReleaseDeletion(
+    call: OperatorCall<{ textId: string; releaseId: string; replacementReleaseId?: string | null }>,
+  ): Promise<DomainResult<DeletionPlan, "not_found" | "invalid_replacement">> {
+    const { input, meta } = call;
+    const replacementReleaseId = input.replacementReleaseId ?? null;
+    const [entry] = await this.db
+      .select({ id: textEntry.id })
+      .from(textEntry)
+      .where(eq(textEntry.id, input.textId))
+      .limit(1);
+    if (!entry) return err("not_found");
+    const [release] = await this.db
+      .select({ id: textRelease.id })
+      .from(textRelease)
+      .where(and(eq(textRelease.id, input.releaseId), eq(textRelease.textId, input.textId)))
+      .limit(1);
+    if (!release) return err("not_found");
+    if (replacementReleaseId !== null) {
+      const [r] = await this.db
+        .select({ id: textRelease.id })
+        .from(textRelease)
+        .where(and(eq(textRelease.id, replacementReleaseId), eq(textRelease.textId, input.textId)))
+        .limit(1);
+      if (!r || replacementReleaseId === input.releaseId) return err("invalid_replacement");
+    }
+    const impact = await this.buildTextReleaseImpact(
+      input.textId,
+      input.releaseId,
+      replacementReleaseId,
+    );
+    if (!impact) return err("not_found");
+    const descriptor = JSON.stringify({
+      textId: input.textId,
+      releaseId: input.releaseId,
+      replacementReleaseId,
+    });
+    return ok(await this.mintPlan(ACTIONS.textReleaseDeletePlan, descriptor, impact, meta));
+  }
+
+  async deleteTextRelease(
+    call: OperatorCall<ConfirmDeletionInput>,
+  ): Promise<DomainResult<{ deleted: true; activeVersion: string | null }, DeletionError>> {
+    const { input, meta } = call;
+    const replay = await this.replayed<{ deleted: true; activeVersion: string | null }>(
+      ACTIONS.textReleaseDelete,
+      meta.idempotencyKey,
+    );
+    if (replay !== null) return ok(replay);
+
+    const valid = await this.loadValidIntent(
+      ACTIONS.textReleaseDeletePlan,
+      meta,
+      input.confirmationToken,
+    );
+    if (!valid.ok) return err(valid.error);
+    const { textId, releaseId, replacementReleaseId } = JSON.parse(valid.intent.targetId) as {
+      textId: string;
+      releaseId: string;
+      replacementReleaseId: string | null;
+    };
+    const impact = await this.buildTextReleaseImpact(textId, releaseId, replacementReleaseId);
+    if (!impact) return err("deletion_plan_mismatch");
+    if ((await sha256Hex(canonicalJson(impact))) !== valid.intent.impactHash) {
+      return err("deletion_plan_mismatch");
+    }
+
+    const [entry] = await this.db
+      .select({ activeReleaseId: textEntry.activeReleaseId })
+      .from(textEntry)
+      .where(eq(textEntry.id, textId))
+      .limit(1);
+    if (!entry) return err("deletion_plan_mismatch");
+
+    const now = Date.now();
+    const activeAffected = entry.activeReleaseId === releaseId;
+    const statements: Stmt[] = [];
+    let activeVersion: string | null;
+    if (activeAffected && replacementReleaseId !== null) {
+      // Repoint BEFORE deleting the row so the entry's SET NULL FK never fires;
+      // state is left as-is (a repointed active release stays published).
+      statements.push(
+        this.db
+          .update(textEntry)
+          .set({ activeReleaseId: replacementReleaseId, updatedAt: now })
+          .where(eq(textEntry.id, textId)),
+      );
+      activeVersion = await this.releaseVersion(replacementReleaseId, "text");
+    } else if (activeAffected) {
+      statements.push(
+        this.db
+          .update(textEntry)
+          .set({ activeReleaseId: null, state: "draft", updatedAt: now })
+          .where(eq(textEntry.id, textId)),
+      );
+      activeVersion = null;
+    } else {
+      activeVersion =
+        entry.activeReleaseId === null
+          ? null
+          : await this.releaseVersion(entry.activeReleaseId, "text");
+    }
+    statements.push(
+      this.db
+        .delete(publisherReleaseMedia)
+        .where(
+          and(
+            eq(publisherReleaseMedia.ownerType, "text"),
+            eq(publisherReleaseMedia.releaseId, releaseId),
+          ),
+        ),
+      this.db.delete(textRelease).where(eq(textRelease.id, releaseId)),
+      this.consumeIntentStmt(valid.intent.tokenHash, now),
+    );
+    const value = { deleted: true as const, activeVersion };
+    statements.push(
+      this.eventStmt({
+        action: ACTIONS.textReleaseDelete,
+        targetType: "text_release",
+        targetId: releaseId,
+        meta,
+        value,
+        now,
+        detail: this.tombstone(impact),
+      }),
+    );
+    return this.commit(ACTIONS.textReleaseDelete, meta, statements, value);
+  }
+
+  // ── text aggregate deletion ────────────────────────────────────────────────────
+
+  private async buildTextImpact(textId: string): Promise<DeletionImpact | null> {
+    const [entry] = await this.db
+      .select({ slug: textEntry.slug, activeReleaseId: textEntry.activeReleaseId })
+      .from(textEntry)
+      .where(eq(textEntry.id, textId))
+      .limit(1);
+    if (!entry) return null;
+
+    const releaseIds = (
+      await this.db
+        .select({ id: textRelease.id })
+        .from(textRelease)
+        .where(eq(textRelease.textId, textId))
+    ).map((r) => r.id);
+    const releaseMedia = await this.releaseMediaCount("text", releaseIds);
+    const media = await this.countRows(
+      publisherMedia,
+      and(eq(publisherMedia.ownerType, "text"), eq(publisherMedia.ownerId, textId)),
+    );
+    const tagLinks = await this.countRows(textTag, eq(textTag.textId, textId));
+    const wikilinks = await this.countRows(textLink, eq(textLink.fromTextId, textId));
+    const inboundWikilinks = await this.countRows(textLink, eq(textLink.toTextId, textId));
+    const referencingPages = await this.countPagesFeaturing("text", textId);
+
+    const warnings: string[] = [];
+    if (entry.activeReleaseId !== null) {
+      warnings.push("This text is currently published; its public page will 404 once deleted.");
+    }
+    if (inboundWikilinks > 0) {
+      warnings.push(`${inboundWikilinks} wikilink(s) from other texts will dangle.`);
+    }
+    if (referencingPages > 0) {
+      warnings.push(
+        `${referencingPages} published page(s) feature this text; those references will dangle.`,
+      );
+    }
+    return {
+      targetType: "text",
+      targetId: textId,
+      label: entry.slug,
+      activeReleaseAffected: entry.activeReleaseId !== null,
+      deleteCounts: { releases: releaseIds.length, releaseMedia, media, tagLinks, wikilinks },
+      retainedCounts: { inboundWikilinks, referencingPages },
+      warnings,
+    };
+  }
+
+  async planTextDeletion(
+    call: OperatorCall<{ textId: string }>,
+  ): Promise<DomainResult<DeletionPlan, "not_found">> {
+    const impact = await this.buildTextImpact(call.input.textId);
+    if (!impact) return err("not_found");
+    const descriptor = JSON.stringify({ textId: call.input.textId });
+    return ok(await this.mintPlan(ACTIONS.textDeletePlan, descriptor, impact, call.meta));
+  }
+
+  async deleteText(
+    call: OperatorCall<ConfirmDeletionInput>,
+  ): Promise<DomainResult<{ deleted: true }, DeletionError>> {
+    const { input, meta } = call;
+    const replay = await this.replayed<{ deleted: true }>(ACTIONS.textDelete, meta.idempotencyKey);
+    if (replay !== null) return ok(replay);
+
+    const valid = await this.loadValidIntent(ACTIONS.textDeletePlan, meta, input.confirmationToken);
+    if (!valid.ok) return err(valid.error);
+    const { textId } = JSON.parse(valid.intent.targetId) as { textId: string };
+    const impact = await this.buildTextImpact(textId);
+    if (!impact) return err("deletion_plan_mismatch");
+    if ((await sha256Hex(canonicalJson(impact))) !== valid.intent.impactHash) {
+      return err("deletion_plan_mismatch");
+    }
+
+    const now = Date.now();
+    const storageKeys = (
+      await this.db
+        .select({ storageKey: publisherMedia.storageKey })
+        .from(publisherMedia)
+        .where(and(eq(publisherMedia.ownerType, "text"), eq(publisherMedia.ownerId, textId)))
+    ).map((r) => r.storageKey);
+    const releaseIds = (
+      await this.db
+        .select({ id: textRelease.id })
+        .from(textRelease)
+        .where(eq(textRelease.textId, textId))
+    ).map((r) => r.id);
+
+    const statements: Stmt[] = [
+      // Break the entry→release pointer, then flip inbound wikilinks to dangling
+      // BEFORE the rows they point at vanish (SET NULL would otherwise leave a
+      // resolved-but-null link).
+      this.db.update(textEntry).set({ activeReleaseId: null }).where(eq(textEntry.id, textId)),
+      this.db
+        .update(textLink)
+        .set({ toTextId: null, isDangling: 1 })
+        .where(eq(textLink.toTextId, textId)),
+    ];
+    if (releaseIds.length > 0) {
+      statements.push(
+        this.db
+          .delete(publisherReleaseMedia)
+          .where(
+            and(
+              eq(publisherReleaseMedia.ownerType, "text"),
+              inArray(publisherReleaseMedia.releaseId, releaseIds),
+            ),
+          ),
+      );
+    }
+    statements.push(
+      this.db
+        .delete(publisherMedia)
+        .where(and(eq(publisherMedia.ownerType, "text"), eq(publisherMedia.ownerId, textId))),
+      this.db.delete(textTag).where(eq(textTag.textId, textId)),
+      this.db.delete(textLink).where(eq(textLink.fromTextId, textId)),
+      this.db.delete(textRelease).where(eq(textRelease.textId, textId)),
+      this.db.delete(textDraft).where(eq(textDraft.textId, textId)),
+      this.db.delete(textEntry).where(eq(textEntry.id, textId)),
+      ...storageKeys.map((key) => this.gcOutboxStmt(key, now)),
+      this.consumeIntentStmt(valid.intent.tokenHash, now),
+    );
+    const value = { deleted: true as const };
+    statements.push(
+      this.eventStmt({
+        action: ACTIONS.textDelete,
+        targetType: "text",
+        targetId: textId,
+        meta,
+        value,
+        now,
+        detail: this.tombstone(impact),
+      }),
+    );
+    return this.commit(ACTIONS.textDelete, meta, statements, value);
+  }
+
+  // ── software aggregate deletion ──────────────────────────────────────────────
+
+  private async buildSoftwareImpact(softwareId: string): Promise<DeletionImpact | null> {
+    const [entry] = await this.db
+      .select({ slug: softwareEntry.slug })
+      .from(softwareEntry)
+      .where(eq(softwareEntry.id, softwareId))
+      .limit(1);
+    if (!entry) return null;
+
+    const publications = await this.countRows(
+      softwarePublication,
+      eq(softwarePublication.softwareId, softwareId),
+    );
+    const publicationMedia = await this.countRows(
+      softwarePublicationMedia,
+      eq(softwarePublicationMedia.softwareId, softwareId),
+    );
+    const media = await this.countRows(
+      publisherMedia,
+      and(eq(publisherMedia.ownerType, "software"), eq(publisherMedia.ownerId, softwareId)),
+    );
+    const referencingPages = await this.countPagesFeaturing("software", softwareId);
+
+    const warnings: string[] = [];
+    if (publications > 0) {
+      warnings.push("This software is currently published; its public page will 404 once deleted.");
+    }
+    if (referencingPages > 0) {
+      warnings.push(
+        `${referencingPages} published page(s) feature this software; those references will dangle.`,
+      );
+    }
+    return {
+      targetType: "software",
+      targetId: softwareId,
+      label: entry.slug,
+      activeReleaseAffected: publications > 0,
+      deleteCounts: { publications, publicationMedia, media },
+      retainedCounts: { referencingPages },
+      warnings,
+    };
+  }
+
+  async planSoftwareDeletion(
+    call: OperatorCall<{ softwareId: string }>,
+  ): Promise<DomainResult<DeletionPlan, "not_found">> {
+    const impact = await this.buildSoftwareImpact(call.input.softwareId);
+    if (!impact) return err("not_found");
+    const descriptor = JSON.stringify({ softwareId: call.input.softwareId });
+    return ok(await this.mintPlan(ACTIONS.softwareDeletePlan, descriptor, impact, call.meta));
+  }
+
+  async deleteSoftware(
+    call: OperatorCall<ConfirmDeletionInput>,
+  ): Promise<DomainResult<{ deleted: true }, DeletionError>> {
+    const { input, meta } = call;
+    const replay = await this.replayed<{ deleted: true }>(
+      ACTIONS.softwareDelete,
+      meta.idempotencyKey,
+    );
+    if (replay !== null) return ok(replay);
+
+    const valid = await this.loadValidIntent(
+      ACTIONS.softwareDeletePlan,
+      meta,
+      input.confirmationToken,
+    );
+    if (!valid.ok) return err(valid.error);
+    const { softwareId } = JSON.parse(valid.intent.targetId) as { softwareId: string };
+    const impact = await this.buildSoftwareImpact(softwareId);
+    if (!impact) return err("deletion_plan_mismatch");
+    if ((await sha256Hex(canonicalJson(impact))) !== valid.intent.impactHash) {
+      return err("deletion_plan_mismatch");
+    }
+
+    const now = Date.now();
+    const storageKeys = (
+      await this.db
+        .select({ storageKey: publisherMedia.storageKey })
+        .from(publisherMedia)
+        .where(
+          and(eq(publisherMedia.ownerType, "software"), eq(publisherMedia.ownerId, softwareId)),
+        )
+    ).map((r) => r.storageKey);
+
+    const statements: Stmt[] = [
+      this.db
+        .delete(softwarePublicationMedia)
+        .where(eq(softwarePublicationMedia.softwareId, softwareId)),
+      this.db
+        .delete(publisherMedia)
+        .where(
+          and(eq(publisherMedia.ownerType, "software"), eq(publisherMedia.ownerId, softwareId)),
+        ),
+      this.db.delete(softwarePublication).where(eq(softwarePublication.softwareId, softwareId)),
+      this.db.delete(softwareDraft).where(eq(softwareDraft.softwareId, softwareId)),
+      this.db.delete(softwareEntry).where(eq(softwareEntry.id, softwareId)),
+      ...storageKeys.map((key) => this.gcOutboxStmt(key, now)),
+      this.consumeIntentStmt(valid.intent.tokenHash, now),
+    ];
+    const value = { deleted: true as const };
+    statements.push(
+      this.eventStmt({
+        action: ACTIONS.softwareDelete,
+        targetType: "software",
+        targetId: softwareId,
+        meta,
+        value,
+        now,
+        detail: this.tombstone(impact),
+      }),
+    );
+    return this.commit(ACTIONS.softwareDelete, meta, statements, value);
+  }
+
+  // ── tag deletion ─────────────────────────────────────────────────────────────
+
+  private async buildTagImpact(tagId: string): Promise<DeletionImpact | null> {
+    const [row] = await this.db
+      .select({ slug: tag.slug })
+      .from(tag)
+      .where(eq(tag.id, tagId))
+      .limit(1);
+    if (!row) return null;
+    const taggedTexts = await this.countRows(textTag, eq(textTag.tagId, tagId));
+    const warnings: string[] = [];
+    if (taggedTexts > 0) {
+      warnings.push(`${taggedTexts} text(s) use this tag and remain unchanged.`);
+    }
+    return {
+      targetType: "tag",
+      targetId: tagId,
+      label: row.slug,
+      activeReleaseAffected: false,
+      deleteCounts: { tags: 1, tagLinks: taggedTexts },
+      retainedCounts: { taggedTexts },
+      warnings,
+    };
+  }
+
+  async planTagDeletion(
+    call: OperatorCall<{ tagId: string }>,
+  ): Promise<DomainResult<DeletionPlan, "not_found">> {
+    const impact = await this.buildTagImpact(call.input.tagId);
+    if (!impact) return err("not_found");
+    const descriptor = JSON.stringify({ tagId: call.input.tagId });
+    return ok(await this.mintPlan(ACTIONS.tagDeletePlan, descriptor, impact, call.meta));
+  }
+
+  async deleteTag(
+    call: OperatorCall<ConfirmDeletionInput>,
+  ): Promise<DomainResult<{ deleted: true }, DeletionError>> {
+    const { input, meta } = call;
+    const replay = await this.replayed<{ deleted: true }>(ACTIONS.tagDelete, meta.idempotencyKey);
+    if (replay !== null) return ok(replay);
+
+    const valid = await this.loadValidIntent(ACTIONS.tagDeletePlan, meta, input.confirmationToken);
+    if (!valid.ok) return err(valid.error);
+    const { tagId } = JSON.parse(valid.intent.targetId) as { tagId: string };
+    const impact = await this.buildTagImpact(tagId);
+    if (!impact) return err("deletion_plan_mismatch");
+    if ((await sha256Hex(canonicalJson(impact))) !== valid.intent.impactHash) {
+      return err("deletion_plan_mismatch");
+    }
+
+    const now = Date.now();
+    const statements: Stmt[] = [
+      this.db.delete(textTag).where(eq(textTag.tagId, tagId)),
+      this.db.delete(tag).where(eq(tag.id, tagId)),
+      this.consumeIntentStmt(valid.intent.tokenHash, now),
+    ];
+    const value = { deleted: true as const };
+    statements.push(
+      this.eventStmt({
+        action: ACTIONS.tagDelete,
+        targetType: "tag",
+        targetId: tagId,
+        meta,
+        value,
+        now,
+        detail: this.tombstone(impact),
+      }),
+    );
+    return this.commit(ACTIONS.tagDelete, meta, statements, value);
+  }
+
+  // ── page release deletion ──────────────────────────────────────────────────────
+
+  private async buildPageReleaseImpact(
+    pageKey: PageKey,
+    releaseId: string,
+    replacementReleaseId: string | null,
+  ): Promise<DeletionImpact | null> {
+    const [entry] = await this.db
+      .select({ id: pageEntry.id, activeReleaseId: pageEntry.activeReleaseId })
+      .from(pageEntry)
+      .where(eq(pageEntry.pageKey, pageKey))
+      .limit(1);
+    if (!entry) return null;
+    const [release] = await this.db
+      .select({ version: pageRelease.version })
+      .from(pageRelease)
+      .where(and(eq(pageRelease.id, releaseId), eq(pageRelease.pageId, entry.id)))
+      .limit(1);
+    if (!release) return null;
+
+    let replacementVersion: string | null = null;
+    if (replacementReleaseId !== null) {
+      const [r] = await this.db
+        .select({ version: pageRelease.version })
+        .from(pageRelease)
+        .where(and(eq(pageRelease.id, replacementReleaseId), eq(pageRelease.pageId, entry.id)))
+        .limit(1);
+      if (!r || replacementReleaseId === releaseId) return null;
+      replacementVersion = r.version;
+    }
+
+    const releaseMedia = await this.releaseMediaCount("page", [releaseId]);
+    const totalReleases = await this.countRows(pageRelease, eq(pageRelease.pageId, entry.id));
+    const activeAffected = entry.activeReleaseId === releaseId;
+    const warnings: string[] = [];
+    if (activeAffected && replacementVersion !== null) {
+      warnings.push(`The active release will be repointed to version ${replacementVersion}.`);
+    } else if (activeAffected) {
+      warnings.push("The page will have no published document until republished.");
+    }
+    return {
+      targetType: "page_release",
+      targetId: releaseId,
+      label: release.version,
+      activeReleaseAffected: activeAffected,
+      deleteCounts: { releases: 1, releaseMedia },
+      retainedCounts: { siblingReleases: totalReleases - 1 },
+      warnings,
+    };
+  }
+
+  async planPageReleaseDeletion(
+    call: OperatorCall<{ key: PageKey; releaseId: string; replacementReleaseId?: string | null }>,
+  ): Promise<DomainResult<DeletionPlan, "not_found" | "invalid_replacement">> {
+    const { input, meta } = call;
+    const replacementReleaseId = input.replacementReleaseId ?? null;
+    const [entry] = await this.db
+      .select({ id: pageEntry.id })
+      .from(pageEntry)
+      .where(eq(pageEntry.pageKey, input.key))
+      .limit(1);
+    if (!entry) return err("not_found");
+    const [release] = await this.db
+      .select({ id: pageRelease.id })
+      .from(pageRelease)
+      .where(and(eq(pageRelease.id, input.releaseId), eq(pageRelease.pageId, entry.id)))
+      .limit(1);
+    if (!release) return err("not_found");
+    if (replacementReleaseId !== null) {
+      const [r] = await this.db
+        .select({ id: pageRelease.id })
+        .from(pageRelease)
+        .where(and(eq(pageRelease.id, replacementReleaseId), eq(pageRelease.pageId, entry.id)))
+        .limit(1);
+      if (!r || replacementReleaseId === input.releaseId) return err("invalid_replacement");
+    }
+    const impact = await this.buildPageReleaseImpact(
+      input.key,
+      input.releaseId,
+      replacementReleaseId,
+    );
+    if (!impact) return err("not_found");
+    const descriptor = JSON.stringify({
+      pageKey: input.key,
+      releaseId: input.releaseId,
+      replacementReleaseId,
+    });
+    return ok(await this.mintPlan(ACTIONS.pageReleaseDeletePlan, descriptor, impact, meta));
+  }
+
+  async deletePageRelease(
+    call: OperatorCall<ConfirmDeletionInput>,
+  ): Promise<DomainResult<{ deleted: true; activeVersion: string | null }, DeletionError>> {
+    const { input, meta } = call;
+    const replay = await this.replayed<{ deleted: true; activeVersion: string | null }>(
+      ACTIONS.pageReleaseDelete,
+      meta.idempotencyKey,
+    );
+    if (replay !== null) return ok(replay);
+
+    const valid = await this.loadValidIntent(
+      ACTIONS.pageReleaseDeletePlan,
+      meta,
+      input.confirmationToken,
+    );
+    if (!valid.ok) return err(valid.error);
+    const { pageKey, releaseId, replacementReleaseId } = JSON.parse(valid.intent.targetId) as {
+      pageKey: PageKey;
+      releaseId: string;
+      replacementReleaseId: string | null;
+    };
+    const impact = await this.buildPageReleaseImpact(pageKey, releaseId, replacementReleaseId);
+    if (!impact) return err("deletion_plan_mismatch");
+    if ((await sha256Hex(canonicalJson(impact))) !== valid.intent.impactHash) {
+      return err("deletion_plan_mismatch");
+    }
+
+    const [entry] = await this.db
+      .select({ id: pageEntry.id, activeReleaseId: pageEntry.activeReleaseId })
+      .from(pageEntry)
+      .where(eq(pageEntry.pageKey, pageKey))
+      .limit(1);
+    if (!entry) return err("deletion_plan_mismatch");
+
+    const now = Date.now();
+    const activeAffected = entry.activeReleaseId === releaseId;
+    const statements: Stmt[] = [];
+    let activeVersion: string | null;
+    if (activeAffected) {
+      statements.push(
+        this.db
+          .update(pageEntry)
+          .set({ activeReleaseId: replacementReleaseId, updatedAt: now })
+          .where(eq(pageEntry.id, entry.id)),
+      );
+      activeVersion =
+        replacementReleaseId === null
+          ? null
+          : await this.releaseVersion(replacementReleaseId, "page");
+    } else {
+      activeVersion =
+        entry.activeReleaseId === null
+          ? null
+          : await this.releaseVersion(entry.activeReleaseId, "page");
+    }
+    statements.push(
+      this.db
+        .delete(publisherReleaseMedia)
+        .where(
+          and(
+            eq(publisherReleaseMedia.ownerType, "page"),
+            eq(publisherReleaseMedia.releaseId, releaseId),
+          ),
+        ),
+      this.db.delete(pageRelease).where(eq(pageRelease.id, releaseId)),
+      this.consumeIntentStmt(valid.intent.tokenHash, now),
+    );
+    const value = { deleted: true as const, activeVersion };
+    statements.push(
+      this.eventStmt({
+        action: ACTIONS.pageReleaseDelete,
+        targetType: "page_release",
+        targetId: releaseId,
+        meta,
+        value,
+        now,
+        detail: this.tombstone(impact),
+      }),
+    );
+    return this.commit(ACTIONS.pageReleaseDelete, meta, statements, value);
+  }
+
+  // ── page aggregate deletion ────────────────────────────────────────────────────
+
+  private async buildPageImpact(pageKey: PageKey): Promise<DeletionImpact | null> {
+    const [entry] = await this.db
+      .select({ id: pageEntry.id, activeReleaseId: pageEntry.activeReleaseId })
+      .from(pageEntry)
+      .where(eq(pageEntry.pageKey, pageKey))
+      .limit(1);
+    if (!entry) return null;
+
+    const releaseIds = (
+      await this.db
+        .select({ id: pageRelease.id })
+        .from(pageRelease)
+        .where(eq(pageRelease.pageId, entry.id))
+    ).map((r) => r.id);
+    const releaseMedia = await this.releaseMediaCount("page", releaseIds);
+    const media = await this.countRows(
+      publisherMedia,
+      and(eq(publisherMedia.ownerType, "page"), eq(publisherMedia.ownerId, entry.id)),
+    );
+    const warnings: string[] = [];
+    if (entry.activeReleaseId !== null) {
+      warnings.push(
+        "This page is currently published; its public route will 404 until republished.",
+      );
+    }
+    return {
+      targetType: "page",
+      targetId: entry.id,
+      label: pageKey,
+      activeReleaseAffected: entry.activeReleaseId !== null,
+      deleteCounts: { releases: releaseIds.length, releaseMedia, media },
+      retainedCounts: {},
+      warnings,
+    };
+  }
+
+  async planPageDeletion(
+    call: OperatorCall<{ key: PageKey }>,
+  ): Promise<DomainResult<DeletionPlan, "not_found">> {
+    const impact = await this.buildPageImpact(call.input.key);
+    if (!impact) return err("not_found");
+    const descriptor = JSON.stringify({ pageKey: call.input.key });
+    return ok(await this.mintPlan(ACTIONS.pageDeletePlan, descriptor, impact, call.meta));
+  }
+
+  async deletePage(
+    call: OperatorCall<ConfirmDeletionInput>,
+  ): Promise<DomainResult<{ deleted: true }, DeletionError>> {
+    const { input, meta } = call;
+    const replay = await this.replayed<{ deleted: true }>(ACTIONS.pageDelete, meta.idempotencyKey);
+    if (replay !== null) return ok(replay);
+
+    const valid = await this.loadValidIntent(ACTIONS.pageDeletePlan, meta, input.confirmationToken);
+    if (!valid.ok) return err(valid.error);
+    const { pageKey } = JSON.parse(valid.intent.targetId) as { pageKey: PageKey };
+    const impact = await this.buildPageImpact(pageKey);
+    if (!impact) return err("deletion_plan_mismatch");
+    if ((await sha256Hex(canonicalJson(impact))) !== valid.intent.impactHash) {
+      return err("deletion_plan_mismatch");
+    }
+
+    const [entry] = await this.db
+      .select({ id: pageEntry.id })
+      .from(pageEntry)
+      .where(eq(pageEntry.pageKey, pageKey))
+      .limit(1);
+    if (!entry) return err("deletion_plan_mismatch");
+
+    const now = Date.now();
+    const pageId = entry.id;
+    const storageKeys = (
+      await this.db
+        .select({ storageKey: publisherMedia.storageKey })
+        .from(publisherMedia)
+        .where(and(eq(publisherMedia.ownerType, "page"), eq(publisherMedia.ownerId, pageId)))
+    ).map((r) => r.storageKey);
+    const releaseIds = (
+      await this.db
+        .select({ id: pageRelease.id })
+        .from(pageRelease)
+        .where(eq(pageRelease.pageId, pageId))
+    ).map((r) => r.id);
+
+    const statements: Stmt[] = [
+      this.db.update(pageEntry).set({ activeReleaseId: null }).where(eq(pageEntry.id, pageId)),
+    ];
+    if (releaseIds.length > 0) {
+      statements.push(
+        this.db
+          .delete(publisherReleaseMedia)
+          .where(
+            and(
+              eq(publisherReleaseMedia.ownerType, "page"),
+              inArray(publisherReleaseMedia.releaseId, releaseIds),
+            ),
+          ),
+      );
+    }
+    statements.push(
+      this.db
+        .delete(publisherMedia)
+        .where(and(eq(publisherMedia.ownerType, "page"), eq(publisherMedia.ownerId, pageId))),
+      this.db.delete(pageRelease).where(eq(pageRelease.pageId, pageId)),
+      this.db.delete(pageDraft).where(eq(pageDraft.pageId, pageId)),
+      this.db.delete(pageEntry).where(eq(pageEntry.id, pageId)),
+      ...storageKeys.map((key) => this.gcOutboxStmt(key, now)),
+      this.consumeIntentStmt(valid.intent.tokenHash, now),
+    );
+    const value = { deleted: true as const };
+    statements.push(
+      this.eventStmt({
+        action: ACTIONS.pageDelete,
+        targetType: "page",
+        targetId: pageId,
+        meta,
+        value,
+        now,
+        detail: this.tombstone(impact),
+      }),
+    );
+    return this.commit(ACTIONS.pageDelete, meta, statements, value);
+  }
+
+  // ── media deletion ─────────────────────────────────────────────────────────────
+
+  private async buildMediaImpact(mediaId: string): Promise<DeletionImpact | null> {
+    const [row] = await this.db
+      .select({ alt: publisherMedia.alt })
+      .from(publisherMedia)
+      .where(eq(publisherMedia.id, mediaId))
+      .limit(1);
+    if (!row) return null;
+    const activeRefs = await this.countActiveMediaRefs(mediaId);
+    const releaseSnapshots = await this.countRows(
+      publisherReleaseMedia,
+      eq(publisherReleaseMedia.mediaId, mediaId),
+    );
+    const publicationSnapshots = await this.countRows(
+      softwarePublicationMedia,
+      eq(softwarePublicationMedia.mediaId, mediaId),
+    );
+    const warnings: string[] = [];
+    if (activeRefs > 0) {
+      warnings.push(
+        `This media is shown by ${activeRefs} active release(s)/publication(s) and will be removed from them.`,
+      );
+    }
+    return {
+      targetType: "media",
+      targetId: mediaId,
+      label: row.alt.length > 0 ? row.alt : mediaId,
+      activeReleaseAffected: activeRefs > 0,
+      deleteCounts: { media: 1, releaseSnapshots, publicationSnapshots },
+      retainedCounts: {},
+      warnings,
+    };
+  }
+
+  async planMediaDeletion(
+    call: OperatorCall<{ mediaId: string }>,
+  ): Promise<DomainResult<DeletionPlan, "not_found">> {
+    const impact = await this.buildMediaImpact(call.input.mediaId);
+    if (!impact) return err("not_found");
+    const descriptor = JSON.stringify({ mediaId: call.input.mediaId });
+    return ok(await this.mintPlan(ACTIONS.mediaDeletePlan, descriptor, impact, call.meta));
+  }
+
+  async deleteMedia(
+    call: OperatorCall<ConfirmDeletionInput>,
+  ): Promise<DomainResult<{ deleted: true }, DeletionError>> {
+    const { input, meta } = call;
+    const replay = await this.replayed<{ deleted: true }>(ACTIONS.mediaDelete, meta.idempotencyKey);
+    if (replay !== null) return ok(replay);
+
+    const valid = await this.loadValidIntent(
+      ACTIONS.mediaDeletePlan,
+      meta,
+      input.confirmationToken,
+    );
+    if (!valid.ok) return err(valid.error);
+    const { mediaId } = JSON.parse(valid.intent.targetId) as { mediaId: string };
+    const impact = await this.buildMediaImpact(mediaId);
+    if (!impact) return err("deletion_plan_mismatch");
+    if ((await sha256Hex(canonicalJson(impact))) !== valid.intent.impactHash) {
+      return err("deletion_plan_mismatch");
+    }
+
+    const [row] = await this.db
+      .select({ storageKey: publisherMedia.storageKey })
+      .from(publisherMedia)
+      .where(eq(publisherMedia.id, mediaId))
+      .limit(1);
+    if (!row) return err("deletion_plan_mismatch");
+
+    const now = Date.now();
+    const statements: Stmt[] = [
+      this.db.delete(publisherReleaseMedia).where(eq(publisherReleaseMedia.mediaId, mediaId)),
+      this.db.delete(softwarePublicationMedia).where(eq(softwarePublicationMedia.mediaId, mediaId)),
+      // Text-column primary-media pointers carry no FK — null them so no draft or
+      // publication is left naming a deleted media.
+      this.db
+        .update(softwarePublication)
+        .set({ primaryMediaId: null })
+        .where(eq(softwarePublication.primaryMediaId, mediaId)),
+      this.db
+        .update(softwareDraft)
+        .set({ primaryMediaId: null })
+        .where(eq(softwareDraft.primaryMediaId, mediaId)),
+      this.db.delete(publisherMedia).where(eq(publisherMedia.id, mediaId)),
+      this.gcOutboxStmt(row.storageKey, now),
+      this.consumeIntentStmt(valid.intent.tokenHash, now),
+    ];
+    const value = { deleted: true as const };
+    statements.push(
+      this.eventStmt({
+        action: ACTIONS.mediaDelete,
+        targetType: "media",
+        targetId: mediaId,
+        meta,
+        value,
+        now,
+        detail: this.tombstone(impact),
+      }),
+    );
+    return this.commit(ACTIONS.mediaDelete, meta, statements, value);
   }
 }

@@ -12,8 +12,9 @@
  * in `./public/reads`. `PublisherOperator` is likewise a thin adapter over
  * `PublisherOperatorWrites` in `./operator/writes` for the text + software
  * lifecycles (T16) and the page lifecycle (T17, whose publish gates references
- * through the `StoreCatalog` binding); deletion lands in T18 (its methods throw
- * a clear not-implemented until then).
+ * through the `StoreCatalog` binding); the two-step hard-delete + media GC
+ * lifecycle lands in T18. The default export's `scheduled` cron drains the
+ * media GC outbox.
  */
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { drizzle } from "drizzle-orm/d1";
@@ -110,9 +111,9 @@ export class PublisherPublic
 /**
  * `PublisherOperator` — Operator-bound, mutation (RFC-0001 "PublisherOperator
  * RPC"). Each success produces exactly one domain mutation and one
- * `operator_event` in the same D1 batch (INV-AUDIT-1). Text + software (T16) and
- * page (T17) lifecycles delegate to `PublisherOperatorWrites`; deletion methods
- * throw until T18.
+ * `operator_event` in the same D1 batch (INV-AUDIT-1). Text + software (T16),
+ * page (T17), and hard-delete (T18) lifecycles all delegate to
+ * `PublisherOperatorWrites`.
  */
 export class PublisherOperator
   extends WorkerEntrypoint<PublisherEnv>
@@ -305,97 +306,110 @@ export class PublisherOperator
   // ── deletion + media GC (T18) ─────────────────────────────────────────────────
 
   planTextReleaseDeletion(
-    _call: OperatorCall<{
+    call: OperatorCall<{
       textId: string;
       releaseId: string;
       replacementReleaseId?: string | null;
     }>,
   ): Promise<DomainResult<DeletionPlan, "not_found" | "invalid_replacement">> {
-    throw new Error("PublisherOperator.planTextReleaseDeletion not implemented (RFC-0001 T18)");
+    return this.writes().planTextReleaseDeletion(call);
   }
 
   deleteTextRelease(
-    _call: OperatorCall<ConfirmDeletionInput>,
+    call: OperatorCall<ConfirmDeletionInput>,
   ): Promise<DomainResult<{ deleted: true; activeVersion: string | null }, DeletionError>> {
-    throw new Error("PublisherOperator.deleteTextRelease not implemented (RFC-0001 T18)");
+    return this.writes().deleteTextRelease(call);
   }
 
   planTextDeletion(
-    _call: OperatorCall<{ textId: string }>,
+    call: OperatorCall<{ textId: string }>,
   ): Promise<DomainResult<DeletionPlan, "not_found">> {
-    throw new Error("PublisherOperator.planTextDeletion not implemented (RFC-0001 T18)");
+    return this.writes().planTextDeletion(call);
   }
 
   deleteText(
-    _call: OperatorCall<ConfirmDeletionInput>,
+    call: OperatorCall<ConfirmDeletionInput>,
   ): Promise<DomainResult<{ deleted: true }, DeletionError>> {
-    throw new Error("PublisherOperator.deleteText not implemented (RFC-0001 T18)");
+    return this.writes().deleteText(call);
   }
 
   planSoftwareDeletion(
-    _call: OperatorCall<{ softwareId: string }>,
+    call: OperatorCall<{ softwareId: string }>,
   ): Promise<DomainResult<DeletionPlan, "not_found">> {
-    throw new Error("PublisherOperator.planSoftwareDeletion not implemented (RFC-0001 T18)");
+    return this.writes().planSoftwareDeletion(call);
   }
 
   deleteSoftware(
-    _call: OperatorCall<ConfirmDeletionInput>,
+    call: OperatorCall<ConfirmDeletionInput>,
   ): Promise<DomainResult<{ deleted: true }, DeletionError>> {
-    throw new Error("PublisherOperator.deleteSoftware not implemented (RFC-0001 T18)");
+    return this.writes().deleteSoftware(call);
   }
 
   planTagDeletion(
-    _call: OperatorCall<{ tagId: string }>,
+    call: OperatorCall<{ tagId: string }>,
   ): Promise<DomainResult<DeletionPlan, "not_found">> {
-    throw new Error("PublisherOperator.planTagDeletion not implemented (RFC-0001 T18)");
+    return this.writes().planTagDeletion(call);
   }
 
   deleteTag(
-    _call: OperatorCall<ConfirmDeletionInput>,
+    call: OperatorCall<ConfirmDeletionInput>,
   ): Promise<DomainResult<{ deleted: true }, DeletionError>> {
-    throw new Error("PublisherOperator.deleteTag not implemented (RFC-0001 T18)");
+    return this.writes().deleteTag(call);
   }
 
   planPageReleaseDeletion(
-    _call: OperatorCall<{ key: PageKey; releaseId: string; replacementReleaseId?: string | null }>,
+    call: OperatorCall<{ key: PageKey; releaseId: string; replacementReleaseId?: string | null }>,
   ): Promise<DomainResult<DeletionPlan, "not_found" | "invalid_replacement">> {
-    throw new Error("PublisherOperator.planPageReleaseDeletion not implemented (RFC-0001 T18)");
+    return this.writes().planPageReleaseDeletion(call);
   }
 
   deletePageRelease(
-    _call: OperatorCall<ConfirmDeletionInput>,
+    call: OperatorCall<ConfirmDeletionInput>,
   ): Promise<DomainResult<{ deleted: true; activeVersion: string | null }, DeletionError>> {
-    throw new Error("PublisherOperator.deletePageRelease not implemented (RFC-0001 T18)");
+    return this.writes().deletePageRelease(call);
   }
 
   planPageDeletion(
-    _call: OperatorCall<{ key: PageKey }>,
+    call: OperatorCall<{ key: PageKey }>,
   ): Promise<DomainResult<DeletionPlan, "not_found">> {
-    throw new Error("PublisherOperator.planPageDeletion not implemented (RFC-0001 T18)");
+    return this.writes().planPageDeletion(call);
   }
 
   deletePage(
-    _call: OperatorCall<ConfirmDeletionInput>,
+    call: OperatorCall<ConfirmDeletionInput>,
   ): Promise<DomainResult<{ deleted: true }, DeletionError>> {
-    throw new Error("PublisherOperator.deletePage not implemented (RFC-0001 T18)");
+    return this.writes().deletePage(call);
   }
 
   planMediaDeletion(
-    _call: OperatorCall<{ mediaId: string }>,
+    call: OperatorCall<{ mediaId: string }>,
   ): Promise<DomainResult<DeletionPlan, "not_found">> {
-    throw new Error("PublisherOperator.planMediaDeletion not implemented (RFC-0001 T18)");
+    return this.writes().planMediaDeletion(call);
   }
 
   deleteMedia(
-    _call: OperatorCall<ConfirmDeletionInput>,
+    call: OperatorCall<ConfirmDeletionInput>,
   ): Promise<DomainResult<{ deleted: true }, DeletionError>> {
-    throw new Error("PublisherOperator.deleteMedia not implemented (RFC-0001 T18)");
+    return this.writes().deleteMedia(call);
   }
 }
 
-/** Diagnostics-only fetch handler; Publisher has no public HTTP surface. */
+/**
+ * Diagnostics-only fetch handler (Publisher has no public HTTP surface) plus the
+ * media GC cron. The scheduled sweep drains `media_gc_outbox` — the durable queue
+ * of storage keys a hard delete logically removed — through the Roadie-backed
+ * MediaStorage port (RFC-0001 D10, INV-DEL-4). The drain + adapter are resolved
+ * by lazy dynamic import so the RPC entrypoints never pay for the GC path.
+ */
 export default {
   fetch(): Response {
     return new Response("publisher", { status: 200 });
+  },
+  async scheduled(_controller: ScheduledController, env: PublisherEnv): Promise<void> {
+    const { drainMediaGc } = await import("./lib/media-gc");
+    const storage = createRoadieMediaStorage(getRoadie(env), {
+      application: PUBLISHER_MEDIA_APPLICATION,
+    });
+    await drainMediaGc({ db: drizzle(env.DB, { schema }), storage });
   },
 };

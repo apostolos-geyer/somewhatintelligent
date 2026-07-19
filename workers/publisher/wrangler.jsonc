@@ -24,6 +24,12 @@
   "vars": {
     "ENVIRONMENT": "staging",
   },
+  // Media GC sweep — drains media_gc_outbox (physical byte cleanup after a hard
+  // delete, INV-DEL-4) via scheduled() in src/index.ts. Named envs don't
+  // inherit, so env.production re-declares this.
+  "triggers": {
+    "crons": ["*/15 * * * *"],
+  },
   "d1_databases": [
     {
       "binding": "DB",
@@ -53,6 +59,9 @@
       "name": "si-publisher-production",
       "vars": {
         "ENVIRONMENT": "production",
+      },
+      "triggers": {
+        "crons": ["*/15 * * * *"],
       },
       "d1_databases": [
         {

@@ -111,6 +111,10 @@ export function createRoadieMediaStorage(
     async delete(input) {
       try {
         const result = await client.removeReference({ referenceId: input.key });
+        // removeReference is idempotent: a gone/cross-caller reference resolves
+        // ok, so an already-absent blob passes through as a settled delete (the
+        // media GC drain treats ok and not_found identically). A genuine failure
+        // surfaces as `unavailable` and the outbox row is retried.
         if (!result.ok) return UNAVAILABLE;
         return { ok: true, value: undefined };
       } catch {

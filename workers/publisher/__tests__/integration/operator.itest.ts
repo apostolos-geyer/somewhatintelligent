@@ -16,6 +16,9 @@ import { and, eq } from "drizzle-orm";
 import * as schema from "@/schema";
 import type { OperatorCall } from "@si/contracts";
 import { PublisherOperatorWrites } from "@/operator/writes";
+import { PublisherPublicReads } from "@/public/reads";
+import type { MediaStorage } from "@/lib/media-storage";
+import { DEFAULT_PAGE_DOCUMENTS } from "@/lib/default-page-documents";
 
 const db = drizzle(env.DB, { schema });
 
@@ -32,7 +35,11 @@ const {
   softwarePublicationMedia,
   publisherMedia,
   publisherReleaseMedia,
+  pageEntry,
+  pageRelease,
   operatorEvent,
+  operatorDeletionIntent,
+  mediaGcOutbox,
 } = schema;
 
 const SUB = "op-sub";
@@ -62,9 +69,29 @@ function call<T>(input: T, idempotencyKey = crypto.randomUUID()): OperatorCall<T
   };
 }
 
+// A media adapter whose read() always succeeds — public eligibility for a media
+// id turns on the DB snapshot join, not the byte read, so this lets
+// openPublishedMedia return ok while the media is snapshotted by an active
+// release and not_found once the row is gone.
+const okMedia: MediaStorage = {
+  async put() {
+    return { ok: true, value: { key: "k" } };
+  },
+  async read() {
+    return { ok: true, value: new Response("bytes") };
+  },
+  async delete() {
+    return { ok: true, value: undefined };
+  },
+};
+
+function reads(): PublisherPublicReads {
+  return new PublisherPublicReads({ db, media: okMedia });
+}
+
 async function seedReadyMedia(
   id: string,
-  ownerType: "text" | "software",
+  ownerType: "text" | "software" | "page",
   ownerId: string,
   position = 0,
 ) {
@@ -105,8 +132,11 @@ beforeEach(async () => {
   await db.delete(publisherMedia);
   await db.delete(textEntry);
   await db.delete(softwareEntry);
+  await db.delete(pageEntry);
   await db.delete(tag);
   await db.delete(operatorEvent);
+  await db.delete(operatorDeletionIntent);
+  await db.delete(mediaGcOutbox);
 });
 
 // ── text drafts: create + optimistic concurrency ─────────────────────────────
@@ -620,5 +650,411 @@ describe("operator reads — listTexts / getText / listSoftware / getSoftware", 
       ok: false,
       error: "invalid_cursor",
     });
+  });
+});
+
+// ── hard-delete (T18) ─────────────────────────────────────────────────────────
+
+async function publishTextVersion(
+  textId: string,
+  version: string,
+  expectedRevision: number,
+): Promise<{ releaseId: string; version: string; publishedAt: number }> {
+  const res = await writes().publishText(call({ textId, expectedRevision, version }));
+  if (!res.ok) throw new Error(`publishText failed: ${res.error}`);
+  return res.value;
+}
+
+async function createAboutPage(): Promise<string> {
+  const doc = structuredClone(DEFAULT_PAGE_DOCUMENTS.about);
+  const res = await writes().createPage(call({ key: "about", document: doc }));
+  if (!res.ok) throw new Error(`createPage failed: ${res.error}`);
+  return res.value.pageId;
+}
+
+async function publishAbout(
+  version: string,
+  expectedRevision: number,
+): Promise<{ releaseId: string; version: string; publishedAt: number }> {
+  const res = await writes().publishPage(call({ key: "about", expectedRevision, version }));
+  if (!res.ok) throw new Error(`publishPage failed: ${res.error}`);
+  return res.value;
+}
+
+// A confirm call authored by a DIFFERENT operator than the plan.
+function confirmAs(token: string, sub: string): OperatorCall<{ confirmationToken: string }> {
+  return {
+    input: { confirmationToken: token },
+    meta: {
+      actor: { sub, email: `${sub}@example.com` },
+      requestId: crypto.randomUUID(),
+      idempotencyKey: crypto.randomUUID(),
+    },
+  };
+}
+
+describe("deletion plans — impact accuracy + bound token", () => {
+  it("planTextReleaseDeletion reports the active release + snapshot media counts", async () => {
+    const textId = await createTextOk("essay");
+    await seedReadyMedia("m1", "text", textId, 0);
+    const pub = await publishTextVersion(textId, "1.0.0", 1);
+
+    const plan = await writes().planTextReleaseDeletion(call({ textId, releaseId: pub.releaseId }));
+    expect(plan.ok).toBe(true);
+    if (!plan.ok) return;
+    const imp = plan.value.impact;
+    expect(imp.targetType).toBe("text_release");
+    expect(imp.targetId).toBe(pub.releaseId);
+    expect(imp.activeReleaseAffected).toBe(true);
+    expect(imp.deleteCounts).toEqual({ releases: 1, releaseMedia: 1 });
+    expect(imp.warnings.some((w) => /returns this text to draft/.test(w))).toBe(true);
+    expect(plan.value.confirmationToken.length).toBeGreaterThan(0);
+    expect(plan.value.expiresAt).toBeGreaterThan(Date.now());
+
+    // The stored intent keeps a HASH, never the clear token.
+    const intents = await db.select().from(operatorDeletionIntent);
+    expect(intents.length).toBe(1);
+    expect(intents[0]?.tokenHash).not.toBe(plan.value.confirmationToken);
+    expect(intents[0]?.action).toBe("textRelease.deletePlan");
+  });
+
+  it("planTextReleaseDeletion rejects a replacement from another aggregate or the target", async () => {
+    const a = await createTextOk("a");
+    const b = await createTextOk("b");
+    const ra = await publishTextVersion(a, "1.0.0", 1);
+    const rb = await publishTextVersion(b, "1.0.0", 1);
+
+    expect(
+      await writes().planTextReleaseDeletion(
+        call({ textId: a, releaseId: ra.releaseId, replacementReleaseId: rb.releaseId }),
+      ),
+    ).toEqual({ ok: false, error: "invalid_replacement" });
+    expect(
+      await writes().planTextReleaseDeletion(
+        call({ textId: a, releaseId: ra.releaseId, replacementReleaseId: ra.releaseId }),
+      ),
+    ).toEqual({ ok: false, error: "invalid_replacement" });
+  });
+
+  it("planTextDeletion counts releases, media, tags, wikilinks + inbound dangling", async () => {
+    const target = await createTextOk("target");
+    const from = await createTextOk("from");
+    await writes().saveTextDraft(
+      call({ textId: target, expectedRevision: 1, tags: ["a", "b"], bodyMarkdown: "[[from]]" }),
+    );
+    await writes().saveTextDraft(
+      call({ textId: from, expectedRevision: 1, bodyMarkdown: "[[target]]" }),
+    );
+    await seedReadyMedia("tm", "text", target);
+    await publishTextVersion(target, "1.0.0", 2);
+
+    const plan = await writes().planTextDeletion(call({ textId: target }));
+    expect(plan.ok).toBe(true);
+    if (!plan.ok) return;
+    const imp = plan.value.impact;
+    expect(imp.targetType).toBe("text");
+    expect(imp.deleteCounts.releases).toBe(1);
+    expect(imp.deleteCounts.media).toBe(1);
+    expect(imp.deleteCounts.tagLinks).toBe(2);
+    expect(imp.deleteCounts.wikilinks).toBe(1);
+    expect(imp.retainedCounts.inboundWikilinks).toBe(1);
+    expect(imp.activeReleaseAffected).toBe(true);
+  });
+
+  it("planSoftwareDeletion / planTagDeletion / planPageDeletion / planMediaDeletion are not_found for unknown ids", async () => {
+    expect(await writes().planSoftwareDeletion(call({ softwareId: "nope" }))).toEqual({
+      ok: false,
+      error: "not_found",
+    });
+    expect(await writes().planTagDeletion(call({ tagId: "nope" }))).toEqual({
+      ok: false,
+      error: "not_found",
+    });
+    expect(await writes().planPageDeletion(call({ key: "about" }))).toEqual({
+      ok: false,
+      error: "not_found",
+    });
+    expect(await writes().planMediaDeletion(call({ mediaId: "nope" }))).toEqual({
+      ok: false,
+      error: "not_found",
+    });
+  });
+});
+
+describe("deletion confirm — every DeletionError path", () => {
+  it("an unknown token is not_found", async () => {
+    await createTextOk("essay");
+    expect(await writes().deleteText(call({ confirmationToken: "deadbeef" }))).toEqual({
+      ok: false,
+      error: "not_found",
+    });
+  });
+
+  it("an expired plan is deletion_plan_expired", async () => {
+    const textId = await createTextOk("essay");
+    const plan = await writes().planTextDeletion(call({ textId }));
+    if (!plan.ok) return;
+    await db.update(operatorDeletionIntent).set({ expiresAt: Date.now() - 1 });
+    expect(
+      await writes().deleteText(call({ confirmationToken: plan.value.confirmationToken })),
+    ).toEqual({ ok: false, error: "deletion_plan_expired" });
+  });
+
+  it("a consumed plan reused with a fresh key is deletion_already_executed", async () => {
+    const textId = await createTextOk("essay");
+    const plan = await writes().planTextDeletion(call({ textId }));
+    if (!plan.ok) return;
+    const first = await writes().deleteText(
+      call({ confirmationToken: plan.value.confirmationToken }),
+    );
+    expect(first.ok).toBe(true);
+    // Fresh idempotency key + same (now-consumed) token → single-use guard.
+    expect(
+      await writes().deleteText(call({ confirmationToken: plan.value.confirmationToken })),
+    ).toEqual({ ok: false, error: "deletion_already_executed" });
+  });
+
+  it("dependency-graph drift after planning is deletion_plan_mismatch", async () => {
+    const textId = await createTextOk("essay");
+    const plan = await writes().planTextDeletion(call({ textId }));
+    if (!plan.ok) return;
+    // Publish a release → the re-derived impact no longer matches the plan hash.
+    await writes().publishText(call({ textId, expectedRevision: 1, version: "1.0.0" }));
+    expect(
+      await writes().deleteText(call({ confirmationToken: plan.value.confirmationToken })),
+    ).toEqual({ ok: false, error: "deletion_plan_mismatch" });
+  });
+
+  it("a token minted for another operator is not usable", async () => {
+    const textId = await createTextOk("essay");
+    const plan = await writes().planTextDeletion(call({ textId }));
+    if (!plan.ok) return;
+    expect(await writes().deleteText(confirmAs(plan.value.confirmationToken, "intruder"))).toEqual({
+      ok: false,
+      error: "not_found",
+    });
+  });
+
+  it("a token minted for a different action cannot drive another delete", async () => {
+    const textId = await createTextOk("essay");
+    const plan = await writes().planTextDeletion(call({ textId }));
+    if (!plan.ok) return;
+    // A text-aggregate plan token cannot confirm a text-release deletion.
+    expect(
+      await writes().deleteTextRelease(call({ confirmationToken: plan.value.confirmationToken })),
+    ).toEqual({ ok: false, error: "not_found" });
+  });
+});
+
+describe("text release deletion — pointer + state transitions (D8)", () => {
+  it("deleting the active release without replacement returns the text to draft, pointer NULL", async () => {
+    const textId = await createTextOk("essay");
+    const pub = await publishTextVersion(textId, "1.0.0", 1);
+    const plan = await writes().planTextReleaseDeletion(call({ textId, releaseId: pub.releaseId }));
+    if (!plan.ok) return;
+
+    const res = await writes().deleteTextRelease(
+      call({ confirmationToken: plan.value.confirmationToken }),
+    );
+    expect(res).toEqual({ ok: true, value: { deleted: true, activeVersion: null } });
+
+    const [entry] = await db.select().from(textEntry).where(eq(textEntry.id, textId));
+    expect(entry?.activeReleaseId).toBeNull();
+    expect(entry?.state).toBe("draft");
+    expect(
+      (await db.select().from(textRelease).where(eq(textRelease.id, pub.releaseId))).length,
+    ).toBe(0);
+  });
+
+  it("deleting the active release with a replacement repoints and stays published", async () => {
+    const textId = await createTextOk("essay");
+    const v1 = await publishTextVersion(textId, "1.0.0", 1);
+    const v2 = await publishTextVersion(textId, "2.0.0", 1);
+    const plan = await writes().planTextReleaseDeletion(
+      call({ textId, releaseId: v2.releaseId, replacementReleaseId: v1.releaseId }),
+    );
+    if (!plan.ok) return;
+
+    const res = await writes().deleteTextRelease(
+      call({ confirmationToken: plan.value.confirmationToken }),
+    );
+    expect(res).toEqual({ ok: true, value: { deleted: true, activeVersion: "1.0.0" } });
+
+    const [entry] = await db.select().from(textEntry).where(eq(textEntry.id, textId));
+    expect(entry?.activeReleaseId).toBe(v1.releaseId);
+    expect(entry?.state).toBe("published");
+  });
+});
+
+describe("page release deletion — public read 404s after pointer clears", () => {
+  it("deleting the active page release clears the pointer and public getPage is not_found", async () => {
+    await createAboutPage();
+    const rel = await publishAbout("1.0.0", 1);
+    expect((await reads().getPage({ key: "about" })).ok).toBe(true);
+
+    const plan = await writes().planPageReleaseDeletion(
+      call({ key: "about", releaseId: rel.releaseId }),
+    );
+    if (!plan.ok) return;
+    const res = await writes().deletePageRelease(
+      call({ confirmationToken: plan.value.confirmationToken }),
+    );
+    expect(res).toEqual({ ok: true, value: { deleted: true, activeVersion: null } });
+
+    const [entry] = await db.select().from(pageEntry).where(eq(pageEntry.pageKey, "about"));
+    expect(entry?.activeReleaseId).toBeNull();
+    expect(await reads().getPage({ key: "about" })).toEqual({ ok: false, error: "not_found" });
+  });
+});
+
+describe("tag deletion leaves tagged texts intact", () => {
+  it("removes the tag + its links but the text still reads", async () => {
+    const textId = await createTextOk("essay");
+    await writes().saveTextDraft(
+      call({ textId, expectedRevision: 1, tags: ["philosophy"], bodyMarkdown: "body" }),
+    );
+    const [tagRow] = await db.select().from(tag);
+    expect(tagRow).toBeDefined();
+
+    const plan = await writes().planTagDeletion(call({ tagId: tagRow!.id }));
+    if (!plan.ok) return;
+    expect(plan.value.impact.deleteCounts).toEqual({ tags: 1, tagLinks: 1 });
+    expect(plan.value.impact.warnings.some((w) => /remain unchanged/.test(w))).toBe(true);
+
+    const res = await writes().deleteTag(call({ confirmationToken: plan.value.confirmationToken }));
+    expect(res).toEqual({ ok: true, value: { deleted: true } });
+    expect((await db.select().from(tag)).length).toBe(0);
+    expect((await db.select().from(textTag)).length).toBe(0);
+    const [entry] = await db.select().from(textEntry).where(eq(textEntry.id, textId));
+    expect(entry?.id).toBe(textId);
+    expect((await writes().getText(call({ textId }))).ok).toBe(true);
+  });
+});
+
+describe("software deletion removes publications + queues media GC", () => {
+  it("deletes entry/draft/publication/media snapshots and enqueues the storage key", async () => {
+    const softwareId = await createSoftwareOk("tool");
+    await writes().saveSoftwareDraft(
+      call({ softwareId, expectedRevision: 1, destinationUrl: "https://app.example.com" }),
+    );
+    await seedReadyMedia("sm", "software", softwareId);
+    await writes().saveSoftwareDraft(
+      call({ softwareId, expectedRevision: 2, primaryMediaId: "sm" }),
+    );
+    const pub = await writes().publishSoftware(call({ softwareId, expectedRevision: 3 }));
+    expect(pub.ok).toBe(true);
+
+    const plan = await writes().planSoftwareDeletion(call({ softwareId }));
+    if (!plan.ok) return;
+    expect(plan.value.impact.deleteCounts.publications).toBe(1);
+    expect(plan.value.impact.deleteCounts.media).toBe(1);
+
+    const res = await writes().deleteSoftware(
+      call({ confirmationToken: plan.value.confirmationToken }),
+    );
+    expect(res).toEqual({ ok: true, value: { deleted: true } });
+    expect(
+      (await db.select().from(softwareEntry).where(eq(softwareEntry.id, softwareId))).length,
+    ).toBe(0);
+    expect(
+      (
+        await db
+          .select()
+          .from(softwarePublication)
+          .where(eq(softwarePublication.softwareId, softwareId))
+      ).length,
+    ).toBe(0);
+    expect(
+      (
+        await db
+          .select()
+          .from(softwarePublicationMedia)
+          .where(eq(softwarePublicationMedia.softwareId, softwareId))
+      ).length,
+    ).toBe(0);
+    const gc = await db.select().from(mediaGcOutbox);
+    expect(gc.map((g) => g.storageKey)).toContain("key-sm");
+  });
+});
+
+describe("media deletion — GC outbox + immediate public ineligibility", () => {
+  it("deletes an actively-referenced media, 404s the public read, and enqueues GC", async () => {
+    const textId = await createTextOk("essay");
+    await seedReadyMedia("m1", "text", textId);
+    await publishTextVersion(textId, "1.0.0", 1);
+    // Snapshotted into the published text's active release → publicly eligible.
+    expect((await reads().openPublishedMedia({ mediaId: "m1" })).ok).toBe(true);
+
+    const plan = await writes().planMediaDeletion(call({ mediaId: "m1" }));
+    if (!plan.ok) return;
+    expect(plan.value.impact.targetType).toBe("media");
+    expect(plan.value.impact.activeReleaseAffected).toBe(true);
+    expect(plan.value.impact.deleteCounts.media).toBe(1);
+
+    const res = await writes().deleteMedia(
+      call({ confirmationToken: plan.value.confirmationToken }),
+    );
+    expect(res).toEqual({ ok: true, value: { deleted: true } });
+    expect(await reads().openPublishedMedia({ mediaId: "m1" })).toEqual({
+      ok: false,
+      error: "not_found",
+    });
+    expect((await db.select().from(mediaGcOutbox)).map((g) => g.storageKey)).toContain("key-m1");
+    expect(
+      (await db.select().from(publisherReleaseMedia).where(eq(publisherReleaseMedia.mediaId, "m1")))
+        .length,
+    ).toBe(0);
+  });
+});
+
+describe("deletion audit tombstone is compact", () => {
+  it("records identifiers + counts but never bodies", async () => {
+    const textId = await createTextOk("essay");
+    await writes().saveTextDraft(
+      call({ textId, expectedRevision: 1, bodyMarkdown: "SECRET-BODY-TEXT" }),
+    );
+    await publishTextVersion(textId, "1.0.0", 2);
+    const plan = await writes().planTextDeletion(call({ textId }));
+    if (!plan.ok) return;
+    expect(
+      (await writes().deleteText(call({ confirmationToken: plan.value.confirmationToken }))).ok,
+    ).toBe(true);
+
+    const [event] = await db
+      .select()
+      .from(operatorEvent)
+      .where(and(eq(operatorEvent.action, "text.delete"), eq(operatorEvent.targetId, textId)));
+    expect(event).toBeDefined();
+    expect(event?.detailJson).not.toBeNull();
+    const detail = JSON.parse(event!.detailJson!) as { deleteCounts: Record<string, number> };
+    expect(detail.deleteCounts.releases).toBe(1);
+    expect(event!.detailJson!).not.toContain("SECRET-BODY-TEXT");
+    expect(event!.responseJson ?? "").not.toContain("SECRET-BODY-TEXT");
+  });
+});
+
+describe("deletion idempotency — replay is separate from single-use", () => {
+  it("a replayed delete key returns the prior response without a second event", async () => {
+    const textId = await createTextOk("essay");
+    const plan = await writes().planTextDeletion(call({ textId }));
+    if (!plan.ok) return;
+    const key = crypto.randomUUID();
+
+    const first = await writes().deleteText(
+      call({ confirmationToken: plan.value.confirmationToken }, key),
+    );
+    expect(first).toEqual({ ok: true, value: { deleted: true } });
+
+    // Same idempotency key: the recorded response replays (not the consumed-token
+    // path), and no second event is written.
+    const replay = await writes().deleteText(
+      call({ confirmationToken: plan.value.confirmationToken }, key),
+    );
+    expect(replay).toEqual(first);
+    const events = await db
+      .select()
+      .from(operatorEvent)
+      .where(and(eq(operatorEvent.idempotencyKey, key), eq(operatorEvent.action, "text.delete")));
+    expect(events.length).toBe(1);
   });
 });
