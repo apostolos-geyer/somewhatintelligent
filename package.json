@@ -49,11 +49,11 @@
   },
   "overrides": {
     "kysely": "^0.28.17",
-    "miniflare": "4.20260515.0",
+    "miniflare": "4.20260714.0",
     "vite": "catalog:",
     "vitest": "catalog:",
-    "workerd": "1.20260515.1",
-    "wrangler": "4.92.0"
+    "workerd": "1.20260714.1",
+    "wrangler": "4.112.0"
   },
   "engines": {
     "node": ">=22.12.0"
