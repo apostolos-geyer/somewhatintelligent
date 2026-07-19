@@ -554,8 +554,14 @@ Resolve each before the phase it gates; recommendations in **bold**.
    (rejected — violates INV-SITE-1's draft-free binding).
 6. **Media-route disambiguation** (gates T20/T21): how Site `/media/:mediaId`
    routes a bare id to Publisher vs Store, and which canonical `href` each DTO
-   emits (`/media/:id` vs `/api/store/media/:id`). **Recommend id-namespacing** so
-   one route resolves the owner.
+   emits (`/media/:id` vs `/api/store/media/:id`). **Resolved (T20/T21) as
+   route-prefix disambiguation, not id-namespacing.** Publisher owns the bare
+   `/media/:id` prefix — every `PublicMediaRef.href` from `PublisherPublic`
+   emits `/media/:id`, and Site's `GET /media/:mediaId` APIRoute forwards
+   straight to `PublisherPublic.openPublishedMedia`. Store owns
+   `/api/store/media/:id` (served by Store through bouncer's `/api/store` mount,
+   never by Site). The owner is decided by the path prefix, so a bare id is
+   always Publisher's and no shared id namespace is required.
 7. **Webhook path migration** (gates T12): `/hooks/store` → `/hooks/store/stripe`
    must change in lockstep across the Store constant, `worker.ts` exact-match, and
    the Stripe dashboard endpoint.

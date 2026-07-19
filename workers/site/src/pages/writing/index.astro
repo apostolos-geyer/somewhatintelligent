@@ -2,32 +2,169 @@
 import Base from "../../layouts/Base.astro";
 import SiteFooter from "../../components/SiteFooter.astro";
 import SiteHeader from "../../components/SiteHeader.astro";
+import {
+  getPage,
+  listTexts,
+  publisherMediaHref,
+  type PublishedTextSummaryDTO,
+} from "../../lib/publisher-public";
+import { formatDate } from "../../lib/format";
+
+const tagParam = Astro.url.searchParams.get("tag");
+const tag = tagParam && tagParam.length > 0 ? tagParam : undefined;
+const cursorParam = Astro.url.searchParams.get("cursor");
+const cursor = cursorParam && cursorParam.length > 0 ? cursorParam : undefined;
+
+const [pageResult, listResult] = await Promise.all([
+  getPage("writing"),
+  listTexts({ tag, cursor, limit: 24 }),
+]);
+
+// Page copy/SEO come from the Publisher page document; fall back to static copy
+// when the page has never been published (INV-PUB-1: null active pointer).
+const doc = pageResult.ok ? pageResult.value.document : null;
+const heading = doc?.title ?? "Writing";
+const deck = doc?.deck ?? "arguments, notes, and revisions";
+const emptyMessage = doc?.emptyMessage ?? "No texts published yet.";
+const seoTitle = doc?.seo.title ?? "Writing — somewhatintelligent";
+const seoDescription =
+  doc?.seo.description ?? "Writing by Apostoli, published by somewhatintelligent.";
+const seoImage = doc?.seo.imageMediaId ? publisherMediaHref(doc.seo.imageMediaId) : null;
+
+const texts: PublishedTextSummaryDTO[] = listResult.ok ? listResult.value.texts : [];
+const nextCursor = listResult.ok ? listResult.value.nextCursor : null;
+
+function nextHref(): string {
+  const params = new URLSearchParams();
+  if (tag) params.set("tag", tag);
+  if (nextCursor) params.set("cursor", nextCursor);
+  return `/writing/?${params.toString()}`;
+}
 ---
 
-<Base
-  title="Writing — somewhatintelligent"
-  description="Writing by Apostoli, published by somewhatintelligent."
->
-  <div class="site-frame writing-frame">
+<Base title={seoTitle} description={seoDescription} ogImage={seoImage}>
+  <div class="site-frame shop-frame">
     <SiteHeader active="writing" />
 
-    <main class="writing-main">
-      <section class="writing-placeholder" aria-labelledby="writing-title">
-        <h1 id="writing-title">WRITING</h1>
-        <p class="writing-deck">arguments, notes, and revisions</p>
-        <div class="writing-coming">
-          <span>Text / public record</span>
-          <strong>COMING<br />SOON</strong>
-        </div>
+    <main class="shop-main">
+      <section class="objects-intro" aria-labelledby="writing-title">
+        <h1 id="writing-title">
+          <span class="sr-only">{heading}</span>
+          <svg
+            aria-hidden="true"
+            class="objects-title-plane"
+            preserveAspectRatio="none"
+            viewBox="0 0 1000 1000"
+          >
+            <text x="20" y="912" font-size="1110" lengthAdjust="spacingAndGlyphs" textLength="930">
+              TEXTS
+            </text>
+          </svg>
+        </h1>
+        <p class="objects-deck">{deck}</p>
+        {tag && (
+          <p class="writing-tag-filter">
+            tagged “{tag}” — <a href="/writing/">clear</a>
+          </p>
+        )}
+        {
+          nextCursor && (
+            <p class="writing-pager">
+              <a href={nextHref()}>
+                Older texts <span aria-hidden="true">→</span>
+              </a>
+            </p>
+          )
+        }
       </section>
 
-      <aside class="writing-evidence" aria-label="Evidence placeholder">
-        <p>Evidence</p>
-        <div><span>Image forthcoming</span></div>
-        <footer>Writing records will appear here.</footer>
-      </aside>
+      <section class="object-ledger" aria-label="Published texts">
+        {
+          texts.length === 0 ? (
+            <article class="object-entry object-entry-compact object-entry-placeholder">
+              <span class="object-number">01</span>
+              <div class="object-meta">
+                <h2>No texts yet</h2>
+                <p>{emptyMessage}</p>
+              </div>
+              <div class="object-placeholder-field" aria-label="No texts published">
+                <span>Text / unpublished</span>
+                <strong>COMING SOON</strong>
+              </div>
+            </article>
+          ) : (
+            texts.map((text, i) => (
+              <article class="object-entry object-entry-current" id={text.slug}>
+                <span class="object-number">{String(i + 1).padStart(2, "0")}</span>
+                <div class="object-meta">
+                  <h2>{text.title}</h2>
+                  <p>{formatDate(text.publishedAt)}</p>
+                  {text.deck && <p>{text.deck}</p>}
+                  <dl>
+                    <div>
+                      <dt>Excerpt</dt>
+                      <dd>{text.excerpt}</dd>
+                    </div>
+                  </dl>
+                </div>
+                {text.heroMedia ? (
+                  <figure class="object-image">
+                    <img src={text.heroMedia.href} alt={text.heroMedia.alt || text.title} />
+                  </figure>
+                ) : (
+                  <div class="object-placeholder-field" aria-label="No hero image">
+                    <span>Text / {text.slug}</span>
+                    <strong>NO IMAGE</strong>
+                  </div>
+                )}
+                <div class="object-operational">
+                  <dl>
+                    <div>
+                      <dt>Version</dt>
+                      <dd>{text.version}</dd>
+                    </div>
+                    {text.tags.length > 0 && (
+                      <div>
+                        <dt>Tags</dt>
+                        <dd>{text.tags.join(", ")}</dd>
+                      </div>
+                    )}
+                  </dl>
+                  <a href={`/writing/${text.slug}`}>
+                    Read text <span aria-hidden="true">→</span>
+                  </a>
+                </div>
+              </article>
+            ))
+          )
+        }
+      </section>
+
     </main>
 
     <SiteFooter />
   </div>
 </Base>
+
+<style>
+  .writing-tag-filter,
+  .writing-pager {
+    position: absolute;
+    right: 5%;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+  }
+
+  .writing-tag-filter {
+    top: 70px;
+  }
+
+  .writing-pager {
+    bottom: 26px;
+  }
+
+  .writing-pager a {
+    color: var(--color-primary);
+  }
+</style>

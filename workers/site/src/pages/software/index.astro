@@ -2,22 +2,142 @@
 import Base from "../../layouts/Base.astro";
 import SiteFooter from "../../components/SiteFooter.astro";
 import SiteHeader from "../../components/SiteHeader.astro";
+import {
+  getPage,
+  listSoftware,
+  publisherMediaHref,
+  type PublishedSoftwareSummaryDTO,
+} from "../../lib/publisher-public";
+import { formatDate } from "../../lib/format";
+
+const cursorParam = Astro.url.searchParams.get("cursor");
+const cursor = cursorParam && cursorParam.length > 0 ? cursorParam : undefined;
+
+const [pageResult, listResult] = await Promise.all([
+  getPage("software"),
+  listSoftware({ cursor, limit: 24 }),
+]);
+
+const doc = pageResult.ok ? pageResult.value.document : null;
+const heading = doc?.title ?? "Systems";
+const deck = doc?.deck ?? "software and research systems";
+const emptyMessage = doc?.emptyMessage ?? "No systems published yet.";
+const seoTitle = doc?.seo.title ?? "Software — somewhatintelligent";
+const seoDescription =
+  doc?.seo.description ??
+  "Software and research systems by somewhatintelligent, with explicit access boundaries.";
+const seoImage = doc?.seo.imageMediaId ? publisherMediaHref(doc.seo.imageMediaId) : null;
+
+const software: PublishedSoftwareSummaryDTO[] = listResult.ok ? listResult.value.software : [];
+const nextCursor = listResult.ok ? listResult.value.nextCursor : null;
+
+const nextHref = nextCursor
+  ? `/software/?${new URLSearchParams({ cursor: nextCursor }).toString()}`
+  : null;
 ---
 
-<Base
-  title="Software — somewhatintelligent"
-  description="Software and research systems by somewhatintelligent, with explicit access boundaries."
->
-  <div class="site-frame software-frame">
+<Base title={seoTitle} description={seoDescription} ogImage={seoImage}>
+  <div class="site-frame shop-frame">
     <SiteHeader active="software" />
 
-    <main class="software-main">
-      <section class="software-coming" aria-labelledby="software-title">
-        <h1 id="software-title">SYSTEMS</h1>
-        <p>COMING SOON</p>
+    <main class="shop-main">
+      <section class="objects-intro" aria-labelledby="software-title">
+        <h1 id="software-title">
+          <span class="sr-only">{heading}</span>
+          <svg
+            aria-hidden="true"
+            class="objects-title-plane"
+            preserveAspectRatio="none"
+            viewBox="0 0 1000 1000"
+          >
+            <text x="20" y="912" font-size="960" lengthAdjust="spacingAndGlyphs" textLength="960">
+              SYSTEMS
+            </text>
+          </svg>
+        </h1>
+        <p class="objects-deck">{deck}</p>
+        {
+          nextHref && (
+            <p class="software-pager">
+              <a href={nextHref}>
+                Older systems <span aria-hidden="true">→</span>
+              </a>
+            </p>
+          )
+        }
+      </section>
+
+      <section class="object-ledger" aria-label="Published software">
+        {
+          software.length === 0 ? (
+            <article class="object-entry object-entry-compact object-entry-placeholder">
+              <span class="object-number">01</span>
+              <div class="object-meta">
+                <h2>No systems yet</h2>
+                <p>{emptyMessage}</p>
+              </div>
+              <div class="object-placeholder-field" aria-label="No systems published">
+                <span>System / unpublished</span>
+                <strong>COMING SOON</strong>
+              </div>
+            </article>
+          ) : (
+            software.map((item, i) => (
+              <article class="object-entry object-entry-current" id={item.slug}>
+                <span class="object-number">{String(i + 1).padStart(2, "0")}</span>
+                <div class="object-meta">
+                  <h2>{item.title}</h2>
+                  <p>{item.deck}</p>
+                  <dl>
+                    <div>
+                      <dt>Updated</dt>
+                      <dd>{formatDate(item.updatedAt)}</dd>
+                    </div>
+                  </dl>
+                </div>
+                {item.primaryMedia ? (
+                  <figure class="object-image">
+                    <img src={item.primaryMedia.href} alt={item.primaryMedia.alt || item.title} />
+                  </figure>
+                ) : (
+                  <div class="object-placeholder-field" aria-label="No primary image">
+                    <span>System / {item.slug}</span>
+                    <strong>NO IMAGE</strong>
+                  </div>
+                )}
+                <div class="object-operational">
+                  <dl>
+                    <div>
+                      <dt>Record</dt>
+                      <dd>{item.slug}</dd>
+                    </div>
+                  </dl>
+                  <a href={`/software/${item.slug}`}>
+                    Open record <span aria-hidden="true">→</span>
+                  </a>
+                </div>
+              </article>
+            ))
+          )
+        }
       </section>
     </main>
 
     <SiteFooter />
   </div>
 </Base>
+
+<style>
+  .software-pager {
+    position: absolute;
+    right: 5%;
+    bottom: 26px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+  }
+
+  .software-pager a {
+    color: var(--color-primary);
+  }
+</style>

@@ -1,0 +1,265 @@
+---
+import Base from "../../layouts/Base.astro";
+import SiteFooter from "../../components/SiteFooter.astro";
+import SiteHeader from "../../components/SiteHeader.astro";
+import { getTextBySlug } from "../../lib/publisher-public";
+import { renderMarkdown } from "../../lib/markdown";
+import { formatDate, toIsoDate } from "../../lib/format";
+
+const { slug } = Astro.params;
+const result = slug ? await getTextBySlug(slug) : ({ ok: false, error: "not_found" } as const);
+if (!result.ok) {
+  return new Response(null, { status: 404 });
+}
+const text = result.value;
+
+// bodyMarkdown is RAW markdown (incl. unresolved [[slug]] wikilinks); render it
+// to render-safe HTML — raw HTML is inert by construction (INV-PAGE-1). This is
+// the only `set:html` on the page and it consumes exclusively that safe output.
+const bodyHtml = renderMarkdown(text.bodyMarkdown);
+
+const [hero, ...rest] = text.media;
+const seoDescription = text.deck ?? text.excerpt;
+const ogImage = hero ? hero.href : null;
+---
+
+<Base
+  title={`${text.title} — somewhatintelligent`}
+  description={seoDescription}
+  ogType="article"
+  ogImage={ogImage}
+  publishedTime={toIsoDate(text.publishedAt)}
+>
+  <div class="site-frame text-frame">
+    <SiteHeader active="writing" />
+
+    <main class="text-main">
+      <article class="text-article">
+        <header class="text-head">
+          <p class="text-kicker">Text / {text.slug} / version {text.version}</p>
+          <h1>{text.title}</h1>
+          {text.deck && <p class="text-deck">{text.deck}</p>}
+          <dl class="text-meta">
+            <div>
+              <dt>Published</dt>
+              <dd>{formatDate(text.publishedAt)}</dd>
+            </div>
+            {text.tags.length > 0 && (
+              <div>
+                <dt>Tags</dt>
+                <dd>
+                  {text.tags.map((t) => (
+                    <a href={`/writing/?tag=${encodeURIComponent(t)}`}>{t}</a>
+                  ))}
+                </dd>
+              </div>
+            )}
+          </dl>
+        </header>
+
+        {
+          hero && (
+            <figure class="text-hero">
+              <img src={hero.href} alt={hero.alt || text.title} />
+            </figure>
+          )
+        }
+
+        <div class="text-body" set:html={bodyHtml} />
+
+        {
+          rest.length > 0 && (
+            <section class="text-gallery" aria-label="Figures">
+              {rest.map((m) => (
+                <figure>
+                  <img src={m.href} alt={m.alt || text.title} />
+                  {m.alt && <figcaption>{m.alt}</figcaption>}
+                </figure>
+              ))}
+            </section>
+          )
+        }
+      </article>
+    </main>
+
+    <SiteFooter />
+  </div>
+</Base>
+
+<style>
+  .text-main {
+    min-height: 0;
+    overflow-y: auto;
+    background: var(--color-inverse);
+    color: var(--color-inverse-foreground);
+  }
+
+  .text-article {
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 56px 24px 96px;
+  }
+
+  .text-kicker {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    color: var(--color-primary);
+    letter-spacing: 0.03em;
+  }
+
+  .text-head h1 {
+    margin-top: 16px;
+    font-family: var(--font-display);
+    font-size: clamp(44px, 6vw, 78px);
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 0.82;
+  }
+
+  .text-deck {
+    margin-top: 18px;
+    font-family: var(--font-editorial);
+    font-size: clamp(18px, 2vw, 24px);
+    line-height: 1.2;
+  }
+
+  .text-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 28px;
+    margin-top: 24px;
+    padding: 16px 0;
+    border-top: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+  }
+
+  .text-meta dt {
+    margin-bottom: 5px;
+    color: var(--color-primary);
+  }
+
+  .text-meta dd {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .text-hero {
+    margin-top: 32px;
+    overflow: hidden;
+    background: var(--color-background);
+  }
+
+  .text-hero img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .text-body {
+    margin-top: 36px;
+    font-family: var(--font-editorial);
+    font-size: 18px;
+    line-height: 1.6;
+  }
+
+  .text-body :global(h1),
+  .text-body :global(h2),
+  .text-body :global(h3) {
+    margin-top: 1.6em;
+    margin-bottom: 0.5em;
+    font-family: var(--font-mono);
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    line-height: 1.1;
+  }
+
+  .text-body :global(h2) {
+    font-size: 20px;
+  }
+
+  .text-body :global(h3) {
+    font-size: 16px;
+  }
+
+  .text-body :global(p),
+  .text-body :global(ul),
+  .text-body :global(ol),
+  .text-body :global(blockquote),
+  .text-body :global(pre) {
+    margin-top: 1em;
+  }
+
+  .text-body :global(a) {
+    color: var(--color-primary);
+    text-decoration: underline;
+  }
+
+  .text-body :global(ul),
+  .text-body :global(ol) {
+    padding-left: 1.4em;
+  }
+
+  .text-body :global(blockquote) {
+    padding-left: 18px;
+    border-left: 2px solid var(--color-border);
+    font-style: italic;
+  }
+
+  .text-body :global(code) {
+    font-family: var(--font-mono);
+    font-size: 0.86em;
+  }
+
+  .text-body :global(pre) {
+    padding: 16px;
+    overflow-x: auto;
+    background: var(--color-surface-sunken);
+    color: var(--color-foreground);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .text-body :global(img) {
+    max-width: 100%;
+    height: auto;
+  }
+
+  .text-gallery {
+    display: grid;
+    gap: 24px;
+    margin-top: 40px;
+  }
+
+  .text-gallery figure {
+    overflow: hidden;
+    background: var(--color-background);
+  }
+
+  .text-gallery img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .text-gallery figcaption {
+    margin-top: 8px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    color: var(--color-primary);
+  }
+
+  @media (max-width: 1023px) {
+    .text-main {
+      overflow: visible;
+    }
+  }
+</style>
