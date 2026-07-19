@@ -8,12 +8,8 @@
   //
   // INV-OP-2: Operator has NO D1, R2, Stripe, or Guestlist binding. Its server
   // code reaches domain state ONLY through the StoreOperator / PublisherOperator
-  // service bindings, which are added in track T22. The Access secrets
-  // (POLICY_AUD / TEAM_DOMAIN) are written by the idempotent setup script (T4),
-  // never checked in here.
-  //
-  // SCAFFOLD (exec-plan 0004 track T2). The TanStack Start console + the vite
-  // build pipeline replace the plain fetch entry in track T22.
+  // service bindings below. The Access secrets (POLICY_AUD / TEAM_DOMAIN) are
+  // written by the idempotent setup script (T4), never checked in here.
   "name": "si-operator-staging",
   "main": "src/worker.ts",
   "account_id": "c735c5a53d864bee37400befb7f4c7f4",
@@ -35,6 +31,20 @@
       "custom_domain": true,
     },
   ],
+  "services": [
+    {
+      "binding": "STORE",
+      "service": "si-store-staging",
+      "entrypoint": "StoreOperator",
+      "props": { "callerApp": "operator" },
+    },
+    {
+      "binding": "PUBLISHER",
+      "service": "si-publisher-staging",
+      "entrypoint": "PublisherOperator",
+      "props": { "callerApp": "operator" },
+    },
+  ],
   "env": {
     "production": {
       "name": "si-operator-production",
@@ -48,6 +58,20 @@
         {
           "pattern": "desk.somewhatintelligent.ca",
           "custom_domain": true,
+        },
+      ],
+      "services": [
+        {
+          "binding": "STORE",
+          "service": "si-store-production",
+          "entrypoint": "StoreOperator",
+          "props": { "callerApp": "operator" },
+        },
+        {
+          "binding": "PUBLISHER",
+          "service": "si-publisher-production",
+          "entrypoint": "PublisherOperator",
+          "props": { "callerApp": "operator" },
         },
       ],
       "observability": {
