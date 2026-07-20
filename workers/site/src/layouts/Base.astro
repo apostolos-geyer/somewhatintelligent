@@ -8,6 +8,8 @@ interface Props {
   ogType?: "website" | "article";
   ogImage?: string | null;
   publishedTime?: string | null;
+  /** Document token theme. Light pages re-darken chrome via data-theme="dark" wrappers. */
+  theme?: "dark" | "light";
 }
 
 const {
@@ -17,11 +19,12 @@ const {
   ogType = "website",
   ogImage = null,
   publishedTime = null,
+  theme = "dark",
 } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="en" data-theme="dark" style="color-scheme: dark;">
+<html lang="en" data-theme={theme} style={`color-scheme: ${theme};`}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />

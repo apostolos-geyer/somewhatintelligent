@@ -89,6 +89,7 @@ a:focus-visible {
   align-items: center;
   border-color: var(--color-border);
   background: var(--color-background);
+  color: var(--color-foreground);
   font-family: var(--font-mono);
 }
 

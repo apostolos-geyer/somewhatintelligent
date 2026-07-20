@@ -15,6 +15,7 @@ import ShopView from "./ShopView.astro";
 import AboutView from "./AboutView.astro";
 import LedgerFeatured from "./LedgerFeatured.astro";
 import LedgerRow from "./LedgerRow.astro";
+import WritingIndex from "./WritingIndex.astro";
 import { listProducts, availabilityLabel, type ProductCardDTO } from "../../lib/store-catalog";
 import {
   listTexts,
@@ -54,10 +55,6 @@ try {
   // leave the list empty; the placeholder card renders
 }
 
-const activeFor: Record<"writing" | "software", "writing" | "software"> = {
-  writing: "writing",
-  software: "software",
-};
 ---
 
 {doc.key === "home" && <HomeView document={doc} />}
@@ -67,55 +64,29 @@ const activeFor: Record<"writing" | "software", "writing" | "software"> = {
 {doc.key === "about" && <AboutView document={doc} />}
 
 {
-  (doc.key === "writing" || doc.key === "software") && (
+  doc.key === "writing" && (
     <div class="site-frame shop-frame">
-      <SiteHeader active={activeFor[doc.key]} />
+      <SiteHeader active="writing" />
+      <WritingIndex
+        heading={doc.title || doc.eyebrow}
+        deck={doc.deck}
+        emptyMessage={doc.emptyMessage}
+        texts={texts}
+      />
+      <SiteFooter />
+    </div>
+  )
+}
+
+{
+  doc.key === "software" && (
+    <div class="site-frame shop-frame">
+      <SiteHeader active="software" />
       <main class="ledger-main">
         <section class="objects-intro" aria-labelledby="page-preview-title">
           <h1 id="page-preview-title">{doc.title || doc.eyebrow}</h1>
           <p class="objects-deck">{doc.deck}</p>
         </section>
-
-        {doc.key === "writing" &&
-          (texts.length === 0 ? (
-            <section class="object-ledger" aria-label="Records">
-              <article class="object-entry object-entry-compact object-entry-placeholder">
-                <span class="object-number">01</span>
-                <div class="object-meta">
-                  <h2>No texts yet</h2>
-                  <p>{doc.emptyMessage}</p>
-                </div>
-                <div class="object-placeholder-field" aria-label="No texts published">
-                  <span>Text / unpublished</span>
-                  <strong>COMING SOON</strong>
-                </div>
-              </article>
-            </section>
-          ) : (
-            <section class="ledger-rows" aria-label="Records">
-              <LedgerFeatured
-                kicker="Latest text"
-                title={texts[0].title}
-                dateLabel={formatDate(texts[0].publishedAt)}
-                deck={texts[0].deck}
-                excerpt={texts[0].excerpt}
-                image={texts[0].heroMedia}
-                imageLabel={`Text / ${texts[0].slug}`}
-                tags={texts[0].tags}
-                href={`/writing/${texts[0].slug}`}
-                ctaLabel="Read text"
-              />
-              {texts.slice(1).map((text, i) => (
-                <LedgerRow
-                  index={i + 2}
-                  title={text.title}
-                  dateLabel={formatDate(text.publishedAt)}
-                  tags={text.tags}
-                  href={`/writing/${text.slug}`}
-                />
-              ))}
-            </section>
-          ))}
 
         {doc.key === "software" &&
           (software.length === 0 ? (
