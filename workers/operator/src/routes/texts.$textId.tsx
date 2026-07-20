@@ -9,7 +9,7 @@ import { Label } from "@si/ui/components/label";
 import { Textarea } from "@si/ui/components/textarea";
 import { Badge } from "@si/ui/components/badge";
 import { Alert, AlertDescription, AlertTitle } from "@si/ui/components/alert";
-import { MarkdownField } from "@si/ui/components/markdown-field";
+import { MarkdownEditor } from "@si/ui/components/editor";
 import { TagInput } from "@si/ui/components/tag-input";
 import { AutosaveIndicator } from "@si/ui/components/autosave-indicator";
 import { useAutosave } from "@si/ui/hooks/use-autosave";
@@ -315,7 +315,7 @@ function DetailsSection({
   );
 }
 
-// ── Body: MarkdownField + debounced autosave + [[wikilink]] autocomplete ───────
+// ── Body: MarkdownEditor (split/preview + fullscreen) + debounced autosave ─────
 function BodySection({
   draft,
   disabled,
@@ -338,25 +338,22 @@ function BodySection({
     <Section title="Body">
       <div className="mb-2 flex items-center justify-between">
         <p className="text-muted-foreground font-mono text-xs">
-          Markdown. Type <span className="text-foreground">[[</span> to link another text.
+          Markdown with a live preview. Type <span className="text-foreground">[[</span> to link
+          another text.
         </p>
         <AutosaveIndicator status={autosave.status} />
       </div>
-      <MarkdownField
+      <MarkdownEditor
         value={body}
-        onValueChange={(v) => {
+        onChange={(v) => {
           setBody(v);
           onField({ bodyMarkdown: v });
         }}
-        disabled={disabled}
+        readOnly={disabled}
+        defaultMode="split"
         wikilink={(query) => searchTexts({ data: { query } })}
-        footer={(stats) => (
-          <span className="font-mono text-[10px]">
-            {stats.words} words · {stats.chars} chars
-          </span>
-        )}
         placeholder="Write…"
-        rows={16}
+        className="h-[70vh] min-h-[420px]"
       />
     </Section>
   );
