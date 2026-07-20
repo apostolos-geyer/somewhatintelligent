@@ -1,66 +1,16 @@
 ---
 import Base from "../../layouts/Base.astro";
-import SiteFooter from "../../components/SiteFooter.astro";
-import SiteHeader from "../../components/SiteHeader.astro";
-import motiveImage from "../../../../../docs/design/somewhatintelligent-brand-study/reference-images/02-private-motive-still-life.png";
-import apparatusImage from "../../../../../docs/design/somewhatintelligent-brand-study/reference-images/03-after-hours-apparatus.png";
+import AboutView from "../../components/views/AboutView.astro";
+import { getPage, publisherMediaHref } from "../../lib/publisher-public";
+import { DEFAULT_PAGE_DOCUMENTS } from "../../lib/page-defaults";
+
+// Copy/SEO come from the Publisher `about` page document (RFC-0001 D9); the
+// site-local default renders the committed copy when the page is unpublished.
+const result = await getPage("about");
+const doc = result.ok ? result.value.document : DEFAULT_PAGE_DOCUMENTS.about;
+const ogImage = doc.seo.imageMediaId ? publisherMediaHref(doc.seo.imageMediaId) : null;
 ---
 
-<Base
-  title="Apostoli — somewhatintelligent"
-  description="Apostoli is the publisher, writer, and operator responsible for somewhatintelligent. Not for hire."
->
-  <div class="site-frame about-frame">
-    <SiteHeader active="about" />
-
-    <main class="about-main">
-      <section class="person-record" aria-labelledby="apostoli-title">
-        <h1 id="apostoli-title">
-          <span class="sr-only">Apostoli</span>
-          <svg
-            aria-hidden="true"
-            class="person-title-plane"
-            preserveAspectRatio="none"
-            viewBox="0 0 1000 1000"
-          >
-            <text x="18" y="930" font-size="1120" lengthAdjust="spacingAndGlyphs" textLength="940">
-              APOSTOLI
-            </text>
-          </svg>
-        </h1>
-
-        <figure class="person-portrait-placeholder" aria-label="Portrait placeholder">
-          <span>Image forthcoming</span>
-        </figure>
-      </section>
-
-      <section class="person-statement" aria-label="Statement">
-        <blockquote>
-          Why be curious?
-          It is an act towards intimacy—a bid for connection—with one's own existence.
-          It is an act of epistemic humility.
-          No act is more profoundly intimate than the struggle to understand something outside oneself.
-
-          Thus, I am curious.
-          I build systems because I like knowing how things work.
-          I like being the one who decides how things work.
-          I make art because I like having license to comment on how they already do.
-          Should I be entrusted with such power?
-          No less than anyone else should be entrusted to make such a judgement.
-        </blockquote>
-      </section>
-
-      <section class="person-evidence" aria-label="Selected work and evidence">
-        <figure><img src={apparatusImage.src} alt="After-hours publishing apparatus" /></figure>
-        <figure><img src={motiveImage.src} alt="Private motive object study" /></figure>
-        <div class="about-placeholder">
-          <p>Selected work</p>
-          <strong>COMING SOON</strong>
-          <span>Placeholder content</span>
-        </div>
-      </section>
-    </main>
-
-    <SiteFooter />
-  </div>
+<Base title={doc.seo.title} description={doc.seo.description} ogImage={ogImage}>
+  <AboutView document={doc} />
 </Base>

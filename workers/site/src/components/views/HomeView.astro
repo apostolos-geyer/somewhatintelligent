@@ -1,0 +1,79 @@
+---
+// Shared home composition (RFC-0001 D9). Renders the home page document into the
+// public site chrome, so the public `/` route and the Operator draft preview
+// share ONE composition per page key. The SVG wordmark and the hero image are
+// Site-owned compositional surfaces (D9.1) — layout, not document content; the
+// document drives tagline, section copy, action labels, SEO, and (when set) an
+// override hero media id.
+import SiteFooter from "../SiteFooter.astro";
+import SiteHeader from "../SiteHeader.astro";
+import { publisherMediaHref } from "../../lib/format";
+import type { HomeDocumentV1 } from "@si/contracts";
+import heroImage from "../../../../../docs/design/somewhatintelligent-brand-study/reference-images/01-friend-elevator-incident.png";
+
+interface Props {
+  document: HomeDocumentV1;
+}
+
+const { document: doc } = Astro.props;
+const heroSrc = doc.heroMediaId ? publisherMediaHref(doc.heroMediaId) : heroImage.src;
+
+const records = [
+  { s: doc.sections.objects, href: "/shop/", id: "objects" },
+  { s: doc.sections.systems, href: "/software/", id: "systems" },
+  { s: doc.sections.texts, href: "/writing/", id: "texts" },
+  { s: doc.sections.about, href: "/about/", id: "apostoli" },
+];
+---
+
+<div class="site-frame">
+  <SiteHeader active="home" />
+
+  <main class="home-main">
+    <section class="hero" aria-labelledby="home-title">
+      <div class="hero-claim">
+        <h1 id="home-title">
+          <span class="sr-only">Somewhat Intelligent</span>
+          <svg
+            aria-hidden="true"
+            class="claim-plane"
+            preserveAspectRatio="none"
+            viewBox="0 0 1000 1000"
+          >
+            <text x="30" y="500" font-size="650" lengthAdjust="spacingAndGlyphs" textLength="870">
+              SOMEWHAT
+            </text>
+            <text x="30" y="960" font-size="650" lengthAdjust="spacingAndGlyphs" textLength="935">
+              INTELLIGENT
+            </text>
+          </svg>
+        </h1>
+        <p class="publishing-scope">{doc.tagline}</p>
+      </div>
+      <figure class="hero-image">
+        <img src={heroSrc} alt="Friend 001 garment photographed in an elevator" />
+      </figure>
+    </section>
+
+    <section class="record-grid" aria-label="Current records">
+      {
+        records.map(({ s, href, id }) => (
+          <article class="record" id={id}>
+            <p class="record-label">{s.eyebrow}</p>
+            <div class="record-visual record-scaffold" aria-hidden="true">
+              <strong>{s.eyebrow}</strong>
+            </div>
+            <div class="record-copy">
+              <p>{s.body}</p>
+              <a href={href}>
+                {s.actionLabel} <span aria-hidden="true">→</span>
+              </a>
+            </div>
+          </article>
+        ))
+      }
+    </section>
+  </main>
+
+  <SiteFooter />
+</div>

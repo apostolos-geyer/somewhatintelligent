@@ -1,99 +1,17 @@
 ---
 import Base from "../layouts/Base.astro";
-import SiteFooter from "../components/SiteFooter.astro";
-import SiteHeader from "../components/SiteHeader.astro";
-import heroImage from "../../../../docs/design/somewhatintelligent-brand-study/reference-images/01-friend-elevator-incident.png";
+import HomeView from "../components/views/HomeView.astro";
+import { getPage, publisherMediaHref } from "../lib/publisher-public";
+import { DEFAULT_PAGE_DOCUMENTS } from "../lib/page-defaults";
+
+// Copy/SEO come from the Publisher `home` page document (RFC-0001 D9). When the
+// page has never been published the read returns `not_found`; the site-local
+// default renders the committed copy so `/` is never blank.
+const result = await getPage("home");
+const doc = result.ok ? result.value.document : DEFAULT_PAGE_DOCUMENTS.home;
+const ogImage = doc.seo.imageMediaId ? publisherMediaHref(doc.seo.imageMediaId) : null;
 ---
 
-<Base>
-  <div class="site-frame">
-    <SiteHeader active="home" />
-
-    <main class="home-main">
-      <section class="hero" aria-labelledby="home-title">
-        <div class="hero-claim">
-          <h1 id="home-title">
-            <span class="sr-only">Somewhat Intelligent</span>
-            <svg
-              aria-hidden="true"
-              class="claim-plane"
-              preserveAspectRatio="none"
-              viewBox="0 0 1000 1000"
-            >
-              <text x="30" y="500" font-size="650" lengthAdjust="spacingAndGlyphs" textLength="870">
-                SOMEWHAT
-              </text>
-              <text x="30" y="960" font-size="650" lengthAdjust="spacingAndGlyphs" textLength="935">
-                INTELLIGENT
-              </text>
-            </svg>
-          </h1>
-          <p class="publishing-scope">objects, texts, systems, &amp; side effects</p>
-        </div>
-        <figure class="hero-image">
-          <img src={heroImage.src} alt="Friend 001 garment photographed in an elevator" />
-        </figure>
-      </section>
-
-      <section class="record-grid" aria-label="Current records">
-        <article class="record" id="objects">
-          <p class="record-label">Objects</p>
-          <div class="record-visual record-scaffold" aria-hidden="true">
-            <strong>OBJECTS</strong>
-          </div>
-          <div class="record-copy">
-            <p>
-              Hand made and algorithmically marketed. What better way to express your subversion
-              than through consumption?
-            </p>
-            <a href="/shop/friend-001/">Shop now <span aria-hidden="true">→</span></a>
-          </div>
-        </article>
-
-        <article class="record" id="systems">
-          <p class="record-label">Software registry</p>
-          <div class="record-visual record-scaffold" aria-hidden="true">
-            <strong>SOFTWARE<br />REGISTRY</strong>
-          </div>
-          <div class="record-copy">
-            <p>
-              Digital solutions to problems created by digital solutions to problems. People used
-              to live in longhouses. Now you want an MCP gateway.
-            </p>
-            <a href="/software/">Explore systems <span aria-hidden="true">→</span></a>
-          </div>
-        </article>
-
-        <article class="record" id="texts">
-          <p class="record-label">Texts</p>
-          <div class="record-visual record-scaffold" aria-hidden="true">
-            <strong>TEXTS</strong>
-          </div>
-          <div class="record-copy">
-            <p>
-              Critical writing on technology, intimacy, and power. Or a catalog of my arrogance.
-              Interpretation is left as an exercise to the reader.
-            </p>
-            <a href="/writing/">Read texts <span aria-hidden="true">→</span></a>
-          </div>
-        </article>
-
-        <article class="record" id="apostoli">
-          <p class="record-label">About</p>
-          <div class="record-visual record-scaffold" aria-hidden="true">
-            <strong>ABOUT</strong>
-          </div>
-          <div class="record-copy">
-            <p>
-              The mask behind the other, more abstract mask. Of course, the subject remains as
-              obscured as ever.
-            </p>
-            <a href="/about/">About <span aria-hidden="true">→</span></a>
-          </div>
-        </article>
-      </section>
-    </main>
-
-    <SiteFooter />
-  </div>
+<Base title={doc.seo.title} description={doc.seo.description} ogImage={ogImage}>
+  <HomeView document={doc} />
 </Base>

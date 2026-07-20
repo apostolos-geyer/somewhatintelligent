@@ -1,0 +1,124 @@
+---
+// Shared shop composition (RFC-0001 D9). Renders the shop page document into the
+// public site chrome, shared by the public `/shop` route and the Operator draft
+// preview (ONE composition per key). The SVG title plane and the editorial
+// "goods are arguments with sizing" note are Site-owned compositional surfaces
+// (D9.1). The document drives the intro copy/SEO and the empty-state message;
+// the PRODUCT LEDGER rows come from StoreCatalog, not the document.
+import SiteFooter from "../SiteFooter.astro";
+import SiteHeader from "../SiteHeader.astro";
+import {
+  formatPrice,
+  availabilityLabel,
+  storeMediaHref,
+  type ProductCardDTO,
+} from "../../lib/store-catalog";
+import type { ShopDocumentV1 } from "@si/contracts";
+
+interface Props {
+  document: ShopDocumentV1;
+  products: ProductCardDTO[];
+}
+
+const { document: doc, products } = Astro.props;
+---
+
+<div class="site-frame shop-frame">
+  <SiteHeader active="shop" />
+
+  <main class="shop-main">
+    <section class="objects-intro" aria-labelledby="objects-title">
+      <h1 id="objects-title">
+        <span class="sr-only">{doc.title}</span>
+        <svg
+          aria-hidden="true"
+          class="objects-title-plane"
+          preserveAspectRatio="none"
+          viewBox="0 0 1000 1000"
+        >
+          <text x="20" y="912" font-size="1110" lengthAdjust="spacingAndGlyphs" textLength="930">
+            OBJECTS
+          </text>
+        </svg>
+      </h1>
+      <p class="objects-deck">{doc.deck}</p>
+      <p class="objects-note">goods are<br />arguments<br />with sizing.</p>
+    </section>
+
+    <section class="object-ledger" aria-label="Object releases">
+      {
+        products.length === 0 ? (
+          <article class="object-entry object-entry-compact object-entry-placeholder">
+            <span class="object-number">01</span>
+            <div class="object-meta">
+              <h2>No objects yet</h2>
+              <p>{doc.emptyMessage}</p>
+              <dl>
+                <div>
+                  <dt>Status</dt>
+                  <dd>Unpublished</dd>
+                </div>
+                <div>
+                  <dt>Price</dt>
+                  <dd>—</dd>
+                </div>
+              </dl>
+            </div>
+            <div class="object-placeholder-field" aria-label="No objects published">
+              <span>Object / unpublished</span>
+              <strong>COMING SOON</strong>
+            </div>
+          </article>
+        ) : (
+          products.map((product, i) => (
+            <article class="object-entry object-entry-current" id={product.slug}>
+              <span class="object-number">{String(i + 1).padStart(2, "0")}</span>
+              <div class="object-meta">
+                <h2>{product.title}</h2>
+                <p>Release {product.version}</p>
+                {product.descriptionExcerpt && <p>{product.descriptionExcerpt}</p>}
+                <dl>
+                  <div>
+                    <dt>Status</dt>
+                    <dd>{availabilityLabel(product.availability)}</dd>
+                  </div>
+                  <div>
+                    <dt>Price</dt>
+                    <dd>{formatPrice(product.priceCents, product.currency)}</dd>
+                  </div>
+                </dl>
+              </div>
+              {product.coverMediaId ? (
+                <figure class="object-image">
+                  <img src={storeMediaHref(product.coverMediaId)} alt={`${product.title} cover`} />
+                </figure>
+              ) : (
+                <div class="object-placeholder-field" aria-label="No cover image">
+                  <span>Object / {product.slug}</span>
+                  <strong>NO IMAGE</strong>
+                </div>
+              )}
+              <div class="object-operational">
+                <dl>
+                  <div>
+                    <dt>Version</dt>
+                    <dd>{product.version}</dd>
+                  </div>
+                  <div>
+                    <dt>Stock</dt>
+                    <dd>{product.totalStock} units</dd>
+                  </div>
+                </dl>
+                <a href={`/shop/${product.slug}`}>
+                  View object <span aria-hidden="true">→</span>
+                </a>
+              </div>
+            </article>
+          ))
+        )
+      }
+    </section>
+  </main>
+
+  <SiteFooter />
+</div>
