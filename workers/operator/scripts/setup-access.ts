@@ -332,7 +332,10 @@ function wranglerBin(): string {
 function putSecret(target: EnvTarget, accountId: string, name: string, value: string): void {
   // Use the wrangler OAuth login for the Workers write. Strip the Access API
   // token from the child env so wrangler doesn't try to use it.
-  const env = { ...process.env, CLOUDFLARE_ACCOUNT_ID: accountId };
+  const env: Record<string, string | undefined> = {
+    ...process.env,
+    CLOUDFLARE_ACCOUNT_ID: accountId,
+  };
   delete env.CLOUDFLARE_API_TOKEN;
   delete env.CLOUDFLARE_API_KEY;
   delete env.CLOUDFLARE_EMAIL;

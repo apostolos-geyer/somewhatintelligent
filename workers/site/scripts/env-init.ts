@@ -1,9 +1,11 @@
 #!/usr/bin/env bun
 // .dev.vars seeding ONLY (idempotent, offline, <1s).
-import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { writeDevVarsIfMissing } from "../../../scripts/dev-config";
 
-const pkgDir = resolve(dirname(import.meta.path), "..");
+// import.meta.url (not Bun's import.meta.path): this file sits inside the
+// Astro tsconfig project, whose ImportMeta has no Bun extensions.
+const pkgDir = fileURLToPath(new URL("..", import.meta.url));
 const label = "workers/site";
 
 // ENVIRONMENT=development mirrors the other workers' local-dev gate; SITE_URL
