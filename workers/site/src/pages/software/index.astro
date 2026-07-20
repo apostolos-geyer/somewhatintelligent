@@ -104,21 +104,6 @@ if (effectiveTrail.length > 0) {
       </section>
 
       {
-        featured && (
-          <LedgerFeatured
-            kicker="Latest system"
-            title={featured.title}
-            metaLines={[`Updated ${formatDate(featured.updatedAt)}`]}
-            deck={featured.deck}
-            image={featured.primaryMedia}
-            imageLabel={`System / ${featured.slug}`}
-            href={`/software/${featured.slug}`}
-            ctaLabel="Open record"
-          />
-        )
-      }
-
-      {
         software.length === 0 ? (
           <section class="object-ledger" aria-label="Published software">
             <article class="object-entry object-entry-compact object-entry-placeholder">
@@ -135,6 +120,18 @@ if (effectiveTrail.length > 0) {
           </section>
         ) : (
           <section class="ledger-rows" aria-label="Published software">
+            {featured && (
+              <LedgerFeatured
+                kicker="Latest system"
+                title={featured.title}
+                dateLabel={`Updated ${formatDate(featured.updatedAt)}`}
+                deck={featured.deck}
+                image={featured.primaryMedia}
+                imageLabel={`System / ${featured.slug}`}
+                href={`/software/${featured.slug}`}
+                ctaLabel="Open record"
+              />
+            )}
             {rows.map((item, i) => (
               <LedgerRow
                 index={rowStart + i}

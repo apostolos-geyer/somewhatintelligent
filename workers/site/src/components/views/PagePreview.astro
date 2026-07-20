@@ -76,34 +76,6 @@ const activeFor: Record<"writing" | "software", "writing" | "software"> = {
           <p class="objects-deck">{doc.deck}</p>
         </section>
 
-        {doc.key === "writing" && texts.length > 0 && (
-          <LedgerFeatured
-            kicker="Latest text"
-            title={texts[0].title}
-            metaLines={[formatDate(texts[0].publishedAt)]}
-            deck={texts[0].deck}
-            excerpt={texts[0].excerpt}
-            image={texts[0].heroMedia}
-            imageLabel={`Text / ${texts[0].slug}`}
-            tags={texts[0].tags}
-            href={`/writing/${texts[0].slug}`}
-            ctaLabel="Read text"
-          />
-        )}
-
-        {doc.key === "software" && software.length > 0 && (
-          <LedgerFeatured
-            kicker="Latest system"
-            title={software[0].title}
-            metaLines={[`Updated ${formatDate(software[0].updatedAt)}`]}
-            deck={software[0].deck}
-            image={software[0].primaryMedia}
-            imageLabel={`System / ${software[0].slug}`}
-            href={`/software/${software[0].slug}`}
-            ctaLabel="Open record"
-          />
-        )}
-
         {doc.key === "writing" &&
           (texts.length === 0 ? (
             <section class="object-ledger" aria-label="Records">
@@ -121,6 +93,18 @@ const activeFor: Record<"writing" | "software", "writing" | "software"> = {
             </section>
           ) : (
             <section class="ledger-rows" aria-label="Records">
+              <LedgerFeatured
+                kicker="Latest text"
+                title={texts[0].title}
+                dateLabel={formatDate(texts[0].publishedAt)}
+                deck={texts[0].deck}
+                excerpt={texts[0].excerpt}
+                image={texts[0].heroMedia}
+                imageLabel={`Text / ${texts[0].slug}`}
+                tags={texts[0].tags}
+                href={`/writing/${texts[0].slug}`}
+                ctaLabel="Read text"
+              />
               {texts.slice(1).map((text, i) => (
                 <LedgerRow
                   index={i + 2}
@@ -150,6 +134,16 @@ const activeFor: Record<"writing" | "software", "writing" | "software"> = {
             </section>
           ) : (
             <section class="ledger-rows" aria-label="Records">
+              <LedgerFeatured
+                kicker="Latest system"
+                title={software[0].title}
+                dateLabel={`Updated ${formatDate(software[0].updatedAt)}`}
+                deck={software[0].deck}
+                image={software[0].primaryMedia}
+                imageLabel={`System / ${software[0].slug}`}
+                href={`/software/${software[0].slug}`}
+                ctaLabel="Open record"
+              />
               {software.slice(1).map((item, i) => (
                 <LedgerRow
                   index={i + 2}

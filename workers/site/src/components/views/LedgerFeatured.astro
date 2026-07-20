@@ -1,16 +1,18 @@
 ---
-// Featured-latest ledger entry: the most-recent record rendered at display
-// scale (RFC-0001 D9.1). Reuses the `.object-entry-current` column skeleton
-// (number rail / meta / image / operational); `.ledger-featured` in the global
-// stylesheet lifts the title to display type and the deck/excerpt to editorial.
-// Shared by the public /writing + /software index pages and the Operator draft
-// preview (ONE composition per key).
+// Featured-latest ledger entry (RFC-0001 D9.1). Renders in-flow as the first
+// child of the scrolling `.ledger-rows` container: a sticky headline `bar`
+// (number / title / date / arrow) over an expandable `panel` (deck, excerpt,
+// tags, CTA, image). As the container scrolls, a progressive-enhancement script
+// sets `--ledger-collapse` (0→1) on the container; styles.css interpolates the
+// title down to compact-row scale and collapses the panel away, leaving a
+// pinned slim row. Base styles render the full entry statically, so a browser
+// without the script (or with reduced motion) simply scrolls it away.
 import type { PublicMediaRef } from "../../lib/publisher-public";
 
 interface Props {
   kicker?: string;
   title: string;
-  metaLines?: string[];
+  dateLabel: string;
   deck?: string | null;
   excerpt?: string | null;
   image: PublicMediaRef | null;
@@ -20,54 +22,84 @@ interface Props {
   ctaLabel: string;
 }
 
-const {
-  kicker,
-  title,
-  metaLines = [],
-  deck,
-  excerpt,
-  image,
-  imageLabel,
-  tags = [],
-  href,
-  ctaLabel,
-} = Astro.props;
+const { kicker, title, dateLabel, deck, excerpt, image, imageLabel, tags = [], href, ctaLabel } =
+  Astro.props;
 ---
 
-<article class="object-entry object-entry-current ledger-featured" id={href.split("/").pop()}>
-  <span class="object-number">01</span>
-  <div class="object-meta">
-    {kicker && <p class="ledger-featured-kicker">{kicker}</p>}
-    <h2>{title}</h2>
-    {metaLines.map((line) => <p class="ledger-featured-metaline">{line}</p>)}
-    {deck && <p class="ledger-featured-deck">{deck}</p>}
-    {excerpt && <p class="ledger-featured-excerpt">{excerpt}</p>}
-  </div>
-  {
-    image ? (
-      <figure class="object-image">
-        <img src={image.href} alt={image.alt || title} />
-      </figure>
-    ) : (
-      <div class="object-placeholder-field" aria-label="No image">
-        <span>{imageLabel}</span>
-        <strong>NO IMAGE</strong>
-      </div>
-    )
-  }
-  <div class="object-operational">
+<article class="ledger-featured" id={href.split("/").pop()}>
+  <a class="ledger-featured-bar" href={href}>
+    <span class="ledger-featured-num">01</span>
+    <span class="ledger-featured-headline">
+      {kicker && <span class="ledger-featured-kicker">{kicker}</span>}
+      <span class="ledger-featured-title">{title}</span>
+    </span>
+    <span class="ledger-featured-date">{dateLabel}</span>
+    <span class="ledger-featured-arrow" aria-hidden="true">→</span>
+  </a>
+  <div class="ledger-featured-panel">
+    <div class="ledger-featured-copy">
+      {deck && <p class="ledger-featured-deck">{deck}</p>}
+      {excerpt && <p class="ledger-featured-excerpt">{excerpt}</p>}
+      {tags.length > 0 && <p class="ledger-featured-tags">{tags.join(" · ")}</p>}
+      <a class="ledger-featured-cta" href={href}>
+        {ctaLabel} <span aria-hidden="true">→</span>
+      </a>
+    </div>
     {
-      tags.length > 0 && (
-        <dl>
-          <div>
-            <dt>Tags</dt>
-            <dd>{tags.join(", ")}</dd>
-          </div>
-        </dl>
+      image ? (
+        <figure class="ledger-featured-image">
+          <img src={image.href} alt={image.alt || title} />
+        </figure>
+      ) : (
+        <div class="object-placeholder-field ledger-featured-placeholder" aria-label="No image">
+          <span>{imageLabel}</span>
+          <strong>NO IMAGE</strong>
+        </div>
       )
     }
-    <a href={href}>
-      {ctaLabel} <span aria-hidden="true">→</span>
-    </a>
   </div>
+  <script is:inline>
+    (function () {
+      var script = document.currentScript;
+      if (!script) return;
+      var featured = script.closest(".ledger-featured");
+      var container = featured && featured.closest(".ledger-rows");
+      if (!container) return;
+      if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+        return;
+      container.classList.add("is-collapsible");
+
+      // Calibrate the collapse range to the actual featured-height delta so a
+      // pixel of scroll maps ~1:1 to a pixel of shrink (no dead zone or jump).
+      // Measured by forcing each end and reading the laid-out height.
+      var RANGE = 320;
+      function set(p) {
+        container.style.setProperty("--ledger-collapse", p);
+      }
+      function measure() {
+        set("0");
+        var fullH = featured.getBoundingClientRect().height;
+        set("1");
+        var collapsedH = featured.getBoundingClientRect().height;
+        RANGE = Math.max(1, fullH - collapsedH);
+        apply();
+      }
+      var ticking = false;
+      function apply() {
+        ticking = false;
+        var p = container.scrollTop / RANGE;
+        p = p < 0 ? 0 : p > 1 ? 1 : p;
+        set(p.toFixed(4));
+      }
+      function onScroll() {
+        if (!ticking) {
+          ticking = true;
+          requestAnimationFrame(apply);
+        }
+      }
+      container.addEventListener("scroll", onScroll, { passive: true });
+      window.addEventListener("resize", measure, { passive: true });
+      measure();
+    })();
+  </script>
 </article>

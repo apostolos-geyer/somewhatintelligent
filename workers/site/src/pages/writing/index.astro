@@ -115,23 +115,6 @@ if (effectiveTrail.length > 0) {
       </section>
 
       {
-        featured && (
-          <LedgerFeatured
-            kicker="Latest text"
-            title={featured.title}
-            metaLines={[formatDate(featured.publishedAt)]}
-            deck={featured.deck}
-            excerpt={featured.excerpt}
-            image={featured.heroMedia}
-            imageLabel={`Text / ${featured.slug}`}
-            tags={featured.tags}
-            href={`/writing/${featured.slug}`}
-            ctaLabel="Read text"
-          />
-        )
-      }
-
-      {
         texts.length === 0 ? (
           <section class="object-ledger" aria-label="Published texts">
             <article class="object-entry object-entry-compact object-entry-placeholder">
@@ -148,6 +131,20 @@ if (effectiveTrail.length > 0) {
           </section>
         ) : (
           <section class="ledger-rows" aria-label="Published texts">
+            {featured && (
+              <LedgerFeatured
+                kicker="Latest text"
+                title={featured.title}
+                dateLabel={formatDate(featured.publishedAt)}
+                deck={featured.deck}
+                excerpt={featured.excerpt}
+                image={featured.heroMedia}
+                imageLabel={`Text / ${featured.slug}`}
+                tags={featured.tags}
+                href={`/writing/${featured.slug}`}
+                ctaLabel="Read text"
+              />
+            )}
             {rows.map((text, i) => (
               <LedgerRow
                 index={rowStart + i}
