@@ -18,9 +18,12 @@ CI/CD is entirely RWX (no GitHub Actions). Monitor any lane with
 
 `.rwx/ci.yml` gates, then calls `.rwx/promote-staging.yml`: affected workers
 only (`scripts/changed-workers.sh`; packages/* or an RPC-worker change fans
-out to all 6), migrate-before-code per worker, promote the PR-built version
-when one exists, otherwise full build+deploy, then smoke test
-(`scripts/smoke-test.sh`). Nothing to do manually.
+out to the full release-managed fleet — promoter, roadie, guestlist, identity,
+store, publisher, site, bouncer), migrate-before-code per worker, promote the
+PR-built version when one exists, otherwise full build+deploy, then smoke test
+(`scripts/smoke-test.sh`). Nothing to do manually — EXCEPT operator: it has no
+CI/CD lane by owner decision and deploys manually
+(`cd workers/operator && bun run deploy:staging` / `deploy:production`).
 
 Force a full-fleet staging ship (disaster lever):
 
@@ -34,8 +37,8 @@ release-please (manifest mode, per-worker components) maintains a release PR
 on main. Merging it creates per-worker tags `<worker>-v<x.y.z>`;
 `.rwx/release-please.yml` then deploys ONLY the released workers, in canonical
 order (bouncer last), migrate-before-code, smoke test after. Versions are
-per-worker (all currently `0.0.0`, pre-first-release); `release-please-config.json`
-is the component map.
+per-worker (`.release-please-manifest.json` is the live ledger);
+`release-please-config.json` is the component map.
 
 ## Re-ship a single worker (rollback / re-deploy)
 

@@ -54,6 +54,8 @@ on:
           - guestlist
           - identity
           - store
+          - publisher
+          - site
           - bouncer
       - key: tag
         name: Release tag
