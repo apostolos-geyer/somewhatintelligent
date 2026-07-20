@@ -542,13 +542,19 @@ Resolve each before the phase it gates; recommendations in **bold**.
 2. **Astro island framework** (gates T21): `@astrojs/react` (pulls react/react-dom
    into a zero-JS worker) vs **vanilla `<script>` islands** + `@stripe/stripe-js`.
    `@stripe/stripe-js` is required either way for the Payment Element.
+   **Resolved (2026-07-19):** vanilla `<script>` islands — `workers/site/package.json`
+   carries `@stripe/stripe-js` and no `react`/`react-dom`/`@astrojs/react` dependency.
 3. **`@astrojs/cloudflare` version** (gates T6): pick one compatible with pinned
    Astro `7.0.9` — no adapter exists in the repo today.
+   **Resolved (2026-07-19):** `@astrojs/cloudflare` `^14.1.3` (`workers/site/package.json`).
 4. **`MediaStorage` key ↔ Roadie referenceId** (gates T5): **store the referenceId
    as the private `storage_key`** vs maintain a key→referenceId map. Note
    `roadie.put` caps at 100 MB with no multipart, while the old browser-direct
    presign path did 10 GB — accept the 100 MB ceiling for product/text imagery, or
    build server-side multipart in the adapter.
+   **Resolved (2026-07-19):** the Roadie `referenceId` IS the private `storage_key`,
+   no key→referenceId map — `workers/store/src/lib/media-storage-roadie.ts` threads the
+   caller's logical key in as Roadie's `resourceId` and returns the referenceId as the key.
 5. **Preview mechanism** (gates T23): **Resolved — Operator POSTs the draft
    document to a POST-only Site `/__preview` route, HMAC-authenticated.** A
    preview-only draft binding on Site is rejected (violates INV-SITE-1). Site
@@ -575,12 +581,23 @@ Resolve each before the phase it gates; recommendations in **bold**.
 7. **Webhook path migration** (gates T12): `/hooks/store` → `/hooks/store/stripe`
    must change in lockstep across the Store constant, `worker.ts` exact-match, and
    the Stripe dashboard endpoint.
+   **Resolved (2026-07-19):** the constant is `/hooks/store/stripe`
+   (`workers/store/src/lib/stripe-webhook.ts`), forwarded under bouncer's
+   `/hooks/store` passthrough mount (`workers/bouncer/wrangler.jsonc`).
 8. **Bouncer envelope scope** (gates T12): per-`(host,upstream)` vs per-mount is
    unverified on disk — verify the `/api/store` mount inherits the customer
    envelope before trusting buyer auth.
+   **Resolved (2026-07-19):** the `/api/store` mount carries the buyer envelope —
+   `workers/store/src/api/store-api.ts` resolves the buyer from the bouncer Ed25519
+   envelope + guestlist RPC, host-compared against the apex-pinned `STORE_URL` (T12).
 9. **Deletion engine shape** (gates T13/T18): shared helper across Store+Publisher
    vs per-worker copies (schemas differ). **Recommend a shared `@si/contracts`
    helper for the plan/confirm token + impact math, per-worker execution.**
+   **Resolved (2026-07-19):** per-worker copies — `@si/contracts` exports only the
+   deletion DTOs (`packages/contracts/src/deletion.ts`); Store
+   (`workers/store/src/lib/operator.ts`) and Publisher
+   (`workers/publisher/src/operator/writes.ts`) each own token hashing + impact-drift
+   rejection, since the two schemas differ.
 
 ## Risks & mitigations
 
