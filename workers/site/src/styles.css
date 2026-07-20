@@ -611,6 +611,182 @@ a:focus-visible {
   border-right: 0;
 }
 
+/* Featured-latest ledger (RFC-0001 D9.1): intro / featured entry / scrolling
+   compact rows / folio pager. Row 2 (featured) is empty and collapses to 0 on
+   pages past the first; the scroll lives in row 3 so many rows never crush. */
+.ledger-main {
+  display: grid;
+  min-height: 0;
+  grid-template-rows: 242px auto minmax(0, 1fr) auto;
+}
+
+.ledger-main > .objects-intro {
+  grid-row: 1;
+}
+
+.ledger-main > .ledger-featured {
+  grid-row: 2;
+}
+
+.ledger-main > .ledger-rows,
+.ledger-main > .object-ledger {
+  grid-row: 3;
+  min-height: 0;
+}
+
+.ledger-main > .ledger-pager {
+  grid-row: 4;
+}
+
+.ledger-featured {
+  min-height: clamp(280px, 36vh, 440px);
+  margin: 0 24px;
+  border-top: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  border-left: 1px solid var(--color-border);
+}
+
+.ledger-featured .object-meta {
+  justify-content: flex-start;
+  text-transform: none;
+}
+
+.ledger-featured .object-meta .ledger-featured-kicker {
+  margin-top: 0;
+  color: var(--color-primary);
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.ledger-featured .object-meta h2 {
+  margin-top: 14px;
+  font-family: var(--font-display);
+  font-size: clamp(48px, 6vw, 96px);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 0.82;
+  text-transform: none;
+}
+
+.ledger-featured .object-meta .ledger-featured-metaline {
+  margin-top: 14px;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.ledger-featured .object-meta .ledger-featured-deck,
+.ledger-featured .object-meta .ledger-featured-excerpt {
+  margin-top: 14px;
+  font-family: var(--font-editorial);
+  font-size: clamp(15px, 1.15vw, 19px);
+  line-height: 1.2;
+  text-transform: none;
+}
+
+.ledger-featured .object-operational a {
+  margin-top: auto;
+}
+
+.ledger-rows {
+  display: grid;
+  min-height: 0;
+  grid-auto-rows: min-content;
+  margin: 0 24px;
+  overflow-y: auto;
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  border-left: 1px solid var(--color-border);
+}
+
+.ledger-row {
+  display: grid;
+  min-height: 58px;
+  grid-template-columns: 56px minmax(0, 1fr) auto 44px;
+  align-items: center;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-foreground);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+}
+
+.ledger-rows > .ledger-row:last-child {
+  border-bottom: 0;
+}
+
+.ledger-row:hover {
+  background: var(--color-foreground);
+  color: var(--color-background);
+}
+
+.ledger-row-index {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid var(--color-border);
+  font-size: 13px;
+}
+
+.ledger-row-title {
+  overflow: hidden;
+  padding: 0 22px;
+  font-size: clamp(14px, 1.3vw, 18px);
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ledger-row-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  padding: 0 18px;
+}
+
+.ledger-row-tags {
+  color: var(--color-primary);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.ledger-row:hover .ledger-row-tags {
+  color: inherit;
+}
+
+.ledger-row-date {
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.ledger-row-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+}
+
+.ledger-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 24px;
+  padding: 14px 2px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ledger-pager a {
+  color: var(--color-primary);
+}
+
+.ledger-pager .is-disabled {
+  color: var(--color-border-strong);
+}
+
 .software-main {
   min-height: 0;
   overflow: hidden;
@@ -1455,6 +1631,49 @@ a:focus-visible {
 
   .object-placeholder-field strong {
     font-size: 14vw;
+  }
+
+  .ledger-main {
+    display: block;
+  }
+
+  /* Featured stacks via the shared `.object-entry-current` mobile grid; drop the
+     desktop frame so it goes full-bleed like the other stacked entries. */
+  .ledger-featured {
+    min-height: 0;
+    margin: 0;
+    border-top: 0;
+    border-right: 0;
+    border-left: 0;
+  }
+
+  .ledger-featured .object-meta h2 {
+    font-size: clamp(40px, 12vw, 68px);
+  }
+
+  .ledger-rows {
+    display: block;
+    margin: 0;
+    overflow-y: visible;
+    border-right: 0;
+    border-left: 0;
+  }
+
+  .ledger-row {
+    min-height: 54px;
+    grid-template-columns: 44px minmax(0, 1fr) auto 36px;
+  }
+
+  .ledger-row-tags {
+    display: none;
+  }
+
+  .ledger-row-title {
+    font-size: 15px;
+  }
+
+  .ledger-pager {
+    margin: 0 18px;
   }
 
   .software-coming {

@@ -1,0 +1,26 @@
+---
+// Slim compact ledger row (RFC-0001 D9.1). The whole row is a single anchor —
+// number, title, meta (tags · date) and arrow — so tags render as plain text
+// rather than nested links. Sits inside the scrollable `.ledger-rows` frame on
+// the /writing + /software index pages and the Operator draft preview.
+interface Props {
+  index: number;
+  title: string;
+  dateLabel: string;
+  tags?: string[];
+  href: string;
+}
+
+const { index, title, dateLabel, tags = [], href } = Astro.props;
+const num = String(index).padStart(2, "0");
+---
+
+<a class="ledger-row" href={href}>
+  <span class="ledger-row-index">{num}</span>
+  <span class="ledger-row-title">{title}</span>
+  <span class="ledger-row-meta">
+    {tags.length > 0 && <span class="ledger-row-tags">{tags.join(" · ")}</span>}
+    <span class="ledger-row-date">{dateLabel}</span>
+  </span>
+  <span class="ledger-row-arrow" aria-hidden="true">→</span>
+</a>

@@ -13,6 +13,8 @@ import SiteHeader from "../SiteHeader.astro";
 import HomeView from "./HomeView.astro";
 import ShopView from "./ShopView.astro";
 import AboutView from "./AboutView.astro";
+import LedgerFeatured from "./LedgerFeatured.astro";
+import LedgerRow from "./LedgerRow.astro";
 import { listProducts, availabilityLabel, type ProductCardDTO } from "../../lib/store-catalog";
 import {
   listTexts,
@@ -68,15 +70,43 @@ const activeFor: Record<"writing" | "software", "writing" | "software"> = {
   (doc.key === "writing" || doc.key === "software") && (
     <div class="site-frame shop-frame">
       <SiteHeader active={activeFor[doc.key]} />
-      <main class="shop-main">
+      <main class="ledger-main">
         <section class="objects-intro" aria-labelledby="page-preview-title">
           <h1 id="page-preview-title">{doc.title || doc.eyebrow}</h1>
           <p class="objects-deck">{doc.deck}</p>
         </section>
 
-        <section class="object-ledger" aria-label="Records">
-          {doc.key === "writing" &&
-            (texts.length === 0 ? (
+        {doc.key === "writing" && texts.length > 0 && (
+          <LedgerFeatured
+            kicker="Latest text"
+            title={texts[0].title}
+            metaLines={[formatDate(texts[0].publishedAt)]}
+            deck={texts[0].deck}
+            excerpt={texts[0].excerpt}
+            image={texts[0].heroMedia}
+            imageLabel={`Text / ${texts[0].slug}`}
+            tags={texts[0].tags}
+            href={`/writing/${texts[0].slug}`}
+            ctaLabel="Read text"
+          />
+        )}
+
+        {doc.key === "software" && software.length > 0 && (
+          <LedgerFeatured
+            kicker="Latest system"
+            title={software[0].title}
+            metaLines={[`Updated ${formatDate(software[0].updatedAt)}`]}
+            deck={software[0].deck}
+            image={software[0].primaryMedia}
+            imageLabel={`System / ${software[0].slug}`}
+            href={`/software/${software[0].slug}`}
+            ctaLabel="Open record"
+          />
+        )}
+
+        {doc.key === "writing" &&
+          (texts.length === 0 ? (
+            <section class="object-ledger" aria-label="Records">
               <article class="object-entry object-entry-compact object-entry-placeholder">
                 <span class="object-number">01</span>
                 <div class="object-meta">
@@ -88,36 +118,24 @@ const activeFor: Record<"writing" | "software", "writing" | "software"> = {
                   <strong>COMING SOON</strong>
                 </div>
               </article>
-            ) : (
-              texts.map((text, i) => (
-                <article class="object-entry object-entry-current" id={text.slug}>
-                  <span class="object-number">{String(i + 1).padStart(2, "0")}</span>
-                  <div class="object-meta">
-                    <h2>{text.title}</h2>
-                    <p>{formatDate(text.publishedAt)}</p>
-                    {text.deck && <p>{text.deck}</p>}
-                  </div>
-                  {text.heroMedia ? (
-                    <figure class="object-image">
-                      <img src={text.heroMedia.href} alt={text.heroMedia.alt || text.title} />
-                    </figure>
-                  ) : (
-                    <div class="object-placeholder-field" aria-label="No hero image">
-                      <span>Text / {text.slug}</span>
-                      <strong>NO IMAGE</strong>
-                    </div>
-                  )}
-                  <div class="object-operational">
-                    <a href={`/writing/${text.slug}`}>
-                      Read text <span aria-hidden="true">→</span>
-                    </a>
-                  </div>
-                </article>
-              ))
-            ))}
+            </section>
+          ) : (
+            <section class="ledger-rows" aria-label="Records">
+              {texts.slice(1).map((text, i) => (
+                <LedgerRow
+                  index={i + 2}
+                  title={text.title}
+                  dateLabel={formatDate(text.publishedAt)}
+                  tags={text.tags}
+                  href={`/writing/${text.slug}`}
+                />
+              ))}
+            </section>
+          ))}
 
-          {doc.key === "software" &&
-            (software.length === 0 ? (
+        {doc.key === "software" &&
+          (software.length === 0 ? (
+            <section class="object-ledger" aria-label="Records">
               <article class="object-entry object-entry-compact object-entry-placeholder">
                 <span class="object-number">01</span>
                 <div class="object-meta">
@@ -129,33 +147,19 @@ const activeFor: Record<"writing" | "software", "writing" | "software"> = {
                   <strong>COMING SOON</strong>
                 </div>
               </article>
-            ) : (
-              software.map((item, i) => (
-                <article class="object-entry object-entry-current" id={item.slug}>
-                  <span class="object-number">{String(i + 1).padStart(2, "0")}</span>
-                  <div class="object-meta">
-                    <h2>{item.title}</h2>
-                    <p>{item.deck}</p>
-                  </div>
-                  {item.primaryMedia ? (
-                    <figure class="object-image">
-                      <img src={item.primaryMedia.href} alt={item.primaryMedia.alt || item.title} />
-                    </figure>
-                  ) : (
-                    <div class="object-placeholder-field" aria-label="No primary image">
-                      <span>System / {item.slug}</span>
-                      <strong>NO IMAGE</strong>
-                    </div>
-                  )}
-                  <div class="object-operational">
-                    <a href={`/software/${item.slug}`}>
-                      Open record <span aria-hidden="true">→</span>
-                    </a>
-                  </div>
-                </article>
-              ))
-            ))}
-        </section>
+            </section>
+          ) : (
+            <section class="ledger-rows" aria-label="Records">
+              {software.slice(1).map((item, i) => (
+                <LedgerRow
+                  index={i + 2}
+                  title={item.title}
+                  dateLabel={formatDate(item.updatedAt)}
+                  href={`/software/${item.slug}`}
+                />
+              ))}
+            </section>
+          ))}
       </main>
       <SiteFooter />
     </div>

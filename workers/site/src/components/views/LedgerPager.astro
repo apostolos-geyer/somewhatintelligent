@@ -1,0 +1,37 @@
+---
+// Two-sided folio nav for the keyset-paginated ledgers (RFC-0001 D9). The
+// public read surface is forward-only (no offsets/totals), so navigation is
+// Newer/Older folio steps, not numbered pages. A null href renders a muted,
+// non-interactive label so the bar keeps its two-sided shape.
+interface Props {
+  olderHref: string | null;
+  newerHref: string | null;
+}
+
+const { olderHref, newerHref } = Astro.props;
+---
+
+{
+  (olderHref || newerHref) && (
+    <nav class="ledger-pager" aria-label="Ledger pages">
+      {newerHref ? (
+        <a href={newerHref} rel="prev">
+          <span aria-hidden="true">←</span> Newer
+        </a>
+      ) : (
+        <span class="is-disabled">
+          <span aria-hidden="true">←</span> Newer
+        </span>
+      )}
+      {olderHref ? (
+        <a href={olderHref} rel="next">
+          Older <span aria-hidden="true">→</span>
+        </a>
+      ) : (
+        <span class="is-disabled">
+          Older <span aria-hidden="true">→</span>
+        </span>
+      )}
+    </nav>
+  )
+}

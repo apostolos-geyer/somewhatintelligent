@@ -2,6 +2,9 @@
 import Base from "../../layouts/Base.astro";
 import SiteFooter from "../../components/SiteFooter.astro";
 import SiteHeader from "../../components/SiteHeader.astro";
+import LedgerFeatured from "../../components/views/LedgerFeatured.astro";
+import LedgerRow from "../../components/views/LedgerRow.astro";
+import LedgerPager from "../../components/views/LedgerPager.astro";
 import {
   getPage,
   listTexts,
@@ -10,15 +13,32 @@ import {
 } from "../../lib/publisher-public";
 import { formatDate } from "../../lib/format";
 
+// One featured entry + 12 rows on page 1, then 13 rows per page. Keyset reads
+// are forward-only (no offsets/totals) so navigation is Newer/Older folio steps.
+const PAGE_SIZE = 13;
+
 const tagParam = Astro.url.searchParams.get("tag");
 const tag = tagParam && tagParam.length > 0 ? tagParam : undefined;
 const cursorParam = Astro.url.searchParams.get("cursor");
 const cursor = cursorParam && cursorParam.length > 0 ? cursorParam : undefined;
+const trailParam = Astro.url.searchParams.get("trail");
+const trail = trailParam ? trailParam.split(",").filter((t) => t.length > 0) : [];
 
-const [pageResult, listResult] = await Promise.all([
+const [pageResult, firstList] = await Promise.all([
   getPage("writing"),
-  listTexts({ tag, cursor, limit: 24 }),
+  listTexts({ tag, cursor, limit: PAGE_SIZE }),
 ]);
+
+// A malformed cursor degrades to page 1 (never 500): re-read without the cursor
+// and drop the trail so pagination re-anchors.
+let listResult = firstList;
+let effectiveCursor = cursor;
+let effectiveTrail = trail;
+if (!listResult.ok) {
+  listResult = await listTexts({ tag, limit: PAGE_SIZE });
+  effectiveCursor = undefined;
+  effectiveTrail = [];
+}
 
 // Page copy/SEO come from the Publisher page document; fall back to static copy
 // when the page has never been published (INV-PUB-1: null active pointer).
@@ -34,11 +54,34 @@ const seoImage = doc?.seo.imageMediaId ? publisherMediaHref(doc.seo.imageMediaId
 const texts: PublishedTextSummaryDTO[] = listResult.ok ? listResult.value.texts : [];
 const nextCursor = listResult.ok ? listResult.value.nextCursor : null;
 
-function nextHref(): string {
-  const params = new URLSearchParams();
-  if (tag) params.set("tag", tag);
-  if (nextCursor) params.set("cursor", nextCursor);
-  return `/writing/?${params.toString()}`;
+// Featured treatment is page-1 only (composes with ?tag=); later pages are rows.
+const isPageOne = !effectiveCursor;
+const featured = isPageOne && texts.length > 0 ? texts[0] : null;
+const rows = isPageOne ? texts.slice(1) : texts;
+const rowStart = isPageOne ? 2 : 1;
+
+function href(params: { cursor?: string; trail?: string[] }): string {
+  const sp = new URLSearchParams();
+  if (tag) sp.set("tag", tag);
+  if (params.cursor) sp.set("cursor", params.cursor);
+  if (params.trail && params.trail.length > 0) sp.set("trail", params.trail.join(","));
+  const q = sp.toString();
+  return q ? `/writing/?${q}` : "/writing/";
+}
+
+// olderHref pushes the current cursor onto the trail; newerHref pops it. An
+// empty trail with a cursor present (hand-edited URL) steps back to bare page 1.
+const olderHref = nextCursor
+  ? href({ cursor: nextCursor, trail: effectiveCursor ? [...effectiveTrail, effectiveCursor] : effectiveTrail })
+  : null;
+let newerHref: string | null = null;
+if (effectiveTrail.length > 0) {
+  newerHref = href({
+    cursor: effectiveTrail[effectiveTrail.length - 1],
+    trail: effectiveTrail.slice(0, -1),
+  });
+} else if (effectiveCursor) {
+  newerHref = href({});
 }
 ---
 
@@ -46,7 +89,7 @@ function nextHref(): string {
   <div class="site-frame shop-frame">
     <SiteHeader active="writing" />
 
-    <main class="shop-main">
+    <main class="ledger-main">
       <section class="objects-intro" aria-labelledby="writing-title">
         <h1 id="writing-title">
           <span class="sr-only">{heading}</span>
@@ -62,25 +105,35 @@ function nextHref(): string {
           </svg>
         </h1>
         <p class="objects-deck">{deck}</p>
-        {tag && (
-          <p class="writing-tag-filter">
-            tagged “{tag}” — <a href="/writing/">clear</a>
-          </p>
-        )}
         {
-          nextCursor && (
-            <p class="writing-pager">
-              <a href={nextHref()}>
-                Older texts <span aria-hidden="true">→</span>
-              </a>
+          tag && (
+            <p class="writing-tag-filter">
+              tagged “{tag}” — <a href="/writing/">clear</a>
             </p>
           )
         }
       </section>
 
-      <section class="object-ledger" aria-label="Published texts">
-        {
-          texts.length === 0 ? (
+      {
+        featured && (
+          <LedgerFeatured
+            kicker="Latest text"
+            title={featured.title}
+            metaLines={[formatDate(featured.publishedAt)]}
+            deck={featured.deck}
+            excerpt={featured.excerpt}
+            image={featured.heroMedia}
+            imageLabel={`Text / ${featured.slug}`}
+            tags={featured.tags}
+            href={`/writing/${featured.slug}`}
+            ctaLabel="Read text"
+          />
+        )
+      }
+
+      {
+        texts.length === 0 ? (
+          <section class="object-ledger" aria-label="Published texts">
             <article class="object-entry object-entry-compact object-entry-placeholder">
               <span class="object-number">01</span>
               <div class="object-meta">
@@ -92,54 +145,23 @@ function nextHref(): string {
                 <strong>COMING SOON</strong>
               </div>
             </article>
-          ) : (
-            texts.map((text, i) => (
-              <article class="object-entry object-entry-current" id={text.slug}>
-                <span class="object-number">{String(i + 1).padStart(2, "0")}</span>
-                <div class="object-meta">
-                  <h2>{text.title}</h2>
-                  <p>{formatDate(text.publishedAt)}</p>
-                  {text.deck && <p>{text.deck}</p>}
-                  <dl>
-                    <div>
-                      <dt>Excerpt</dt>
-                      <dd>{text.excerpt}</dd>
-                    </div>
-                  </dl>
-                </div>
-                {text.heroMedia ? (
-                  <figure class="object-image">
-                    <img src={text.heroMedia.href} alt={text.heroMedia.alt || text.title} />
-                  </figure>
-                ) : (
-                  <div class="object-placeholder-field" aria-label="No hero image">
-                    <span>Text / {text.slug}</span>
-                    <strong>NO IMAGE</strong>
-                  </div>
-                )}
-                <div class="object-operational">
-                  <dl>
-                    <div>
-                      <dt>Version</dt>
-                      <dd>{text.version}</dd>
-                    </div>
-                    {text.tags.length > 0 && (
-                      <div>
-                        <dt>Tags</dt>
-                        <dd>{text.tags.join(", ")}</dd>
-                      </div>
-                    )}
-                  </dl>
-                  <a href={`/writing/${text.slug}`}>
-                    Read text <span aria-hidden="true">→</span>
-                  </a>
-                </div>
-              </article>
-            ))
-          )
-        }
-      </section>
+          </section>
+        ) : (
+          <section class="ledger-rows" aria-label="Published texts">
+            {rows.map((text, i) => (
+              <LedgerRow
+                index={rowStart + i}
+                title={text.title}
+                dateLabel={formatDate(text.publishedAt)}
+                tags={text.tags}
+                href={`/writing/${text.slug}`}
+              />
+            ))}
+          </section>
+        )
+      }
 
+      <LedgerPager olderHref={olderHref} newerHref={newerHref} />
     </main>
 
     <SiteFooter />
@@ -147,24 +169,12 @@ function nextHref(): string {
 </Base>
 
 <style>
-  .writing-tag-filter,
-  .writing-pager {
+  .writing-tag-filter {
     position: absolute;
+    top: 70px;
     right: 5%;
     font-family: var(--font-mono);
     font-size: 11px;
     text-transform: uppercase;
-  }
-
-  .writing-tag-filter {
-    top: 70px;
-  }
-
-  .writing-pager {
-    bottom: 26px;
-  }
-
-  .writing-pager a {
-    color: var(--color-primary);
   }
 </style>

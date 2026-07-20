@@ -1,0 +1,73 @@
+---
+// Featured-latest ledger entry: the most-recent record rendered at display
+// scale (RFC-0001 D9.1). Reuses the `.object-entry-current` column skeleton
+// (number rail / meta / image / operational); `.ledger-featured` in the global
+// stylesheet lifts the title to display type and the deck/excerpt to editorial.
+// Shared by the public /writing + /software index pages and the Operator draft
+// preview (ONE composition per key).
+import type { PublicMediaRef } from "../../lib/publisher-public";
+
+interface Props {
+  kicker?: string;
+  title: string;
+  metaLines?: string[];
+  deck?: string | null;
+  excerpt?: string | null;
+  image: PublicMediaRef | null;
+  imageLabel: string;
+  tags?: string[];
+  href: string;
+  ctaLabel: string;
+}
+
+const {
+  kicker,
+  title,
+  metaLines = [],
+  deck,
+  excerpt,
+  image,
+  imageLabel,
+  tags = [],
+  href,
+  ctaLabel,
+} = Astro.props;
+---
+
+<article class="object-entry object-entry-current ledger-featured" id={href.split("/").pop()}>
+  <span class="object-number">01</span>
+  <div class="object-meta">
+    {kicker && <p class="ledger-featured-kicker">{kicker}</p>}
+    <h2>{title}</h2>
+    {metaLines.map((line) => <p class="ledger-featured-metaline">{line}</p>)}
+    {deck && <p class="ledger-featured-deck">{deck}</p>}
+    {excerpt && <p class="ledger-featured-excerpt">{excerpt}</p>}
+  </div>
+  {
+    image ? (
+      <figure class="object-image">
+        <img src={image.href} alt={image.alt || title} />
+      </figure>
+    ) : (
+      <div class="object-placeholder-field" aria-label="No image">
+        <span>{imageLabel}</span>
+        <strong>NO IMAGE</strong>
+      </div>
+    )
+  }
+  <div class="object-operational">
+    {
+      tags.length > 0 && (
+        <dl>
+          <div>
+            <dt>Tags</dt>
+            <dd>{tags.join(", ")}</dd>
+          </div>
+        </dl>
+      )
+    }
+    <a href={href}>
+      {ctaLabel} <span aria-hidden="true">→</span>
+    </a>
+  </div>
+</article>
