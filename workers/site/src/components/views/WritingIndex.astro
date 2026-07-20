@@ -169,10 +169,12 @@ const activeIndex = 0;
 </main>
 
 <script>
-  // Hover/focus on a table row makes its entry active: the masthead deck,
+  // Hovering or focusing a table row makes its entry active: the masthead deck,
   // revision history, and preview rail are single panels re-populated from the
-  // page's JSON payload (entries render once — the panels are not duplicated
-  // per entry). State persists until another row takes it.
+  // page's JSON payload (entries render once — the panels are not duplicated per
+  // entry). Delegation binds on `document`, so it survives the full body swap
+  // ClientRouter performs on pager navigation — each new page ships its own
+  // payload and a server-rendered active first row.
   interface Entry {
     slug: string;
     title: string;
@@ -185,13 +187,36 @@ const activeIndex = 0;
   }
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const parsed = new WeakMap<Element, Map<string, Entry>>();
 
-  for (const root of document.querySelectorAll<HTMLElement>(".writing-index")) {
+  function entriesFor(root: HTMLElement): Map<string, Entry> | null {
     const payload = root.querySelector("script[data-writing-entries]");
-    if (!payload?.textContent) continue;
-    const entries = new Map<string, Entry>(
-      (JSON.parse(payload.textContent) as Entry[]).map((e) => [e.slug, e]),
-    );
+    if (!(payload instanceof HTMLElement) || !payload.textContent) return null;
+    let map = parsed.get(payload);
+    if (!map) {
+      map = new Map<string, Entry>(
+        (JSON.parse(payload.textContent) as Entry[]).map((e) => [e.slug, e]),
+      );
+      parsed.set(payload, map);
+    }
+    return map;
+  }
+
+  const setText = (el: HTMLElement | null, text: string) => {
+    if (el) el.textContent = text;
+  };
+  const setHref = (el: HTMLElement | null, href: string) => {
+    if (el instanceof HTMLAnchorElement) el.href = href;
+  };
+  const fade = (el: HTMLElement | null) => {
+    if (el && !reducedMotion.matches)
+      el.animate([{ opacity: 0.3 }, { opacity: 1 }], { duration: 180, easing: "ease-out" });
+  };
+
+  function activate(root: HTMLElement, slug: string | undefined) {
+    if (!slug) return;
+    const e = entriesFor(root)?.get(slug);
+    if (!e) return;
 
     const region = (sel: string) => root.querySelector<HTMLElement>(sel);
     const role = (scope: HTMLElement | null, name: string) =>
@@ -201,110 +226,52 @@ const activeIndex = 0;
     const revisions = region(".writing-revisions");
     const preview = region(".preview-stage");
 
-    const setText = (el: HTMLElement | null, text: string) => {
-      if (el) el.textContent = text;
-    };
-    const setHref = (el: HTMLElement | null, href: string) => {
-      if (el instanceof HTMLAnchorElement) el.href = href;
-    };
+    for (const row of root.querySelectorAll<HTMLElement>(".writing-row")) {
+      row.classList.toggle("is-active", row.dataset.entry === slug);
+    }
 
-    const fade = (el: HTMLElement | null) => {
-      if (el && !reducedMotion.matches)
-        el.animate([{ opacity: 0.3 }, { opacity: 1 }], { duration: 180, easing: "ease-out" });
-    };
+    setText(role(masthead, "kicker"), e.title);
+    setText(role(masthead, "deck"), e.deck ?? e.excerpt);
 
-    const activate = (slug: string | undefined) => {
-      if (!slug) return;
-      const e = entries.get(slug);
-      if (!e) return;
+    setText(role(revisions, "date"), e.date);
+    setText(role(revisions, "version"), e.version);
+    setHref(role(revisions, "href"), `/writing/${e.slug}`);
 
-      for (const row of root.querySelectorAll<HTMLElement>(".writing-row")) {
-        row.classList.toggle("is-active", row.dataset.entry === slug);
+    const img = role(preview, "image");
+    if (img instanceof HTMLImageElement) {
+      if (e.image) {
+        img.src = e.image.href;
+        img.alt = e.image.alt || e.title;
+        img.hidden = false;
+      } else {
+        img.hidden = true;
+        img.removeAttribute("src");
       }
+    }
+    setText(role(preview, "meta"), `${e.date} · ${e.kind} · ${e.version}`);
+    setText(role(preview, "title"), e.title);
+    const deckEl = role(preview, "deck");
+    if (deckEl) {
+      deckEl.hidden = e.deck === null;
+      if (e.deck !== null) deckEl.textContent = e.deck;
+    }
+    setText(role(preview, "excerpt"), e.excerpt);
+    setHref(role(preview, "href"), `/writing/${e.slug}`);
 
-      setText(role(masthead, "kicker"), e.title);
-      setText(role(masthead, "deck"), e.deck ?? e.excerpt);
-
-      setText(role(revisions, "date"), e.date);
-      setText(role(revisions, "version"), e.version);
-      setHref(role(revisions, "href"), `/writing/${e.slug}`);
-
-      const img = role(preview, "image");
-      if (img instanceof HTMLImageElement) {
-        if (e.image) {
-          img.src = e.image.href;
-          img.alt = e.image.alt || e.title;
-          img.hidden = false;
-        } else {
-          img.hidden = true;
-          img.removeAttribute("src");
-        }
-      }
-      setText(role(preview, "meta"), `${e.date} · ${e.kind} · ${e.version}`);
-      setText(role(preview, "title"), e.title);
-      const deckEl = role(preview, "deck");
-      if (deckEl) {
-        deckEl.hidden = e.deck === null;
-        if (e.deck !== null) deckEl.textContent = e.deck;
-      }
-      setText(role(preview, "excerpt"), e.excerpt);
-      setHref(role(preview, "href"), `/writing/${e.slug}`);
-
-      fade(masthead);
-      fade(revisions);
-      fade(preview);
-    };
-
-    // Delegated hover/focus so rows swapped in by soft pagination just work.
-    root.addEventListener("pointerover", (ev) => {
-      const row = (ev.target as HTMLElement).closest<HTMLElement>(".writing-row");
-      if (row) activate(row.dataset.entry);
-    });
-    root.addEventListener("focusin", (ev) => {
-      const row = (ev.target as HTMLElement).closest<HTMLElement>(".writing-row");
-      if (row) activate(row.dataset.entry);
-    });
-
-    // Soft pagination: pager clicks fetch the next page and swap ONLY the
-    // table rows, pager, and JSON payload — the document (masthead, rail,
-    // chrome) is never torn down. Plain links still work without JS.
-    const swapFrom = async (url: string, push: boolean) => {
-      const res = await fetch(url, { headers: { accept: "text/html" } });
-      if (!res.ok) {
-        window.location.href = url;
-        return;
-      }
-      const doc = new DOMParser().parseFromString(await res.text(), "text/html");
-      const nextTable = doc.querySelector(".writing-table");
-      const nextPager = doc.querySelector(".writing-pager");
-      const nextPayload = doc.querySelector("script[data-writing-entries]");
-      const table = root.querySelector(".writing-table");
-      const pager = root.querySelector(".writing-pager");
-      if (!nextTable || !table || !nextPayload?.textContent) {
-        window.location.href = url;
-        return;
-      }
-      table.replaceWith(nextTable);
-      if (pager && nextPager) pager.replaceWith(nextPager);
-      entries.clear();
-      for (const e of JSON.parse(nextPayload.textContent) as Entry[]) entries.set(e.slug, e);
-      if (push) history.pushState({ writingSoftNav: true }, "", url);
-      const first = root.querySelector<HTMLElement>(".writing-row");
-      activate(first?.dataset.entry);
-      fade(root.querySelector(".writing-table"));
-    };
-
-    root.addEventListener("click", (ev) => {
-      const link = (ev.target as HTMLElement).closest<HTMLAnchorElement>(".writing-pager a");
-      if (!link || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
-      ev.preventDefault();
-      void swapFrom(link.href, true);
-    });
-
-    window.addEventListener("popstate", () => {
-      void swapFrom(window.location.href, false);
-    });
+    fade(masthead);
+    fade(revisions);
+    fade(preview);
   }
+
+  function activateFromEvent(target: EventTarget | null) {
+    const row = target instanceof Element ? target.closest<HTMLElement>(".writing-row") : null;
+    if (!row) return;
+    const root = row.closest<HTMLElement>(".writing-index");
+    if (root) activate(root, row.dataset.entry);
+  }
+
+  document.addEventListener("pointerover", (ev) => activateFromEvent(ev.target));
+  document.addEventListener("focusin", (ev) => activateFromEvent(ev.target));
 </script>
 
 <style>

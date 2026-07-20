@@ -1,62 +1,51 @@
 ---
 import Base from "../../layouts/Base.astro";
-import SiteFooter from "../../components/SiteFooter.astro";
-import SiteHeader from "../../components/SiteHeader.astro";
+import TxShell from "../../components/TxShell.astro";
 
 // The cart lives only in the browser (localStorage), so the server renders the
 // shell + states and the island hydrates the lines. Transactional page: noindex.
 ---
 
 <Base title="Cart — somewhatintelligent" description="Your cart." noindex>
-  <div class="site-frame">
-    <SiteHeader active="shop" />
+  <TxShell title="Cart" maxWidth={720}>
+    <p id="cart-loading" class="tx-status">Loading cart…</p>
 
-    <main class="tx-main">
-      <section class="tx-panel" aria-labelledby="cart-title">
-        <h1 id="cart-title">Cart</h1>
+    <div id="cart-empty" class="tx-status" hidden>
+      <p>Your cart is empty.</p>
+      <p><a href="/shop/">Browse objects <span aria-hidden="true">→</span></a></p>
+    </div>
 
-        <p id="cart-loading" class="tx-status">Loading cart…</p>
+    <ul id="cart-lines" class="cart-lines" hidden></ul>
 
-        <div id="cart-empty" class="tx-status" hidden>
-          <p>Your cart is empty.</p>
-          <p><a href="/shop/">Browse objects <span aria-hidden="true">→</span></a></p>
+    <template id="cart-line-tmpl">
+      <li class="cart-line">
+        <a class="cart-line-media" href="#"><img alt="" /></a>
+        <div class="cart-line-info">
+          <a class="cart-line-title" href="#"></a>
+          <p class="cart-line-size"></p>
+          <p class="cart-line-price"></p>
+          <p class="cart-line-flag" hidden></p>
         </div>
+        <div class="cart-line-qty" role="group" aria-label="Quantity">
+          <button type="button" data-act="dec" aria-label="Decrease quantity">−</button>
+          <span class="cart-line-qty-value" aria-live="polite">1</span>
+          <button type="button" data-act="inc" aria-label="Increase quantity">+</button>
+        </div>
+        <button type="button" class="cart-line-remove" data-act="remove">Remove</button>
+      </li>
+    </template>
 
-        <ul id="cart-lines" class="cart-lines" hidden></ul>
-
-        <template id="cart-line-tmpl">
-          <li class="cart-line">
-            <a class="cart-line-media" href="#"><img alt="" /></a>
-            <div class="cart-line-info">
-              <a class="cart-line-title" href="#"></a>
-              <p class="cart-line-size"></p>
-              <p class="cart-line-price"></p>
-              <p class="cart-line-flag" hidden></p>
-            </div>
-            <div class="cart-line-qty" role="group" aria-label="Quantity">
-              <button type="button" data-act="dec" aria-label="Decrease quantity">−</button>
-              <span class="cart-line-qty-value" aria-live="polite">1</span>
-              <button type="button" data-act="inc" aria-label="Increase quantity">+</button>
-            </div>
-            <button type="button" class="cart-line-remove" data-act="remove">Remove</button>
-          </li>
-        </template>
-
-        <footer id="cart-summary" class="cart-summary" hidden>
-          <div class="cart-subtotal">
-            <span>Subtotal</span>
-            <span id="cart-subtotal-value">—</span>
-          </div>
-          <p class="cart-note">Shipping and taxes are calculated at checkout.</p>
-          <a id="cart-checkout" class="tx-button" href="/checkout/">
-            Checkout <span aria-hidden="true">→</span>
-          </a>
-        </footer>
-      </section>
-    </main>
-
-    <SiteFooter />
-  </div>
+    <footer id="cart-summary" class="cart-summary" hidden>
+      <div class="cart-subtotal">
+        <span>Subtotal</span>
+        <span id="cart-subtotal-value">—</span>
+      </div>
+      <p class="cart-note">Shipping and taxes are calculated at checkout.</p>
+      <a id="cart-checkout" class="tx-button" href="/checkout/" data-astro-reload>
+        Checkout <span aria-hidden="true">→</span>
+      </a>
+    </footer>
+  </TxShell>
 </Base>
 
 <script>
@@ -85,17 +74,13 @@ import SiteHeader from "../../components/SiteHeader.astro";
     unavailable: boolean;
   }
 
-  const loadingEl = document.getElementById("cart-loading");
-  const emptyEl = document.getElementById("cart-empty");
-  const linesEl = document.getElementById("cart-lines");
-  const summaryEl = document.getElementById("cart-summary");
-  const subtotalEl = document.getElementById("cart-subtotal-value");
-  const checkoutBtn = document.getElementById("cart-checkout");
-  const template = document.getElementById("cart-line-tmpl") as HTMLTemplateElement | null;
-
   // Fresh active-release detail keyed by product id, once /cart/lookup.json
   // responds; until then the hint cache drives display.
   let freshByProduct: Map<string, ProductDetailDTO> | null = null;
+
+  // Active cart subscription; released before each swap so a re-init on the next
+  // astro:page-load never stacks a second listener over detached DOM.
+  let unsubscribe: (() => void) | null = null;
 
   function setText(root: HTMLElement, selector: string, text: string): void {
     const el = root.querySelector<HTMLElement>(selector);
@@ -147,161 +132,153 @@ import SiteHeader from "../../components/SiteHeader.astro";
     });
   }
 
-  function render(): void {
-    const lines = buildLines();
-    if (loadingEl) loadingEl.hidden = true;
+  // Runs on every soft navigation (astro:page-load fires on first load too).
+  // Re-queries the freshly-swapped markup and bails when the cart page is
+  // absent, so the handler no-ops on other routes; the prior subscription is
+  // released in astro:before-swap, so binding here never double-fires.
+  function initCart(): void {
+    const loadingEl = document.getElementById("cart-loading");
+    const emptyEl = document.getElementById("cart-empty");
+    const linesEl = document.getElementById("cart-lines");
+    const summaryEl = document.getElementById("cart-summary");
+    const subtotalEl = document.getElementById("cart-subtotal-value");
+    const checkoutBtn = document.getElementById("cart-checkout");
+    const template = document.getElementById("cart-line-tmpl") as HTMLTemplateElement | null;
+    if (!linesEl || !template) return;
 
-    if (lines.length === 0) {
-      if (emptyEl) emptyEl.hidden = false;
-      if (linesEl) {
-        linesEl.hidden = true;
+    function render(): void {
+      const lines = buildLines();
+      if (loadingEl) loadingEl.hidden = true;
+
+      if (lines.length === 0) {
+        if (emptyEl) emptyEl.hidden = false;
+        if (linesEl) {
+          linesEl.hidden = true;
+          linesEl.replaceChildren();
+        }
+        if (summaryEl) summaryEl.hidden = true;
+        return;
+      }
+      if (emptyEl) emptyEl.hidden = true;
+
+      if (linesEl && template) {
+        const root = template.content.firstElementChild;
         linesEl.replaceChildren();
+        for (const line of lines) {
+          if (!root) break;
+          const node = root.cloneNode(true) as HTMLElement;
+
+          const mediaWrap = node.querySelector<HTMLAnchorElement>(".cart-line-media");
+          const img = node.querySelector<HTMLImageElement>(".cart-line-media img");
+          if (line.coverMediaId && img) {
+            img.src = storeMediaHref(line.coverMediaId);
+            img.alt = line.title;
+            if (mediaWrap) mediaWrap.setAttribute("href", line.slug ? `/shop/${line.slug}` : "#");
+          } else if (mediaWrap) {
+            mediaWrap.hidden = true;
+          }
+
+          const titleEl = node.querySelector<HTMLAnchorElement>(".cart-line-title");
+          if (titleEl) {
+            titleEl.textContent = line.title;
+            titleEl.setAttribute("href", line.slug ? `/shop/${line.slug}` : "#");
+          }
+          setText(node, ".cart-line-size", line.size ? `Size ${line.size}` : "");
+          setText(node, ".cart-line-price", formatPrice(line.priceCents, line.currency));
+
+          const flag = node.querySelector<HTMLElement>(".cart-line-flag");
+          if (flag) {
+            flag.hidden = !line.unavailable;
+            if (line.unavailable) flag.textContent = "No longer available";
+          }
+
+          setText(node, ".cart-line-qty-value", String(line.quantity));
+
+          const dec = node.querySelector<HTMLButtonElement>('[data-act="dec"]');
+          const inc = node.querySelector<HTMLButtonElement>('[data-act="inc"]');
+          const rem = node.querySelector<HTMLButtonElement>('[data-act="remove"]');
+          if (dec) dec.disabled = line.quantity <= CART_MIN_QUANTITY;
+          if (inc) inc.disabled = line.quantity >= CART_MAX_QUANTITY;
+          dec?.addEventListener("click", () => setQuantity(line.variantId, line.quantity - 1));
+          inc?.addEventListener("click", () => setQuantity(line.variantId, line.quantity + 1));
+          rem?.addEventListener("click", () => removeLine(line.variantId));
+
+          linesEl.appendChild(node);
+        }
+        linesEl.hidden = false;
       }
-      if (summaryEl) summaryEl.hidden = true;
-      return;
-    }
-    if (emptyEl) emptyEl.hidden = true;
 
-    if (linesEl && template) {
-      const root = template.content.firstElementChild;
-      linesEl.replaceChildren();
-      for (const line of lines) {
-        if (!root) break;
-        const node = root.cloneNode(true) as HTMLElement;
-
-        const mediaWrap = node.querySelector<HTMLAnchorElement>(".cart-line-media");
-        const img = node.querySelector<HTMLImageElement>(".cart-line-media img");
-        if (line.coverMediaId && img) {
-          img.src = storeMediaHref(line.coverMediaId);
-          img.alt = line.title;
-          if (mediaWrap) mediaWrap.setAttribute("href", line.slug ? `/shop/${line.slug}` : "#");
-        } else if (mediaWrap) {
-          mediaWrap.hidden = true;
-        }
-
-        const titleEl = node.querySelector<HTMLAnchorElement>(".cart-line-title");
-        if (titleEl) {
-          titleEl.textContent = line.title;
-          titleEl.setAttribute("href", line.slug ? `/shop/${line.slug}` : "#");
-        }
-        setText(node, ".cart-line-size", line.size ? `Size ${line.size}` : "");
-        setText(node, ".cart-line-price", formatPrice(line.priceCents, line.currency));
-
-        const flag = node.querySelector<HTMLElement>(".cart-line-flag");
-        if (flag) {
-          flag.hidden = !line.unavailable;
-          if (line.unavailable) flag.textContent = "No longer available";
-        }
-
-        setText(node, ".cart-line-qty-value", String(line.quantity));
-
-        const dec = node.querySelector<HTMLButtonElement>('[data-act="dec"]');
-        const inc = node.querySelector<HTMLButtonElement>('[data-act="inc"]');
-        const rem = node.querySelector<HTMLButtonElement>('[data-act="remove"]');
-        if (dec) dec.disabled = line.quantity <= CART_MIN_QUANTITY;
-        if (inc) inc.disabled = line.quantity >= CART_MAX_QUANTITY;
-        dec?.addEventListener("click", () => setQuantity(line.variantId, line.quantity - 1));
-        inc?.addEventListener("click", () => setQuantity(line.variantId, line.quantity + 1));
-        rem?.addEventListener("click", () => removeLine(line.variantId));
-
-        linesEl.appendChild(node);
+      const available = lines.filter((l) => !l.unavailable);
+      const subtotal = available.reduce((sum, l) => sum + l.priceCents * l.quantity, 0);
+      if (subtotalEl) subtotalEl.textContent = formatPrice(subtotal, "CAD");
+      if (summaryEl) summaryEl.hidden = false;
+      if (checkoutBtn) {
+        if (available.length === 0) checkoutBtn.setAttribute("aria-disabled", "true");
+        else checkoutBtn.removeAttribute("aria-disabled");
       }
-      linesEl.hidden = false;
     }
 
-    const available = lines.filter((l) => !l.unavailable);
-    const subtotal = available.reduce((sum, l) => sum + l.priceCents * l.quantity, 0);
-    if (subtotalEl) subtotalEl.textContent = formatPrice(subtotal, "CAD");
-    if (summaryEl) summaryEl.hidden = false;
-    if (checkoutBtn) {
-      if (available.length === 0) checkoutBtn.setAttribute("aria-disabled", "true");
-      else checkoutBtn.removeAttribute("aria-disabled");
-    }
-  }
-
-  async function freshen(): Promise<void> {
-    const cart = readCart();
-    const hints = readHints();
-    const productIds = [
-      ...new Set(
-        cart.lines
-          .map((l) => hints[l.variantId]?.productId)
-          .filter((x): x is string => typeof x === "string" && x.length > 0),
-      ),
-    ];
-    if (productIds.length === 0) return;
-    try {
-      const res = await fetch("/cart/lookup.json", {
-        method: "POST",
-        headers: { "content-type": "application/json", accept: "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify({ productIds }),
-      });
-      if (!res.ok) return;
-      const data = (await res.json()) as { products: ProductDetailDTO[] };
-      freshByProduct = new Map(data.products.map((p) => [p.id, p]));
-      // Refresh hints so a later visit renders fresh even before this resolves.
-      for (const line of cart.lines) {
-        const hint = hints[line.variantId];
-        if (!hint) continue;
-        const product = freshByProduct.get(hint.productId);
-        const variant = product?.variants.find((v) => v.id === line.variantId);
-        if (!product || !variant) continue;
-        writeHint(line.variantId, {
-          productId: hint.productId,
-          slug: product.slug,
-          title: product.title,
-          size: variant.size,
-          priceCents: product.priceCents,
-          currency: "CAD",
-          coverMediaId: product.coverMediaId,
+    async function freshen(): Promise<void> {
+      const cart = readCart();
+      const hints = readHints();
+      const productIds = [
+        ...new Set(
+          cart.lines
+            .map((l) => hints[l.variantId]?.productId)
+            .filter((x): x is string => typeof x === "string" && x.length > 0),
+        ),
+      ];
+      if (productIds.length === 0) return;
+      try {
+        const res = await fetch("/cart/lookup.json", {
+          method: "POST",
+          headers: { "content-type": "application/json", accept: "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ productIds }),
         });
+        if (!res.ok) return;
+        const data = (await res.json()) as { products: ProductDetailDTO[] };
+        freshByProduct = new Map(data.products.map((p) => [p.id, p]));
+        // Refresh hints so a later visit renders fresh even before this resolves.
+        for (const line of cart.lines) {
+          const hint = hints[line.variantId];
+          if (!hint) continue;
+          const product = freshByProduct.get(hint.productId);
+          const variant = product?.variants.find((v) => v.id === line.variantId);
+          if (!product || !variant) continue;
+          writeHint(line.variantId, {
+            productId: hint.productId,
+            slug: product.slug,
+            title: product.title,
+            size: variant.size,
+            priceCents: product.priceCents,
+            currency: "CAD",
+            coverMediaId: product.coverMediaId,
+          });
+        }
+        render();
+      } catch {
+        // Keep the hint-based display when the lookup is unavailable.
       }
-      render();
-    } catch {
-      // Keep the hint-based display when the lookup is unavailable.
     }
+
+    checkoutBtn?.addEventListener("click", (e) => {
+      if (checkoutBtn.getAttribute("aria-disabled") === "true") e.preventDefault();
+    });
+
+    render();
+    unsubscribe = subscribeCart(render);
+    void freshen();
   }
 
-  checkoutBtn?.addEventListener("click", (e) => {
-    if (checkoutBtn.getAttribute("aria-disabled") === "true") e.preventDefault();
+  document.addEventListener("astro:page-load", initCart);
+  document.addEventListener("astro:before-swap", () => {
+    unsubscribe?.();
+    unsubscribe = null;
   });
-
-  render();
-  subscribeCart(render);
-  void freshen();
 </script>
 
 <style>
-  .tx-main {
-    min-height: 0;
-    overflow-y: auto;
-    padding: 40px 24px 80px;
-  }
-
-  .tx-panel {
-    width: 100%;
-    max-width: 720px;
-    margin: 0 auto;
-    font-family: var(--font-mono);
-  }
-
-  .tx-panel h1 {
-    font-family: var(--font-display);
-    font-size: 44px;
-    letter-spacing: -0.02em;
-  }
-
-  .tx-status {
-    margin-top: 24px;
-    font-size: 13px;
-    line-height: 1.5;
-  }
-
-  .tx-status a {
-    text-decoration: underline;
-  }
-
   .cart-lines {
     margin-top: 28px;
     list-style: none;
@@ -404,23 +381,5 @@ import SiteHeader from "../../components/SiteHeader.astro";
     margin-top: 8px;
     font-size: 11px;
     color: var(--color-muted-foreground);
-  }
-
-  .tx-button {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    height: 48px;
-    margin-top: 20px;
-    padding: 0 28px;
-    background: var(--color-inverse-foreground);
-    color: var(--color-inverse);
-    font-size: 14px;
-    text-transform: uppercase;
-  }
-
-  .tx-button[aria-disabled="true"] {
-    opacity: 0.4;
-    cursor: not-allowed;
   }
 </style>

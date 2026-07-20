@@ -25,7 +25,7 @@ const seoDescription =
 
 <Base title={`${product.title} — somewhatintelligent`} description={seoDescription}>
   <div class="site-frame product-frame">
-    <SiteHeader active="shop" />
+    <SiteHeader />
 
     <main class="product-main">
       <section class="product-stage" aria-labelledby="product-title">
@@ -106,38 +106,47 @@ const seoDescription =
 <script>
   import { addLine, type CartLineHint } from "../../lib/cart-client";
 
-  const sheet = document.querySelector<HTMLElement>(".product-sheet[data-product-id]");
-  const addBtn = document.getElementById("add-to-cart") as HTMLButtonElement | null;
-  const feedback = document.getElementById("add-feedback");
-  const sizeButtons = Array.from(document.querySelectorAll<HTMLButtonElement>(".product-size"));
+  // Runs on every soft navigation (astro:page-load fires on first load too).
+  // Queries are scoped and bail when this page's markup is absent, so the
+  // handler is a no-op on other routes; elements are fresh after each swap, so
+  // re-binding never double-fires.
+  function initProductSheet(): void {
+    const sheet = document.querySelector<HTMLElement>(".product-sheet[data-product-id]");
+    const addBtn = document.getElementById("add-to-cart") as HTMLButtonElement | null;
+    if (!sheet || !addBtn) return;
+    const feedback = document.getElementById("add-feedback");
+    const sizeButtons = Array.from(document.querySelectorAll<HTMLButtonElement>(".product-size"));
 
-  let selected: { variantId: string; size: string } | null = null;
+    let selected: { variantId: string; size: string } | null = null;
 
-  for (const btn of sizeButtons) {
-    if (btn.disabled) continue;
-    btn.addEventListener("click", () => {
-      selected = { variantId: btn.dataset.variantId ?? "", size: btn.dataset.size ?? "" };
-      for (const b of sizeButtons) b.setAttribute("aria-pressed", b === btn ? "true" : "false");
-      if (addBtn) addBtn.disabled = false;
-      if (feedback) feedback.textContent = `Size ${selected.size} selected.`;
+    for (const btn of sizeButtons) {
+      if (btn.disabled) continue;
+      btn.addEventListener("click", () => {
+        selected = { variantId: btn.dataset.variantId ?? "", size: btn.dataset.size ?? "" };
+        for (const b of sizeButtons) b.setAttribute("aria-pressed", b === btn ? "true" : "false");
+        addBtn.disabled = false;
+        if (feedback) feedback.textContent = `Size ${selected.size} selected.`;
+      });
+    }
+
+    addBtn.addEventListener("click", () => {
+      if (!selected) return;
+      const coverMediaId = sheet.dataset.coverMediaId ? sheet.dataset.coverMediaId : null;
+      const hint: CartLineHint = {
+        productId: sheet.dataset.productId ?? "",
+        slug: sheet.dataset.slug ?? "",
+        title: sheet.dataset.title ?? "",
+        size: selected.size,
+        priceCents: Number(sheet.dataset.priceCents ?? "0"),
+        currency: "CAD",
+        coverMediaId,
+      };
+      addLine(selected.variantId, 1, hint);
+      if (feedback) feedback.textContent = "Added to cart.";
     });
   }
 
-  addBtn?.addEventListener("click", () => {
-    if (!selected || !sheet) return;
-    const coverMediaId = sheet.dataset.coverMediaId ? sheet.dataset.coverMediaId : null;
-    const hint: CartLineHint = {
-      productId: sheet.dataset.productId ?? "",
-      slug: sheet.dataset.slug ?? "",
-      title: sheet.dataset.title ?? "",
-      size: selected.size,
-      priceCents: Number(sheet.dataset.priceCents ?? "0"),
-      currency: "CAD",
-      coverMediaId,
-    };
-    addLine(selected.variantId, 1, hint);
-    if (feedback) feedback.textContent = "Added to cart.";
-  });
+  document.addEventListener("astro:page-load", initProductSheet);
 </script>
 
 <style>

@@ -1,4 +1,6 @@
 ---
+import { ClientRouter } from "astro:transitions";
+
 import "../styles.css";
 
 interface Props {
@@ -24,7 +26,13 @@ const {
 ---
 
 <!doctype html>
-<html lang="en" data-theme={theme} style={`color-scheme: ${theme};`}>
+<html
+  lang="en"
+  data-theme={theme}
+  style={`color-scheme: ${theme};`}
+  transition:name="root"
+  transition:animate="none"
+>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -38,6 +46,7 @@ const {
       <meta property="article:published_time" content={publishedTime} />
     )}
     <title>{title}</title>
+    <ClientRouter />
   </head>
   <body>
     <slot />
