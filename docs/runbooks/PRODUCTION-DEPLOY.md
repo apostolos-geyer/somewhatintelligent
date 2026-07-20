@@ -83,8 +83,8 @@ already-cut component tag. Dispatch it from the RWX UI or CLI:
 rwx dispatch si-reship-worker --param worker=guestlist --param tag=guestlist-v0.2.1
 ```
 
-- `worker` is a dropdown of the six deployable workers (`promoter`, `roadie`,
-  `guestlist`, `identity`, `store`, `bouncer`).
+- `worker` is a dropdown of the eight deployable workers (`promoter`, `roadie`,
+  `guestlist`, `identity`, `store`, `publisher`, `site`, `bouncer`).
 - `tag` is the **component** tag to deploy — `<worker>-v<x.y.z>`, e.g.
   `guestlist-v0.2.1`. The run clones that tag's commit. (Plain `v0.2.1` won't
   resolve; tags are per-worker now.)
@@ -108,15 +108,18 @@ service/app's `services` (binding) block in its `wrangler.jsonc` — not just
 "leaf services then apps":
 
 ```
-promoter, roadie → guestlist → identity, store → bouncer
+promoter, roadie → guestlist → identity, store → publisher → site → bouncer
 ```
 
 - **promoter, roadie** — no service bindings (true leaves), go first.
 - **guestlist** — binds `promoter` + `roadie`, so it must come **after** both.
 - **identity** — binds only `guestlist`.
 - **store** — binds `guestlist` + `roadie`.
-- **bouncer** — the public router, binds `guestlist` + `identity` + `store`, so
-  it ships **last**, only ever pointing at already-deployed upstreams.
+- **publisher** — binds `roadie` + `store`.
+- **site** — binds `publisher` + `store`.
+- **bouncer** — the public router, binds `guestlist` + `identity` + `store` +
+  `site`, so it ships **last**, only ever pointing at already-deployed
+  upstreams.
 
 **Why the order is load-bearing (not cosmetic):** `wrangler deploy` fails with
 Cloudflare API code **`10143`** — `Service binding 'X' references Worker 'Y'

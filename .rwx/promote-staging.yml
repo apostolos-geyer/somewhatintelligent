@@ -101,7 +101,7 @@ tasks:
       : > /tmp/changed-files
       if [ "${{ init.force-full }}" = "true" ] || [ -z "${BASE}" ] || [ "${BASE}" = "0000000000000000000000000000000000000000" ]; then
         echo "force-full / no usable base — treating ALL workers as affected"
-        printf 'promoter roadie guestlist identity store bouncer' > "$RWX_VALUES/changed"
+        printf 'promoter roadie guestlist identity store publisher site bouncer' > "$RWX_VALUES/changed"
         exit 0
       fi
       gh api "repos/apostolos-geyer/somewhatintelligent/compare/${BASE}...${{ init.commit-sha }}" \

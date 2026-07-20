@@ -107,8 +107,9 @@ Do these IN ORDER — each later lane assumes the earlier ones proved out.
 3. **Full-fleet staging reference (`.rwx/deploy.yml`)** — validate the deploy
    path directly, independent of the embedded call from ci.yml:
    `rwx run .rwx/deploy.yml --init env=staging --init deploy=true --init commit-sha=<a real main sha>`
-   Expect: D1 migrations (guestlist, roadie, store) → canonical-order deploys
-   (promoter roadie guestlist identity store bouncer) → smoke test against
+   Expect: D1 migrations (guestlist, roadie, store, publisher) → canonical-order
+   deploys (promoter roadie guestlist identity store publisher site bouncer) →
+   smoke test against
    <https://staging.somewhatintelligent.ca> → GitHub Deployments: one fleet
    record (`staging`) + one per worker (`staging/<worker>`, each with the CF
    dashboard link and live URL) + the compact summary comment on the commit.
