@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "portless",
-    "dev:bare": "WRANGLER_REGISTRY_PATH=${WRANGLER_REGISTRY_PATH:-$PWD/../../.wrangler/dev-registry} wrangler dev --port ${STORE_PORT:-8793} --inspector-port ${STORE_INSPECTOR_PORT:-0}",
+    "dev:bare": "WRANGLER_REGISTRY_PATH=${WRANGLER_REGISTRY_PATH:-$PWD/../../.wrangler/dev-registry} wrangler dev --port ${STORE_PORT:-${PORT:-8793}} --inspector-port ${STORE_INSPECTOR_PORT:-0}",
     "env:init": "bun scripts/env-init.ts",
     "dev:solo": "bun ../../scripts/dev-solo.ts",
     "deploy:staging": "wrangler deploy",
@@ -53,6 +53,7 @@
   },
   "portless": {
     "name": "store.somewhatintelligent",
-    "script": "dev:bare"
+    "script": "dev:bare",
+    "appPort": 8793
   }
 }

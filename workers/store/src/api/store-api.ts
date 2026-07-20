@@ -12,11 +12,13 @@
 // (`lib/checkout`, `lib/pricing`, `lib/reservation`, `lib/catalog`), so no
 // invariant is re-implemented here.
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import { type } from "arktype";
 import type Stripe from "stripe";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
+import { platformDeployConfig } from "@si/config";
 import { stripeConfigured } from "@somewhatintelligent/stripe";
 import { ulid } from "@somewhatintelligent/kit/ids";
 import type { PlatformSession } from "@somewhatintelligent/auth";
@@ -284,6 +286,17 @@ async function placeStubOrder(
   return { ok: true, orderNumber: num };
 }
 
+// Credentialed CORS allowlist for the browser store API: the apex + every
+// subdomain of both deploy domains, echoing the exact origin (never `*`, which
+// credentialed fetch forbids). Deployed calls arrive same-origin through bouncer
+// so these headers go unused there; local dev's cross-origin Site→Store call
+// (site.* → store.*, both under devDomain) is what this covers — with no literal.
+const CORS_DOMAINS = [platformDeployConfig.baseDomain, platformDeployConfig.devDomain];
+const originAllowed = (origin: string) =>
+  CORS_DOMAINS.some((d) =>
+    new RegExp(`^https?://([a-z0-9-]+\\.)*${d.replace(/\./g, "\\.")}$`).test(origin),
+  );
+
 /**
  * Build the Store HTTP API. `deps` defaults to production wiring; the pool suite
  * passes stubbed session/customer/Stripe/media seams. Routes are chained so
@@ -292,6 +305,18 @@ async function placeStubOrder(
 export function createStoreApi(deps: StoreApiDeps = defaultDeps) {
   return (
     new Hono<{ Bindings: Env }>()
+      // Buyer HTTP API CORS: exact-origin echo + credentials for the session
+      // cookie. `/hooks/store/*` (Stripe webhook, server-to-server) is left
+      // uncovered by scoping the middleware to `/api/store/*`.
+      .use(
+        "/api/store/*",
+        cors({
+          origin: (origin) => (origin && originAllowed(origin) ? origin : null),
+          credentials: true,
+          allowMethods: ["GET", "POST", "PATCH", "OPTIONS"],
+          allowHeaders: ["content-type", "accept"],
+        }),
+      )
       // Public config — no Stripe secret, webhook secret, price id, or customer
       // id ever crosses the wire (RFC D11); only the client-safe publishable key.
       .get("/api/store/config", (c) => {

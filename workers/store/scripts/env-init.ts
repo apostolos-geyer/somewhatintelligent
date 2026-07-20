@@ -21,10 +21,11 @@ const label = "workers/store";
 //
 // SITE_URL feeds the checkout-session returnUrl (RFC-0001 D11) — the
 // Stripe redirect after payment lands on Site's /checkout/return, not the
-// headless Store worker. Site's local dev-direct origin is astro's own
-// dev server (workers/site's `astro dev --port 4321`).
+// headless Store worker. It must be Site's portless hostname: the session
+// cookie and store CORS are scoped to *.somewhatintelligent.localhost, so a
+// raw-port origin 401s on the return page's status polling.
 const devVars = `${PLATFORM_DEV_VARS}STORE_URL=https://store.somewhatintelligent.localhost
-SITE_URL=http://127.0.0.1:4321
+SITE_URL=https://site.somewhatintelligent.localhost
 BNC_ATT_KID=${LOCAL_BNC_ATT_KID}
 BNC_ATT_PRIV="${LOCAL_BNC_ATT_PRIV.replace(/\n/g, "\\n")}"
 # Stripe webhook ingestion (/hooks/store) — unset until Stripe onboarding.
