@@ -18,6 +18,8 @@ const listInput = type({
 
 const getInput = type({ softwareId: "1 <= string <= 64" });
 
+const searchInput = type({ query: "string <= 200" });
+
 const createInput = type({
   commandId: "string.uuid",
   slug: "1 <= string <= 64",
@@ -63,6 +65,30 @@ export const getSoftware = createServerFn({ method: "GET" })
   .handler(({ data, context }) => {
     const meta = buildOperatorMeta(context.actor, "getSoftware", crypto.randomUUID());
     return publisherOperator().getSoftware({ input: data, meta });
+  });
+
+// Featured-software picker source: one listSoftware read, filtered + shaped to
+// id/title/slug server-side. Mirrors `searchTexts`.
+export const searchSoftware = createServerFn({ method: "GET" })
+  .middleware([requireOperatorActor])
+  .validator((data: typeof searchInput.infer) => searchInput.assert(data ?? {}))
+  .handler(async ({ data, context }) => {
+    const meta = buildOperatorMeta(context.actor, "listSoftware", crypto.randomUUID());
+    const res = await publisherOperator().listSoftware({
+      input: { state: "all", limit: 100 },
+      meta,
+    });
+    if (!res.ok) return [];
+    const q = data.query.trim().toLowerCase();
+    const matched =
+      q === ""
+        ? res.value.software
+        : res.value.software.filter(
+            (s) => s.slug.toLowerCase().includes(q) || s.title.toLowerCase().includes(q),
+          );
+    return matched
+      .slice(0, 8)
+      .map((s) => ({ softwareId: s.softwareId, title: s.title, slug: s.slug, state: s.state }));
   });
 
 export const createSoftware = createServerFn({ method: "POST" })

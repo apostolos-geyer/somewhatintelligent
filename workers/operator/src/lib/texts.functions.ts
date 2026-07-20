@@ -86,6 +86,29 @@ export const searchTexts = createServerFn({ method: "GET" })
     return toWikilinkSuggestions(res.value.texts, data.query);
   });
 
+// Featured-text picker source: one listTexts read, filtered + shaped to
+// id/title/slug server-side. Distinct from `searchTexts` (which shapes to
+// slug/title wikilink suggestions with no id); the featured-text reference the
+// document stores — and Publisher gates at publish — is the text ENTRY id.
+export const searchTextsForFeature = createServerFn({ method: "GET" })
+  .middleware([requireOperatorActor])
+  .validator((data: typeof searchInput.infer) => searchInput.assert(data ?? {}))
+  .handler(async ({ data, context }) => {
+    const meta = buildOperatorMeta(context.actor, "listTexts", crypto.randomUUID());
+    const res = await publisherOperator().listTexts({ input: { state: "all", limit: 100 }, meta });
+    if (!res.ok) return [];
+    const q = data.query.trim().toLowerCase();
+    const matched =
+      q === ""
+        ? res.value.texts
+        : res.value.texts.filter(
+            (t) => t.slug.toLowerCase().includes(q) || t.title.toLowerCase().includes(q),
+          );
+    return matched
+      .slice(0, 8)
+      .map((t) => ({ textId: t.textId, title: t.title, slug: t.slug, state: t.state }));
+  });
+
 export const createText = createServerFn({ method: "POST" })
   .middleware([requireOperatorActor])
   .validator((data: typeof createInput.infer) => createInput.assert(data))

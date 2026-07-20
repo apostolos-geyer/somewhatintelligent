@@ -17,6 +17,21 @@ import {
   TerminalIcon,
 } from "lucide-react";
 import { Badge } from "@si/ui/components/badge";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@si/ui/components/sidebar";
+import { Toaster } from "@si/ui/components/sonner";
 import type { RouterContext } from "@/router";
 import { whoAmI } from "@/lib/actor.functions";
 
@@ -24,18 +39,17 @@ import appCss from "@/styles.css?url";
 
 const THEME_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getItem('theme');var mode=(stored==='light'||stored==='dark'||stored==='auto')?stored:'auto';var prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;var resolved=mode==='auto'?(prefersDark?'dark':'light'):mode;var root=document.documentElement;root.classList.remove('light','dark');root.classList.add(resolved);if(mode==='auto'){root.removeAttribute('data-theme')}else{root.setAttribute('data-theme',mode)}root.style.colorScheme=resolved;}catch(e){}})();`;
 
-// The eight planned modules (RFC-0001 D1). Only Overview is built; the rest are
-// nav links that resolve to the not-found "coming soon" stub until their tracks
-// land. `path` is the app-root path (Operator carries no mount prefix).
+// The eight console modules (RFC-0001 D1). `path` is the app-root path (Operator
+// carries no mount prefix); each resolves to a built route.
 const MODULES = [
-  { path: "/", label: "Overview", icon: LayoutDashboardIcon, ready: true },
-  { path: "/objects", label: "Objects", icon: BoxesIcon, ready: true },
-  { path: "/texts", label: "Texts", icon: FileTextIcon, ready: true },
-  { path: "/software", label: "Software", icon: TerminalIcon, ready: true },
-  { path: "/pages", label: "Pages", icon: LayoutPanelLeftIcon, ready: true },
-  { path: "/orders", label: "Orders", icon: ReceiptIcon, ready: true },
-  { path: "/media", label: "Media", icon: ImageIcon, ready: true },
-  { path: "/settings", label: "Settings", icon: SettingsIcon, ready: true },
+  { path: "/", label: "Overview", icon: LayoutDashboardIcon },
+  { path: "/objects", label: "Objects", icon: BoxesIcon },
+  { path: "/texts", label: "Texts", icon: FileTextIcon },
+  { path: "/software", label: "Software", icon: TerminalIcon },
+  { path: "/pages", label: "Pages", icon: LayoutPanelLeftIcon },
+  { path: "/orders", label: "Orders", icon: ReceiptIcon },
+  { path: "/media", label: "Media", icon: ImageIcon },
+  { path: "/settings", label: "Settings", icon: SettingsIcon },
 ] as const;
 
 export const Route = createRootRouteWithContext<RouterContext>()({
@@ -65,64 +79,62 @@ function RootDocument({ children }: { children: ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <HeadContent />
       </head>
-      <body className="bg-background text-foreground min-h-screen font-sans antialiased">
-        <div className="flex min-h-screen">
-          <Sidebar />
-          <div className="flex min-w-0 flex-1 flex-col">
+      {/* App frame: viewport-height, top-level overflow clipped. The sidebar and
+          topbar stay fixed; scrolling lives in the inner content region (and, on
+          the dashboard, inside each panel). */}
+      <body className="bg-background text-foreground font-sans antialiased">
+        <SidebarProvider className="h-dvh overflow-hidden">
+          <AppSidebar />
+          <SidebarInset className="min-h-0 overflow-hidden">
             <Topbar />
-            <main className="flex-1 px-6 py-8">{children}</main>
-          </div>
-        </div>
+            <div className="min-h-0 flex-1 overflow-auto px-6 py-8">{children}</div>
+          </SidebarInset>
+        </SidebarProvider>
+        <Toaster />
         <Scripts />
       </body>
     </html>
   );
 }
 
-function Sidebar() {
+// The console shell (RFC-0001 D1) on @si/ui's Sidebar: collapsible off-canvas,
+// Cmd/Ctrl+B toggle, mobile sheet, cookie-persisted — driven by the MODULES nav.
+function AppSidebar() {
   const pathname = useLocation({ select: (s) => s.pathname });
   return (
-    <aside className="border-border bg-card hidden w-56 shrink-0 border-r md:block">
-      <div className="border-border flex h-14 items-center gap-2 border-b px-5">
-        <span className="bg-primary size-2.5 rounded-full" />
-        <span className="text-foreground font-mono text-sm font-medium tracking-tight">
-          operator
-        </span>
-      </div>
-      <nav className="flex flex-col gap-0.5 p-3">
-        {MODULES.map((m) => {
-          const active = pathname === m.path;
-          const Icon = m.icon;
-          const className =
-            "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors " +
-            (active
-              ? "bg-muted text-foreground font-medium"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted/60");
-          const inner = (
-            <>
-              <Icon className="size-4 shrink-0" />
-              <span className="flex-1">{m.label}</span>
-              {!m.ready && (
-                <span className="text-muted-foreground/70 font-mono text-[10px] uppercase">
-                  soon
-                </span>
-              )}
-            </>
-          );
-          // Built modules use the typed router Link; not-yet-built modules are
-          // plain links that land on the "coming soon" not-found stub.
-          return m.ready ? (
-            <Link key={m.path} to={m.path} className={className}>
-              {inner}
-            </Link>
-          ) : (
-            <a key={m.path} href={m.path} className={className}>
-              {inner}
-            </a>
-          );
-        })}
-      </nav>
-    </aside>
+    <Sidebar collapsible="offcanvas">
+      <SidebarHeader>
+        <div className="flex h-8 items-center gap-2 px-1">
+          <span className="bg-primary size-2.5 shrink-0 rounded-full" />
+          <span className="text-foreground font-mono text-sm font-medium tracking-tight">
+            operator
+          </span>
+        </div>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel className="font-mono text-[10px] uppercase tracking-wider">
+            Modules
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {MODULES.map((m) => {
+                const active = m.path === "/" ? pathname === "/" : pathname.startsWith(m.path);
+                const Icon = m.icon;
+                return (
+                  <SidebarMenuItem key={m.path}>
+                    <SidebarMenuButton isActive={active} render={<Link to={m.path} />}>
+                      <Icon />
+                      <span>{m.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+    </Sidebar>
   );
 }
 
@@ -130,9 +142,12 @@ function Topbar() {
   const { actor } = Route.useRouteContext();
   return (
     <header className="border-border flex h-14 shrink-0 items-center justify-between gap-4 border-b px-6">
-      <span className="text-muted-foreground font-mono text-xs uppercase tracking-widest">
-        control plane
-      </span>
+      <div className="flex items-center gap-3">
+        <SidebarTrigger className="-ml-2" />
+        <span className="text-muted-foreground font-mono text-xs uppercase tracking-widest">
+          control plane
+        </span>
+      </div>
       <div className="flex items-center gap-3">
         <Badge variant="outline" className="font-mono text-[10px] uppercase">
           {import.meta.env.ENVIRONMENT ?? "development"}

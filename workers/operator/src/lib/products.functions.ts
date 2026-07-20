@@ -20,6 +20,8 @@ const listInput = type({
 
 const getInput = type({ productId: "1 <= string <= 64" });
 
+const searchInput = type({ query: "string <= 200" });
+
 const createInput = type({
   commandId: "string.uuid",
   slug: "1 <= string <= 64",
@@ -101,6 +103,27 @@ export const getProduct = createServerFn({ method: "GET" })
   .handler(({ data, context }) => {
     const meta = buildOperatorMeta(context.actor, "getProduct", crypto.randomUUID());
     return storeOperator().getProduct({ input: data, meta });
+  });
+
+// Featured-product picker source: one listProducts read, filtered + shaped to
+// id/title/slug server-side. Mirrors `searchTexts`.
+export const searchProducts = createServerFn({ method: "GET" })
+  .middleware([requireOperatorActor])
+  .validator((data: typeof searchInput.infer) => searchInput.assert(data ?? {}))
+  .handler(async ({ data, context }) => {
+    const meta = buildOperatorMeta(context.actor, "listProducts", crypto.randomUUID());
+    const res = await storeOperator().listProducts({ input: { status: "all", limit: 100 }, meta });
+    if (!res.ok) return [];
+    const q = data.query.trim().toLowerCase();
+    const matched =
+      q === ""
+        ? res.value.products
+        : res.value.products.filter(
+            (p) => p.slug.toLowerCase().includes(q) || p.title.toLowerCase().includes(q),
+          );
+    return matched
+      .slice(0, 8)
+      .map((p) => ({ productId: p.productId, title: p.title, slug: p.slug, status: p.status }));
   });
 
 export const createProduct = createServerFn({ method: "POST" })

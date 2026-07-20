@@ -20,6 +20,7 @@ import { Alert, AlertDescription, AlertTitle } from "@si/ui/components/alert";
 import { DeletionDialog } from "@/components/deletion-dialog";
 import { PublisherMediaUpload } from "@/components/publisher-media-upload";
 import { PreviewPanel } from "@/components/preview-panel";
+import { EntityPicker, type PickerOption } from "@/components/entity-picker";
 import type { PreviewPayload } from "@/lib/preview";
 import {
   createPage,
@@ -29,7 +30,95 @@ import {
   publishPage,
   savePageDraft,
 } from "@/lib/pages.functions";
+import { getProduct, searchProducts } from "@/lib/products.functions";
+import { getSoftware, searchSoftware } from "@/lib/software.functions";
+import { getText, searchTextsForFeature } from "@/lib/texts.functions";
 import { defaultPageDocument, PAGE_KEYS, PAGE_KEY_LABELS } from "@/lib/page-forms";
+
+// Search/resolve closures a media EntityPicker binds against — search filters the
+// page's owned-media list; resolve turns a stored id back into a labeled option.
+type PickerSource = {
+  search: (query: string) => Promise<PickerOption[]>;
+  resolve: (id: string) => Promise<PickerOption | null>;
+};
+
+function mediaPickerSource(media: PublisherMediaDTO[]): PickerSource {
+  const toOption = (m: PublisherMediaDTO): PickerOption => ({
+    id: m.id,
+    label: m.alt || "untitled image",
+    sublabel: m.role,
+    thumbnailHref: m.href,
+  });
+  return {
+    search: (query) => {
+      const q = query.trim().toLowerCase();
+      const matched =
+        q === ""
+          ? media
+          : media.filter(
+              (m) =>
+                m.alt.toLowerCase().includes(q) ||
+                m.role.toLowerCase().includes(q) ||
+                m.id.toLowerCase().includes(q),
+            );
+      return Promise.resolve(matched.slice(0, 20).map(toOption));
+    },
+    resolve: (idValue) => {
+      const found = media.find((m) => m.id === idValue);
+      return Promise.resolve(found ? toOption(found) : null);
+    },
+  };
+}
+
+// Featured-record picker sources — search returns id/title/slug options; resolve
+// turns the document's stored id back into a label via the record's get fn.
+const productPickerSource: PickerSource = {
+  search: async (query) => {
+    const rows = await searchProducts({ data: { query } });
+    return rows.map((p) => ({ id: p.productId, label: p.title, sublabel: p.slug }));
+  },
+  resolve: async (idValue) => {
+    const res = await getProduct({ data: { productId: idValue } });
+    if (!res.ok) return null;
+    return {
+      id: res.value.draft.productId,
+      label: res.value.draft.title,
+      sublabel: res.value.draft.slug,
+    };
+  },
+};
+
+const softwarePickerSource: PickerSource = {
+  search: async (query) => {
+    const rows = await searchSoftware({ data: { query } });
+    return rows.map((s) => ({ id: s.softwareId, label: s.title, sublabel: s.slug }));
+  },
+  resolve: async (idValue) => {
+    const res = await getSoftware({ data: { softwareId: idValue } });
+    if (!res.ok) return null;
+    return {
+      id: res.value.draft.softwareId,
+      label: res.value.draft.title,
+      sublabel: res.value.draft.slug,
+    };
+  },
+};
+
+const textPickerSource: PickerSource = {
+  search: async (query) => {
+    const rows = await searchTextsForFeature({ data: { query } });
+    return rows.map((t) => ({ id: t.textId, label: t.title, sublabel: t.slug }));
+  },
+  resolve: async (idValue) => {
+    const res = await getText({ data: { textId: idValue } });
+    if (!res.ok) return null;
+    return {
+      id: res.value.draft.textId,
+      label: res.value.draft.title,
+      sublabel: res.value.draft.slug,
+    };
+  },
+};
 
 const MESSAGES: Record<string, string> = {
   not_found: "This page no longer exists — reload.",
@@ -54,6 +143,7 @@ type Loaded =
       document: PageDocumentByKey[PageKey];
       revision: number;
       activeVersion: string | null;
+      media: PublisherMediaDTO[];
     };
 
 export const Route = createFileRoute("/pages/$key")({
@@ -68,6 +158,7 @@ export const Route = createFileRoute("/pages/$key")({
       document: res.value.document,
       revision: res.value.revision,
       activeVersion: res.value.activeVersion,
+      media: res.value.media,
     };
   },
   component: PageDetail,
@@ -88,6 +179,7 @@ function PageDetail() {
   const initial = loaded.kind === "new" ? defaultPageDocument(loaded.key) : loaded.document;
   const revision = loaded.kind === "existing" ? loaded.revision : 0;
   const activeVersion = loaded.kind === "existing" ? loaded.activeVersion : null;
+  const media = loaded.kind === "existing" ? loaded.media : [];
   return (
     <PageEditor
       key={`${loaded.key}:${revision}`}
@@ -96,6 +188,7 @@ function PageDetail() {
       initial={initial}
       revision={revision}
       activeVersion={activeVersion}
+      initialMedia={media}
     />
   );
 }
@@ -106,21 +199,29 @@ function PageEditor({
   initial,
   revision: initialRevision,
   activeVersion,
+  initialMedia,
 }: {
   pageKey: PageKey;
   exists: boolean;
   initial: PageDocumentByKey[PageKey];
   revision: number;
   activeVersion: string | null;
+  initialMedia: PublisherMediaDTO[];
 }) {
   const router = useRouter();
   const [document, setDocument] = useState(initial);
+  const [media, setMedia] = useState(initialMedia);
   const [created, setCreated] = useState(exists);
   const [revision, setRevision] = useState(initialRevision);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+
+  // Owned-media rows (from getPage, appended to on upload) back the media
+  // pickers below; recreated per render, but EntityPicker holds the callbacks in
+  // refs so the fresh closures never re-fire its search/resolve effects.
+  const mediaSource = mediaPickerSource(media);
 
   async function save(): Promise<void> {
     setError(null);
@@ -193,12 +294,18 @@ function PageEditor({
       )}
       {saved && !error && <p className="text-success mb-6 font-mono text-xs">Saved.</p>}
 
-      <SeoSection seo={document.seo} onChange={(seo) => setDocument({ ...document, seo })} />
-      <ContentSection document={document} onChange={setDocument} />
+      <SeoSection
+        seo={document.seo}
+        media={mediaSource}
+        onChange={(seo) => setDocument({ ...document, seo })}
+      />
+      <ContentSection document={document} media={mediaSource} onChange={setDocument} />
 
       <PreviewPanel getPayload={(): PreviewPayload => ({ kind: "page", key: pageKey, document })} />
 
-      {created && <PageMediaSection pageKey={pageKey} />}
+      {created && (
+        <PageMediaSection pageKey={pageKey} onUploaded={(m) => setMedia((prev) => [m, ...prev])} />
+      )}
 
       <Section title="Draft">
         <Button disabled={busy} onClick={() => void save()}>
@@ -221,9 +328,11 @@ function PageEditor({
 // ── Shared SEO block (present on every page document) ──────────────────────────
 function SeoSection({
   seo,
+  media,
   onChange,
 }: {
   seo: { title: string; description: string; imageMediaId: string | null };
+  media: PickerSource;
   onChange: (seo: { title: string; description: string; imageMediaId: string | null }) => void;
 }) {
   return (
@@ -247,12 +356,14 @@ function SeoSection({
           />
         </div>
         <div className="grid gap-2 sm:max-w-sm">
-          <Label htmlFor="seo-image">OG image media ID</Label>
-          <Input
+          <PickerField
             id="seo-image"
-            value={seo.imageMediaId ?? ""}
-            onChange={(e) => onChange({ ...seo, imageMediaId: e.target.value.trim() || null })}
-            placeholder="media id (optional)"
+            label="OG image"
+            source={media}
+            valueId={seo.imageMediaId}
+            onChange={(imageMediaId) => onChange({ ...seo, imageMediaId })}
+            placeholder="search uploaded media"
+            minChars={1}
           />
         </div>
       </div>
@@ -263,16 +374,18 @@ function SeoSection({
 // ── Per-key structured content (faithful to the discriminated union) ───────────
 function ContentSection({
   document,
+  media,
   onChange,
 }: {
   document: PageDocumentByKey[PageKey];
+  media: PickerSource;
   onChange: (document: PageDocumentByKey[PageKey]) => void;
 }) {
   switch (document.key) {
     case "home":
-      return <HomeFields doc={document} onChange={onChange} />;
+      return <HomeFields doc={document} media={media} onChange={onChange} />;
     case "about":
-      return <AboutFields doc={document} onChange={onChange} />;
+      return <AboutFields doc={document} media={media} onChange={onChange} />;
     default:
       return <ListPageFields doc={document} onChange={onChange} />;
   }
@@ -305,9 +418,11 @@ function ListPageFields({
 
 function AboutFields({
   doc,
+  media,
   onChange,
 }: {
   doc: AboutDocumentV1;
+  media: PickerSource;
   onChange: (document: AboutDocumentV1) => void;
 }) {
   return (
@@ -321,15 +436,21 @@ function AboutFields({
           onChange={(statement) => onChange({ ...doc, statement })}
         />
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field
-            label="Primary media ID"
-            value={doc.primaryMediaId ?? ""}
-            onChange={(v) => onChange({ ...doc, primaryMediaId: v.trim() || null })}
+          <PickerField
+            label="Primary media"
+            source={media}
+            valueId={doc.primaryMediaId}
+            onChange={(primaryMediaId) => onChange({ ...doc, primaryMediaId })}
+            placeholder="search uploaded media"
+            minChars={1}
           />
-          <Field
-            label="Secondary media ID"
-            value={doc.secondaryMediaId ?? ""}
-            onChange={(v) => onChange({ ...doc, secondaryMediaId: v.trim() || null })}
+          <PickerField
+            label="Secondary media"
+            source={media}
+            valueId={doc.secondaryMediaId}
+            onChange={(secondaryMediaId) => onChange({ ...doc, secondaryMediaId })}
+            placeholder="search uploaded media"
+            minChars={1}
           />
         </div>
         <FieldArea
@@ -345,9 +466,11 @@ function AboutFields({
 
 function HomeFields({
   doc,
+  media,
   onChange,
 }: {
   doc: HomeDocumentV1;
+  media: PickerSource;
   onChange: (document: HomeDocumentV1) => void;
 }) {
   const s = doc.sections;
@@ -360,10 +483,13 @@ function HomeFields({
             value={doc.tagline}
             onChange={(tagline) => onChange({ ...doc, tagline })}
           />
-          <Field
-            label="Hero media ID"
-            value={doc.heroMediaId ?? ""}
-            onChange={(v) => onChange({ ...doc, heroMediaId: v.trim() || null })}
+          <PickerField
+            label="Hero media"
+            source={media}
+            valueId={doc.heroMediaId}
+            onChange={(heroMediaId) => onChange({ ...doc, heroMediaId })}
+            placeholder="search uploaded media"
+            minChars={1}
           />
         </div>
       </Section>
@@ -378,18 +504,17 @@ function HomeFields({
             }
           />
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label="Featured product ID"
-              value={s.objects.featuredProductId ?? ""}
-              onChange={(v) =>
+            <PickerField
+              label="Featured product"
+              source={productPickerSource}
+              valueId={s.objects.featuredProductId}
+              onChange={(featuredProductId) =>
                 onChange({
                   ...doc,
-                  sections: {
-                    ...s,
-                    objects: { ...s.objects, featuredProductId: v.trim() || null },
-                  },
+                  sections: { ...s, objects: { ...s.objects, featuredProductId } },
                 })
               }
+              placeholder="search products"
             />
             <Field
               label="Action label"
@@ -412,18 +537,17 @@ function HomeFields({
             }
           />
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label="Featured software ID"
-              value={s.systems.featuredSoftwareId ?? ""}
-              onChange={(v) =>
+            <PickerField
+              label="Featured software"
+              source={softwarePickerSource}
+              valueId={s.systems.featuredSoftwareId}
+              onChange={(featuredSoftwareId) =>
                 onChange({
                   ...doc,
-                  sections: {
-                    ...s,
-                    systems: { ...s.systems, featuredSoftwareId: v.trim() || null },
-                  },
+                  sections: { ...s, systems: { ...s.systems, featuredSoftwareId } },
                 })
               }
+              placeholder="search software"
             />
             <Field
               label="Action label"
@@ -446,15 +570,17 @@ function HomeFields({
             }
           />
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label="Featured text ID"
-              value={s.texts.featuredTextId ?? ""}
-              onChange={(v) =>
+            <PickerField
+              label="Featured text"
+              source={textPickerSource}
+              valueId={s.texts.featuredTextId}
+              onChange={(featuredTextId) =>
                 onChange({
                   ...doc,
-                  sections: { ...s, texts: { ...s.texts, featuredTextId: v.trim() || null } },
+                  sections: { ...s, texts: { ...s.texts, featuredTextId } },
                 })
               }
+              placeholder="search texts"
             />
             <Field
               label="Action label"
@@ -490,53 +616,22 @@ function HomeFields({
 }
 
 // ── Page media ─────────────────────────────────────────────────────────────────
-// Page media is referenced by id inside the document (no owned-media list read,
-// RFC-0001 D10). Uploading yields a media id the operator pastes into a media-ID
-// field above (hero, SEO image, primary/secondary). Uploaded ids from this
-// session are listed with a copy affordance.
-function PageMediaSection({ pageKey }: { pageKey: PageKey }) {
-  const [uploaded, setUploaded] = useState<PublisherMediaDTO[]>([]);
-  const [copied, setCopied] = useState<string | null>(null);
-
-  async function copy(id: string): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(id);
-      setCopied(id);
-      setTimeout(() => setCopied((c) => (c === id ? null : c)), 1500);
-    } catch {
-      // clipboard blocked — no-op
-    }
-  }
-
+// Page media is referenced by id inside the document (RFC-0001 D10). Uploads flow
+// straight into the editor's owned-media list, so the media pickers above (hero,
+// SEO image, primary/secondary) pick them by thumbnail + alt without any id copy.
+function PageMediaSection({
+  pageKey,
+  onUploaded,
+}: {
+  pageKey: PageKey;
+  onUploaded: (media: PublisherMediaDTO) => void;
+}) {
   return (
     <Section title="Media">
       <p className="text-muted-foreground mb-3 font-mono text-xs">
-        Upload an image, then paste its id into a media field above (hero, SEO image, primary…).
+        Upload an image, then select it in a media field above (hero, SEO image, primary…).
       </p>
-      {uploaded.length > 0 && (
-        <div className="mb-4 grid gap-2">
-          {uploaded.map((m) => (
-            <div
-              key={m.id}
-              className="border-border flex flex-wrap items-center gap-3 rounded-sm border p-3 text-sm"
-            >
-              <span className="text-foreground flex-1 truncate">{m.alt || "—"}</span>
-              <button
-                type="button"
-                onClick={() => void copy(m.id)}
-                className="text-muted-foreground hover:text-foreground font-mono text-[10px]"
-              >
-                {copied === m.id ? "copied ✓" : `${m.id} · copy`}
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-      <PublisherMediaUpload
-        ownerType="page"
-        ownerId={pageKey}
-        onUploaded={(m) => setUploaded((prev) => [m, ...prev])}
-      />
+      <PublisherMediaUpload ownerType="page" ownerId={pageKey} onUploaded={onUploaded} />
     </Section>
   );
 }
@@ -678,6 +773,41 @@ function Field({
     <div className="grid gap-2">
       <Label>{label}</Label>
       <Input value={value} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  );
+}
+
+// Labeled searchable id picker — the reskinned replacement for the raw-id Inputs
+// (RFC-0001 wave-1 UX); submits the chosen id and clears to null.
+function PickerField({
+  label,
+  source,
+  valueId,
+  onChange,
+  placeholder,
+  minChars,
+  id,
+}: {
+  label: string;
+  source: PickerSource;
+  valueId: string | null;
+  onChange: (id: string | null) => void;
+  placeholder?: string;
+  minChars?: number;
+  id?: string;
+}) {
+  return (
+    <div className="grid gap-2">
+      <Label htmlFor={id}>{label}</Label>
+      <EntityPicker
+        id={id}
+        valueId={valueId}
+        onChange={onChange}
+        search={source.search}
+        resolve={source.resolve}
+        placeholder={placeholder}
+        minChars={minChars}
+      />
     </div>
   );
 }
