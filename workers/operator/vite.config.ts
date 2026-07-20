@@ -56,7 +56,7 @@ if (!cfEnv && !process.env.SI_BUILD) {
 
 // Allowlist wrangler vars that are safe/intended to reach the browser bundle.
 // DEV_OPERATOR / POLICY_AUD / TEAM_DOMAIN are server secrets and never listed.
-const CLIENT_VARS = ["OPERATOR_URL", "ENVIRONMENT"] as const;
+const CLIENT_VARS = ["OPERATOR_URL", "ENVIRONMENT", "SITE_PREVIEW_URL"] as const;
 const clientDefines = process.env.VITEST
   ? {}
   : Object.fromEntries(

@@ -1,13 +1,7 @@
 ---
 import Base from "../../layouts/Base.astro";
-import SiteFooter from "../../components/SiteFooter.astro";
-import SiteHeader from "../../components/SiteHeader.astro";
+import SoftwareRecord from "../../components/views/SoftwareRecord.astro";
 import { getSoftwareBySlug } from "../../lib/publisher-public";
-import { renderMarkdown } from "../../lib/markdown";
-import { formatDate } from "../../lib/format";
-// Site-owned compositional constant — the right-edge editorial image is part of
-// the /software record layout, not Publisher content (RFC-0001 D9.1).
-import officeContactImage from "../../../../../docs/design/somewhatintelligent-brand-study/reference-images/04-intimate-office-contact.png";
 
 const { slug } = Astro.params;
 const result = slug ? await getSoftwareBySlug(slug) : ({ ok: false, error: "not_found" } as const);
@@ -15,122 +9,10 @@ if (!result.ok) {
   return new Response(null, { status: 404 });
 }
 const software = result.value;
-
-// whatItIsMarkdown is RAW markdown; render to render-safe HTML (INV-PAGE-1).
-const whatItIsHtml = renderMarkdown(software.whatItIsMarkdown);
 const primary = software.primaryMedia ?? software.media[0] ?? null;
 const ogImage = primary ? primary.href : null;
 ---
 
-<Base
-  title={`${software.title} — somewhatintelligent`}
-  description={software.deck}
-  ogImage={ogImage}
->
-  <div class="site-frame software-record-frame">
-    <SiteHeader active="software" />
-
-    <main class="software-record-main">
-      <section class="software-record-sheet" aria-labelledby="software-record-title">
-        <p class="software-record-kicker">System / {software.slug}</p>
-        <h1 id="software-record-title" class="software-record-title-text">{software.title}</h1>
-        <p class="software-record-deck">{software.deck}</p>
-        <a
-          class="software-record-action"
-          href={software.destinationUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {software.actionLabel} <span aria-hidden="true">↗</span>
-        </a>
-      </section>
-
-      {
-        primary ? (
-          <figure class="software-record-primary software-record-primary-image">
-            <img src={primary.href} alt={primary.alt || software.title} />
-          </figure>
-        ) : (
-          <figure class="software-record-primary software-record-placeholder">
-            <span>Image / primary</span>
-            <strong>System image</strong>
-          </figure>
-        )
-      }
-
-      <section class="software-record-details" aria-label="System details">
-        <article>
-          <h2>What it is</h2>
-          <div class="software-record-body" set:html={whatItIsHtml} />
-        </article>
-        <article>
-          <h2>Last updated</h2>
-          <p>{formatDate(software.updatedAt)}</p>
-        </article>
-      </section>
-
-      <figure class="software-record-editorial">
-        <img
-          src={officeContactImage.src}
-          alt="Two people in close contact over a desk covered with working papers"
-        />
-      </figure>
-    </main>
-
-    <SiteFooter />
-  </div>
+<Base title={`${software.title} — somewhatintelligent`} description={software.deck} ogImage={ogImage}>
+  <SoftwareRecord software={software} />
 </Base>
-
-<style>
-  .software-record-title-text {
-    height: auto;
-    min-height: 0;
-    flex: none;
-    margin-top: 18px;
-    overflow-wrap: anywhere;
-    font-family: var(--font-display);
-    font-size: clamp(52px, 6vw, 88px);
-    font-weight: 700;
-    letter-spacing: -0.04em;
-    line-height: 0.82;
-  }
-
-  .software-record-primary-image {
-    min-width: 0;
-    overflow: hidden;
-  }
-
-  .software-record-primary-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .software-record-body {
-    max-width: 49ch;
-    margin-top: 18px;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    line-height: 1.4;
-    text-transform: none;
-  }
-
-  .software-record-body :global(p) {
-    margin-top: 0.9em;
-  }
-
-  .software-record-body :global(p:first-child) {
-    margin-top: 0;
-  }
-
-  .software-record-body :global(a) {
-    color: var(--color-primary);
-    text-decoration: underline;
-  }
-
-  .software-record-body :global(ul),
-  .software-record-body :global(ol) {
-    margin-top: 0.9em;
-    padding-left: 1.3em;
-  }
-</style>

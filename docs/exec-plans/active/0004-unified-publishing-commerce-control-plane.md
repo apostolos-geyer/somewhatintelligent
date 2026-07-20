@@ -549,9 +549,19 @@ Resolve each before the phase it gates; recommendations in **bold**.
    `roadie.put` caps at 100 MB with no multipart, while the old browser-direct
    presign path did 10 GB — accept the 100 MB ceiling for product/text imagery, or
    build server-side multipart in the adapter.
-5. **Preview mechanism** (gates T23): **Operator POSTs the rendered draft document
-   to an Access-gated Site preview route** vs a preview-only draft binding on Site
-   (rejected — violates INV-SITE-1's draft-free binding).
+5. **Preview mechanism** (gates T23): **Resolved — Operator POSTs the draft
+   document to a POST-only Site `/__preview` route, HMAC-authenticated.** A
+   preview-only draft binding on Site is rejected (violates INV-SITE-1). Site
+   holds no SITE-side draft binding and Operator holds no SITE binding (INV-OP-2);
+   the draft travels in the request body, signed with a shared
+   `PREVIEW_SIGNING_SECRET` (HMAC-SHA256 over `${expiresAt}.${payloadJson}`,
+   base64url, ~120s TTL) that only the Access-protected Operator can mint. Site
+   verifies over the exact transmitted bytes (constant-time), re-validates page
+   documents with the contract validator, then renders the draft through the SAME
+   view components / markdown pipeline / layout / CSS as the public routes, with
+   `noindex` (meta + `X-Robots-Tag`), `Cache-Control: no-store`, and the CSP
+   middleware relaxing only `frame-ancestors` to the Operator origin for that
+   path. Supported kinds: text, software, page (all five page keys).
 6. **Media-route disambiguation** (gates T20/T21): how Site `/media/:mediaId`
    routes a bare id to Publisher vs Store, and which canonical `href` each DTO
    emits (`/media/:id` vs `/api/store/media/:id`). **Resolved (T20/T21) as

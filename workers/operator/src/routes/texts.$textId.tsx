@@ -16,6 +16,8 @@ import { useAutosave } from "@si/ui/hooks/use-autosave";
 import { PublisherStatusBadge } from "@/components/publisher-status-badge";
 import { PublisherMediaUpload } from "@/components/publisher-media-upload";
 import { DeletionDialog } from "@/components/deletion-dialog";
+import { PreviewPanel } from "@/components/preview-panel";
+import type { PreviewPayload } from "@/lib/preview";
 import {
   deleteText,
   deleteTextRelease,
@@ -82,6 +84,32 @@ function TextView({ data }: { data: Detail }) {
   const [revision, setRevision] = useState(draft.revision);
   const [conflict, setConflict] = useState(false);
 
+  // Live mirror of the editable fields (details + body) so the preview reflects
+  // what the operator currently sees in the form, including unsaved edits.
+  const previewRef = useRef({
+    title: draft.title,
+    slug: draft.slug,
+    deck: draft.deck ?? "",
+    bodyMarkdown: draft.bodyMarkdown,
+    tags: draft.tags,
+  });
+  const onField = (patch: Partial<typeof previewRef.current>): void => {
+    Object.assign(previewRef.current, patch);
+  };
+  const getPreviewPayload = (): PreviewPayload => {
+    const p = previewRef.current;
+    return {
+      kind: "text",
+      title: p.title,
+      slug: p.slug,
+      deck: p.deck.trim() ? p.deck : null,
+      tags: p.tags,
+      bodyMarkdown: p.bodyMarkdown,
+      version: draft.activeVersion ?? "draft",
+      publishedAt: Date.now(),
+    };
+  };
+
   async function saveDraft(patch: {
     title?: string;
     slug?: string;
@@ -139,8 +167,9 @@ function TextView({ data }: { data: Detail }) {
         </Alert>
       )}
 
-      <DetailsSection draft={draft} disabled={conflict} onSave={saveDraft} />
-      <BodySection draft={draft} disabled={conflict} onSave={saveDraft} />
+      <DetailsSection draft={draft} disabled={conflict} onSave={saveDraft} onField={onField} />
+      <BodySection draft={draft} disabled={conflict} onSave={saveDraft} onField={onField} />
+      <PreviewPanel getPayload={getPreviewPayload} disabled={conflict} />
       <MediaSection
         textId={draft.textId}
         media={data.media}
@@ -171,6 +200,7 @@ function DetailsSection({
   draft,
   disabled,
   onSave,
+  onField,
 }: {
   draft: TextDraftDTO;
   disabled: boolean;
@@ -180,6 +210,7 @@ function DetailsSection({
     deck?: string | null;
     tags?: string[];
   }) => Promise<{ ok: boolean }>;
+  onField: (patch: { title?: string; slug?: string; deck?: string; tags?: string[] }) => void;
 }) {
   const [title, setTitle] = useState(draft.title);
   const [slug, setSlug] = useState(draft.slug);
@@ -227,7 +258,10 @@ function DetailsSection({
             id="title"
             value={title}
             disabled={disabled}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              onField({ title: e.target.value });
+            }}
             required
           />
         </div>
@@ -237,7 +271,10 @@ function DetailsSection({
             id="slug"
             value={slug}
             disabled={disabled}
-            onChange={(e) => setSlug(e.target.value)}
+            onChange={(e) => {
+              setSlug(e.target.value);
+              onField({ slug: e.target.value });
+            }}
             required
           />
         </div>
@@ -248,7 +285,10 @@ function DetailsSection({
             rows={2}
             value={deck}
             disabled={disabled}
-            onChange={(e) => setDeck(e.target.value)}
+            onChange={(e) => {
+              setDeck(e.target.value);
+              onField({ deck: e.target.value });
+            }}
             placeholder="A one-line summary shown under the title…"
           />
         </div>
@@ -257,7 +297,10 @@ function DetailsSection({
           <TagInput
             id="tags"
             value={tags}
-            onValueChange={setTags}
+            onValueChange={(v) => {
+              setTags(v);
+              onField({ tags: v });
+            }}
             disabled={disabled}
             placeholder="Add a tag…"
           />
@@ -277,10 +320,12 @@ function BodySection({
   draft,
   disabled,
   onSave,
+  onField,
 }: {
   draft: TextDraftDTO;
   disabled: boolean;
   onSave: (patch: { bodyMarkdown: string }) => Promise<{ ok: boolean }>;
+  onField: (patch: { bodyMarkdown?: string }) => void;
 }) {
   const [body, setBody] = useState(draft.bodyMarkdown);
   const autosave = useAutosave({
@@ -299,7 +344,10 @@ function BodySection({
       </div>
       <MarkdownField
         value={body}
-        onValueChange={setBody}
+        onValueChange={(v) => {
+          setBody(v);
+          onField({ bodyMarkdown: v });
+        }}
         disabled={disabled}
         wikilink={(query) => searchTexts({ data: { query } })}
         footer={(stats) => (

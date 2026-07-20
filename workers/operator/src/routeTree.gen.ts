@@ -117,8 +117,8 @@ export interface FileRoutesByFullPath {
   '/settings/': typeof SettingsIndexRoute
   '/software/': typeof SoftwareIndexRoute
   '/texts/': typeof TextsIndexRoute
-  '/_operator/media/store/products/$productId': typeof OperatorMediaStoreProductsProductIdRoute
   '/_operator/media/publisher/$ownerType/$ownerId': typeof OperatorMediaPublisherOwnerTypeOwnerIdRoute
+  '/_operator/media/store/products/$productId': typeof OperatorMediaStoreProductsProductIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -134,8 +134,8 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsIndexRoute
   '/software': typeof SoftwareIndexRoute
   '/texts': typeof TextsIndexRoute
-  '/_operator/media/store/products/$productId': typeof OperatorMediaStoreProductsProductIdRoute
   '/_operator/media/publisher/$ownerType/$ownerId': typeof OperatorMediaPublisherOwnerTypeOwnerIdRoute
+  '/_operator/media/store/products/$productId': typeof OperatorMediaStoreProductsProductIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -152,8 +152,8 @@ export interface FileRoutesById {
   '/settings/': typeof SettingsIndexRoute
   '/software/': typeof SoftwareIndexRoute
   '/texts/': typeof TextsIndexRoute
-  '/_operator/media/store/products/$productId': typeof OperatorMediaStoreProductsProductIdRoute
   '/_operator/media/publisher/$ownerType/$ownerId': typeof OperatorMediaPublisherOwnerTypeOwnerIdRoute
+  '/_operator/media/store/products/$productId': typeof OperatorMediaStoreProductsProductIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -171,8 +171,8 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/software/'
     | '/texts/'
-    | '/_operator/media/store/products/$productId'
     | '/_operator/media/publisher/$ownerType/$ownerId'
+    | '/_operator/media/store/products/$productId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -188,8 +188,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/software'
     | '/texts'
-    | '/_operator/media/store/products/$productId'
     | '/_operator/media/publisher/$ownerType/$ownerId'
+    | '/_operator/media/store/products/$productId'
   id:
     | '__root__'
     | '/'
@@ -205,8 +205,8 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/software/'
     | '/texts/'
-    | '/_operator/media/store/products/$productId'
     | '/_operator/media/publisher/$ownerType/$ownerId'
+    | '/_operator/media/store/products/$productId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -223,8 +223,8 @@ export interface RootRouteChildren {
   SettingsIndexRoute: typeof SettingsIndexRoute
   SoftwareIndexRoute: typeof SoftwareIndexRoute
   TextsIndexRoute: typeof TextsIndexRoute
-  OperatorMediaStoreProductsProductIdRoute: typeof OperatorMediaStoreProductsProductIdRoute
   OperatorMediaPublisherOwnerTypeOwnerIdRoute: typeof OperatorMediaPublisherOwnerTypeOwnerIdRoute
+  OperatorMediaStoreProductsProductIdRoute: typeof OperatorMediaStoreProductsProductIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -351,10 +351,10 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsIndexRoute: SettingsIndexRoute,
   SoftwareIndexRoute: SoftwareIndexRoute,
   TextsIndexRoute: TextsIndexRoute,
-  OperatorMediaStoreProductsProductIdRoute:
-    OperatorMediaStoreProductsProductIdRoute,
   OperatorMediaPublisherOwnerTypeOwnerIdRoute:
     OperatorMediaPublisherOwnerTypeOwnerIdRoute,
+  OperatorMediaStoreProductsProductIdRoute:
+    OperatorMediaStoreProductsProductIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

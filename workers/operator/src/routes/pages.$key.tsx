@@ -19,6 +19,8 @@ import { Textarea } from "@si/ui/components/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@si/ui/components/alert";
 import { DeletionDialog } from "@/components/deletion-dialog";
 import { PublisherMediaUpload } from "@/components/publisher-media-upload";
+import { PreviewPanel } from "@/components/preview-panel";
+import type { PreviewPayload } from "@/lib/preview";
 import {
   createPage,
   deletePage,
@@ -193,6 +195,8 @@ function PageEditor({
 
       <SeoSection seo={document.seo} onChange={(seo) => setDocument({ ...document, seo })} />
       <ContentSection document={document} onChange={setDocument} />
+
+      <PreviewPanel getPayload={(): PreviewPayload => ({ kind: "page", key: pageKey, document })} />
 
       {created && <PageMediaSection pageKey={pageKey} />}
 

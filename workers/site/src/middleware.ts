@@ -16,25 +16,39 @@
  */
 import { defineMiddleware } from "astro:middleware";
 
-const CONTENT_SECURITY_POLICY = [
-  "default-src 'self'",
-  "base-uri 'self'",
-  "object-src 'none'",
-  "frame-ancestors 'none'",
-  "form-action 'self'",
-  "img-src 'self' data: https://*.stripe.com",
-  "font-src 'self' data:",
-  "style-src 'self' 'unsafe-inline'",
-  "script-src 'self' https://js.stripe.com https://maps.googleapis.com",
-  "connect-src 'self' https://api.stripe.com https://maps.googleapis.com",
-  "frame-src https://js.stripe.com https://hooks.stripe.com https://m.stripe.network",
-].join("; ");
+// `frame-ancestors` is `'none'` everywhere except the Operator draft-preview
+// route (RFC-0001 D14 / exec-plan T23), which is rendered inside a hidden iframe
+// on the Access-protected Operator origin (`desk.*`, or the local operator dev
+// server on :8792). Those origins — and nothing else — may frame `/__preview`.
+const OPERATOR_FRAME_ANCESTORS =
+  "'self' https://desk.somewhatintelligent.ca https://desk.staging.somewhatintelligent.ca " +
+  "https://*.somewhatintelligent.localhost http://localhost:8792 http://127.0.0.1:8792";
 
-export const onRequest = defineMiddleware(async (_context, next) => {
+function contentSecurityPolicy(frameAncestors: string): string {
+  return [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    `frame-ancestors ${frameAncestors}`,
+    "form-action 'self'",
+    "img-src 'self' data: https://*.stripe.com",
+    "font-src 'self' data:",
+    "style-src 'self' 'unsafe-inline'",
+    "script-src 'self' https://js.stripe.com https://maps.googleapis.com",
+    "connect-src 'self' https://api.stripe.com https://maps.googleapis.com",
+    "frame-src https://js.stripe.com https://hooks.stripe.com https://m.stripe.network",
+  ].join("; ");
+}
+
+export const onRequest = defineMiddleware(async (context, next) => {
   const response = await next();
   const contentType = response.headers.get("content-type") ?? "";
   if (contentType.includes("text/html")) {
-    response.headers.set("Content-Security-Policy", CONTENT_SECURITY_POLICY);
+    const isPreview = context.url.pathname === "/__preview";
+    response.headers.set(
+      "Content-Security-Policy",
+      contentSecurityPolicy(isPreview ? OPERATOR_FRAME_ANCESTORS : "'none'"),
+    );
   }
   return response;
 });

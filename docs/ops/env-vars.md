@@ -197,12 +197,14 @@ hostname, outside bouncer — deploys manually (no CI deploy lane, no
 release-please component). Fails closed: outside development, missing Access
 configuration is a 500, never a fallback.
 
-| name           | consumed by           | dev source                                                                    | staging + production source                                                                                            |
-| -------------- | --------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `OPERATOR_URL` | `src/operator-env.ts` | local URL (contract — dev currently falls through; see Known inconsistencies) | wrangler var — staging `https://desk.staging.somewhatintelligent.ca`, production `https://desk.somewhatintelligent.ca` |
-| `POLICY_AUD`   | `src/lib/access.ts`   | omitted (dev actor `DEV_OPERATOR` stands in)                                  | Wrangler **secret**, required — written by the Access setup script (`wrangler secret put`), not packages/secrets       |
-| `TEAM_DOMAIN`  | `src/lib/access.ts`   | omitted (dev actor `DEV_OPERATOR` stands in)                                  | Wrangler **secret**, required — same writer as `POLICY_AUD`                                                            |
-| `DEV_OPERATOR` | `src/lib/access.ts`   | `env-init` (fixed dev actor, `<sub>:<email>`)                                 | absent                                                                                                                 |
+| name                     | consumed by                                                              | dev source                                                                    | staging + production source                                                                                                      |
+| ------------------------ | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `OPERATOR_URL`           | `src/operator-env.ts`                                                    | local URL (contract — dev currently falls through; see Known inconsistencies) | wrangler var — staging `https://desk.staging.somewhatintelligent.ca`, production `https://desk.somewhatintelligent.ca`           |
+| `POLICY_AUD`             | `src/lib/access.ts`                                                      | omitted (dev actor `DEV_OPERATOR` stands in)                                  | Wrangler **secret**, required — written by the Access setup script (`wrangler secret put`), not packages/secrets                 |
+| `TEAM_DOMAIN`            | `src/lib/access.ts`                                                      | omitted (dev actor `DEV_OPERATOR` stands in)                                  | Wrangler **secret**, required — same writer as `POLICY_AUD`                                                                      |
+| `DEV_OPERATOR`           | `src/lib/access.ts`                                                      | `env-init` (fixed dev actor, `<sub>:<email>`)                                 | absent                                                                                                                           |
+| `SITE_PREVIEW_URL`       | `src/components/preview-panel.tsx` (via `import.meta.env`)               | `env-init` — `http://127.0.0.1:4321/__preview`                                | wrangler var — staging `https://staging.somewhatintelligent.ca/__preview`, production `https://somewhatintelligent.ca/__preview` |
+| `PREVIEW_SIGNING_SECRET` | `src/lib/preview.functions.ts` (`signPreview`, via `cloudflare:workers`) | `env-init` — fixed `dev-preview-secret` (shared with site)                    | Wrangler **secret**, required — `wrangler secret put`, the SAME value set on site (T23 draft-preview HMAC)                       |
 
 ## publisher (`workers/publisher`)
 
@@ -220,9 +222,10 @@ Astro public site (RFC-0001) — an SSR worker bound by bouncer (no custom
 domain of its own). `SITE_URL` is a contract row: the consumers are the site's
 read models and the Store checkout return.
 
-| name       | consumed by                  | dev source      | staging + production source |
-| ---------- | ---------------------------- | --------------- | --------------------------- |
-| `SITE_URL` | Site / Store checkout return | Astro local URL | public apex                 |
+| name                     | consumed by                                                                   | dev source                                                     | staging + production source                                                                                    |
+| ------------------------ | ----------------------------------------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `SITE_URL`               | Site / Store checkout return                                                  | Astro local URL                                                | public apex                                                                                                    |
+| `PREVIEW_SIGNING_SECRET` | `src/lib/preview.ts` / `src/pages/__preview.astro` (via `cloudflare:workers`) | `env-init` — fixed `dev-preview-secret` (shared with operator) | Wrangler **secret**, required — `wrangler secret put`, the SAME value set on operator (T23 draft-preview HMAC) |
 
 ---
 

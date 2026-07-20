@@ -13,6 +13,8 @@ import { useAutosave } from "@si/ui/hooks/use-autosave";
 import { PublisherStatusBadge } from "@/components/publisher-status-badge";
 import { PublisherMediaUpload } from "@/components/publisher-media-upload";
 import { DeletionDialog } from "@/components/deletion-dialog";
+import { PreviewPanel } from "@/components/preview-panel";
+import type { PreviewPayload } from "@/lib/preview";
 import {
   deleteSoftware,
   getSoftware,
@@ -73,6 +75,33 @@ function SoftwareView({ data }: { data: Detail }) {
   const [revision, setRevision] = useState(draft.revision);
   const [conflict, setConflict] = useState(false);
 
+  // Live mirror of the editable fields so the preview reflects the current form,
+  // including unsaved edits (RFC-0001 D14).
+  const previewRef = useRef({
+    title: draft.title,
+    slug: draft.slug,
+    deck: draft.deck,
+    whatItIsMarkdown: draft.whatItIsMarkdown,
+    destinationUrl: draft.destinationUrl,
+    actionLabel: draft.actionLabel,
+  });
+  const onField = (patch: Partial<typeof previewRef.current>): void => {
+    Object.assign(previewRef.current, patch);
+  };
+  const getPreviewPayload = (): PreviewPayload => {
+    const p = previewRef.current;
+    return {
+      kind: "software",
+      name: p.title,
+      slug: p.slug,
+      deck: p.deck,
+      whatItIsMarkdown: p.whatItIsMarkdown,
+      destinationUrl: p.destinationUrl,
+      actionLabel: p.actionLabel,
+      updatedAt: Date.now(),
+    };
+  };
+
   async function saveDraft(patch: {
     title?: string;
     slug?: string;
@@ -132,8 +161,9 @@ function SoftwareView({ data }: { data: Detail }) {
         </Alert>
       )}
 
-      <DetailsSection draft={draft} disabled={conflict} onSave={saveDraft} />
-      <WhatItIsSection draft={draft} disabled={conflict} onSave={saveDraft} />
+      <DetailsSection draft={draft} disabled={conflict} onSave={saveDraft} onField={onField} />
+      <WhatItIsSection draft={draft} disabled={conflict} onSave={saveDraft} onField={onField} />
+      <PreviewPanel getPayload={getPreviewPayload} disabled={conflict} />
       <MediaSection
         softwareId={draft.softwareId}
         media={data.media}
@@ -160,6 +190,7 @@ function DetailsSection({
   draft,
   disabled,
   onSave,
+  onField,
 }: {
   draft: SoftwareDraftDTO;
   disabled: boolean;
@@ -170,6 +201,13 @@ function DetailsSection({
     destinationUrl?: string;
     actionLabel?: string;
   }) => Promise<{ ok: boolean; error?: string }>;
+  onField: (patch: {
+    title?: string;
+    slug?: string;
+    deck?: string;
+    destinationUrl?: string;
+    actionLabel?: string;
+  }) => void;
 }) {
   const [title, setTitle] = useState(draft.title);
   const [slug, setSlug] = useState(draft.slug);
@@ -219,7 +257,10 @@ function DetailsSection({
             id="title"
             value={title}
             disabled={disabled}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              onField({ title: e.target.value });
+            }}
             required
           />
         </div>
@@ -229,7 +270,10 @@ function DetailsSection({
             id="slug"
             value={slug}
             disabled={disabled}
-            onChange={(e) => setSlug(e.target.value)}
+            onChange={(e) => {
+              setSlug(e.target.value);
+              onField({ slug: e.target.value });
+            }}
             required
           />
         </div>
@@ -239,7 +283,10 @@ function DetailsSection({
             id="deck"
             value={deck}
             disabled={disabled}
-            onChange={(e) => setDeck(e.target.value)}
+            onChange={(e) => {
+              setDeck(e.target.value);
+              onField({ deck: e.target.value });
+            }}
             placeholder="A one-line description"
           />
         </div>
@@ -251,7 +298,10 @@ function DetailsSection({
               type="url"
               value={destinationUrl}
               disabled={disabled}
-              onChange={(e) => setDestinationUrl(e.target.value)}
+              onChange={(e) => {
+                setDestinationUrl(e.target.value);
+                onField({ destinationUrl: e.target.value });
+              }}
               placeholder="https://…"
             />
           </div>
@@ -261,7 +311,10 @@ function DetailsSection({
               id="action"
               value={actionLabel}
               disabled={disabled}
-              onChange={(e) => setActionLabel(e.target.value)}
+              onChange={(e) => {
+                setActionLabel(e.target.value);
+                onField({ actionLabel: e.target.value });
+              }}
               placeholder="Open"
             />
           </div>
@@ -283,10 +336,12 @@ function WhatItIsSection({
   draft,
   disabled,
   onSave,
+  onField,
 }: {
   draft: SoftwareDraftDTO;
   disabled: boolean;
   onSave: (patch: { whatItIsMarkdown: string }) => Promise<{ ok: boolean; error?: string }>;
+  onField: (patch: { whatItIsMarkdown?: string }) => void;
 }) {
   const [body, setBody] = useState(draft.whatItIsMarkdown);
   const autosave = useAutosave({
@@ -306,7 +361,10 @@ function WhatItIsSection({
       </div>
       <MarkdownField
         value={body}
-        onValueChange={setBody}
+        onValueChange={(v) => {
+          setBody(v);
+          onField({ whatItIsMarkdown: v });
+        }}
         disabled={disabled}
         footer={(stats) => (
           <span className="font-mono text-[10px]">

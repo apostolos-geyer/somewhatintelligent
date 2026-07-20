@@ -1,0 +1,303 @@
+---
+// Draft page-document preview (RFC-0001 D14, exec-plan 0004 T23). Renders a
+// `PageDocumentByKey` document into the public site chrome (Base is applied by
+// the caller) using the shared global layout CSS and read clients. Index-style
+// keys (shop/writing/software) fetch their live record lists via the EXISTING
+// public read bindings — exactly like the public routes — because those lists
+// are published data, not draft data. The previewed document itself never comes
+// from a binding; it arrives in the signed request.
+//
+// The public shop/home/about routes do not yet consume their page documents
+// (that convergence is exec-plan T20); until then this preview reflects the
+// intended document-driven rendering rather than the current hardcoded pages.
+import SiteFooter from "../SiteFooter.astro";
+import SiteHeader from "../SiteHeader.astro";
+import {
+  listProducts,
+  formatPrice,
+  availabilityLabel,
+  storeMediaHref,
+  type ProductCardDTO,
+} from "../../lib/store-catalog";
+import {
+  listTexts,
+  listSoftware,
+  publisherMediaHref,
+  type PublishedTextSummaryDTO,
+  type PublishedSoftwareSummaryDTO,
+} from "../../lib/publisher-public";
+import { formatDate } from "../../lib/format";
+import type { PageDocumentByKey, PageKey } from "@si/contracts";
+
+interface Props {
+  document: PageDocumentByKey[PageKey];
+}
+
+const { document: doc } = Astro.props;
+
+// Fetch live lists only for the key being previewed (published data, not draft).
+// A read failure degrades to an empty list — a preview must never 500 on a
+// transient list-read error.
+let products: ProductCardDTO[] = [];
+let texts: PublishedTextSummaryDTO[] = [];
+let software: PublishedSoftwareSummaryDTO[] = [];
+try {
+  if (doc.key === "shop") {
+    const r = await listProducts({ limit: 24 });
+    products = r.ok
+      ? r.value.products.filter((p) => availabilityLabel(p.availability) !== null)
+      : [];
+  } else if (doc.key === "writing") {
+    const r = await listTexts({ limit: 24 });
+    texts = r.ok ? r.value.texts : [];
+  } else if (doc.key === "software") {
+    const r = await listSoftware({ limit: 24 });
+    software = r.ok ? r.value.software : [];
+  }
+} catch {
+  // leave the list empty; the placeholder card renders
+}
+
+const activeFor: Record<PageKey, "home" | "shop" | "writing" | "software" | "about"> = {
+  home: "home",
+  shop: "shop",
+  writing: "writing",
+  software: "software",
+  about: "about",
+};
+---
+
+{
+  doc.key === "home" && (
+    <div class="site-frame">
+      <SiteHeader active="home" />
+      <main class="home-main">
+        <section class="hero" aria-labelledby="home-title">
+          <div class="hero-claim">
+            <h1 id="home-title">{doc.seo.title || "Somewhat Intelligent"}</h1>
+            <p class="publishing-scope">{doc.tagline}</p>
+          </div>
+          {doc.heroMediaId ? (
+            <figure class="hero-image">
+              <img src={publisherMediaHref(doc.heroMediaId)} alt="Hero" />
+            </figure>
+          ) : (
+            <figure class="hero-image" />
+          )}
+        </section>
+        <section class="record-grid" aria-label="Current records">
+          {[
+            { s: doc.sections.objects, href: "/shop/", id: "objects" },
+            { s: doc.sections.systems, href: "/software/", id: "systems" },
+            { s: doc.sections.texts, href: "/writing/", id: "texts" },
+            { s: doc.sections.about, href: "/about/", id: "apostoli" },
+          ].map(({ s, href, id }) => (
+            <article class="record" id={id}>
+              <p class="record-label">{s.eyebrow}</p>
+              <div class="record-visual record-scaffold" aria-hidden="true">
+                <strong>{s.eyebrow}</strong>
+              </div>
+              <div class="record-copy">
+                <p>{s.body}</p>
+                <a href={href}>
+                  {s.actionLabel} <span aria-hidden="true">→</span>
+                </a>
+              </div>
+            </article>
+          ))}
+        </section>
+      </main>
+      <SiteFooter />
+    </div>
+  )
+}
+
+{
+  (doc.key === "shop" || doc.key === "writing" || doc.key === "software") && (
+    <div class="site-frame shop-frame">
+      <SiteHeader active={activeFor[doc.key]} />
+      <main class="shop-main">
+        <section class="objects-intro" aria-labelledby="page-preview-title">
+          <h1 id="page-preview-title">{doc.title || doc.eyebrow}</h1>
+          <p class="objects-deck">{doc.deck}</p>
+        </section>
+
+        <section class="object-ledger" aria-label="Records">
+          {doc.key === "shop" &&
+            (products.length === 0 ? (
+              <article class="object-entry object-entry-compact object-entry-placeholder">
+                <span class="object-number">01</span>
+                <div class="object-meta">
+                  <h2>No objects yet</h2>
+                  <p>{doc.emptyMessage}</p>
+                </div>
+                <div class="object-placeholder-field" aria-label="No objects published">
+                  <span>Object / unpublished</span>
+                  <strong>COMING SOON</strong>
+                </div>
+              </article>
+            ) : (
+              products.map((product, i) => (
+                <article class="object-entry object-entry-current" id={product.slug}>
+                  <span class="object-number">{String(i + 1).padStart(2, "0")}</span>
+                  <div class="object-meta">
+                    <h2>{product.title}</h2>
+                    <p>Release {product.version}</p>
+                    {product.descriptionExcerpt && <p>{product.descriptionExcerpt}</p>}
+                    <dl>
+                      <div>
+                        <dt>Status</dt>
+                        <dd>{availabilityLabel(product.availability)}</dd>
+                      </div>
+                      <div>
+                        <dt>Price</dt>
+                        <dd>{formatPrice(product.priceCents, product.currency)}</dd>
+                      </div>
+                    </dl>
+                  </div>
+                  {product.coverMediaId ? (
+                    <figure class="object-image">
+                      <img
+                        src={storeMediaHref(product.coverMediaId)}
+                        alt={`${product.title} cover`}
+                      />
+                    </figure>
+                  ) : (
+                    <div class="object-placeholder-field" aria-label="No cover image">
+                      <span>Object / {product.slug}</span>
+                      <strong>NO IMAGE</strong>
+                    </div>
+                  )}
+                  <div class="object-operational">
+                    <a href={`/shop/${product.slug}`}>
+                      View object <span aria-hidden="true">→</span>
+                    </a>
+                  </div>
+                </article>
+              ))
+            ))}
+
+          {doc.key === "writing" &&
+            (texts.length === 0 ? (
+              <article class="object-entry object-entry-compact object-entry-placeholder">
+                <span class="object-number">01</span>
+                <div class="object-meta">
+                  <h2>No texts yet</h2>
+                  <p>{doc.emptyMessage}</p>
+                </div>
+                <div class="object-placeholder-field" aria-label="No texts published">
+                  <span>Text / unpublished</span>
+                  <strong>COMING SOON</strong>
+                </div>
+              </article>
+            ) : (
+              texts.map((text, i) => (
+                <article class="object-entry object-entry-current" id={text.slug}>
+                  <span class="object-number">{String(i + 1).padStart(2, "0")}</span>
+                  <div class="object-meta">
+                    <h2>{text.title}</h2>
+                    <p>{formatDate(text.publishedAt)}</p>
+                    {text.deck && <p>{text.deck}</p>}
+                  </div>
+                  {text.heroMedia ? (
+                    <figure class="object-image">
+                      <img src={text.heroMedia.href} alt={text.heroMedia.alt || text.title} />
+                    </figure>
+                  ) : (
+                    <div class="object-placeholder-field" aria-label="No hero image">
+                      <span>Text / {text.slug}</span>
+                      <strong>NO IMAGE</strong>
+                    </div>
+                  )}
+                  <div class="object-operational">
+                    <a href={`/writing/${text.slug}`}>
+                      Read text <span aria-hidden="true">→</span>
+                    </a>
+                  </div>
+                </article>
+              ))
+            ))}
+
+          {doc.key === "software" &&
+            (software.length === 0 ? (
+              <article class="object-entry object-entry-compact object-entry-placeholder">
+                <span class="object-number">01</span>
+                <div class="object-meta">
+                  <h2>No systems yet</h2>
+                  <p>{doc.emptyMessage}</p>
+                </div>
+                <div class="object-placeholder-field" aria-label="No systems published">
+                  <span>System / unpublished</span>
+                  <strong>COMING SOON</strong>
+                </div>
+              </article>
+            ) : (
+              software.map((item, i) => (
+                <article class="object-entry object-entry-current" id={item.slug}>
+                  <span class="object-number">{String(i + 1).padStart(2, "0")}</span>
+                  <div class="object-meta">
+                    <h2>{item.title}</h2>
+                    <p>{item.deck}</p>
+                  </div>
+                  {item.primaryMedia ? (
+                    <figure class="object-image">
+                      <img src={item.primaryMedia.href} alt={item.primaryMedia.alt || item.title} />
+                    </figure>
+                  ) : (
+                    <div class="object-placeholder-field" aria-label="No primary image">
+                      <span>System / {item.slug}</span>
+                      <strong>NO IMAGE</strong>
+                    </div>
+                  )}
+                  <div class="object-operational">
+                    <a href={`/software/${item.slug}`}>
+                      Open record <span aria-hidden="true">→</span>
+                    </a>
+                  </div>
+                </article>
+              ))
+            ))}
+        </section>
+      </main>
+      <SiteFooter />
+    </div>
+  )
+}
+
+{
+  doc.key === "about" && (
+    <div class="site-frame about-frame">
+      <SiteHeader active="about" />
+      <main class="about-main">
+        <section class="person-record" aria-labelledby="about-preview-title">
+          <h1 id="about-preview-title">{doc.title}</h1>
+          {doc.primaryMediaId ? (
+            <figure class="object-image">
+              <img src={publisherMediaHref(doc.primaryMediaId)} alt={doc.title} />
+            </figure>
+          ) : (
+            <figure class="person-portrait-placeholder" aria-label="Portrait placeholder">
+              <span>Image forthcoming</span>
+            </figure>
+          )}
+        </section>
+        <section class="person-statement" aria-label="Statement">
+          <blockquote>{doc.statement}</blockquote>
+        </section>
+        <section class="person-evidence" aria-label="Selected work and evidence">
+          {doc.secondaryMediaId && (
+            <figure>
+              <img src={publisherMediaHref(doc.secondaryMediaId)} alt="Secondary" />
+            </figure>
+          )}
+          {doc.lowerContent && (
+            <div class="about-placeholder">
+              <p>{doc.lowerContent}</p>
+            </div>
+          )}
+        </section>
+      </main>
+      <SiteFooter />
+    </div>
+  )
+}
