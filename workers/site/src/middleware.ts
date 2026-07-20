@@ -47,7 +47,10 @@ function contentSecurityPolicy(frameAncestors: string): string {
 export const onRequest = defineMiddleware(async (context, next) => {
   const response = await next();
   const contentType = response.headers.get("content-type") ?? "";
-  if (contentType.includes("text/html") && env.ENVIRONMENT !== "development") {
+  // Widened to string: the generated ENVIRONMENT union depends on whether
+  // .dev.vars existed at `wrangler types` time (CI regenerates without it).
+  const environment: string = env.ENVIRONMENT;
+  if (contentType.includes("text/html") && environment !== "development") {
     const isPreview = context.url.pathname === "/__preview";
     response.headers.set(
       "Content-Security-Policy",

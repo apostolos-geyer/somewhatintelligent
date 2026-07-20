@@ -97,7 +97,10 @@ function getStamper() {
 }
 
 export async function devEnvelopeStamper(request: Request): Promise<DevEnvelopeStampOutcome> {
-  if (env.ENVIRONMENT !== "development") return { request, setCookies: [] };
+  // Widened to string: the generated ENVIRONMENT union depends on whether
+  // .dev.vars existed at `wrangler types` time (CI regenerates without it).
+  const environment: string = env.ENVIRONMENT;
+  if (environment !== "development") return { request, setCookies: [] };
   if (request.headers.get(PLATFORM_HEADERS.att)) return { request, setCookies: [] };
   try {
     const stamper = await getStamper();
