@@ -154,8 +154,18 @@ Making roadie images actually render needs the keypair **plus** bucket CORS
 
 ## store (`workers/store`)
 
-Dev-direct TanStack Start storefront, vmf-mounted at `/shop` behind bouncer.
-Self-mints its dev attestation envelope (bouncer isn't in the path on
+> **Stale-doc correction:** the rows below describe the pre-refactor TanStack
+> Start storefront. Store is now **headless** — it ships no client bundle, so
+> there is no `CLIENT_VARS` allowlist, no `PUBLIC_BASE` client mount, and no
+> `STRIPE_PUBLISHABLE_KEY` "via vite CLIENT_VARS" read. The only surfaces are the
+> buyer HTTP API (`/api/store`) + Stripe webhook (`/hooks/store`) and the RPC
+> entrypoints; the storefront pages are Site's, and the publishable key reaches
+> the browser via `GET /api/store/config` (`stripePublishableKey`), never a build
+> var. `PUBLIC_BASE` / `STRIPE_PUBLISHABLE_KEY` client-bundle rows are retained
+> only as historical context pending a table rewrite.
+
+Dev-direct Store worker, headless behind bouncer's `/api/store` passthrough
+mount. Self-mints its dev attestation envelope (bouncer isn't in the path on
 `*.somewhatintelligent.localhost`), so it carries the dev signing key in `.dev.vars`. It
 also holds Stripe webhook credentials in staging/production (see table below).
 Binds `DB` (D1), `GUESTLIST`, `ROADIE`.
@@ -222,10 +232,11 @@ Astro public site (RFC-0001) — an SSR worker bound by bouncer (no custom
 domain of its own). `SITE_URL` is a contract row: the consumers are the site's
 read models and the Store checkout return.
 
-| name                     | consumed by                                                                   | dev source                                                     | staging + production source                                                                                    |
-| ------------------------ | ----------------------------------------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `SITE_URL`               | Site / Store checkout return                                                  | Astro local URL                                                | public apex                                                                                                    |
-| `PREVIEW_SIGNING_SECRET` | `src/lib/preview.ts` / `src/pages/__preview.astro` (via `cloudflare:workers`) | `env-init` — fixed `dev-preview-secret` (shared with operator) | Wrangler **secret**, required — `wrangler secret put`, the SAME value set on operator (T23 draft-preview HMAC) |
+| name                     | consumed by                                                                                                                                       | dev source                                                           | staging + production source                                                                                          |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `SITE_URL`               | Site / Store checkout return                                                                                                                      | `env-init` — `https://site.somewhatintelligent.localhost` (portless) | public apex                                                                                                          |
+| `STORE_API_BASE`         | site — inlined into the browser bundle as `import.meta.env.PUBLIC_STORE_API_BASE` by `astro.config.mjs`'s `storeApiBaseDefine` (dev command only) | `env-init` — `https://store.somewhatintelligent.localhost/api/store` | absent — the shipped bundle omits the define, so the client falls back to the same-origin `/api/store` bouncer mount |
+| `PREVIEW_SIGNING_SECRET` | `src/lib/preview.ts` / `src/pages/__preview.astro` (via `cloudflare:workers`)                                                                     | `env-init` — fixed `dev-preview-secret` (shared with operator)       | Wrangler **secret**, required — `wrangler secret put`, the SAME value set on operator (T23 draft-preview HMAC)       |
 
 ---
 

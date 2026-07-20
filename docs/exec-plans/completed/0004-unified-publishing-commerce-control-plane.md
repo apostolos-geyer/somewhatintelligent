@@ -541,10 +541,17 @@ Resolve each before the phase it gates; recommendations in **bold**.
    exporting from the Publisher package like Roadie's `./client`. A standalone
    package avoids Site/Operator depending on a Publisher build.
 2. **Astro island framework** (gates T21): `@astrojs/react` (pulls react/react-dom
-   into a zero-JS worker) vs **vanilla `<script>` islands** + `@stripe/stripe-js`.
+   into the worker) vs vanilla `<script>` islands + `@stripe/stripe-js`.
    `@stripe/stripe-js` is required either way for the Payment Element.
-   **Resolved (2026-07-19):** vanilla `<script>` islands — `workers/site/package.json`
-   carries `@stripe/stripe-js` and no `react`/`react-dom`/`@astrojs/react` dependency.
+   **Resolved (2026-07-20):** `@astrojs/react` islands, vendoring the Store app's
+   React checkout. `workers/site/package.json` carries `@astrojs/react`, `react`,
+   `react-dom`, `@stripe/react-stripe-js`, and `@stripe/stripe-js`. The checkout and
+   checkout-return flows live in `workers/site/src/components/checkout/*.tsx` as
+   `client:only="react"` islands mounted inside the shared `TxShell`, reading the
+   Store HTTP API through `src/lib/store-api-client.ts`; the islands compile to
+   external `/_astro/*.js` modules, so the strict `script-src 'self'` CSP holds. This
+   entry corrects an earlier resolution that recorded vanilla `<script>` islands
+   without owner sign-off.
 3. **`@astrojs/cloudflare` version** (gates T6): pick one compatible with pinned
    Astro `7.0.9` — no adapter exists in the repo today.
    **Resolved (2026-07-19):** `@astrojs/cloudflare` `^14.1.3` (`workers/site/package.json`).
@@ -599,6 +606,60 @@ Resolve each before the phase it gates; recommendations in **bold**.
    (`workers/store/src/lib/operator.ts`) and Publisher
    (`workers/publisher/src/operator/writes.ts`) each own token hashing + impact-drift
    rejection, since the two schemas differ.
+
+## Site overhaul addenda (2026-07-20)
+
+Follow-on decisions from the `workers/site` overhaul, recorded after the P1 open
+decisions above resolve.
+
+1. **Navigation model.** Site renders `<ClientRouter />` (Astro `astro:transitions`,
+   stable in 7.0.9) in `layouts/Base.astro` for soft, prefetched navigation.
+   `SiteHeader` and `SiteFooter` carry `transition:persist` so the chrome survives
+   swaps; `SiteHeader` derives its active section from `Astro.url.pathname` on the
+   server and re-syncs on `astro:after-swap` from a bundled module script (the
+   per-page `active` prop is gone). Cross-page transitions run with no animation
+   (`::view-transition-old/new(root) { animation: none }`), honoring the brand
+   motion principle ("use motion once… the rest is fast and physical"). STANDING
+   CONSTRAINT: the strict CSP carries no `'unsafe-inline'` or nonce for `script-src`,
+   so every client script MUST compile to an external bundled module — no `is:inline`,
+   no `data-astro-rerun`. `ClientRouter`, the header sync script, and the React
+   checkout island all satisfy this because they emit external `/_astro/*.js` modules.
+
+2. **Dev Store-API base + env-gated CSP.** The browser reads the Store API base from
+   `import.meta.env.PUBLIC_STORE_API_BASE`, inlined by `astro.config.mjs`'s
+   `storeApiBaseDefine` only on the `dev` command from `.dev.vars` (`STORE_API_BASE`);
+   shipped builds omit the define and fall back to the same-origin `/api/store`
+   bouncer mount. Site runs under portless at `site.somewhatintelligent.localhost`, a
+   subdomain of `devDomain`, so the SameSite=Lax session cookie crosses to
+   `store.somewhatintelligent.localhost` and Store's `devDomain`-derived CORS
+   allowlist covers Site with no literal; `store-api-client.ts` fetches with
+   `credentials: "include"`. `middleware.ts` emits the strict `Content-Security-Policy`
+   on HTML responses in staging/production and skips it in local dev
+   (`env.ENVIRONMENT === "development"`), because Astro's dev pipeline injects an
+   inline toolbar script that a hash-free strict CSP would reject; production build
+   output carries no inline scripts.
+
+3. **TxShell + scoped-style consolidation.** The four transactional pages (cart,
+   checkout, checkout/return, orders) share `components/TxShell.astro`, which owns the
+   repeated `site-frame`/header/footer/`main`/`panel` chrome and the `.tx-*` shell
+   styles. View-exclusive rules move from the global `styles.css` into each view's
+   scoped `<style>` (HomeView / AboutView / ShopView / SoftwareRecord); orphaned and
+   dead rules are pruned, so `styles.css` keeps only shared and global survivors.
+   Compositional reference images move into `workers/site/src/assets/`, imported as
+   hashed static URLs under `imageService: "passthrough"`.
+
+4. **Live content collections — declined (deferred, not rejected).** Astro 7.0.9
+   supports live collections (`defineLiveCollection` / `getLiveEntry` in
+   `src/live.config.ts`), but Site keeps `src/lib/publisher-public.ts` — a typed
+   per-request read client over the `PUBLISHER` binding via the `cloudflare:workers`
+   `env` pattern, with a `DomainResult` not-found contract the pages already consume.
+   Migrating `texts` / `software` / `pages` to live collections is net-new
+   architecture, not overhaul cleanup: it rewrites every content page's data-access
+   frontmatter, adds a new config surface and new runtime-validation failure modes
+   (`LiveCollectionValidationError`) over already-trusted first-party DTOs, and its one
+   real synergy — `cacheHint` feeding response `Cache-Control` for cross-browser
+   prefetch — is achievable directly if prefetch tuning is prioritized. Revisit as an
+   isolated follow-up once the overhaul lands.
 
 ## Risks & mitigations
 
