@@ -8,6 +8,15 @@ import { Input } from "@si/ui/components/input";
 import { Label } from "@si/ui/components/label";
 import { Textarea } from "@si/ui/components/textarea";
 import { Badge } from "@si/ui/components/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@si/ui/components/dialog";
 import { MarkdownEditor } from "@si/ui/components/editor";
 import { TagInput } from "@si/ui/components/tag-input";
 import { AutosaveIndicator } from "@si/ui/components/autosave-indicator";
@@ -165,31 +174,31 @@ function TextView({ data }: { data: Detail }) {
           <h1 className="text-foreground font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight sm:text-5xl lg:text-6xl">
             {draft.title}
           </h1>
-          <dl className="flex flex-wrap items-stretch gap-y-3 font-mono">
-            <MetaCol label="Slug" value={draft.slug} />
-            <MetaCol
-              label="State"
-              value={<span className={`uppercase ${stateAccent}`}>{draft.state}</span>}
+          <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
+            <dl className="flex flex-wrap items-stretch gap-y-3 font-mono">
+              <MetaCol label="Slug" value={draft.slug} />
+              <MetaCol
+                label="State"
+                value={<span className={`uppercase ${stateAccent}`}>{draft.state}</span>}
+              />
+              <MetaCol label="Rev" value={`r${revision}`} />
+              <MetaCol label="Published" value={draft.activeVersion ?? "—"} />
+              <MetaCol label="Updated" value={formatDate(draft.updatedAt)} />
+            </dl>
+            <PublishControls
+              draft={draft}
+              revision={revision}
+              disabled={conflict}
+              onDone={() => void router.invalidate()}
             />
-            <MetaCol label="Rev" value={`r${revision}`} />
-            <MetaCol label="Published" value={draft.activeVersion ?? "—"} />
-            <MetaCol label="Updated" value={formatDate(draft.updatedAt)} />
-          </dl>
+          </div>
         </div>
       </header>
 
       <SplitLayout
         railWidth="22rem"
         main={
-          <>
-            <BodySection draft={draft} disabled={conflict} onSave={saveDraft} onField={onField} />
-            <MediaSection
-              textId={draft.textId}
-              media={data.media}
-              onUploaded={() => void router.invalidate()}
-            />
-            <PreviewPanel getPayload={getPreviewPayload} disabled={conflict} />
-          </>
+          <BodySection draft={draft} disabled={conflict} onSave={saveDraft} onField={onField} />
         }
         rail={
           <>
@@ -199,12 +208,12 @@ function TextView({ data }: { data: Detail }) {
               onSave={saveDraft}
               onField={onField}
             />
-            <PublishSection
-              draft={draft}
-              revision={revision}
-              disabled={conflict}
-              onDone={() => void router.invalidate()}
+            <MediaSection
+              textId={draft.textId}
+              media={data.media}
+              onUploaded={() => void router.invalidate()}
             />
+            <PreviewPanel getPayload={getPreviewPayload} disabled={conflict} />
             <ReleasesSection
               textId={draft.textId}
               releases={data.releases}
@@ -254,8 +263,8 @@ function BodySection({
   });
 
   return (
-    <section className="flex min-h-0 flex-col gap-2">
-      <div className="flex items-center justify-between gap-3">
+    <section className="flex min-h-0 flex-col gap-2 lg:h-full">
+      <div className="flex shrink-0 items-center justify-between gap-3">
         <p className="text-muted-foreground font-mono text-xs">
           Markdown with a live preview. Type <span className="text-foreground">[[</span> to link
           another text.
@@ -272,7 +281,7 @@ function BodySection({
         defaultMode="split"
         wikilink={(query) => searchTexts({ data: { query } })}
         placeholder="Write…"
-        className="h-[60vh] min-h-[440px] lg:h-[64vh]"
+        className="min-h-[440px] lg:min-h-0 lg:flex-1"
       />
     </section>
   );
@@ -450,8 +459,8 @@ function MediaSection({
   );
 }
 
-// ── Publish (version-gated immutable release) ──────────────────────────────────
-function PublishSection({
+// ── Publish (version-gated immutable release): header button + dialog ──────────
+function PublishControls({
   draft,
   revision,
   disabled,
@@ -462,6 +471,7 @@ function PublishSection({
   disabled: boolean;
   onDone: () => void;
 }) {
+  const [open, setOpen] = useState(false);
   const [version, setVersion] = useState("");
   const [busy, setBusy] = useState(false);
   const [retireBusy, setRetireBusy] = useState(false);
@@ -490,6 +500,7 @@ function PublishSection({
       }
       toast.success(`Published ${res.value.version}.`);
       setVersion("");
+      setOpen(false);
       onDone();
     } finally {
       setBusy(false);
@@ -514,47 +525,53 @@ function PublishSection({
   }
 
   return (
-    <Section title="Publish">
-      <p className="text-muted-foreground mb-3 font-mono text-xs">
-        Freezes the current draft into an immutable versioned release.
-      </p>
-      <form
-        className="flex flex-wrap items-end gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void publish();
-        }}
-      >
-        <div className="grid gap-1.5">
-          <Label htmlFor="version">Version (SemVer)</Label>
-          <Input
-            id="version"
-            className="w-40"
-            value={version}
-            disabled={disabled}
-            onChange={(e) => setVersion(e.target.value)}
-            placeholder="1.0.0"
-            aria-invalid={!semverOk}
-          />
-        </div>
-        <Button type="submit" disabled={busy || disabled || !isValidVersion(version.trim())}>
-          {busy ? "Publishing…" : "Publish revision"}
+    <div className="flex items-center gap-2">
+      {draft.state === "published" && (
+        <Button type="button" variant="outline" disabled={retireBusy} onClick={() => void retire()}>
+          {retireBusy ? "Retiring…" : "Retire"}
         </Button>
-        {draft.state === "published" && (
-          <Button
-            type="button"
-            variant="outline"
-            disabled={retireBusy}
-            onClick={() => void retire()}
-          >
-            {retireBusy ? "Retiring…" : "Retire"}
-          </Button>
-        )}
-      </form>
-      {!semverOk && (
-        <p className="text-destructive mt-2 font-mono text-xs">Use a MAJOR.MINOR.PATCH version.</p>
       )}
-    </Section>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger render={<Button disabled={disabled}>Publish revision</Button>} />
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Publish revision</DialogTitle>
+            <DialogDescription>
+              Freezes the current draft into an immutable versioned release.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            className="grid gap-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void publish();
+            }}
+          >
+            <div className="grid gap-1.5">
+              <Label htmlFor="version">Version (SemVer)</Label>
+              <Input
+                id="version"
+                value={version}
+                disabled={disabled}
+                onChange={(e) => setVersion(e.target.value)}
+                placeholder="1.0.0"
+                aria-invalid={!semverOk}
+              />
+              {!semverOk && (
+                <p className="text-destructive font-mono text-xs">
+                  Use a MAJOR.MINOR.PATCH version.
+                </p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={busy || disabled || !isValidVersion(version.trim())}>
+                {busy ? "Publishing…" : "Publish"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
 
