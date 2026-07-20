@@ -65,7 +65,7 @@ try {
 {
   doc.key === "writing" && (
     <div class="site-frame shop-frame">
-      <SiteHeader active="writing" />
+      <SiteHeader />
       <WritingIndex
         heading={doc.title || doc.eyebrow}
         deck={doc.deck}
@@ -80,7 +80,7 @@ try {
 {
   doc.key === "software" && (
     <div class="site-frame shop-frame">
-      <SiteHeader active="software" />
+      <SiteHeader />
       <main class="ledger-main">
         <section class="objects-intro" aria-labelledby="page-preview-title">
           <h1 id="page-preview-title">{doc.title || doc.eyebrow}</h1>

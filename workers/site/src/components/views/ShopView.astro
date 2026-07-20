@@ -24,7 +24,7 @@ const { document: doc, products } = Astro.props;
 ---
 
 <div class="site-frame shop-frame">
-  <SiteHeader active="shop" />
+  <SiteHeader />
 
   <main class="shop-main">
     <section class="objects-intro" aria-labelledby="objects-title">
@@ -122,3 +122,74 @@ const { document: doc, products } = Astro.props;
 
   <SiteFooter />
 </div>
+
+<style>
+  .objects-note {
+    position: absolute;
+    right: 23%;
+    bottom: 36px;
+    color: var(--color-primary);
+    font-family: var(--font-editorial);
+    font-size: clamp(23px, 2.1vw, 34px);
+    font-style: italic;
+    line-height: 1.02;
+    transform: rotate(-4deg);
+  }
+
+  .object-entry-current {
+    grid-template-columns: 56px 28.6% minmax(0, 1fr) 24%;
+  }
+
+  .object-operational {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 22px;
+    text-transform: uppercase;
+  }
+
+  .object-operational dl {
+    display: grid;
+    gap: 13px;
+    font-size: 12px;
+  }
+
+  .object-operational dl > div {
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .object-operational a {
+    display: flex;
+    height: 46px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 18px;
+    background: var(--color-foreground);
+    color: var(--color-background);
+    font-size: 13px;
+  }
+
+  @media (max-width: 1023px) {
+    .objects-note {
+      right: 10%;
+      bottom: 26px;
+      font-size: clamp(21px, 7vw, 29px);
+    }
+
+    .object-entry-current {
+      grid-template-columns: 44px repeat(2, minmax(0, 1fr));
+    }
+
+    .object-entry-current {
+      min-height: 760px;
+      grid-template-rows: 210px 290px 260px;
+    }
+
+    .object-operational {
+      grid-row: 3;
+      grid-column: 2 / -1;
+    }
+  }
+</style>

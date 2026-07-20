@@ -1,24 +1,54 @@
 ---
-interface Props {
-  active: "about" | "home" | "shop" | "software" | "writing";
-}
-
-const { active } = Astro.props;
+const path = Astro.url.pathname;
+const section =
+  path === "/"
+    ? "home"
+    : path.startsWith("/shop")
+      ? "shop"
+      : path.startsWith("/software")
+        ? "software"
+        : path.startsWith("/writing")
+          ? "writing"
+          : path.startsWith("/about")
+            ? "about"
+            : "";
 ---
 
-<header class="site-header">
+<header class="site-header" transition:persist="site-header">
   <a
-    class:list={["wordmark", { "is-active": active === "home" }]}
+    class:list={["wordmark", { "is-active": section === "home" }]}
     href="/"
+    data-nav="home"
+    aria-current={section === "home" ? "page" : undefined}
     aria-label="somewhatintelligent home"
   >
     somewhatintelligent
   </a>
   <nav class="desktop-nav" aria-label="Primary">
-    <a class:list={{ "is-active": active === "shop" }} href="/shop/">Shop</a>
-    <a class:list={{ "is-active": active === "software" }} href="/software/">Software</a>
-    <a class:list={{ "is-active": active === "writing" }} href="/writing/">Writing</a>
-    <a class:list={{ "is-active": active === "about" }} href="/about/">About</a>
+    <a
+      class:list={{ "is-active": section === "shop" }}
+      href="/shop/"
+      data-nav="shop"
+      aria-current={section === "shop" ? "page" : undefined}>Shop</a
+    >
+    <a
+      class:list={{ "is-active": section === "software" }}
+      href="/software/"
+      data-nav="software"
+      aria-current={section === "software" ? "page" : undefined}>Software</a
+    >
+    <a
+      class:list={{ "is-active": section === "writing" }}
+      href="/writing/"
+      data-nav="writing"
+      aria-current={section === "writing" ? "page" : undefined}>Writing</a
+    >
+    <a
+      class:list={{ "is-active": section === "about" }}
+      href="/about/"
+      data-nav="about"
+      aria-current={section === "about" ? "page" : undefined}>About</a
+    >
   </nav>
   <div class="header-end">
     <a class="account-link" href="/account">Account</a>
@@ -37,15 +67,46 @@ const { active } = Astro.props;
 <script>
   import { cartCount, subscribeCart } from "../lib/cart-client";
 
-  const link = document.getElementById("site-cart-link");
-  const countEl = document.getElementById("site-cart-count");
+  // The header is transition:persist'd, so its DOM and this module's top-level
+  // refs survive soft navigations; the module also runs only once, so the cart
+  // subscription is registered a single time on the persistent window.
+  const cartLink = document.getElementById("site-cart-link");
+  const cartCountEl = document.getElementById("site-cart-count");
 
-  function render(): void {
+  function renderCart(): void {
     const n = cartCount();
-    if (countEl) countEl.textContent = `(${n})`;
-    if (link) link.setAttribute("aria-label", `Cart, ${n} ${n === 1 ? "item" : "items"}`);
+    if (cartCountEl) cartCountEl.textContent = `(${n})`;
+    if (cartLink) {
+      cartLink.setAttribute("aria-label", `Cart, ${n} ${n === 1 ? "item" : "items"}`);
+    }
   }
 
-  render();
-  subscribeCart(render);
+  renderCart();
+  subscribeCart(renderCart);
+
+  // The persisted header is not re-rendered server-side across a swap, so the
+  // active section is re-derived from the URL on every soft navigation.
+  function syncActiveNav(): void {
+    const p = location.pathname;
+    const active =
+      p === "/"
+        ? "home"
+        : p.startsWith("/shop")
+          ? "shop"
+          : p.startsWith("/software")
+            ? "software"
+            : p.startsWith("/writing")
+              ? "writing"
+              : p.startsWith("/about")
+                ? "about"
+                : "";
+    document.querySelectorAll<HTMLElement>("[data-nav]").forEach((el) => {
+      const on = el.dataset.nav === active;
+      el.classList.toggle("is-active", on);
+      if (on) el.setAttribute("aria-current", "page");
+      else el.removeAttribute("aria-current");
+    });
+  }
+
+  document.addEventListener("astro:after-swap", syncActiveNav);
 </script>
