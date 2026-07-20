@@ -14,3 +14,14 @@ declare namespace Cloudflare {
     PREVIEW_SIGNING_SECRET: string;
   }
 }
+
+// Dev-only client base for the public Store HTTP API: inlined by
+// astro.config.mjs's storeApiBaseDefine on the `dev` command so the browser
+// bundle reaches store's own portless origin; absent in shipped builds, where
+// the client falls back to the same-origin `/api/store` bouncer mount.
+interface ImportMetaEnv {
+  readonly PUBLIC_STORE_API_BASE?: string;
+}
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}

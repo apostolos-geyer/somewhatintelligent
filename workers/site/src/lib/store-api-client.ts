@@ -11,7 +11,7 @@
  * Store's internal module graph.)
  *
  * Authenticated routes derive the customer from the Bouncer/Guestlist session
- * cookie (`credentials: "same-origin"`); this client never sends a user id.
+ * cookie (`credentials: "include"`); this client never sends a user id.
  */
 import type {
   CartV1,
@@ -22,12 +22,12 @@ import type {
   StorePublicConfig,
 } from "@si/contracts";
 
-const API_BASE = "/api/store";
+const API_BASE = import.meta.env.PUBLIC_STORE_API_BASE ?? "/api/store";
 
 const JSON_GET: RequestInit = {
   method: "GET",
   headers: { accept: "application/json" },
-  credentials: "same-origin",
+  credentials: "include",
 };
 
 export type CheckoutSessionResult =
@@ -60,7 +60,7 @@ export async function createCheckoutSession(cart: CartV1): Promise<CheckoutSessi
     const res = await fetch(`${API_BASE}/checkout-sessions`, {
       method: "POST",
       headers: { "content-type": "application/json", accept: "application/json" },
-      credentials: "same-origin",
+      credentials: "include",
       body: JSON.stringify({ cart }),
     });
     if (res.status === 401) return { ok: false, error: "unauthorized" };

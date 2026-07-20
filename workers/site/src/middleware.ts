@@ -1,9 +1,12 @@
 /**
- * Emits a Content-Security-Policy on every HTML response (INV-SITE-1 hardening,
- * RFC-0001 D14 render-safety). Astro compiles each `<script>` island to an
- * external same-origin module (`/_astro/*.js`), so `script-src 'self'` covers
- * them with no inline-script allowance; scoped `<style>` blocks render inline,
- * so `style-src` keeps `'unsafe-inline'`.
+ * Emits a Content-Security-Policy on HTML responses in staging/production, and
+ * skips it in local dev (INV-SITE-1 hardening, RFC-0001 D14 render-safety). Astro
+ * compiles each `<script>` island to an external same-origin module
+ * (`/_astro/*.js`), so `script-src 'self'` covers them with no inline-script
+ * allowance; scoped `<style>` blocks render inline, so `style-src` keeps
+ * `'unsafe-inline'`. The dev pipeline injects a bare inline toolbar/HMR script
+ * that a strict `script-src 'self'` would reject, so the header is omitted in
+ * development (the dev server has no adversary).
  *
  * The Stripe allowances are load-bearing: the /checkout island loads Stripe.js
  * from `js.stripe.com`, mounts Payment/Shipping Elements in `js.stripe.com`
@@ -15,6 +18,7 @@
  * through untouched.
  */
 import { defineMiddleware } from "astro:middleware";
+import { env } from "cloudflare:workers";
 
 // `frame-ancestors` is `'none'` everywhere except the Operator draft-preview
 // route (RFC-0001 D14 / exec-plan T23), which is rendered inside a hidden iframe
@@ -43,7 +47,7 @@ function contentSecurityPolicy(frameAncestors: string): string {
 export const onRequest = defineMiddleware(async (context, next) => {
   const response = await next();
   const contentType = response.headers.get("content-type") ?? "";
-  if (contentType.includes("text/html")) {
+  if (contentType.includes("text/html") && env.ENVIRONMENT !== "development") {
     const isPreview = context.url.pathname === "/__preview";
     response.headers.set(
       "Content-Security-Policy",
