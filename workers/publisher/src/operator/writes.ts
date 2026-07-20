@@ -1061,6 +1061,7 @@ export class PublisherOperatorWrites {
     // absent, never surfaced as an invalid document.
     const document = this.parsePageDocument(key, row.documentJson);
     if (document === null) return err("not_found");
+    const media = await this.loadOwnedMedia("page", row.pageId);
     return ok({
       pageId: row.pageId,
       key,
@@ -1068,6 +1069,7 @@ export class PublisherOperatorWrites {
       document,
       activeVersion: row.activeVersion ?? null,
       updatedAt: row.updatedAt,
+      media,
     });
   }
 
@@ -1093,6 +1095,8 @@ export class PublisherOperatorWrites {
       document: validated.value,
       activeVersion: null,
       updatedAt: now,
+      // A freshly created page owns no media yet; matches getPage's shape.
+      media: [],
     };
     const statements: Stmt[] = [
       this.db.insert(pageEntry).values({

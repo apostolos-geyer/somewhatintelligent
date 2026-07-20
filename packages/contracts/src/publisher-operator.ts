@@ -48,6 +48,7 @@ export interface PageDraftDTO<K extends PageKey = PageKey> {
   document: PageDocumentByKey[K];
   activeVersion: string | null;
   updatedAt: number;
+  media: PublisherMediaDTO[];
 }
 
 export interface PublisherOperatorEntrypoint {

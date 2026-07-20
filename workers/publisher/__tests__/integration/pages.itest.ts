@@ -345,6 +345,33 @@ describe("featured software reference — must be published", () => {
 
 // ── INV-DOM-1: referenced media must be page-owned + snapshotted ───────────────
 
+describe("getPage returns page-owned media", () => {
+  it("attaches ready page media in position order and excludes pending rows", async () => {
+    const pageId = await createPageOk("home");
+    await seedPageMedia("m-two", pageId, "ready");
+    await db.update(publisherMedia).set({ position: 1 }).where(eq(publisherMedia.id, "m-two"));
+    await seedPageMedia("m-one", pageId, "ready");
+    await seedPageMedia("m-pending", pageId, "pending");
+
+    const got = await writes().getPage(call({ key: "home" as const }));
+    expect(got.ok).toBe(true);
+    if (!got.ok) return;
+    // Ordered by position (m-one at 0, m-two at 1); the pending row is excluded.
+    expect(got.value.media.map((m) => m.id)).toEqual(["m-one", "m-two"]);
+    expect(got.value.media[0]).toMatchObject({
+      ownerType: "page",
+      ownerId: pageId,
+      state: "ready",
+    });
+  });
+
+  it("returns an empty media list for a page with no media", async () => {
+    await createPageOk("about");
+    const got = await writes().getPage(call({ key: "about" as const }));
+    expect(got.ok && got.value.media).toEqual([]);
+  });
+});
+
 describe("page media reference — ownership + snapshot", () => {
   it("publishes and snapshots a page-owned media reference", async () => {
     const pageId = await createPageOk("home");
