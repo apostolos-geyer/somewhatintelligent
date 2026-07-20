@@ -40,6 +40,44 @@ describe("dev blob route", () => {
     expect(body).toEqual(payload);
   });
 
+  test("PUT stores bytes into the R2 sim, servable back by GET", async () => {
+    const id = "pb_" + Math.random().toString(36).slice(2);
+    const payload = bytes("dev-put-" + Math.random());
+    const put = await fetchDev(
+      new Request(`https://roadie.somewhatintelligent.localhost/__dev/blob/${id}`, {
+        method: "PUT",
+        headers: { "content-type": "image/png" },
+        body: payload,
+      }),
+      devEnv(),
+    );
+    expect(put.status).toBe(204);
+
+    const get = await fetchDev(
+      new Request(`https://roadie.somewhatintelligent.localhost/__dev/blob/${id}`),
+      devEnv(),
+    );
+    expect(get.status).toBe(200);
+    expect(get.headers.get("content-type")).toBe("image/png");
+    expect(new Uint8Array(await get.arrayBuffer())).toEqual(payload);
+  });
+
+  test("PUT is rejected outside development (deployed 404 unchanged)", async () => {
+    const res = await fetchDev(
+      new Request("https://x/__dev/blob/pb_x", { method: "PUT", body: bytes("x") }),
+      devEnv({ ENVIRONMENT: "staging" }),
+    );
+    expect(res.status).toBe(404);
+  });
+
+  test("PUT rejects ids carrying separators (path traversal)", async () => {
+    const res = await fetchDev(
+      new Request("https://x/__dev/blob/a%2F..%2Fb", { method: "PUT", body: bytes("x") }),
+      devEnv(),
+    );
+    expect(res.status).toBe(400);
+  });
+
   test("404 when ENVIRONMENT is not development (deployed 404 unchanged)", async () => {
     const id = await seedBlob("text/plain", bytes("x"));
     const res = await fetchDev(
