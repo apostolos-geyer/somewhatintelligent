@@ -2,8 +2,7 @@
 import Base from "../../layouts/Base.astro";
 import SiteFooter from "../../components/SiteFooter.astro";
 import SiteHeader from "../../components/SiteHeader.astro";
-import LedgerFeatured from "../../components/views/LedgerFeatured.astro";
-import LedgerRow from "../../components/views/LedgerRow.astro";
+import LedgerEntry from "../../components/views/LedgerEntry.astro";
 import LedgerPager from "../../components/views/LedgerPager.astro";
 import {
   getPage,
@@ -51,11 +50,10 @@ const seoImage = doc?.seo.imageMediaId ? publisherMediaHref(doc.seo.imageMediaId
 const software: PublishedSoftwareSummaryDTO[] = listResult.ok ? listResult.value.software : [];
 const nextCursor = listResult.ok ? listResult.value.nextCursor : null;
 
-// Featured treatment is page-1 only; later pages are rows.
+// Every entry renders through the one unified LedgerEntry (registry row +
+// expandable editorial panel). Page 1's most-recent entry starts expanded;
+// every other entry — including all of a cursor page — starts collapsed.
 const isPageOne = !effectiveCursor;
-const featured = isPageOne && software.length > 0 ? software[0] : null;
-const rows = isPageOne ? software.slice(1) : software;
-const rowStart = isPageOne ? 2 : 1;
 
 function href(params: { cursor?: string; trail?: string[] }): string {
   const sp = new URLSearchParams();
@@ -120,24 +118,22 @@ if (effectiveTrail.length > 0) {
           </section>
         ) : (
           <section class="ledger-rows" aria-label="Published software">
-            {featured && (
-              <LedgerFeatured
-                kicker="Latest system"
-                title={featured.title}
-                dateLabel={`Updated ${formatDate(featured.updatedAt)}`}
-                deck={featured.deck}
-                image={featured.primaryMedia}
-                imageLabel={`System / ${featured.slug}`}
-                href={`/software/${featured.slug}`}
-                ctaLabel="Open record"
-              />
-            )}
-            {rows.map((item, i) => (
-              <LedgerRow
-                index={rowStart + i}
+            <div class="ledger-registry-head" aria-hidden="true">
+              <span class="ledger-registry-head-system">System</span>
+              <span class="ledger-registry-head-updated">Updated</span>
+            </div>
+            {software.map((item, i) => (
+              <LedgerEntry
+                index={i + 1}
+                kicker={isPageOne && i === 0 ? "Latest system" : undefined}
                 title={item.title}
-                dateLabel={formatDate(item.updatedAt)}
+                dateLabel={`Updated ${formatDate(item.updatedAt)}`}
+                deck={item.deck}
+                image={item.primaryMedia}
+                imageLabel={`System / ${item.slug}`}
                 href={`/software/${item.slug}`}
+                ctaLabel="Open record"
+                startExpanded={isPageOne && i === 0}
               />
             ))}
           </section>

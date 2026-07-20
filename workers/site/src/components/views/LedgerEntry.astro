@@ -1,0 +1,141 @@
+---
+// Unified ledger entry (replaces the old LedgerFeatured/LedgerRow split + the
+// scroll-collapse mechanism). Every entry ships BOTH its compact-row markup
+// and its expanded (display-scale title, deck, image, CTA) markup server-side;
+// a `data-expanded` attribute + CSS transitions swap between them. `startExpanded`
+// sets the initial state (most-recent entry on page 1, none on cursor pages) —
+// the no-JS / reduced-motion fallback is exactly that static state, so every
+// href stays a plain working link either way. The inline script below (present
+// once per page — Astro dedupes identical component scripts) enforces "exactly
+// one expanded entry per `.ledger-rows` container", driven by pointerenter and
+// focusin, with a tap-to-expand/tap-to-follow fallback for coarse pointers.
+import type { PublicMediaRef } from "../../lib/publisher-public";
+
+interface Props {
+  index: number;
+  kicker?: string;
+  title: string;
+  dateLabel: string;
+  deck?: string | null;
+  excerpt?: string | null;
+  image?: PublicMediaRef | null;
+  imageLabel?: string;
+  tags?: string[];
+  href: string;
+  ctaLabel?: string;
+  startExpanded?: boolean;
+}
+
+const {
+  index,
+  kicker,
+  title,
+  dateLabel,
+  deck,
+  excerpt,
+  image = null,
+  imageLabel = "No image",
+  tags = [],
+  href,
+  ctaLabel = "Open",
+  startExpanded = false,
+} = Astro.props;
+
+const num = String(index).padStart(2, "0");
+---
+
+<article class="ledger-entry" data-expanded={startExpanded ? "true" : "false"}>
+  <a class="ledger-entry-bar" href={href}>
+    <span class="ledger-entry-num">{num}</span>
+    <span class="ledger-entry-headline">
+      {kicker && <span class="ledger-entry-kicker">{kicker}</span>}
+      <h2 class="ledger-entry-title">{title}</h2>
+      {deck && <span class="ledger-entry-purpose">{deck}</span>}
+    </span>
+    <span class="ledger-entry-meta">
+      {tags.length > 0 && <span class="ledger-entry-tags">{tags.join(" · ")}</span>}
+      <span class="ledger-entry-date">{dateLabel}</span>
+    </span>
+    <span class="ledger-entry-arrow" aria-hidden="true">→</span>
+  </a>
+  <div class="ledger-entry-panel-wrap">
+    <div class="ledger-entry-panel">
+      <div class="ledger-entry-copy">
+        {deck && <p class="ledger-entry-deck">{deck}</p>}
+        {excerpt && <p class="ledger-entry-excerpt">{excerpt}</p>}
+        <a class="ledger-entry-cta" href={href} tabindex={startExpanded ? undefined : -1}>
+          {ctaLabel} <span aria-hidden="true">→</span>
+        </a>
+      </div>
+      {
+        image ? (
+          <figure class="ledger-entry-image">
+            <img src={image.href} alt={image.alt || title} loading="lazy" />
+          </figure>
+        ) : (
+          <div class="object-placeholder-field ledger-entry-placeholder" aria-label="No image">
+            <span>{imageLabel}</span>
+            <strong>NO IMAGE</strong>
+          </div>
+        )
+      }
+    </div>
+  </div>
+</article>
+
+<script>
+  // Delegated on `document` (not per-entry) so it wires once regardless of how
+  // many entries render; `pointerenter`/`focusin` don't bubble to a plain
+  // listener, so pointerenter is captured on the way down instead.
+  function closestEntry(el: EventTarget | null): HTMLElement | null {
+    return el instanceof Element ? el.closest<HTMLElement>(".ledger-entry") : null;
+  }
+
+  function setExpanded(entry: HTMLElement, expanded: boolean): void {
+    entry.dataset.expanded = expanded ? "true" : "false";
+    const cta = entry.querySelector<HTMLAnchorElement>(".ledger-entry-cta");
+    if (!cta) return;
+    if (expanded) cta.removeAttribute("tabindex");
+    else cta.setAttribute("tabindex", "-1");
+  }
+
+  function expand(entry: HTMLElement): void {
+    const container = entry.closest(".ledger-rows");
+    if (!container || entry.dataset.expanded === "true") return;
+    const current = container.querySelector<HTMLElement>('.ledger-entry[data-expanded="true"]');
+    if (current && current !== entry) setExpanded(current, false);
+    setExpanded(entry, true);
+  }
+
+  document.addEventListener(
+    "pointerenter",
+    (e) => {
+      const entry = closestEntry(e.target);
+      if (entry) expand(entry);
+    },
+    true,
+  );
+
+  document.addEventListener("focusin", (e) => {
+    const entry = closestEntry(e.target);
+    if (entry) expand(entry);
+  });
+
+  // Coarse pointers (touch) have no hover: the first tap expands instead of
+  // navigating; a second tap on an already-expanded entry follows the link.
+  document.addEventListener(
+    "click",
+    (e) => {
+      const bar = e.target instanceof Element ? e.target.closest(".ledger-entry-bar") : null;
+      if (!bar) return;
+      const entry = closestEntry(bar);
+      if (!entry) return;
+      const coarse = window.matchMedia?.("(hover: none)").matches;
+      if (coarse && entry.dataset.expanded !== "true") {
+        e.preventDefault();
+        expand(entry);
+      }
+    },
+    true,
+  );
+</script>

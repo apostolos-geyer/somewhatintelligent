@@ -13,9 +13,8 @@ import SiteHeader from "../SiteHeader.astro";
 import HomeView from "./HomeView.astro";
 import ShopView from "./ShopView.astro";
 import AboutView from "./AboutView.astro";
-import LedgerFeatured from "./LedgerFeatured.astro";
-import LedgerRow from "./LedgerRow.astro";
 import WritingIndex from "./WritingIndex.astro";
+import LedgerEntry from "./LedgerEntry.astro";
 import { listProducts, availabilityLabel, type ProductCardDTO } from "../../lib/store-catalog";
 import {
   listTexts,
@@ -105,22 +104,22 @@ try {
             </section>
           ) : (
             <section class="ledger-rows" aria-label="Records">
-              <LedgerFeatured
-                kicker="Latest system"
-                title={software[0].title}
-                dateLabel={`Updated ${formatDate(software[0].updatedAt)}`}
-                deck={software[0].deck}
-                image={software[0].primaryMedia}
-                imageLabel={`System / ${software[0].slug}`}
-                href={`/software/${software[0].slug}`}
-                ctaLabel="Open record"
-              />
-              {software.slice(1).map((item, i) => (
-                <LedgerRow
-                  index={i + 2}
+              <div class="ledger-registry-head" aria-hidden="true">
+                <span class="ledger-registry-head-system">System</span>
+                <span class="ledger-registry-head-updated">Updated</span>
+              </div>
+              {software.map((item, i) => (
+                <LedgerEntry
+                  index={i + 1}
+                  kicker={i === 0 ? "Latest system" : undefined}
                   title={item.title}
-                  dateLabel={formatDate(item.updatedAt)}
+                  dateLabel={`Updated ${formatDate(item.updatedAt)}`}
+                  deck={item.deck}
+                  image={item.primaryMedia}
+                  imageLabel={`System / ${item.slug}`}
                   href={`/software/${item.slug}`}
+                  ctaLabel="Open record"
+                  startExpanded={i === 0}
                 />
               ))}
             </section>
