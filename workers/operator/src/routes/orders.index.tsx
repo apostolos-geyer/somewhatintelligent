@@ -1,6 +1,9 @@
+import { useEffect } from "react";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Card } from "@si/ui/components/card";
 import { Button } from "@si/ui/components/button";
+import { toast } from "@si/ui/components/sonner";
+import { PageHeader } from "@/components/page-header";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { listOrders } from "@/lib/orders.functions";
 import { formatCents, formatDate } from "@/lib/format";
@@ -12,7 +15,11 @@ function toFilter(value: unknown): Filter {
   return (FILTERS as readonly string[]).includes(String(value)) ? (value as Filter) : "all";
 }
 
+const COLUMNS = ["Order", "Email", "Ship to", "Total", "Status", "Payment", "Placed", ""] as const;
+
 export const Route = createFileRoute("/orders/")({
+  // The Overview dashboard deep-links here with `?status=pending`; validateSearch
+  // is the single source the filter chips initialize from (Route.useSearch).
   validateSearch: (search: Record<string, unknown>): { status: Filter; cursor?: string } => ({
     status: toFilter(search.status),
     cursor: typeof search.cursor === "string" ? search.cursor : undefined,
@@ -27,16 +34,20 @@ function OrdersList() {
   const { status, cursor } = Route.useSearch();
   const navigate = useNavigate();
 
-  return (
-    <div className="mx-auto max-w-5xl">
-      <div className="mb-6">
-        <h1 className="text-foreground text-3xl font-light tracking-tight">Orders</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Fulfillment and payment state across the store.
-        </p>
-      </div>
+  // A stale/invalid cursor link surfaces as a toast, not an inline error block;
+  // the body falls back to a recovery card.
+  useEffect(() => {
+    if (!result.ok) toast.error("This page link is no longer valid.");
+  }, [result.ok]);
 
-      <div className="mb-5 flex flex-wrap items-center gap-2">
+  const orders = result.ok ? result.value.orders : [];
+  const nextCursor = result.ok ? result.value.nextCursor : null;
+
+  return (
+    <div className="flex flex-col gap-6 lg:h-full lg:min-h-0">
+      <PageHeader title="Orders" subtitle="Fulfillment and payment state across the store." />
+
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
         {FILTERS.map((f) => (
           <button
             key={f}
@@ -55,44 +66,59 @@ function OrdersList() {
       </div>
 
       {!result.ok ? (
-        <Card variant="soft" className="p-8 text-center">
-          <p className="text-destructive font-mono text-sm">This page link is no longer valid.</p>
+        <Card
+          variant="soft"
+          className="flex flex-col items-center justify-center gap-4 p-12 text-center lg:min-h-0 lg:flex-1"
+        >
+          <p className="text-muted-foreground font-mono text-sm">This view could not be loaded.</p>
           <Button
             variant="outline"
             size="sm"
-            className="mt-4"
             onClick={() => void navigate({ to: "/orders", search: { status } })}
           >
             Back to first page
           </Button>
         </Card>
-      ) : result.value.orders.length === 0 ? (
-        <Card variant="soft" className="text-muted-foreground p-12 text-center font-mono text-sm">
+      ) : orders.length === 0 ? (
+        <Card
+          variant="soft"
+          className="text-muted-foreground flex items-center justify-center p-12 text-center font-mono text-sm lg:min-h-0 lg:flex-1"
+        >
           No orders in this view.
         </Card>
       ) : (
-        <>
-          <Card className="overflow-x-auto p-0">
+        // Full-width panel: fixed header, table scrolls inside the card (sticky
+        // thead), pagination pinned below the scroll region — no page scroll.
+        <Card className="flex flex-col gap-0 overflow-hidden p-0 lg:min-h-0 lg:flex-1">
+          <div className="border-border flex shrink-0 items-center justify-between gap-2 border-b px-5 py-4">
+            <h2 className="text-muted-foreground font-mono text-[10px] uppercase tracking-wider">
+              {status === "all" ? "All orders" : status}
+            </h2>
+            <span className="text-muted-foreground font-mono text-[10px] uppercase tracking-wider">
+              {orders.length}
+              {nextCursor ? "+" : ""}
+            </span>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="bg-surface-sunken">
-                  {["Order", "Email", "Ship to", "Total", "Status", "Payment", "Placed", ""].map(
-                    (h) => (
-                      <th
-                        key={h}
-                        className="text-muted-foreground border-border border-b p-3 text-left font-mono text-[10px] font-semibold uppercase tracking-wider"
-                      >
-                        {h}
-                      </th>
-                    ),
-                  )}
+                <tr>
+                  {COLUMNS.map((h) => (
+                    <th
+                      key={h}
+                      className="text-muted-foreground border-border bg-surface-sunken sticky top-0 z-10 border-b p-3 text-left font-mono text-[10px] font-semibold uppercase tracking-wider"
+                    >
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {result.value.orders.map((o, i) => (
+                {orders.map((o, i) => (
                   <tr
                     key={o.orderNumber}
-                    className={i < result.value.orders.length - 1 ? "border-border border-b" : ""}
+                    className={i < orders.length - 1 ? "border-border border-b" : ""}
                   >
                     <td className="text-foreground p-3 font-mono text-sm font-semibold">
                       {o.orderNumber}
@@ -124,9 +150,9 @@ function OrdersList() {
                 ))}
               </tbody>
             </table>
-          </Card>
+          </div>
 
-          <div className="mt-4 flex items-center justify-between">
+          <div className="border-border flex shrink-0 items-center justify-between border-t px-5 py-3">
             {cursor ? (
               <Button
                 variant="ghost"
@@ -138,22 +164,24 @@ function OrdersList() {
             ) : (
               <span />
             )}
-            {result.value.nextCursor && (
+            {nextCursor ? (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() =>
                   void navigate({
                     to: "/orders",
-                    search: { status, cursor: result.value.nextCursor ?? undefined },
+                    search: { status, cursor: nextCursor ?? undefined },
                   })
                 }
               >
                 Next page →
               </Button>
+            ) : (
+              <span />
             )}
           </div>
-        </>
+        </Card>
       )}
     </div>
   );

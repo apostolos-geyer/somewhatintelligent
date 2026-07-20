@@ -27,8 +27,12 @@ export function SplitLayout({
       )}
       style={{ "--rail-w": railWidth } as React.CSSProperties}
     >
-      <div className="flex min-h-0 flex-col gap-6 lg:overflow-y-auto lg:pr-6">{main}</div>
-      <div className="mt-6 flex min-h-0 flex-col gap-6 lg:mt-0 lg:overflow-y-auto lg:border-l lg:border-border lg:pl-6">
+      {/* *:shrink-0 — children keep natural height so the COLUMN overflows and
+          scrolls; without it flex children compress and clip their controls. */}
+      <div className="flex min-h-0 flex-col gap-6 *:shrink-0 lg:overflow-y-auto lg:pr-6">
+        {main}
+      </div>
+      <div className="mt-6 flex min-h-0 flex-col gap-6 *:shrink-0 lg:mt-0 lg:overflow-y-auto lg:border-l lg:border-border lg:pl-6">
         {rail}
       </div>
     </div>

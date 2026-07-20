@@ -1,5 +1,5 @@
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { isValidVersion, validatePageDocument } from "@si/contracts";
 import type {
   AboutDocumentV1,
@@ -16,10 +16,13 @@ import { Button } from "@si/ui/components/button";
 import { Input } from "@si/ui/components/input";
 import { Label } from "@si/ui/components/label";
 import { Textarea } from "@si/ui/components/textarea";
-import { Alert, AlertDescription, AlertTitle } from "@si/ui/components/alert";
+import { toast } from "@si/ui/components/sonner";
 import { DeletionDialog } from "@/components/deletion-dialog";
 import { PublisherMediaUpload } from "@/components/publisher-media-upload";
 import { PreviewPanel } from "@/components/preview-panel";
+import { PageHeader } from "@/components/page-header";
+import { Section } from "@/components/section";
+import { SplitLayout } from "@/components/split-layout";
 import { EntityPicker, type PickerOption } from "@/components/entity-picker";
 import type { PreviewPayload } from "@/lib/preview";
 import {
@@ -168,10 +171,10 @@ function PageDetail() {
   const loaded = Route.useLoaderData();
   if (loaded.kind === "invalid") {
     return (
-      <div className="mx-auto max-w-3xl">
-        <BackLink />
-        <Card variant="soft" className="mt-4 p-10 text-center">
-          <p className="text-foreground font-mono text-sm">Unknown page.</p>
+      <div className="flex flex-col gap-6 lg:h-full lg:min-h-0">
+        <PageHeader eyebrow={<BackLink />} title="Unknown page" />
+        <Card variant="soft" className="p-10 text-center">
+          <p className="text-foreground font-mono text-sm">This page key isn't recognized.</p>
         </Card>
       </div>
     );
@@ -214,9 +217,6 @@ function PageEditor({
   const [created, setCreated] = useState(exists);
   const [revision, setRevision] = useState(initialRevision);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
 
   // Owned-media rows (from getPage, appended to on upload) back the media
   // pickers below; recreated per render, but EntityPicker holds the callbacks in
@@ -224,13 +224,9 @@ function PageEditor({
   const mediaSource = mediaPickerSource(media);
 
   async function save(): Promise<void> {
-    setError(null);
-    setMessage(null);
-    setSaved(false);
     const check = validatePageDocument(pageKey, document);
     if (!check.ok) {
-      setError("invalid_document");
-      setMessage(check.message ?? null);
+      toast.error(MESSAGES.invalid_document, { description: check.message ?? undefined });
       return;
     }
     setBusy(true);
@@ -240,12 +236,12 @@ function PageEditor({
           data: { commandId: crypto.randomUUID(), key: pageKey, document },
         });
         if (!res.ok) {
-          setError(res.error);
-          setMessage(res.message ?? null);
+          toast.error(MESSAGES[res.error] ?? res.error, { description: res.message ?? undefined });
           return;
         }
         setCreated(true);
         setRevision(res.value.revision);
+        toast.success("Page created.");
       } else {
         const res = await savePageDraft({
           data: {
@@ -256,71 +252,71 @@ function PageEditor({
           },
         });
         if (!res.ok) {
-          setError(res.error);
-          setMessage(res.message ?? null);
+          toast.error(MESSAGES[res.error] ?? res.error, { description: res.message ?? undefined });
           return;
         }
         setRevision(res.value.revision);
+        toast.success("Draft saved.");
       }
-      setSaved(true);
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <BackLink />
-      <div className="mb-6 mt-4 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-foreground text-2xl font-semibold tracking-tight">
-            {PAGE_KEY_LABELS[pageKey]} page
-          </h1>
-          <p className="text-muted-foreground mt-1 font-mono text-xs">
+    <div className="flex flex-col gap-6 lg:h-full lg:min-h-0">
+      <PageHeader
+        eyebrow={<BackLink />}
+        title={`${PAGE_KEY_LABELS[pageKey]} page`}
+        subtitle={
+          <span className="font-mono text-xs">
             {created ? `rev ${revision}` : "not created yet"}
             {activeVersion ? ` · live ${activeVersion}` : ""}
-          </p>
-        </div>
-      </div>
-
-      {error && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertTitle>Couldn't save</AlertTitle>
-          <AlertDescription>
-            {MESSAGES[error] ?? error}
-            {message && <span className="mt-1 block font-mono text-xs opacity-80">{message}</span>}
-          </AlertDescription>
-        </Alert>
-      )}
-      {saved && !error && <p className="text-success mb-6 font-mono text-xs">Saved.</p>}
-
-      <SeoSection
-        seo={document.seo}
-        media={mediaSource}
-        onChange={(seo) => setDocument({ ...document, seo })}
+          </span>
+        }
+        actions={
+          <Button disabled={busy} onClick={() => void save()}>
+            {busy ? "Saving…" : created ? "Save draft" : "Create page"}
+          </Button>
+        }
       />
-      <ContentSection document={document} media={mediaSource} onChange={setDocument} />
 
-      <PreviewPanel getPayload={(): PreviewPayload => ({ kind: "page", key: pageKey, document })} />
+      <SplitLayout
+        railWidth="32rem"
+        main={
+          <>
+            <SeoSection
+              seo={document.seo}
+              media={mediaSource}
+              onChange={(seo) => setDocument({ ...document, seo })}
+            />
+            <ContentSection document={document} media={mediaSource} onChange={setDocument} />
 
-      {created && (
-        <PageMediaSection pageKey={pageKey} onUploaded={(m) => setMedia((prev) => [m, ...prev])} />
-      )}
+            {created && (
+              <PageMediaSection
+                pageKey={pageKey}
+                onUploaded={(m) => setMedia((prev) => [m, ...prev])}
+              />
+            )}
 
-      <Section title="Draft">
-        <Button disabled={busy} onClick={() => void save()}>
-          {busy ? "Saving…" : created ? "Save draft" : "Create page"}
-        </Button>
-      </Section>
-
-      {created && (
-        <PublishSection
-          pageKey={pageKey}
-          revision={revision}
-          onDone={() => void router.invalidate()}
-        />
-      )}
-      {created && <DangerSection pageKey={pageKey} onDeleted={() => void router.invalidate()} />}
+            {created && (
+              <PublishSection
+                pageKey={pageKey}
+                revision={revision}
+                onDone={() => void router.invalidate()}
+              />
+            )}
+            {created && (
+              <DangerSection pageKey={pageKey} onDeleted={() => void router.invalidate()} />
+            )}
+          </>
+        }
+        rail={
+          <PreviewPanel
+            getPayload={(): PreviewPayload => ({ kind: "page", key: pageKey, document })}
+          />
+        }
+      />
     </div>
   );
 }
@@ -648,19 +644,13 @@ function PublishSection({
 }) {
   const [version, setVersion] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [published, setPublished] = useState<string | null>(null);
 
   const semverOk = version.trim() === "" || isValidVersion(version.trim());
 
   async function publish(): Promise<void> {
-    setError(null);
-    setMessage(null);
-    setPublished(null);
     const v = version.trim();
     if (!isValidVersion(v)) {
-      setError("invalid_version");
+      toast.error(MESSAGES.invalid_version);
       return;
     }
     setBusy(true);
@@ -674,11 +664,10 @@ function PublishSection({
         },
       });
       if (!res.ok) {
-        setError(res.error);
-        setMessage(res.message ?? null);
+        toast.error(MESSAGES[res.error] ?? res.error, { description: res.message ?? undefined });
         return;
       }
-      setPublished(res.value.version);
+      toast.success(`Published ${res.value.version}.`);
       setVersion("");
       onDone();
     } finally {
@@ -692,18 +681,6 @@ function PublishSection({
         Freezes the current draft into an immutable versioned release. References are validated at
         publish.
       </p>
-      {error && (
-        <Alert variant="destructive" className="mb-3">
-          <AlertTitle>Couldn't publish</AlertTitle>
-          <AlertDescription>
-            {MESSAGES[error] ?? error}
-            {message && <span className="mt-1 block font-mono text-xs opacity-80">{message}</span>}
-          </AlertDescription>
-        </Alert>
-      )}
-      {published && !error && (
-        <p className="text-success mb-3 font-mono text-xs">Published {published}.</p>
-      )}
       <form
         className="flex flex-wrap items-end gap-2"
         onSubmit={(e) => {
@@ -733,15 +710,18 @@ function PublishSection({
 function DangerSection({ pageKey, onDeleted }: { pageKey: PageKey; onDeleted: () => void }) {
   const [open, setOpen] = useState(false);
   return (
-    <Section title="Danger zone">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-muted-foreground font-mono text-xs">
-          Permanently delete this page document and every release.
-        </p>
+    <Section
+      title="Danger zone"
+      tone="soft"
+      actions={
         <Button variant="destructive" size="sm" onClick={() => setOpen(true)}>
           Delete page
         </Button>
-      </div>
+      }
+    >
+      <p className="text-muted-foreground font-mono text-xs">
+        Permanently delete this page document and every release.
+      </p>
       <DeletionDialog
         open={open}
         onOpenChange={setOpen}
@@ -831,21 +811,9 @@ function FieldArea({
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <Card variant="soft" className="mb-6 p-5">
-      <h2 className="text-foreground mb-3 font-semibold">{title}</h2>
-      {children}
-    </Card>
-  );
-}
-
 function BackLink() {
   return (
-    <Link
-      to="/pages"
-      className="text-muted-foreground hover:text-foreground inline-block font-mono text-xs"
-    >
+    <Link to="/pages" className="hover:text-foreground transition-colors">
       ← all pages
     </Link>
   );

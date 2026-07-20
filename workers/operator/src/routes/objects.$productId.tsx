@@ -1,5 +1,5 @@
 import { Link, createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { isValidVersion } from "@si/contracts";
 import type { ProductDraftDTO, ProductMediaDTO, ProductVariantDTO } from "@si/contracts";
 import { Card } from "@si/ui/components/card";
@@ -8,8 +8,11 @@ import { Input } from "@si/ui/components/input";
 import { Label } from "@si/ui/components/label";
 import { Textarea } from "@si/ui/components/textarea";
 import { Badge } from "@si/ui/components/badge";
-import { Alert, AlertDescription, AlertTitle } from "@si/ui/components/alert";
-import { ProductStatusBadge } from "@/components/product-status-badge";
+import { toast } from "@si/ui/components/sonner";
+import { cn } from "@si/ui/lib/utils";
+import { Section } from "@/components/section";
+import { PageHeader } from "@/components/page-header";
+import { SplitLayout } from "@/components/split-layout";
 import { DeletionDialog } from "@/components/deletion-dialog";
 import {
   adjustStock,
@@ -44,7 +47,17 @@ const MESSAGES: Record<string, string> = {
   invalid_stock: "Stock must be a whole number of 0 or more.",
   negative_stock: "That adjustment would drop stock below zero.",
   no_release: "Publish a version before changing the live status.",
+  invalid_file: "Choose an image file to upload.",
+  upload_failed: "Upload failed — try again.",
 };
+
+// Every failed mutation surfaces as a toast; typed codes get friendly copy.
+function toastError(code: string): void {
+  toast.error(MESSAGES[code] ?? code);
+}
+
+// Mono uppercase field label — the console form grammar (mockup 12).
+const FIELD_LABEL = "text-muted-foreground font-mono text-[10px] uppercase tracking-wider";
 
 type Detail = {
   draft: ProductDraftDTO;
@@ -62,9 +75,9 @@ function ProductDetail() {
   const result = Route.useLoaderData();
   if (!result.ok) {
     return (
-      <div className="mx-auto max-w-3xl">
+      <div className="flex flex-col gap-6 lg:h-full lg:min-h-0">
         <BackLink />
-        <Card variant="soft" className="mt-4 p-10 text-center">
+        <Card variant="soft" className="p-10 text-center">
           <p className="text-foreground font-mono text-sm">Product not found.</p>
           <p className="text-muted-foreground mt-1 text-xs">It may have been deleted.</p>
         </Card>
@@ -81,30 +94,103 @@ function ProductView({ data }: { data: Detail }) {
   const { draft } = data;
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <BackLink />
-      <div className="mb-6 mt-4 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-foreground text-2xl font-semibold tracking-tight">{draft.title}</h1>
-          <p className="text-muted-foreground mt-1 font-mono text-xs">
+    <div className="flex flex-col gap-6 lg:h-full lg:min-h-0">
+      <PageHeader
+        eyebrow={<BackLink />}
+        title={
+          <span className="font-display block text-3xl font-semibold uppercase tracking-tight sm:text-4xl">
+            {draft.title}
+          </span>
+        }
+        subtitle={
+          <span className="font-mono text-xs">
             {draft.slug} · rev {draft.revision} · updated {formatDate(draft.updatedAt)}
-          </p>
-        </div>
-        <ProductStatusBadge status={draft.status} />
-      </div>
-
-      <DraftEditor key={`${draft.productId}:${draft.revision}`} draft={draft} onDone={onDone} />
-      <VariantsSection productId={draft.productId} variants={data.variants} onDone={onDone} />
-      <MediaSection productId={draft.productId} media={data.media} onDone={onDone} />
-      <PublishSection draft={draft} onDone={onDone} />
-      <StatusSection draft={draft} onDone={onDone} />
-      <ReleasesSection
-        productId={draft.productId}
-        releases={data.releases}
-        activeVersion={draft.activeVersion}
-        onDone={onDone}
+          </span>
+        }
+        actions={<StatusControl draft={draft} onDone={onDone} />}
       />
-      <DangerSection draft={draft} onDeleted={() => void navigate({ to: "/objects" })} />
+
+      <SplitLayout
+        main={
+          <>
+            <DraftEditor
+              key={`${draft.productId}:${draft.revision}`}
+              draft={draft}
+              onDone={onDone}
+            />
+            <VariantsSection productId={draft.productId} variants={data.variants} onDone={onDone} />
+          </>
+        }
+        rail={
+          <>
+            <MediaSection productId={draft.productId} media={data.media} onDone={onDone} />
+            <PublishSection draft={draft} onDone={onDone} />
+            <ReleasesSection
+              productId={draft.productId}
+              releases={data.releases}
+              activeVersion={draft.activeVersion}
+              onDone={onDone}
+            />
+            <DangerSection draft={draft} onDeleted={() => void navigate({ to: "/objects" })} />
+          </>
+        }
+      />
+    </div>
+  );
+}
+
+// ── Live status control — compact segmented control (needs a release) ──────────
+const STATUS_ACTIONS = [
+  { status: "active", label: "Active" },
+  { status: "unavailable", label: "Unavailable" },
+  { status: "archived", label: "Archived" },
+] as const;
+
+function StatusControl({ draft, onDone }: { draft: ProductDraftDTO; onDone: () => void }) {
+  const [busy, setBusy] = useState(false);
+
+  async function set(status: (typeof STATUS_ACTIONS)[number]["status"]): Promise<void> {
+    setBusy(true);
+    try {
+      const res = await setProductStatus({
+        data: { commandId: crypto.randomUUID(), productId: draft.productId, status },
+      });
+      if (!res.ok) {
+        toastError(res.error);
+        return;
+      }
+      toast.success(`Status set to ${status}.`);
+      onDone();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className={cn(FIELD_LABEL, "hidden sm:inline")}>Status</span>
+      <div className="border-border-strong inline-flex overflow-hidden rounded-sm border">
+        {STATUS_ACTIONS.map((a, i) => {
+          const active = draft.status === a.status;
+          return (
+            <button
+              key={a.status}
+              type="button"
+              disabled={busy || active}
+              onClick={() => void set(a.status)}
+              className={cn(
+                "px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider transition-colors",
+                i > 0 && "border-border-strong border-l",
+                active
+                  ? "bg-inverse text-inverse-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-surface-sunken disabled:opacity-50",
+              )}
+            >
+              {a.label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -115,15 +201,11 @@ function DraftEditor({ draft, onDone }: { draft: ProductDraftDTO; onDone: () => 
   const [price, setPrice] = useState((draft.priceCents / 100).toFixed(2));
   const [description, setDescription] = useState(draft.descriptionMarkdown ?? "");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
 
   async function save(): Promise<void> {
-    setError(null);
-    setSaved(false);
     const dollars = Number(price);
     if (!Number.isFinite(dollars) || dollars < 0) {
-      setError("invalid_price");
+      toastError("invalid_price");
       return;
     }
     setBusy(true);
@@ -139,10 +221,10 @@ function DraftEditor({ draft, onDone }: { draft: ProductDraftDTO; onDone: () => 
         },
       });
       if (!res.ok) {
-        setError(res.error);
+        toastError(res.error);
         return;
       }
-      setSaved(true);
+      toast.success(`Saved. Draft is now rev ${draft.revision + 1}.`);
       onDone();
     } finally {
       setBusy(false);
@@ -150,7 +232,14 @@ function DraftEditor({ draft, onDone }: { draft: ProductDraftDTO; onDone: () => 
   }
 
   return (
-    <Section title="Draft">
+    <Section
+      title="Draft"
+      actions={
+        <Button size="sm" disabled={busy} onClick={() => void save()}>
+          {busy ? "Saving…" : "Save draft"}
+        </Button>
+      }
+    >
       <form
         className="grid gap-4"
         onSubmit={(e) => {
@@ -158,42 +247,45 @@ function DraftEditor({ draft, onDone }: { draft: ProductDraftDTO; onDone: () => 
           void save();
         }}
       >
-        {error && <ErrorAlert code={error} />}
-        {saved && !error && (
-          <p className="text-success font-mono text-xs">
-            Saved. Draft is now rev {draft.revision + 1}.
-          </p>
-        )}
-        <div className="grid gap-2">
-          <Label htmlFor="title">Title</Label>
+        <div className="grid gap-1.5">
+          <Label htmlFor="title" className={FIELD_LABEL}>
+            Title
+          </Label>
           <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} required />
         </div>
-        <div className="grid gap-2 sm:max-w-40">
-          <Label htmlFor="price">Price (CAD)</Label>
-          <Input
-            id="price"
-            type="number"
-            min="0"
-            step="0.01"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            required
-          />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-1.5">
+            <Label htmlFor="slug" className={FIELD_LABEL}>
+              Slug
+            </Label>
+            <Input id="slug" value={draft.slug} readOnly disabled />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="price" className={FIELD_LABEL}>
+              Price (CAD)
+            </Label>
+            <Input
+              id="price"
+              type="number"
+              min="0"
+              step="0.01"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              required
+            />
+          </div>
         </div>
-        <div className="grid gap-2">
-          <Label htmlFor="description">Description (Markdown)</Label>
+        <div className="grid gap-1.5">
+          <Label htmlFor="description" className={FIELD_LABEL}>
+            Description (Markdown)
+          </Label>
           <Textarea
             id="description"
-            rows={5}
+            rows={7}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Long-form product copy…"
           />
-        </div>
-        <div>
-          <Button type="submit" disabled={busy}>
-            {busy ? "Saving…" : "Save draft"}
-          </Button>
         </div>
       </form>
     </Section>
@@ -215,14 +307,12 @@ function VariantsSection({
   const [sku, setSku] = useState("");
   const [stock, setStock] = useState("0");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   function reset(): void {
     setVariantId(undefined);
     setSize("");
     setSku("");
     setStock("0");
-    setError(null);
   }
 
   function edit(v: ProductVariantDTO): void {
@@ -230,14 +320,12 @@ function VariantsSection({
     setSize(v.size);
     setSku(v.sku);
     setStock(String(v.stock));
-    setError(null);
   }
 
   async function submit(): Promise<void> {
-    setError(null);
     const stockNum = Number(stock);
     if (!Number.isInteger(stockNum) || stockNum < 0) {
-      setError("invalid_stock");
+      toastError("invalid_stock");
       return;
     }
     setBusy(true);
@@ -253,9 +341,10 @@ function VariantsSection({
         },
       });
       if (!res.ok) {
-        setError(res.error);
+        toastError(res.error);
         return;
       }
+      toast.success(variantId ? "Variant saved." : "Variant added.");
       reset();
       onDone();
     } finally {
@@ -270,7 +359,12 @@ function VariantsSection({
           No variants yet. Publishing requires at least one.
         </p>
       ) : (
-        <div className="mb-4 grid gap-2">
+        <div className="border-border mb-4 overflow-hidden rounded-sm border">
+          <div className="bg-surface-sunken border-border text-muted-foreground grid grid-cols-[1fr_1.5fr_auto] items-center gap-3 border-b px-3 py-2 font-mono text-[10px] uppercase tracking-wider">
+            <span>Size</span>
+            <span>SKU</span>
+            <span className="text-right">Stock</span>
+          </div>
           {variants.map((v) => (
             <VariantRow
               key={v.id}
@@ -290,21 +384,24 @@ function VariantsSection({
           void submit();
         }}
       >
-        <p className="text-muted-foreground font-mono text-[10px] uppercase tracking-wider">
-          {variantId ? "Edit variant" : "Add variant"}
-        </p>
-        {error && <ErrorAlert code={error} />}
+        <p className={FIELD_LABEL}>{variantId ? "Edit variant" : "Add variant"}</p>
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="grid gap-1.5">
-            <Label htmlFor="v-size">Size</Label>
+            <Label htmlFor="v-size" className={FIELD_LABEL}>
+              Size
+            </Label>
             <Input id="v-size" value={size} onChange={(e) => setSize(e.target.value)} required />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="v-sku">SKU</Label>
+            <Label htmlFor="v-sku" className={FIELD_LABEL}>
+              SKU
+            </Label>
             <Input id="v-sku" value={sku} onChange={(e) => setSku(e.target.value)} required />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="v-stock">Stock</Label>
+            <Label htmlFor="v-stock" className={FIELD_LABEL}>
+              Stock
+            </Label>
             <Input
               id="v-stock"
               type="number"
@@ -345,14 +442,12 @@ function VariantRow({
   const [delta, setDelta] = useState("");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   async function adjust(): Promise<void> {
-    setError(null);
     const d = Number(delta);
     if (!Number.isInteger(d) || d === 0) {
-      setError("invalid_stock");
+      toastError("invalid_stock");
       return;
     }
     setBusy(true);
@@ -366,9 +461,10 @@ function VariantRow({
         },
       });
       if (!res.ok) {
-        setError(res.error);
+        toastError(res.error);
         return;
       }
+      toast.success(`Stock adjusted by ${d > 0 ? "+" : ""}${d}.`);
       setDelta("");
       setReason("");
       onDone();
@@ -378,16 +474,14 @@ function VariantRow({
   }
 
   return (
-    <div className="border-border grid gap-2 rounded-sm border p-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-3 text-sm">
-          <span className="text-foreground font-semibold">{variant.size}</span>
-          <span className="text-muted-foreground font-mono text-xs">{variant.sku}</span>
+    <div className="border-border grid gap-2 border-b p-3 last:border-b-0">
+      <div className="grid grid-cols-[1fr_1.5fr_auto] items-center gap-3">
+        <span className="text-foreground text-sm font-semibold">{variant.size}</span>
+        <span className="text-muted-foreground truncate font-mono text-xs">{variant.sku}</span>
+        <div className="flex items-center gap-2">
           <Badge variant={variant.stock > 0 ? "secondary" : "warning"}>
             {variant.stock} in stock
           </Badge>
-        </div>
-        <div className="flex items-center gap-1">
           <Button size="xs" variant="ghost" onClick={onEdit}>
             Edit
           </Button>
@@ -401,7 +495,6 @@ function VariantRow({
           </Button>
         </div>
       </div>
-      {error && <ErrorAlert code={error} />}
       <DeletionDialog
         open={deleting}
         onOpenChange={setDeleting}
@@ -426,7 +519,7 @@ function VariantRow({
         }}
       >
         <div className="grid gap-1">
-          <Label htmlFor={`d-${variant.id}`} className="text-[10px]">
+          <Label htmlFor={`d-${variant.id}`} className={FIELD_LABEL}>
             Δ stock
           </Label>
           <Input
@@ -440,7 +533,7 @@ function VariantRow({
           />
         </div>
         <div className="grid flex-1 gap-1">
-          <Label htmlFor={`r-${variant.id}`} className="text-[10px]">
+          <Label htmlFor={`r-${variant.id}`} className={FIELD_LABEL}>
             Reason
           </Label>
           <Input
@@ -475,12 +568,10 @@ function MediaSection({
   const [alt, setAlt] = useState("");
   const [role, setRole] = useState<(typeof MEDIA_ROLES)[number]>("gallery");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function upload(): Promise<void> {
-    setError(null);
     if (!file) {
-      setError("invalid_file");
+      toastError("invalid_file");
       return;
     }
     setBusy(true);
@@ -498,9 +589,10 @@ function MediaSection({
       });
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
-        setError(body.error ?? `upload_failed_${res.status}`);
+        toastError(body.error ?? "upload_failed");
         return;
       }
+      toast.success("Image uploaded.");
       setFile(null);
       setAlt("");
       onDone();
@@ -529,9 +621,10 @@ function MediaSection({
           void upload();
         }}
       >
-        {error && <ErrorAlert code={error} />}
         <div className="grid gap-1.5">
-          <Label htmlFor="m-file">Image file</Label>
+          <Label htmlFor="m-file" className={FIELD_LABEL}>
+            Image file
+          </Label>
           <Input
             id="m-file"
             type="file"
@@ -541,11 +634,15 @@ function MediaSection({
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="grid gap-1.5">
-            <Label htmlFor="m-alt">Alt text</Label>
+            <Label htmlFor="m-alt" className={FIELD_LABEL}>
+              Alt text
+            </Label>
             <Input id="m-alt" value={alt} onChange={(e) => setAlt(e.target.value)} />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="m-role">Role</Label>
+            <Label htmlFor="m-role" className={FIELD_LABEL}>
+              Role
+            </Label>
             <select
               id="m-role"
               value={role}
@@ -622,17 +719,13 @@ function MediaRow({
 function PublishSection({ draft, onDone }: { draft: ProductDraftDTO; onDone: () => void }) {
   const [version, setVersion] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [published, setPublished] = useState<string | null>(null);
 
   const semverOk = version.trim() === "" || isValidVersion(version.trim());
 
   async function publish(): Promise<void> {
-    setError(null);
-    setPublished(null);
     const v = version.trim();
     if (!isValidVersion(v)) {
-      setError("invalid_version");
+      toastError("invalid_version");
       return;
     }
     setBusy(true);
@@ -646,10 +739,10 @@ function PublishSection({ draft, onDone }: { draft: ProductDraftDTO; onDone: () 
         },
       });
       if (!res.ok) {
-        setError(res.error);
+        toastError(res.error);
         return;
       }
-      setPublished(res.value.version);
+      toast.success(`Published ${res.value.version}.`);
       setVersion("");
       onDone();
     } finally {
@@ -663,10 +756,6 @@ function PublishSection({ draft, onDone }: { draft: ProductDraftDTO; onDone: () 
         Freezes the current draft into an immutable release. Requires at least one variant and one
         image.
       </p>
-      {error && <ErrorAlert code={error} />}
-      {published && !error && (
-        <p className="text-success mb-3 font-mono text-xs">Published {published}.</p>
-      )}
       <form
         className="flex flex-wrap items-end gap-2"
         onSubmit={(e) => {
@@ -675,7 +764,9 @@ function PublishSection({ draft, onDone }: { draft: ProductDraftDTO; onDone: () 
         }}
       >
         <div className="grid gap-1.5">
-          <Label htmlFor="version">Version (SemVer)</Label>
+          <Label htmlFor="version" className={FIELD_LABEL}>
+            Version (SemVer)
+          </Label>
           <Input
             id="version"
             className="w-40"
@@ -692,54 +783,6 @@ function PublishSection({ draft, onDone }: { draft: ProductDraftDTO; onDone: () 
       {!semverOk && (
         <p className="text-destructive mt-2 font-mono text-xs">Use a MAJOR.MINOR.PATCH version.</p>
       )}
-    </Section>
-  );
-}
-
-// ── Live status control (needs a release) ──────────────────────────────────────
-const STATUS_ACTIONS = [
-  { status: "active", label: "Set active" },
-  { status: "unavailable", label: "Set unavailable" },
-  { status: "archived", label: "Archive" },
-] as const;
-
-function StatusSection({ draft, onDone }: { draft: ProductDraftDTO; onDone: () => void }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function set(status: (typeof STATUS_ACTIONS)[number]["status"]): Promise<void> {
-    setError(null);
-    setBusy(true);
-    try {
-      const res = await setProductStatus({
-        data: { commandId: crypto.randomUUID(), productId: draft.productId, status },
-      });
-      if (!res.ok) {
-        setError(res.error);
-        return;
-      }
-      onDone();
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Section title="Status">
-      {error && <ErrorAlert code={error} />}
-      <div className="flex flex-wrap gap-2">
-        {STATUS_ACTIONS.map((a) => (
-          <Button
-            key={a.status}
-            size="sm"
-            variant={draft.status === a.status ? "default" : "outline"}
-            disabled={busy || draft.status === a.status}
-            onClick={() => void set(a.status)}
-          >
-            {a.label}
-          </Button>
-        ))}
-      </div>
     </Section>
   );
 }
@@ -816,7 +859,9 @@ function ReleasesSection({
             {target.version} is live. Choose which release goes live once it's deleted.
           </p>
           <div className="grid gap-1.5">
-            <Label htmlFor="replacement">Promote in place of {target.version}</Label>
+            <Label htmlFor="replacement" className={FIELD_LABEL}>
+              Promote in place of {target.version}
+            </Label>
             <select
               id="replacement"
               value={replacementId}
@@ -884,8 +929,8 @@ function ReleasesSection({
 function DangerSection({ draft, onDeleted }: { draft: ProductDraftDTO; onDeleted: () => void }) {
   const [open, setOpen] = useState(false);
   return (
-    <Section title="Danger zone">
-      <div className="flex items-center justify-between gap-3">
+    <Section title="Danger zone" tone="soft">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-muted-foreground font-mono text-xs">
           Permanently delete this product and every release, variant, and image.
         </p>
@@ -911,29 +956,11 @@ function DangerSection({ draft, onDeleted }: { draft: ProductDraftDTO; onDeleted
 }
 
 // ── Small shared presentation bits ─────────────────────────────────────────────
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <Card variant="soft" className="mb-6 p-5">
-      <h2 className="text-foreground mb-3 font-semibold">{title}</h2>
-      {children}
-    </Card>
-  );
-}
-
-function ErrorAlert({ code }: { code: string }) {
-  return (
-    <Alert variant="destructive">
-      <AlertTitle>Couldn't complete that action</AlertTitle>
-      <AlertDescription>{MESSAGES[code] ?? code}</AlertDescription>
-    </Alert>
-  );
-}
-
 function BackLink() {
   return (
     <Link
       to="/objects"
-      className="text-muted-foreground hover:text-foreground inline-block font-mono text-xs"
+      className="text-muted-foreground hover:text-foreground inline-block font-mono text-[10px] uppercase tracking-wider"
     >
       ← all objects
     </Link>

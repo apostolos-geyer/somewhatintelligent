@@ -5,7 +5,16 @@ import { Button } from "@si/ui/components/button";
 import { Input } from "@si/ui/components/input";
 import { Label } from "@si/ui/components/label";
 import { Badge } from "@si/ui/components/badge";
-import { Alert, AlertDescription, AlertTitle } from "@si/ui/components/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@si/ui/components/dialog";
+import { toast } from "@si/ui/components/sonner";
+import { PageHeader } from "@/components/page-header";
 import { PublisherStatusBadge } from "@/components/publisher-status-badge";
 import { createText, listTexts } from "@/lib/texts.functions";
 
@@ -40,6 +49,8 @@ const CREATE_ERROR: Record<string, string> = {
   slug_taken: "That slug is already in use — pick another.",
 };
 
+const TABLE_HEADS = ["Title", "Slug", "Status", "Live version", "Tags", ""] as const;
+
 function TextsList() {
   const result = Route.useLoaderData();
   const { state } = Route.useSearch();
@@ -51,90 +62,54 @@ function TextsList() {
   const [slug, setSlug] = useState("");
   const [slugEdited, setSlugEdited] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   function onTitle(value: string): void {
     setTitle(value);
     if (!slugEdited) setSlug(slugify(value));
   }
 
+  function onDialogOpenChange(next: boolean): void {
+    setOpen(next);
+    if (!next) {
+      setTitle("");
+      setSlug("");
+      setSlugEdited(false);
+    }
+  }
+
   async function submit(): Promise<void> {
-    setError(null);
     setBusy(true);
     try {
       const res = await createText({
         data: { commandId: crypto.randomUUID(), slug: slug.trim(), title: title.trim() },
       });
       if (!res.ok) {
-        setError(res.error);
+        toast.error("Couldn't create the text", {
+          description: CREATE_ERROR[res.error] ?? res.error,
+        });
         return;
       }
+      toast.success("Draft created", { description: title.trim() });
+      setOpen(false);
       await navigate({ to: "/texts/$textId", params: { textId: res.value.textId } });
+    } catch {
+      toast.error("Couldn't create the text", {
+        description: "Something went wrong — try again.",
+      });
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-foreground text-3xl font-light tracking-tight">Texts</h1>
-          <p className="text-muted-foreground mt-1 text-sm">Long-form writing and releases.</p>
-        </div>
-        <Button variant={open ? "outline" : "default"} onClick={() => setOpen((v) => !v)}>
-          {open ? "Cancel" : "New text"}
-        </Button>
-      </div>
+    <div className="flex flex-col gap-6 lg:h-full lg:min-h-0">
+      <PageHeader
+        title="Texts"
+        subtitle="Long-form writing and releases."
+        actions={<Button onClick={() => onDialogOpenChange(true)}>New text</Button>}
+      />
 
-      {open && (
-        <Card variant="soft" className="mb-6 p-5">
-          <form
-            className="grid gap-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void submit();
-            }}
-          >
-            {error && (
-              <Alert variant="destructive">
-                <AlertTitle>Couldn't create the text</AlertTitle>
-                <AlertDescription>{CREATE_ERROR[error] ?? error}</AlertDescription>
-              </Alert>
-            )}
-            <div className="grid gap-2">
-              <Label htmlFor="new-title">Title</Label>
-              <Input
-                id="new-title"
-                value={title}
-                onChange={(e) => onTitle(e.target.value)}
-                placeholder="On the design of small tools"
-                required
-              />
-            </div>
-            <div className="grid gap-2 sm:max-w-sm">
-              <Label htmlFor="new-slug">Slug</Label>
-              <Input
-                id="new-slug"
-                value={slug}
-                onChange={(e) => {
-                  setSlugEdited(true);
-                  setSlug(e.target.value);
-                }}
-                placeholder="on-the-design-of-small-tools"
-                required
-              />
-            </div>
-            <div>
-              <Button type="submit" disabled={busy || !title.trim() || !slug.trim()}>
-                {busy ? "Creating…" : "Create draft"}
-              </Button>
-            </div>
-          </form>
-        </Card>
-      )}
-
-      <div className="mb-5 flex flex-wrap items-center gap-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
         {STATES.map((s) => (
           <button
             key={s}
@@ -169,62 +144,124 @@ function TextsList() {
           No texts in this view.
         </Card>
       ) : (
-        <Card className="overflow-x-auto p-0">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-surface-sunken">
-                {["Title", "Slug", "Status", "Live version", "Tags", ""].map((h) => (
-                  <th
-                    key={h}
-                    className="text-muted-foreground border-border border-b p-3 text-left font-mono text-[10px] font-semibold uppercase tracking-wider"
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {result.value.texts.map((t, i) => (
-                <tr
-                  key={t.textId}
-                  className={i < result.value.texts.length - 1 ? "border-border border-b" : ""}
-                >
-                  <td className="text-foreground p-3 text-sm font-semibold">{t.title}</td>
-                  <td className="text-muted-foreground p-3 font-mono text-xs">{t.slug}</td>
-                  <td className="p-3">
-                    <PublisherStatusBadge state={t.state} />
-                  </td>
-                  <td className="text-muted-foreground p-3 font-mono text-xs">
-                    {t.activeVersion ?? "—"}
-                  </td>
-                  <td className="p-3">
-                    <div className="flex flex-wrap gap-1">
-                      {t.tags.length === 0 ? (
-                        <span className="text-muted-foreground font-mono text-xs">—</span>
-                      ) : (
-                        t.tags.slice(0, 4).map((tag) => (
-                          <Badge key={tag} variant="secondary" className="text-[10px]">
-                            {tag}
-                          </Badge>
-                        ))
-                      )}
-                    </div>
-                  </td>
-                  <td className="p-3 text-right">
-                    <Link
-                      to="/texts/$textId"
-                      params={{ textId: t.textId }}
-                      className="text-primary font-mono text-xs underline-offset-4 hover:underline"
+        <Card className="flex min-h-0 flex-1 flex-col overflow-hidden p-0">
+          <div className="min-h-0 flex-1 overflow-auto">
+            <table className="w-full border-collapse">
+              <thead className="sticky top-0 z-10">
+                <tr>
+                  {TABLE_HEADS.map((h, i) => (
+                    <th
+                      key={h || `col-${i}`}
+                      className="bg-surface-sunken text-muted-foreground border-border border-b p-3 text-left font-mono text-[10px] font-semibold uppercase tracking-wider"
                     >
-                      edit →
-                    </Link>
-                  </td>
+                      {h}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {result.value.texts.map((t, i) => (
+                  <tr
+                    key={t.textId}
+                    className={i < result.value.texts.length - 1 ? "border-border border-b" : ""}
+                  >
+                    <td className="text-foreground p-3 text-sm font-semibold">{t.title}</td>
+                    <td className="text-muted-foreground p-3 font-mono text-xs">{t.slug}</td>
+                    <td className="p-3">
+                      <PublisherStatusBadge state={t.state} />
+                    </td>
+                    <td className="text-muted-foreground p-3 font-mono text-xs">
+                      {t.activeVersion ?? "—"}
+                    </td>
+                    <td className="p-3">
+                      <div className="flex flex-wrap gap-1">
+                        {t.tags.length === 0 ? (
+                          <span className="text-muted-foreground font-mono text-xs">—</span>
+                        ) : (
+                          t.tags.slice(0, 4).map((tag) => (
+                            <Badge key={tag} variant="secondary" className="text-[10px]">
+                              {tag}
+                            </Badge>
+                          ))
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-3 text-right">
+                      <Link
+                        to="/texts/$textId"
+                        params={{ textId: t.textId }}
+                        className="text-primary font-mono text-xs underline-offset-4 hover:underline"
+                      >
+                        edit →
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </Card>
       )}
+
+      <Dialog open={open} onOpenChange={onDialogOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New text</DialogTitle>
+            <DialogDescription>
+              Create a draft. The slug is suggested from the title and can be edited.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form
+            id="new-text-form"
+            className="grid gap-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void submit();
+            }}
+          >
+            <div className="grid gap-2">
+              <Label htmlFor="new-title">Title</Label>
+              <Input
+                id="new-title"
+                value={title}
+                onChange={(e) => onTitle(e.target.value)}
+                placeholder="On the design of small tools"
+                autoComplete="off"
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="new-slug">Slug</Label>
+              <Input
+                id="new-slug"
+                value={slug}
+                onChange={(e) => {
+                  setSlugEdited(true);
+                  setSlug(e.target.value);
+                }}
+                placeholder="on-the-design-of-small-tools"
+                autoComplete="off"
+                spellCheck={false}
+                required
+              />
+            </div>
+          </form>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => onDialogOpenChange(false)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form="new-text-form"
+              disabled={busy || !title.trim() || !slug.trim()}
+            >
+              {busy ? "Creating…" : "Create draft"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

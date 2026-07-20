@@ -1,5 +1,5 @@
 import { Link, createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { isValidVersion } from "@si/contracts";
 import type { PublisherMediaDTO, TextDraftDTO } from "@si/contracts";
 import { Card } from "@si/ui/components/card";
@@ -8,12 +8,13 @@ import { Input } from "@si/ui/components/input";
 import { Label } from "@si/ui/components/label";
 import { Textarea } from "@si/ui/components/textarea";
 import { Badge } from "@si/ui/components/badge";
-import { Alert, AlertDescription, AlertTitle } from "@si/ui/components/alert";
 import { MarkdownEditor } from "@si/ui/components/editor";
 import { TagInput } from "@si/ui/components/tag-input";
 import { AutosaveIndicator } from "@si/ui/components/autosave-indicator";
 import { useAutosave } from "@si/ui/hooks/use-autosave";
-import { PublisherStatusBadge } from "@/components/publisher-status-badge";
+import { toast } from "@si/ui/components/sonner";
+import { Section } from "@/components/section";
+import { SplitLayout } from "@/components/split-layout";
 import { PublisherMediaUpload } from "@/components/publisher-media-upload";
 import { DeletionDialog } from "@/components/deletion-dialog";
 import { PreviewPanel } from "@/components/preview-panel";
@@ -31,6 +32,9 @@ import {
 } from "@/lib/texts.functions";
 import { formatDate } from "@/lib/format";
 
+// Friendly copy for every typed domain error the PublisherOperator mutations
+// return. Surfaced as toasts (transient) — persistent blocking state (a
+// revision conflict) gets its own Infinity-duration toast with a Reload action.
 const MESSAGES: Record<string, string> = {
   not_found: "This text no longer exists — reload the list.",
   revision_conflict: "The draft changed since you loaded it. Reload and reapply your edit.",
@@ -54,9 +58,9 @@ function TextDetail() {
   const result = Route.useLoaderData();
   if (!result.ok) {
     return (
-      <div className="mx-auto max-w-3xl">
+      <div className="flex flex-col gap-6">
         <BackLink />
-        <Card variant="soft" className="mt-4 p-10 text-center">
+        <Card variant="soft" className="p-10 text-center">
           <p className="text-foreground font-mono text-sm">Text not found.</p>
           <p className="text-muted-foreground mt-1 text-xs">It may have been deleted.</p>
         </Card>
@@ -83,6 +87,18 @@ function TextView({ data }: { data: Detail }) {
   const revisionRef = useRef(draft.revision);
   const [revision, setRevision] = useState(draft.revision);
   const [conflict, setConflict] = useState(false);
+
+  // A revision conflict is a blocking error, not a transient one: pin an
+  // Infinity-duration toast carrying the Reload action until the operator reloads.
+  useEffect(() => {
+    if (!conflict) return;
+    toast.error("Draft changed elsewhere", {
+      description:
+        "This text was edited in another tab or by another operator. Reload to get the latest revision — your unsaved change was not applied.",
+      duration: Infinity,
+      action: { label: "Reload", onClick: () => void router.invalidate() },
+    });
+  }, [conflict, router]);
 
   // Live mirror of the editable fields (details + body) so the preview reflects
   // what the operator currently sees in the form, including unsaved edits.
@@ -134,64 +150,131 @@ function TextView({ data }: { data: Detail }) {
     return { ok: true };
   }
 
+  const stateAccent =
+    draft.state === "draft"
+      ? "text-primary"
+      : draft.state === "published"
+        ? "text-success"
+        : "text-muted-foreground";
+
   return (
-    <div className="mx-auto max-w-3xl">
-      <BackLink />
-      <div className="mb-6 mt-4 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-foreground text-2xl font-semibold tracking-tight">{draft.title}</h1>
-          <p className="text-muted-foreground mt-1 font-mono text-xs">
-            {draft.slug} · rev {revision} · updated {formatDate(draft.updatedAt)}
-          </p>
+    <div className="flex flex-col gap-6 lg:h-full lg:min-h-0">
+      <header className="flex shrink-0 flex-col gap-4">
+        <BackLink />
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <h1 className="text-foreground font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight sm:text-5xl lg:text-6xl">
+            {draft.title}
+          </h1>
+          <dl className="flex flex-wrap items-stretch gap-y-3 font-mono">
+            <MetaCol label="Slug" value={draft.slug} />
+            <MetaCol
+              label="State"
+              value={<span className={`uppercase ${stateAccent}`}>{draft.state}</span>}
+            />
+            <MetaCol label="Rev" value={`r${revision}`} />
+            <MetaCol label="Published" value={draft.activeVersion ?? "—"} />
+            <MetaCol label="Updated" value={formatDate(draft.updatedAt)} />
+          </dl>
         </div>
-        <PublisherStatusBadge state={draft.state} />
-      </div>
+      </header>
 
-      {conflict && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertTitle>Draft changed elsewhere</AlertTitle>
-          <AlertDescription className="flex flex-col gap-2">
-            <span>
-              This text was edited in another tab or by another operator. Reload to get the latest
-              revision before editing — your unsaved change was not applied.
-            </span>
-            <Button
-              size="sm"
-              variant="outline"
-              className="w-fit"
-              onClick={() => void router.invalidate()}
-            >
-              Reload
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      <DetailsSection draft={draft} disabled={conflict} onSave={saveDraft} onField={onField} />
-      <BodySection draft={draft} disabled={conflict} onSave={saveDraft} onField={onField} />
-      <PreviewPanel getPayload={getPreviewPayload} disabled={conflict} />
-      <MediaSection
-        textId={draft.textId}
-        media={data.media}
-        onUploaded={() => void router.invalidate()}
-      />
-      <PublishSection
-        draft={draft}
-        revision={revision}
-        disabled={conflict}
-        onDone={() => void router.invalidate()}
-      />
-      <ReleasesSection
-        textId={draft.textId}
-        releases={data.releases}
-        activeVersion={draft.activeVersion}
-        onDone={() => void router.invalidate()}
-      />
-      <DangerSection
-        draft={draft}
-        onDeleted={() => void navigate({ to: "/texts", search: { state: "all" } })}
+      <SplitLayout
+        railWidth="22rem"
+        main={
+          <>
+            <BodySection draft={draft} disabled={conflict} onSave={saveDraft} onField={onField} />
+            <MediaSection
+              textId={draft.textId}
+              media={data.media}
+              onUploaded={() => void router.invalidate()}
+            />
+            <PreviewPanel getPayload={getPreviewPayload} disabled={conflict} />
+          </>
+        }
+        rail={
+          <>
+            <DetailsSection
+              draft={draft}
+              disabled={conflict}
+              onSave={saveDraft}
+              onField={onField}
+            />
+            <PublishSection
+              draft={draft}
+              revision={revision}
+              disabled={conflict}
+              onDone={() => void router.invalidate()}
+            />
+            <ReleasesSection
+              textId={draft.textId}
+              releases={data.releases}
+              activeVersion={draft.activeVersion}
+              onDone={() => void router.invalidate()}
+            />
+            <DangerSection
+              draft={draft}
+              onDeleted={() => void navigate({ to: "/texts", search: { state: "all" } })}
+            />
+          </>
+        }
       />
     </div>
+  );
+}
+
+// A hairline-separated mono meta column (KIND/SLUG/STATE… grammar).
+function MetaCol({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="border-border flex flex-col gap-1 border-l pl-4 pr-4 first:border-l-0 first:pl-0 last:pr-0">
+      <dt className="text-muted-foreground text-[10px] uppercase tracking-wider">{label}</dt>
+      <dd className="text-foreground text-sm">{value}</dd>
+    </div>
+  );
+}
+
+// ── Body: MarkdownEditor (split/preview + fullscreen) + debounced autosave ─────
+// The dominant, full-width work surface. Editor wiring (autosave, wikilink,
+// searchTexts, fullscreen) is unchanged — only its container is resized to fill.
+function BodySection({
+  draft,
+  disabled,
+  onSave,
+  onField,
+}: {
+  draft: TextDraftDTO;
+  disabled: boolean;
+  onSave: (patch: { bodyMarkdown: string }) => Promise<{ ok: boolean }>;
+  onField: (patch: { bodyMarkdown?: string }) => void;
+}) {
+  const [body, setBody] = useState(draft.bodyMarkdown);
+  const autosave = useAutosave({
+    value: body,
+    savedValue: draft.bodyMarkdown,
+    onSave: (v) => onSave({ bodyMarkdown: v }),
+  });
+
+  return (
+    <section className="flex min-h-0 flex-col gap-2">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-muted-foreground font-mono text-xs">
+          Markdown with a live preview. Type <span className="text-foreground">[[</span> to link
+          another text.
+        </p>
+        <AutosaveIndicator status={autosave.status} />
+      </div>
+      <MarkdownEditor
+        value={body}
+        onChange={(v) => {
+          setBody(v);
+          onField({ bodyMarkdown: v });
+        }}
+        readOnly={disabled}
+        defaultMode="split"
+        wikilink={(query) => searchTexts({ data: { query } })}
+        placeholder="Write…"
+        className="h-[60vh] min-h-[440px] lg:h-[64vh]"
+      />
+    </section>
   );
 }
 
@@ -217,12 +300,8 @@ function DetailsSection({
   const [deck, setDeck] = useState(draft.deck ?? "");
   const [tags, setTags] = useState<string[]>(draft.tags);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
 
   async function save(): Promise<void> {
-    setError(null);
-    setSaved(false);
     setBusy(true);
     try {
       const res = await onSave({
@@ -232,17 +311,17 @@ function DetailsSection({
         tags,
       });
       if (!res.ok) {
-        setError("save_failed");
+        toast.error("Couldn't save the details.");
         return;
       }
-      setSaved(true);
+      toast.success("Details saved.");
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <Section title="Details">
+    <Section title="Metadata">
       <form
         className="grid gap-4"
         onSubmit={(e) => {
@@ -250,8 +329,6 @@ function DetailsSection({
           void save();
         }}
       >
-        {error && <ErrorAlert code={error} />}
-        {saved && !error && <p className="text-success font-mono text-xs">Saved.</p>}
         <div className="grid gap-2">
           <Label htmlFor="title">Title</Label>
           <Input
@@ -265,7 +342,7 @@ function DetailsSection({
             required
           />
         </div>
-        <div className="grid gap-2 sm:max-w-sm">
+        <div className="grid gap-2">
           <Label htmlFor="slug">Slug</Label>
           <Input
             id="slug"
@@ -315,50 +392,7 @@ function DetailsSection({
   );
 }
 
-// ── Body: MarkdownEditor (split/preview + fullscreen) + debounced autosave ─────
-function BodySection({
-  draft,
-  disabled,
-  onSave,
-  onField,
-}: {
-  draft: TextDraftDTO;
-  disabled: boolean;
-  onSave: (patch: { bodyMarkdown: string }) => Promise<{ ok: boolean }>;
-  onField: (patch: { bodyMarkdown?: string }) => void;
-}) {
-  const [body, setBody] = useState(draft.bodyMarkdown);
-  const autosave = useAutosave({
-    value: body,
-    savedValue: draft.bodyMarkdown,
-    onSave: (v) => onSave({ bodyMarkdown: v }),
-  });
-
-  return (
-    <Section title="Body">
-      <div className="mb-2 flex items-center justify-between">
-        <p className="text-muted-foreground font-mono text-xs">
-          Markdown with a live preview. Type <span className="text-foreground">[[</span> to link
-          another text.
-        </p>
-        <AutosaveIndicator status={autosave.status} />
-      </div>
-      <MarkdownEditor
-        value={body}
-        onChange={(v) => {
-          setBody(v);
-          onField({ bodyMarkdown: v });
-        }}
-        readOnly={disabled}
-        defaultMode="split"
-        wikilink={(query) => searchTexts({ data: { query } })}
-        placeholder="Write…"
-        className="h-[70vh] min-h-[420px]"
-      />
-    </Section>
-  );
-}
-
+// ── Media: attachments table (type/name/format/size/state) + same-origin upload ─
 function MediaSection({
   textId,
   media,
@@ -372,18 +406,40 @@ function MediaSection({
     <Section title="Media">
       {media.length > 0 && (
         <div className="mb-4 grid gap-2">
-          {media.map((m) => (
-            <div
-              key={m.id}
-              className="border-border flex flex-wrap items-center gap-3 rounded-sm border p-3 text-sm"
-            >
-              <Badge variant="outline" className="font-mono text-[10px] uppercase">
-                {m.role}
-              </Badge>
-              <span className="text-foreground flex-1 truncate">{m.alt || "—"}</span>
-              <Badge variant={m.state === "ready" ? "success" : "warning"}>{m.state}</Badge>
-            </div>
-          ))}
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-border text-muted-foreground border-b text-left font-mono text-[10px] uppercase tracking-wider">
+                  <th className="py-2 pr-3 font-normal">Type</th>
+                  <th className="py-2 pr-3 font-normal">Name</th>
+                  <th className="py-2 pr-3 font-normal">Format</th>
+                  <th className="py-2 pr-3 font-normal">Size</th>
+                  <th className="py-2 font-normal">State</th>
+                </tr>
+              </thead>
+              <tbody>
+                {media.map((m) => (
+                  <tr key={m.id} className="border-border/60 border-b last:border-b-0">
+                    <td className="text-muted-foreground py-2 pr-3 font-mono text-xs uppercase">
+                      {m.role}
+                    </td>
+                    <td className="text-foreground max-w-[16rem] truncate py-2 pr-3">
+                      {m.alt || "—"}
+                    </td>
+                    <td className="text-muted-foreground py-2 pr-3 font-mono text-xs">
+                      {m.contentType}
+                    </td>
+                    <td className="text-foreground py-2 pr-3 font-mono text-xs">
+                      {formatBytes(m.size)}
+                    </td>
+                    <td className="py-2">
+                      <Badge variant={m.state === "ready" ? "success" : "warning"}>{m.state}</Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           <p className="text-muted-foreground/70 font-mono text-[10px]">
             Image previews resolve once a release references the media (draft media is not public).
           </p>
@@ -408,18 +464,14 @@ function PublishSection({
 }) {
   const [version, setVersion] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [published, setPublished] = useState<string | null>(null);
   const [retireBusy, setRetireBusy] = useState(false);
 
   const semverOk = version.trim() === "" || isValidVersion(version.trim());
 
   async function publish(): Promise<void> {
-    setError(null);
-    setPublished(null);
     const v = version.trim();
     if (!isValidVersion(v)) {
-      setError("invalid_version");
+      toast.error(MESSAGES.invalid_version);
       return;
     }
     setBusy(true);
@@ -433,10 +485,10 @@ function PublishSection({
         },
       });
       if (!res.ok) {
-        setError(res.error);
+        toast.error(MESSAGES[res.error] ?? res.error);
         return;
       }
-      setPublished(res.value.version);
+      toast.success(`Published ${res.value.version}.`);
       setVersion("");
       onDone();
     } finally {
@@ -445,16 +497,16 @@ function PublishSection({
   }
 
   async function retire(): Promise<void> {
-    setError(null);
     setRetireBusy(true);
     try {
       const res = await retireText({
         data: { commandId: crypto.randomUUID(), textId: draft.textId },
       });
       if (!res.ok) {
-        setError(res.error);
+        toast.error(MESSAGES[res.error] ?? res.error);
         return;
       }
+      toast.success("Text retired.");
       onDone();
     } finally {
       setRetireBusy(false);
@@ -466,10 +518,6 @@ function PublishSection({
       <p className="text-muted-foreground mb-3 font-mono text-xs">
         Freezes the current draft into an immutable versioned release.
       </p>
-      {error && <ErrorAlert code={error} />}
-      {published && !error && (
-        <p className="text-success mb-3 font-mono text-xs">Published {published}.</p>
-      )}
       <form
         className="flex flex-wrap items-end gap-2"
         onSubmit={(e) => {
@@ -490,7 +538,7 @@ function PublishSection({
           />
         </div>
         <Button type="submit" disabled={busy || disabled || !isValidVersion(version.trim())}>
-          {busy ? "Publishing…" : "Publish release"}
+          {busy ? "Publishing…" : "Publish revision"}
         </Button>
         {draft.state === "published" && (
           <Button
@@ -578,12 +626,12 @@ function ReleasesSection({
 function DangerSection({ draft, onDeleted }: { draft: TextDraftDTO; onDeleted: () => void }) {
   const [open, setOpen] = useState(false);
   return (
-    <Section title="Danger zone">
-      <div className="flex items-center justify-between gap-3">
+    <Section title="Danger zone" tone="soft">
+      <div className="flex flex-col gap-3">
         <p className="text-muted-foreground font-mono text-xs">
           Permanently delete this text and every release.
         </p>
-        <Button variant="destructive" size="sm" onClick={() => setOpen(true)}>
+        <Button variant="destructive" size="sm" className="w-fit" onClick={() => setOpen(true)}>
           Delete text
         </Button>
       </div>
@@ -604,23 +652,9 @@ function DangerSection({ draft, onDeleted }: { draft: TextDraftDTO; onDeleted: (
   );
 }
 
-// ── Small shared presentation bits ─────────────────────────────────────────────
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <Card variant="soft" className="mb-6 p-5">
-      <h2 className="text-foreground mb-3 font-semibold">{title}</h2>
-      {children}
-    </Card>
-  );
-}
-
-function ErrorAlert({ code }: { code: string }) {
-  return (
-    <Alert variant="destructive">
-      <AlertTitle>Couldn't complete that action</AlertTitle>
-      <AlertDescription>{MESSAGES[code] ?? code}</AlertDescription>
-    </Alert>
-  );
+function formatBytes(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
 function BackLink() {
