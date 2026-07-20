@@ -1,242 +1,120 @@
 ---
 import Base from "../../layouts/Base.astro";
-import SiteFooter from "../../components/SiteFooter.astro";
-import SiteHeader from "../../components/SiteHeader.astro";
+import TxShell from "../../components/TxShell.astro";
+import CheckoutIsland from "../../components/checkout/CheckoutIsland";
 
-// Mounts the Stripe Payment Element (Checkout Sessions API, ui_mode "elements")
-// from the client secret Store returns, or renders the stub confirmation when
-// Stripe is unconfigured. Transactional page: noindex.
+// The checkout flow is a browser-only React island (Stripe.js, localStorage
+// cart), mounted client:only inside the shared transactional shell. It fetches
+// the public store config, gates on stripeEnabled, and mounts the embedded
+// Payment Element or the stub confirmation. Transactional page: noindex.
 ---
 
 <Base title="Checkout — somewhatintelligent" description="Checkout." noindex>
-  <div class="site-frame">
-    <SiteHeader active="shop" />
-
-    <main class="tx-main">
-      <section class="tx-panel" aria-labelledby="checkout-title">
-        <h1 id="checkout-title">Checkout</h1>
-
-        <p id="checkout-status" class="tx-status">Preparing checkout…</p>
-        <p id="checkout-error" class="tx-error" role="alert" hidden></p>
-
-        <div id="checkout-stub" hidden>
-          <p>Payments are not configured in this environment, so your order was placed directly.</p>
-          <p class="tx-order-number">Order <strong id="stub-order-number"></strong></p>
-          <a id="stub-order-link" class="tx-button" href="#">
-            View order <span aria-hidden="true">→</span>
-          </a>
-        </div>
-
-        <form id="checkout-form" hidden>
-          <div id="checkout-total" class="checkout-total" hidden>
-            <span>Total</span>
-            <span id="checkout-total-value"></span>
-          </div>
-          <div id="shipping-element" class="stripe-field"></div>
-          <div id="payment-element" class="stripe-field"></div>
-          <button id="checkout-pay" class="tx-button" type="submit" disabled>Pay</button>
-        </form>
-      </section>
-    </main>
-
-    <SiteFooter />
-  </div>
+  <TxShell title="Checkout" maxWidth={560}>
+    <CheckoutIsland client:only="react" />
+  </TxShell>
 </Base>
 
-<script>
-  import { loadStripe } from "@stripe/stripe-js";
-  import { readCart, clearCart } from "../../lib/cart-client";
-  import { fetchStoreConfig, createCheckoutSession } from "../../lib/store-api-client";
-
-  const statusEl = document.getElementById("checkout-status");
-  const errorEl = document.getElementById("checkout-error");
-  const stubEl = document.getElementById("checkout-stub");
-  const formEl = document.getElementById("checkout-form");
-  const payBtn = document.getElementById("checkout-pay") as HTMLButtonElement | null;
-  const totalWrap = document.getElementById("checkout-total");
-  const totalValue = document.getElementById("checkout-total-value");
-
-  const ERROR_MESSAGES: Record<string, string> = {
-    empty_cart: "Your cart is empty.",
-    invalid_cart: "Your cart could not be read. Please review it and try again.",
-    product_unavailable: "An item in your cart is no longer available.",
-    variant_unavailable: "A selected size is no longer available.",
-    out_of_stock: "An item in your cart is out of stock.",
-    stripe_customer_failed: "We could not start a payment session. Please try again.",
-    stripe_session_failed: "We could not start a payment session. Please try again.",
-    unauthorized: "Please sign in to complete checkout.",
-    network: "We could not reach the store. Please check your connection and try again.",
-  };
-
-  function showError(message: string): void {
-    if (statusEl) statusEl.hidden = true;
-    if (errorEl) {
-      errorEl.textContent = message;
-      errorEl.hidden = false;
-    }
+<style is:global>
+  .checkout-lines {
+    margin-top: 8px;
+    list-style: none;
   }
 
-  function showStub(orderNumber: string): void {
-    if (statusEl) statusEl.hidden = true;
-    const numEl = document.getElementById("stub-order-number");
-    const linkEl = document.getElementById("stub-order-link");
-    if (numEl) numEl.textContent = orderNumber;
-    if (linkEl) linkEl.setAttribute("href", `/orders/${encodeURIComponent(orderNumber)}`);
-    if (stubEl) stubEl.hidden = false;
-  }
-
-  async function mountStripe(publishableKey: string, clientSecret: string): Promise<void> {
-    const stripe = await loadStripe(publishableKey);
-    if (!stripe) {
-      showError("Could not load the payment form.");
-      return;
-    }
-    const checkout = stripe.initCheckout({ clientSecret });
-
-    // Store enables shipping_address_collection on the session, so collect it
-    // alongside the Payment Element; Stripe validates it before confirm.
-    checkout.createShippingAddressElement().mount("#shipping-element");
-    checkout.createPaymentElement().mount("#payment-element");
-
-    checkout.on("change", (session) => {
-      if (totalValue) totalValue.textContent = session.total.total.amount;
-      if (totalWrap) totalWrap.hidden = false;
-    });
-
-    if (statusEl) statusEl.hidden = true;
-    if (formEl) formEl.hidden = false;
-    if (payBtn) payBtn.disabled = false;
-
-    formEl?.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      if (payBtn) payBtn.disabled = true;
-      if (errorEl) errorEl.hidden = true;
-
-      const loaded = await checkout.loadActions();
-      if (loaded.type === "error") {
-        showError(loaded.error.message);
-        if (payBtn) payBtn.disabled = false;
-        return;
-      }
-      // The session carries the return_url; a successful confirm redirects the
-      // browser to /checkout/return?session_id=…
-      const result = await loaded.actions.confirm();
-      if (result.type === "error") {
-        showError(result.error.message);
-        if (payBtn) payBtn.disabled = false;
-      }
-    });
-  }
-
-  async function run(): Promise<void> {
-    const cart = readCart();
-    if (cart.lines.length === 0) {
-      window.location.href = "/cart/";
-      return;
-    }
-
-    const config = await fetchStoreConfig();
-    if (!config) {
-      showError("Could not load checkout configuration.");
-      return;
-    }
-
-    const created = await createCheckoutSession(cart);
-    if (created.ok === false) {
-      showError(ERROR_MESSAGES[created.error] ?? "Checkout failed. Please try again.");
-      return;
-    }
-
-    if (created.mode === "stub") {
-      clearCart();
-      showStub(created.orderNumber);
-      return;
-    }
-
-    // mode === "stripe"
-    if (!config.stripeEnabled || !config.stripePublishableKey) {
-      showError("Payments are temporarily unavailable. Please try again later.");
-      return;
-    }
-    await mountStripe(config.stripePublishableKey, created.clientSecret);
-  }
-
-  void run();
-</script>
-
-<style>
-  .tx-main {
-    min-height: 0;
-    overflow-y: auto;
-    padding: 40px 24px 80px;
-  }
-
-  .tx-panel {
-    width: 100%;
-    max-width: 560px;
-    margin: 0 auto;
-    font-family: var(--font-mono);
-  }
-
-  .tx-panel h1 {
-    font-family: var(--font-display);
-    font-size: 44px;
-    letter-spacing: -0.02em;
-  }
-
-  .tx-status {
-    margin-top: 24px;
-    font-size: 13px;
-  }
-
-  .tx-error {
-    margin-top: 24px;
-    padding: 12px 14px;
-    border: 1px solid var(--color-destructive);
-    color: var(--color-destructive);
-    font-size: 13px;
-  }
-
-  .tx-order-number {
-    margin-top: 16px;
-    font-size: 14px;
-  }
-
-  .checkout-total {
+  .checkout-line {
     display: flex;
     justify-content: space-between;
-    margin-top: 24px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid var(--color-border);
+    gap: 12px;
+    padding: 8px 0;
+    border-top: 1px solid var(--color-border);
+    font-size: 13px;
+  }
+
+  .checkout-line-name {
+    min-width: 0;
+    color: var(--color-muted-foreground);
+  }
+
+  .checkout-line-price {
+    flex-shrink: 0;
+  }
+
+  .checkout-totals {
+    margin-top: 16px;
+  }
+
+  .checkout-total-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    color: var(--color-muted-foreground);
+  }
+
+  .checkout-total-row dd {
+    color: var(--color-foreground);
+  }
+
+  .checkout-total-row--grand {
+    margin-top: 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--color-foreground);
     font-size: 16px;
   }
 
-  .stripe-field {
-    margin-top: 20px;
+  .checkout-total-row--grand dt,
+  .checkout-total-row--grand dd {
+    color: var(--color-foreground);
   }
 
-  .tx-button {
+  .checkout-subhead {
+    margin-top: 28px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-muted-foreground);
+  }
+
+  .stripe-field {
+    margin-top: 16px;
+  }
+
+  .checkout-fine-print {
+    margin-top: 12px;
+    font-size: 11px;
+    color: var(--color-muted-foreground);
+  }
+
+  .checkout-shipping-options {
+    margin-top: 16px;
+    padding: 0;
+    border: 0;
+  }
+
+  .checkout-shipping-options legend {
+    margin-bottom: 8px;
+    font-size: 12px;
+  }
+
+  .checkout-shipping-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border);
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .checkout-shipping-option-name {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
     gap: 8px;
-    width: 100%;
-    height: 48px;
-    margin-top: 24px;
-    padding: 0 28px;
-    background: var(--color-inverse-foreground);
-    color: var(--color-inverse);
-    font-family: var(--font-mono);
-    font-size: 14px;
-    text-transform: uppercase;
   }
 
-  .tx-button:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-  }
-
-  #checkout-stub .tx-button {
-    width: auto;
+  .checkout-shipping-option-price {
+    color: var(--color-muted-foreground);
   }
 </style>
