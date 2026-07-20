@@ -18,7 +18,7 @@ The typed RPC surface it implements lives in
 ## Status — SCAFFOLD
 
 This is track **T14** of
-[`docs/exec-plans/active/0004-unified-publishing-commerce-control-plane.md`](../../docs/exec-plans/active/0004-unified-publishing-commerce-control-plane.md).
+[`docs/exec-plans/completed/0004-unified-publishing-commerce-control-plane.md`](../../docs/exec-plans/completed/0004-unified-publishing-commerce-control-plane.md).
 The worker builds, imports `@si/contracts`, and declares the dual-entrypoint
 shape with a representative slice of each contract. Still to come:
 

@@ -5,7 +5,7 @@ control plane — the **Operator**, **Publisher**, **Store**, and **Site** worke
 all compile against these types instead of keeping divergent copies.
 
 This is track **T0** of
-[`docs/exec-plans/active/0004-unified-publishing-commerce-control-plane.md`](../../docs/exec-plans/active/0004-unified-publishing-commerce-control-plane.md);
+[`docs/exec-plans/completed/0004-unified-publishing-commerce-control-plane.md`](../../docs/exec-plans/completed/0004-unified-publishing-commerce-control-plane.md);
 the shapes are transcribed verbatim from the **Contracts** and **Fixed page
 document contracts** sections of
 [`docs/rfc/0001-unified-publishing-commerce-control-plane.md`](../../docs/rfc/0001-unified-publishing-commerce-control-plane.md).

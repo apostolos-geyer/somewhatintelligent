@@ -1,7 +1,8 @@
 # 0004 — Unified publishing and commerce control plane
 
-Status: ACTIVE
+Status: COMPLETE
 Started: 2026-07-19
+Completed: 2026-07-20
 RFC: [`docs/rfc/0001-unified-publishing-commerce-control-plane.md`](../../rfc/0001-unified-publishing-commerce-control-plane.md) (draft)
 Base: `main` — site is a static Astro build; storefront is a vmf SPA at `/shop`
 Owner: Apostoli
