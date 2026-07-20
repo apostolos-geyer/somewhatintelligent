@@ -1207,10 +1207,10 @@ CI/CD runs entirely on **RWX** (a dependency-graph CI runner) with **Captain** (
 **The fleet + the canonical deploy order** (identical in every lane and script):
 
 ```
-promoter  roadie  guestlist  identity  store  bouncer   ← bouncer LAST
+promoter  roadie  guestlist  identity  store  publisher  site  bouncer   ← bouncer LAST
 ```
 
-`promoter`/`roadie` are leaves (deploy first); `guestlist` binds them; `identity`/`store` bind guestlist; `bouncer` binds guestlist + identity + store and deploys **last** so the public router never points at an undeployed upstream (wrangler's binding-existence check would otherwise fail — CF error `10143`). The vendored `inbox` app is outside all lanes (manual `cd inbox && bun run deploy`).
+`promoter`/`roadie` are leaves (deploy first); `guestlist` binds them; `identity`/`store` bind guestlist; `publisher` binds roadie + store; `site` binds publisher + store; `bouncer` binds guestlist + identity + store + site and deploys **last** so the public router never points at an undeployed upstream (wrangler's binding-existence check would otherwise fail — CF error `10143`). The vendored `inbox` app and the operator console are outside all lanes (manual `cd inbox && bun run deploy` / `cd workers/operator && bun run deploy:staging`).
 
 ## §8.1 The lanes
 
@@ -1280,7 +1280,7 @@ Secrets live in two RWX vaults: **`si_deploy`** (main-locked — `CLOUDFLARE_API
 
 ## §9.1 The wrangler config model
 
-Each worker has **one checked-in `wrangler.jsonc`** (source, not generated): the **top level is staging**, and a single **`env.production`** block is production. There is no `env.staging`. Cloudflare named environments **do not inherit** bindings/vars, so each `env.production` block **re-declares everything** — `name`, vars, D1, queues, services, routes, observability. Load-bearing details, uniform across all six workers:
+Each worker has **one checked-in `wrangler.jsonc`** (source, not generated): the **top level is staging**, and a single **`env.production`** block is production. There is no `env.staging`. Cloudflare named environments **do not inherit** bindings/vars, so each `env.production` block **re-declares everything** — `name`, vars, D1, queues, services, routes, observability. Load-bearing details, uniform across every worker:
 
 - **Explicit production `name`** (`si-<worker>-production`) is mandatory — without it wrangler derives `si-<worker>-staging-production` (top-level name + `-production`), a brand-new worker.
 - `workers_dev` / `preview_urls` **must be re-set to `false`** in production (those two _are_ inherited from the top level, unlike bindings).

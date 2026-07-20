@@ -1,6 +1,9 @@
 /**
- * Browser-side typed client for the public Store HTTP API (RFC-0001 D11),
- * reached same-origin through Bouncer's `/api/store` passthrough mount. Input and
+ * Browser-side typed client for the public Store HTTP API (RFC-0001 D11). In
+ * deployed envs requests go same-origin through Bouncer's `/api/store`
+ * passthrough mount; local dev (no bouncer) sets PUBLIC_STORE_API_BASE to the
+ * store worker's portless hostname and the fetches go cross-origin (store's
+ * CORS allowlist + credentials "include" carry the session cookie). Input and
  * output types come from the frozen `@si/contracts` DTOs (the SSOT); a thin
  * `fetch` wrapper keeps the client bundle small and leaves Site's track free of
  * any cross-worker source import.

@@ -4,8 +4,8 @@ This is the single contract for every environment variable and secret the
 platform consumes. **A new env var is not done until it has a row here.** If a
 worker reads `env.SOMETHING` (or a script reads `process.env.SOMETHING`) and it
 is not in a table below, that is the bug — either add the row or delete the
-read. This file is seeded from `scripts/dev-config.ts`, the six per-worker
-seeders, every `workers/*/wrangler.jsonc`, `packages/secrets/src/manifest.ts`,
+read. This file is seeded from `scripts/dev-config.ts`, the per-worker
+`scripts/env-init.ts` seeders, every `workers/*/wrangler.jsonc`, `packages/secrets/src/manifest.ts`,
 `.rwx/promote-staging.yml`, `.rwx/release-please.yml`, and `.rwx/deploy.yml`,
 `docs/secrets.md`, and `docs/runbooks/SECRETS.md`.
 

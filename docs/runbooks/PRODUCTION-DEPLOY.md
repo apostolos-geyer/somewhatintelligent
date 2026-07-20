@@ -25,8 +25,8 @@ it just tagged.
 release-please runs in **manifest mode**: one component per worker
 (`release-please-config.json`), so a single Release PR groups version bumps for
 every changed worker and, on merge, cuts **per-worker tags**
-`<worker>-v<x.y.z>` (e.g. `guestlist-v0.2.2`). All six workers version
-independently in `.release-please-manifest.json`.
+`<worker>-v<x.y.z>` (e.g. `guestlist-v0.2.2`). All eight release-managed
+workers version independently in `.release-please-manifest.json`.
 
 ```
 conventional commits on main

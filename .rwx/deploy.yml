@@ -1,10 +1,10 @@
 # somewhatintelligent — shared deploy logic (Cloudflare, via RWX).
 #
 # One definition of "how somewhatintelligent ships a worker fleet" — D1
-# migrate (guestlist, roadie) -> dependency-ordered worker deploy
-# (promoter, roadie -> guestlist -> identity -> store
-# -> bouncer router LAST — see the `deploy` task below for exactly why this
-# order, not just "leaf services then apps") -> GitHub Deployment record —
+# migrate (guestlist, roadie, store, publisher) -> dependency-ordered worker
+# deploy (promoter, roadie -> guestlist -> identity, store -> publisher
+# -> site -> bouncer router LAST — see the `deploy` task below for exactly why
+# this order, not just "leaf services then apps") -> GitHub Deployment record —
 # (the vendored inbox app is NOT part of any lane: it deploys manually via
 # `cd inbox && bun run deploy`, outside RWX, by owner decision) —
 # parameterized by `init.env` ("staging" | "production") instead of duplicated
