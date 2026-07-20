@@ -14,6 +14,7 @@ import { TagInput } from "@si/ui/components/tag-input";
 import { AutosaveIndicator } from "@si/ui/components/autosave-indicator";
 import { useAutosave } from "@si/ui/hooks/use-autosave";
 import { PublisherStatusBadge } from "@/components/publisher-status-badge";
+import { PublisherMediaUpload } from "@/components/publisher-media-upload";
 import { DeletionDialog } from "@/components/deletion-dialog";
 import {
   deleteText,
@@ -140,7 +141,11 @@ function TextView({ data }: { data: Detail }) {
 
       <DetailsSection draft={draft} disabled={conflict} onSave={saveDraft} />
       <BodySection draft={draft} disabled={conflict} onSave={saveDraft} />
-      <MediaSection media={data.media} />
+      <MediaSection
+        textId={draft.textId}
+        media={data.media}
+        onUploaded={() => void router.invalidate()}
+      />
       <PublishSection
         draft={draft}
         revision={revision}
@@ -309,27 +314,37 @@ function BodySection({
   );
 }
 
-function MediaSection({ media }: { media: PublisherMediaDTO[] }) {
-  if (media.length === 0) return null;
+function MediaSection({
+  textId,
+  media,
+  onUploaded,
+}: {
+  textId: string;
+  media: PublisherMediaDTO[];
+  onUploaded: () => void;
+}) {
   return (
     <Section title="Media">
-      <div className="grid gap-2">
-        {media.map((m) => (
-          <div
-            key={m.id}
-            className="border-border flex flex-wrap items-center gap-3 rounded-sm border p-3 text-sm"
-          >
-            <Badge variant="outline" className="font-mono text-[10px] uppercase">
-              {m.role}
-            </Badge>
-            <span className="text-foreground flex-1 truncate">{m.alt || "—"}</span>
-            <Badge variant={m.state === "ready" ? "success" : "warning"}>{m.state}</Badge>
-          </div>
-        ))}
-      </div>
-      <p className="text-muted-foreground/70 mt-2 font-mono text-[10px]">
-        Upload from the editor lands with T19. Manage media in the Media module.
-      </p>
+      {media.length > 0 && (
+        <div className="mb-4 grid gap-2">
+          {media.map((m) => (
+            <div
+              key={m.id}
+              className="border-border flex flex-wrap items-center gap-3 rounded-sm border p-3 text-sm"
+            >
+              <Badge variant="outline" className="font-mono text-[10px] uppercase">
+                {m.role}
+              </Badge>
+              <span className="text-foreground flex-1 truncate">{m.alt || "—"}</span>
+              <Badge variant={m.state === "ready" ? "success" : "warning"}>{m.state}</Badge>
+            </div>
+          ))}
+          <p className="text-muted-foreground/70 font-mono text-[10px]">
+            Image previews resolve once a release references the media (draft media is not public).
+          </p>
+        </div>
+      )}
+      <PublisherMediaUpload ownerType="text" ownerId={textId} onUploaded={onUploaded} />
     </Section>
   );
 }

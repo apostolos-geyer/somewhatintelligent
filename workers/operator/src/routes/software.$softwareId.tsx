@@ -11,6 +11,7 @@ import { MarkdownField } from "@si/ui/components/markdown-field";
 import { AutosaveIndicator } from "@si/ui/components/autosave-indicator";
 import { useAutosave } from "@si/ui/hooks/use-autosave";
 import { PublisherStatusBadge } from "@/components/publisher-status-badge";
+import { PublisherMediaUpload } from "@/components/publisher-media-upload";
 import { DeletionDialog } from "@/components/deletion-dialog";
 import {
   deleteSoftware,
@@ -134,10 +135,12 @@ function SoftwareView({ data }: { data: Detail }) {
       <DetailsSection draft={draft} disabled={conflict} onSave={saveDraft} />
       <WhatItIsSection draft={draft} disabled={conflict} onSave={saveDraft} />
       <MediaSection
+        softwareId={draft.softwareId}
         media={data.media}
         primaryMediaId={draft.primaryMediaId}
         disabled={conflict}
         onSetPrimary={(id) => saveDraft({ primaryMediaId: id })}
+        onUploaded={() => void router.invalidate()}
       />
       <PublishSection
         draft={draft}
@@ -318,15 +321,19 @@ function WhatItIsSection({
 }
 
 function MediaSection({
+  softwareId,
   media,
   primaryMediaId,
   disabled,
   onSetPrimary,
+  onUploaded,
 }: {
+  softwareId: string;
   media: PublisherMediaDTO[];
   primaryMediaId: string | null;
   disabled: boolean;
   onSetPrimary: (id: string) => Promise<{ ok: boolean; error?: string }>;
+  onUploaded: () => void;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -384,9 +391,15 @@ function MediaSection({
           })}
         </div>
       )}
-      <p className="text-muted-foreground/70 mt-2 font-mono text-[10px]">
-        Upload from the editor lands with T19. Manage media in the Media module.
+      <p className="text-muted-foreground/70 mb-3 mt-2 font-mono text-[10px]">
+        Upload an image, then set it as the primary. A primary image is required to publish.
       </p>
+      <PublisherMediaUpload
+        ownerType="software"
+        ownerId={softwareId}
+        disabled={disabled}
+        onUploaded={onUploaded}
+      />
     </Section>
   );
 }

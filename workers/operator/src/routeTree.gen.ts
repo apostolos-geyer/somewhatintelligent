@@ -23,6 +23,7 @@ import { Route as PagesKeyRouteImport } from './routes/pages.$key'
 import { Route as OrdersOrderNumberRouteImport } from './routes/orders.$orderNumber'
 import { Route as ObjectsProductIdRouteImport } from './routes/objects.$productId'
 import { Route as OperatorMediaStoreProductsProductIdRouteImport } from './routes/[_]operator.media.store.products.$productId'
+import { Route as OperatorMediaPublisherOwnerTypeOwnerIdRouteImport } from './routes/[_]operator.media.publisher.$ownerType.$ownerId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -95,6 +96,12 @@ const OperatorMediaStoreProductsProductIdRoute =
     path: '/_operator/media/store/products/$productId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const OperatorMediaPublisherOwnerTypeOwnerIdRoute =
+  OperatorMediaPublisherOwnerTypeOwnerIdRouteImport.update({
+    id: '/_operator/media/publisher/$ownerType/$ownerId',
+    path: '/_operator/media/publisher/$ownerType/$ownerId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -111,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/software/': typeof SoftwareIndexRoute
   '/texts/': typeof TextsIndexRoute
   '/_operator/media/store/products/$productId': typeof OperatorMediaStoreProductsProductIdRoute
+  '/_operator/media/publisher/$ownerType/$ownerId': typeof OperatorMediaPublisherOwnerTypeOwnerIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -127,6 +135,7 @@ export interface FileRoutesByTo {
   '/software': typeof SoftwareIndexRoute
   '/texts': typeof TextsIndexRoute
   '/_operator/media/store/products/$productId': typeof OperatorMediaStoreProductsProductIdRoute
+  '/_operator/media/publisher/$ownerType/$ownerId': typeof OperatorMediaPublisherOwnerTypeOwnerIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -144,6 +153,7 @@ export interface FileRoutesById {
   '/software/': typeof SoftwareIndexRoute
   '/texts/': typeof TextsIndexRoute
   '/_operator/media/store/products/$productId': typeof OperatorMediaStoreProductsProductIdRoute
+  '/_operator/media/publisher/$ownerType/$ownerId': typeof OperatorMediaPublisherOwnerTypeOwnerIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -162,6 +172,7 @@ export interface FileRouteTypes {
     | '/software/'
     | '/texts/'
     | '/_operator/media/store/products/$productId'
+    | '/_operator/media/publisher/$ownerType/$ownerId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -178,6 +189,7 @@ export interface FileRouteTypes {
     | '/software'
     | '/texts'
     | '/_operator/media/store/products/$productId'
+    | '/_operator/media/publisher/$ownerType/$ownerId'
   id:
     | '__root__'
     | '/'
@@ -194,6 +206,7 @@ export interface FileRouteTypes {
     | '/software/'
     | '/texts/'
     | '/_operator/media/store/products/$productId'
+    | '/_operator/media/publisher/$ownerType/$ownerId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -211,6 +224,7 @@ export interface RootRouteChildren {
   SoftwareIndexRoute: typeof SoftwareIndexRoute
   TextsIndexRoute: typeof TextsIndexRoute
   OperatorMediaStoreProductsProductIdRoute: typeof OperatorMediaStoreProductsProductIdRoute
+  OperatorMediaPublisherOwnerTypeOwnerIdRoute: typeof OperatorMediaPublisherOwnerTypeOwnerIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -313,6 +327,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperatorMediaStoreProductsProductIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_operator/media/publisher/$ownerType/$ownerId': {
+      id: '/_operator/media/publisher/$ownerType/$ownerId'
+      path: '/_operator/media/publisher/$ownerType/$ownerId'
+      fullPath: '/_operator/media/publisher/$ownerType/$ownerId'
+      preLoaderRoute: typeof OperatorMediaPublisherOwnerTypeOwnerIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -332,6 +353,8 @@ const rootRouteChildren: RootRouteChildren = {
   TextsIndexRoute: TextsIndexRoute,
   OperatorMediaStoreProductsProductIdRoute:
     OperatorMediaStoreProductsProductIdRoute,
+  OperatorMediaPublisherOwnerTypeOwnerIdRoute:
+    OperatorMediaPublisherOwnerTypeOwnerIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -24,6 +24,7 @@ import type {
   DeletionError,
   DeletionPlan,
   DomainResult,
+  MediaMutationError,
   OperatorCall,
   PageDocumentByKey,
   PageDraftDTO,
@@ -301,6 +302,29 @@ export class PublisherOperator
     >
   > {
     return this.writes().publishPage(call);
+  }
+
+  // ── media ingest (T19) ────────────────────────────────────────────────────────
+
+  // Private, Operator-only media ingest (RFC-0001 D10). NOT part of the frozen
+  // `PublisherOperatorEntrypoint` contract — reached only over the
+  // Operator→Publisher service binding. Builds the Roadie-backed MediaStorage
+  // port and delegates to the pool-testable writes core.
+  ingestMedia(input: {
+    ownerType: "text" | "software" | "page";
+    ownerId: string;
+    body: ReadableStream<Uint8Array>;
+    contentType: string;
+    size: number;
+    sha256: string;
+    alt: string;
+    role: string;
+    createdBySub: string;
+  }): Promise<DomainResult<PublisherMediaDTO, MediaMutationError>> {
+    const media = createRoadieMediaStorage(getRoadie(this.env), {
+      application: PUBLISHER_MEDIA_APPLICATION,
+    });
+    return this.writes().ingestMedia(input, media);
   }
 
   // ── deletion + media GC (T18) ─────────────────────────────────────────────────

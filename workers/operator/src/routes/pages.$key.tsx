@@ -6,6 +6,7 @@ import type {
   HomeDocumentV1,
   PageDocumentByKey,
   PageKey,
+  PublisherMediaDTO,
   ShopDocumentV1,
   SoftwareDocumentV1,
   WritingDocumentV1,
@@ -17,6 +18,7 @@ import { Label } from "@si/ui/components/label";
 import { Textarea } from "@si/ui/components/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@si/ui/components/alert";
 import { DeletionDialog } from "@/components/deletion-dialog";
+import { PublisherMediaUpload } from "@/components/publisher-media-upload";
 import {
   createPage,
   deletePage,
@@ -191,6 +193,8 @@ function PageEditor({
 
       <SeoSection seo={document.seo} onChange={(seo) => setDocument({ ...document, seo })} />
       <ContentSection document={document} onChange={setDocument} />
+
+      {created && <PageMediaSection pageKey={pageKey} />}
 
       <Section title="Draft">
         <Button disabled={busy} onClick={() => void save()}>
@@ -478,6 +482,58 @@ function HomeFields({
         </div>
       </Section>
     </>
+  );
+}
+
+// ── Page media ─────────────────────────────────────────────────────────────────
+// Page media is referenced by id inside the document (no owned-media list read,
+// RFC-0001 D10). Uploading yields a media id the operator pastes into a media-ID
+// field above (hero, SEO image, primary/secondary). Uploaded ids from this
+// session are listed with a copy affordance.
+function PageMediaSection({ pageKey }: { pageKey: PageKey }) {
+  const [uploaded, setUploaded] = useState<PublisherMediaDTO[]>([]);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  async function copy(id: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(id);
+      setCopied(id);
+      setTimeout(() => setCopied((c) => (c === id ? null : c)), 1500);
+    } catch {
+      // clipboard blocked — no-op
+    }
+  }
+
+  return (
+    <Section title="Media">
+      <p className="text-muted-foreground mb-3 font-mono text-xs">
+        Upload an image, then paste its id into a media field above (hero, SEO image, primary…).
+      </p>
+      {uploaded.length > 0 && (
+        <div className="mb-4 grid gap-2">
+          {uploaded.map((m) => (
+            <div
+              key={m.id}
+              className="border-border flex flex-wrap items-center gap-3 rounded-sm border p-3 text-sm"
+            >
+              <span className="text-foreground flex-1 truncate">{m.alt || "—"}</span>
+              <button
+                type="button"
+                onClick={() => void copy(m.id)}
+                className="text-muted-foreground hover:text-foreground font-mono text-[10px]"
+              >
+                {copied === m.id ? "copied ✓" : `${m.id} · copy`}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <PublisherMediaUpload
+        ownerType="page"
+        ownerId={pageKey}
+        onUploaded={(m) => setUploaded((prev) => [m, ...prev])}
+      />
+    </Section>
   );
 }
 

@@ -45,6 +45,7 @@ import type {
   DeletionImpact,
   DeletionPlan,
   DomainResult,
+  MediaMutationError,
   OperatorCall,
   OperatorMeta,
   PageDocumentByKey,
@@ -59,6 +60,7 @@ import type {
 } from "@si/contracts";
 
 import type { PublisherDb } from "../public/reads";
+import type { MediaStorage } from "../lib/media-storage";
 import * as schema from "../schema";
 import { clampLimit, decodeCursor, encodeCursor } from "../public/cursor";
 
@@ -133,6 +135,21 @@ const ACTIONS = {
 const ACTION_LABEL_MAX = 40;
 const DEFAULT_ACTION_LABEL = "Open system";
 const WIKILINK_RE = /\[\[([^[\]]+)\]\]/g;
+
+// Domain media validation ceiling above the private MediaStorage port (RFC-0001
+// D10). The 100 MB bound is Roadie's single-part limit (media-storage-roadie.ts);
+// the accepted image set mirrors Store's browser-encodable types. Publisher media
+// roles are free-form (schema `role` is plain text, no enum) — a non-empty,
+// length-capped label rather than a fixed set.
+const MAX_MEDIA_BYTES = 100 * 1024 * 1024;
+const ALLOWED_MEDIA_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/avif",
+  "image/gif",
+]);
+const MEDIA_ROLE_MAX = 40;
 
 // A deletion plan's confirmation token is valid for ten minutes (D8).
 const DELETION_TTL_MS = 10 * 60 * 1000;
@@ -1267,6 +1284,79 @@ export class PublisherOperatorWrites {
     return this.commit(ACTIONS.pagePublish, meta, statements, value);
   }
 
+  // ── media ingest (RFC-0001 D10 / T19) ────────────────────────────────────────
+
+  // Operator-only private media ingest. NOT on the frozen
+  // `PublisherOperatorEntrypoint` contract: the storage lifecycle is not an RPC
+  // method on the documented surface (INV-MEDIA-1). Operator streams the file
+  // over the service binding; Publisher validates it, writes the bytes through
+  // the injected `MediaStorage` port, and inserts the ready `publisher_media`
+  // row — no register/finalize/signed-URL/storage-key vocabulary crosses the
+  // boundary. Mirroring Store's ingest, this writes NO `operator_event`: the
+  // storage lifecycle is not an audited domain mutation, so there is no
+  // idempotency-keyed dedupe here. The private `storage_key` is never returned.
+  async ingestMedia(
+    input: {
+      ownerType: "text" | "software" | "page";
+      ownerId: string;
+      body: ReadableStream<Uint8Array>;
+      contentType: string;
+      size: number;
+      sha256: string;
+      alt: string;
+      role: string;
+      createdBySub: string;
+    },
+    media: MediaStorage,
+  ): Promise<DomainResult<PublisherMediaDTO, MediaMutationError>> {
+    const role = input.role.trim();
+    if (role.length === 0 || role.length > MEDIA_ROLE_MAX) return err("invalid_role");
+    if (!ALLOWED_MEDIA_TYPES.has(input.contentType)) return err("unsupported_type");
+    if (!Number.isInteger(input.size) || input.size <= 0 || input.size > MAX_MEDIA_BYTES) {
+      return err("invalid_size");
+    }
+
+    // Resolve the owner to the internal id stored on the media row. For pages the
+    // caller passes the PageKey; media is owned by the page's internal id.
+    const ownerId = await this.resolveMediaOwner(input.ownerType, input.ownerId);
+    if (ownerId === null) return err("not_found");
+
+    // Mint the domain media id and hand it to the port as `key`; the port returns
+    // the private storage_key we persist (never a DTO field, INV-MEDIA-1).
+    const mediaId = crypto.randomUUID();
+    const put = await media.put({
+      key: mediaId,
+      body: input.body,
+      contentType: input.contentType,
+      size: input.size,
+      sha256: input.sha256,
+    });
+    if (!put.ok) return err("storage_unavailable");
+
+    const position = await this.nextMediaPosition(input.ownerType, ownerId);
+    const now = Date.now();
+    const row: schema.PublisherMediaRow = {
+      id: mediaId,
+      ownerType: input.ownerType,
+      ownerId,
+      storageKey: put.value.key,
+      contentSha256: input.sha256,
+      contentType: input.contentType,
+      sizeBytes: input.size,
+      width: null,
+      height: null,
+      role,
+      alt: input.alt,
+      position,
+      state: "ready",
+      createdBySub: input.createdBySub,
+      createdAt: now,
+      readyAt: now,
+    };
+    await this.db.insert(publisherMedia).values(row);
+    return ok(toPublisherMediaDTO(row));
+  }
+
   // ── batch commit + audit ─────────────────────────────────────────────────────
 
   // Look up a recorded success for this (action, idempotency key); the parsed
@@ -1528,6 +1618,37 @@ export class PublisherOperatorWrites {
       )
       .limit(1);
     return row !== undefined;
+  }
+
+  // Resolve a media owner to the id persisted on `publisher_media.owner_id`.
+  // text/software own by their entry id; a page owns by its internal id, which
+  // the caller addresses by PageKey. Returns null when the owner does not exist.
+  private async resolveMediaOwner(
+    ownerType: "text" | "software" | "page",
+    ownerId: string,
+  ): Promise<string | null> {
+    if (ownerType === "text") return (await this.textExists(ownerId)) ? ownerId : null;
+    if (ownerType === "software") return (await this.softwareExists(ownerId)) ? ownerId : null;
+    const [row] = await this.db
+      .select({ id: pageEntry.id })
+      .from(pageEntry)
+      .where(eq(pageEntry.pageKey, ownerId as PageKey))
+      .limit(1);
+    return row?.id ?? null;
+  }
+
+  // Next append position for an owner's media (max existing + 1).
+  private async nextMediaPosition(
+    ownerType: "text" | "software" | "page",
+    ownerId: string,
+  ): Promise<number> {
+    const [last] = await this.db
+      .select({ position: publisherMedia.position })
+      .from(publisherMedia)
+      .where(and(eq(publisherMedia.ownerType, ownerType), eq(publisherMedia.ownerId, ownerId)))
+      .orderBy(desc(publisherMedia.position))
+      .limit(1);
+    return last ? last.position + 1 : 0;
   }
 
   private async loadTags(textId: string): Promise<string[]> {
