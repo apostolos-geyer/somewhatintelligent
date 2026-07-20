@@ -1,4 +1,4 @@
-import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
+import { Link, createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { isValidVersion } from "@si/contracts";
 import type { ProductDraftDTO, ProductMediaDTO, ProductVariantDTO } from "@si/contracts";
@@ -10,15 +10,24 @@ import { Textarea } from "@si/ui/components/textarea";
 import { Badge } from "@si/ui/components/badge";
 import { Alert, AlertDescription, AlertTitle } from "@si/ui/components/alert";
 import { ProductStatusBadge } from "@/components/product-status-badge";
+import { DeletionDialog } from "@/components/deletion-dialog";
 import {
   adjustStock,
+  deleteProduct,
+  deleteProductMedia,
+  deleteProductRelease,
+  deleteVariant,
   getProduct,
+  planProductDeletion,
+  planProductMediaDeletion,
+  planProductReleaseDeletion,
+  planVariantDeletion,
   publishProduct,
   putVariant,
   saveProductDraft,
   setProductStatus,
 } from "@/lib/products.functions";
-import { formatCents, formatDate } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 
 // Friendly copy for every typed domain error the StoreOperator mutations return.
 const MESSAGES: Record<string, string> = {
@@ -67,6 +76,7 @@ function ProductDetail() {
 
 function ProductView({ data }: { data: Detail }) {
   const router = useRouter();
+  const navigate = useNavigate();
   const onDone = () => router.invalidate();
   const { draft } = data;
 
@@ -88,7 +98,13 @@ function ProductView({ data }: { data: Detail }) {
       <MediaSection productId={draft.productId} media={data.media} onDone={onDone} />
       <PublishSection draft={draft} onDone={onDone} />
       <StatusSection draft={draft} onDone={onDone} />
-      <ReleasesSection releases={data.releases} activeVersion={draft.activeVersion} />
+      <ReleasesSection
+        productId={draft.productId}
+        releases={data.releases}
+        activeVersion={draft.activeVersion}
+        onDone={onDone}
+      />
+      <DangerSection draft={draft} onDeleted={() => void navigate({ to: "/objects" })} />
     </div>
   );
 }
@@ -256,7 +272,13 @@ function VariantsSection({
       ) : (
         <div className="mb-4 grid gap-2">
           {variants.map((v) => (
-            <VariantRow key={v.id} variant={v} onEdit={() => edit(v)} onDone={onDone} />
+            <VariantRow
+              key={v.id}
+              productId={productId}
+              variant={v}
+              onEdit={() => edit(v)}
+              onDone={onDone}
+            />
           ))}
         </div>
       )}
@@ -310,10 +332,12 @@ function VariantsSection({
 }
 
 function VariantRow({
+  productId,
   variant,
   onEdit,
   onDone,
 }: {
+  productId: string;
   variant: ProductVariantDTO;
   onEdit: () => void;
   onDone: () => void;
@@ -322,6 +346,7 @@ function VariantRow({
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   async function adjust(): Promise<void> {
     setError(null);
@@ -362,11 +387,37 @@ function VariantRow({
             {variant.stock} in stock
           </Badge>
         </div>
-        <Button size="xs" variant="ghost" onClick={onEdit}>
-          Edit
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button size="xs" variant="ghost" onClick={onEdit}>
+            Edit
+          </Button>
+          <Button
+            size="xs"
+            variant="ghost"
+            className="text-destructive"
+            onClick={() => setDeleting(true)}
+          >
+            Delete
+          </Button>
+        </div>
       </div>
       {error && <ErrorAlert code={error} />}
+      <DeletionDialog
+        open={deleting}
+        onOpenChange={setDeleting}
+        title={`Delete variant ${variant.size}`}
+        confirmPhrase={variant.sku}
+        plan={() => planVariantDeletion({ data: { productId, variantId: variant.id } })}
+        confirm={(input) =>
+          deleteVariant({
+            data: { commandId: crypto.randomUUID(), confirmationToken: input.confirmationToken },
+          })
+        }
+        onDeleted={() => {
+          setDeleting(false);
+          onDone();
+        }}
+      />
       <form
         className="flex flex-wrap items-end gap-2"
         onSubmit={(e) => {
@@ -463,19 +514,7 @@ function MediaSection({
       {media.length > 0 && (
         <div className="mb-4 grid gap-2">
           {media.map((m) => (
-            <div
-              key={m.id}
-              className="border-border flex flex-wrap items-center gap-3 rounded-sm border p-3 text-sm"
-            >
-              <Badge variant="outline" className="font-mono text-[10px] uppercase">
-                {m.role}
-              </Badge>
-              <span className="text-foreground flex-1 truncate">{m.alt || "—"}</span>
-              <span className="text-muted-foreground font-mono text-xs">
-                {m.contentType} · {(m.size / 1024).toFixed(0)} KB
-              </span>
-              <Badge variant={m.state === "ready" ? "success" : "warning"}>{m.state}</Badge>
-            </div>
+            <MediaRow key={m.id} productId={productId} media={m} onDone={onDone} />
           ))}
           <p className="text-muted-foreground/70 font-mono text-[10px]">
             Image previews resolve once the product is published (draft media is not public).
@@ -528,6 +567,54 @@ function MediaSection({
         </div>
       </form>
     </Section>
+  );
+}
+
+function MediaRow({
+  productId,
+  media,
+  onDone,
+}: {
+  productId: string;
+  media: ProductMediaDTO;
+  onDone: () => void;
+}) {
+  const [deleting, setDeleting] = useState(false);
+  return (
+    <div className="border-border flex flex-wrap items-center gap-3 rounded-sm border p-3 text-sm">
+      <Badge variant="outline" className="font-mono text-[10px] uppercase">
+        {media.role}
+      </Badge>
+      <span className="text-foreground flex-1 truncate">{media.alt || "—"}</span>
+      <span className="text-muted-foreground font-mono text-xs">
+        {media.contentType} · {(media.size / 1024).toFixed(0)} KB
+      </span>
+      <Badge variant={media.state === "ready" ? "success" : "warning"}>{media.state}</Badge>
+      <Button
+        size="xs"
+        variant="ghost"
+        className="text-destructive"
+        onClick={() => setDeleting(true)}
+      >
+        Delete
+      </Button>
+      <DeletionDialog
+        open={deleting}
+        onOpenChange={setDeleting}
+        title="Delete image"
+        confirmPhrase={media.id}
+        plan={() => planProductMediaDeletion({ data: { productId, mediaId: media.id } })}
+        confirm={(input) =>
+          deleteProductMedia({
+            data: { commandId: crypto.randomUUID(), confirmationToken: input.confirmationToken },
+          })
+        }
+        onDeleted={() => {
+          setDeleting(false);
+          onDone();
+        }}
+      />
+    </div>
   );
 }
 
@@ -657,14 +744,44 @@ function StatusSection({ draft, onDone }: { draft: ProductDraftDTO; onDone: () =
   );
 }
 
+// ── Releases + per-release deletion (shared DeletionDialog) ─────────────────────
 function ReleasesSection({
+  productId,
   releases,
   activeVersion,
+  onDone,
 }: {
+  productId: string;
   releases: Detail["releases"];
   activeVersion: string | null;
+  onDone: () => void;
 }) {
+  const [target, setTarget] = useState<{ id: string; version: string } | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  // Deleting the live release may promote one of the other retained releases in
+  // its place (contract `replacementReleaseId`); "" means leave nothing live.
+  const [replacementId, setReplacementId] = useState("");
+
   if (releases.length === 0) return null;
+
+  const others = target ? releases.filter((r) => r.id !== target.id) : [];
+  const targetIsLive = target != null && target.version === activeVersion;
+  // The live release with alternatives gets a replacement-picker step first; every
+  // other release goes straight to the typed-confirmation dialog.
+  const pickingReplacement = targetIsLive && others.length > 0 && !confirmOpen;
+
+  function startDelete(r: { id: string; version: string }): void {
+    setReplacementId("");
+    setTarget(r);
+    setConfirmOpen(!(r.version === activeVersion && releases.length > 1));
+  }
+
+  function reset(): void {
+    setTarget(null);
+    setConfirmOpen(false);
+    setReplacementId("");
+  }
+
   return (
     <Section title="Releases">
       <div className="grid gap-1.5 font-mono text-sm">
@@ -678,10 +795,117 @@ function ReleasesSection({
                 </Badge>
               )}
             </span>
-            <span className="text-muted-foreground text-xs">{formatDate(r.publishedAt)}</span>
+            <div className="flex items-center gap-3">
+              <span className="text-muted-foreground text-xs">{formatDate(r.publishedAt)}</span>
+              <Button
+                size="xs"
+                variant="ghost"
+                className="text-destructive"
+                onClick={() => startDelete({ id: r.id, version: r.version })}
+              >
+                Delete
+              </Button>
+            </div>
           </div>
         ))}
       </div>
+
+      {pickingReplacement && target && (
+        <div className="border-border mt-4 grid gap-2 rounded-sm border border-dashed p-4">
+          <p className="text-warning font-mono text-xs">
+            {target.version} is live. Choose which release goes live once it's deleted.
+          </p>
+          <div className="grid gap-1.5">
+            <Label htmlFor="replacement">Promote in place of {target.version}</Label>
+            <select
+              id="replacement"
+              value={replacementId}
+              onChange={(e) => setReplacementId(e.target.value)}
+              className="border-border-strong bg-surface-raised h-10 rounded-sm border-2 px-3 text-sm"
+            >
+              <option value="">Leave nothing live</option>
+              {others.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.version}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" variant="destructive" onClick={() => setConfirmOpen(true)}>
+              Continue
+            </Button>
+            <Button size="sm" variant="ghost" onClick={reset}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {target && (
+        <DeletionDialog
+          open={confirmOpen}
+          onOpenChange={(o) => {
+            if (!o) reset();
+          }}
+          title={`Delete release ${target.version}`}
+          confirmPhrase={target.version}
+          plan={async () => {
+            const res = await planProductReleaseDeletion({
+              data: {
+                productId,
+                releaseId: target.id,
+                replacementReleaseId: replacementId || null,
+              },
+            });
+            // `invalid_replacement` isn't a DeletionError — give it plain copy so
+            // the dialog's plan-error alert reads sensibly.
+            if (!res.ok && res.error === "invalid_replacement") {
+              return { ok: false, error: "The chosen replacement release is no longer valid." };
+            }
+            return res;
+          }}
+          confirm={(input) =>
+            deleteProductRelease({
+              data: { commandId: crypto.randomUUID(), confirmationToken: input.confirmationToken },
+            })
+          }
+          onDeleted={() => {
+            reset();
+            onDone();
+          }}
+        />
+      )}
+    </Section>
+  );
+}
+
+// ── Danger zone: hard-delete the product and every release ─────────────────────
+function DangerSection({ draft, onDeleted }: { draft: ProductDraftDTO; onDeleted: () => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Section title="Danger zone">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-muted-foreground font-mono text-xs">
+          Permanently delete this product and every release, variant, and image.
+        </p>
+        <Button variant="destructive" size="sm" onClick={() => setOpen(true)}>
+          Delete product
+        </Button>
+      </div>
+      <DeletionDialog
+        open={open}
+        onOpenChange={setOpen}
+        title={`Delete “${draft.title}”`}
+        confirmPhrase={draft.slug}
+        plan={() => planProductDeletion({ data: { productId: draft.productId } })}
+        confirm={(input) =>
+          deleteProduct({
+            data: { commandId: crypto.randomUUID(), confirmationToken: input.confirmationToken },
+          })
+        }
+        onDeleted={onDeleted}
+      />
     </Section>
   );
 }

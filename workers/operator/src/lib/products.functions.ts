@@ -3,9 +3,9 @@
  * validate input → build `OperatorMeta` server-side → one owning `StoreOperator`
  * RPC). The browser supplies only the domain fields plus, for mutations, an
  * opaque `commandId` UUID; `OperatorMeta` (actor/requestId/idempotencyKey) is
- * always derived server-side by `buildOperatorMeta`. Reads carry a throwaway
- * server-minted commandId since the envelope requires meta but the read cores
- * never touch `idempotencyKey`. Mirrors `orders.functions.ts`.
+ * always derived server-side by `buildOperatorMeta`. Reads (and deletion plans)
+ * carry a throwaway server-minted commandId since the envelope requires meta but
+ * their cores never touch `idempotencyKey`. Mirrors `orders.functions.ts`.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { type } from "arktype";
@@ -13,9 +13,9 @@ import { buildOperatorMeta, requireOperatorActor } from "@/lib/server-fn-actor";
 import { storeOperator } from "@/lib/store-operator";
 
 const listInput = type({
-  "status?": "'draft' | 'active' | 'unavailable' | 'archived' | 'all'",
-  "cursor?": "string",
-  "limit?": "number",
+  "status?": "'draft' | 'active' | 'unavailable' | 'archived' | 'all' | undefined",
+  "cursor?": "string | undefined",
+  "limit?": "number | undefined",
 });
 
 const getInput = type({ productId: "1 <= string <= 64" });
@@ -24,7 +24,7 @@ const createInput = type({
   commandId: "string.uuid",
   slug: "1 <= string <= 64",
   title: "1 <= string <= 200",
-  "descriptionMarkdown?": "string | null",
+  "descriptionMarkdown?": "string | null | undefined",
   priceCents: "number.integer >= 0",
 });
 
@@ -32,10 +32,10 @@ const saveInput = type({
   commandId: "string.uuid",
   productId: "1 <= string <= 64",
   expectedRevision: "number.integer >= 0",
-  "title?": "1 <= string <= 200",
-  "descriptionMarkdown?": "string | null",
-  "priceCents?": "number.integer >= 0",
-  "slug?": "1 <= string <= 64",
+  "title?": "(1 <= string <= 200) | undefined",
+  "descriptionMarkdown?": "string | null | undefined",
+  "priceCents?": "(number.integer >= 0) | undefined",
+  "slug?": "(1 <= string <= 64) | undefined",
 });
 
 const publishInput = type({
@@ -48,7 +48,7 @@ const publishInput = type({
 const putVariantInput = type({
   commandId: "string.uuid",
   productId: "1 <= string <= 64",
-  "variantId?": "1 <= string <= 64",
+  "variantId?": "(1 <= string <= 64) | undefined",
   size: "1 <= string <= 40",
   sku: "1 <= string <= 80",
   stock: "number.integer >= 0",
@@ -66,6 +66,26 @@ const setStatusInput = type({
   productId: "1 <= string <= 64",
   status: "'draft' | 'active' | 'unavailable' | 'archived'",
 });
+
+const planProductInput = type({ productId: "1 <= string <= 64" });
+
+const planReleaseInput = type({
+  productId: "1 <= string <= 64",
+  releaseId: "1 <= string <= 64",
+  "replacementReleaseId?": "string | null | undefined",
+});
+
+const planVariantInput = type({
+  productId: "1 <= string <= 64",
+  variantId: "1 <= string <= 64",
+});
+
+const planMediaInput = type({
+  productId: "1 <= string <= 64",
+  mediaId: "1 <= string <= 64",
+});
+
+const confirmInput = type({ commandId: "string.uuid", confirmationToken: "1 <= string <= 512" });
 
 export const listProducts = createServerFn({ method: "GET" })
   .middleware([requireOperatorActor])
@@ -135,4 +155,79 @@ export const setProductStatus = createServerFn({ method: "POST" })
     const { commandId, ...input } = data;
     const meta = buildOperatorMeta(context.actor, "setProductStatus", commandId);
     return storeOperator().setProductStatus({ input, meta });
+  });
+
+// ── Hard-delete plan/confirm pairs (RFC-0001 D8): plans mint a throwaway
+// commandId; confirms consume the browser-supplied commandId as idempotency key.
+
+export const planProductDeletion = createServerFn({ method: "POST" })
+  .middleware([requireOperatorActor])
+  .validator((data: typeof planProductInput.infer) => planProductInput.assert(data))
+  .handler(({ data, context }) => {
+    const meta = buildOperatorMeta(context.actor, "planProductDeletion", crypto.randomUUID());
+    return storeOperator().planProductDeletion({ input: data, meta });
+  });
+
+export const deleteProduct = createServerFn({ method: "POST" })
+  .middleware([requireOperatorActor])
+  .validator((data: typeof confirmInput.infer) => confirmInput.assert(data))
+  .handler(({ data, context }) => {
+    const { commandId, ...input } = data;
+    const meta = buildOperatorMeta(context.actor, "deleteProduct", commandId);
+    return storeOperator().deleteProduct({ input, meta });
+  });
+
+export const planProductReleaseDeletion = createServerFn({ method: "POST" })
+  .middleware([requireOperatorActor])
+  .validator((data: typeof planReleaseInput.infer) => planReleaseInput.assert(data))
+  .handler(({ data, context }) => {
+    const meta = buildOperatorMeta(
+      context.actor,
+      "planProductReleaseDeletion",
+      crypto.randomUUID(),
+    );
+    return storeOperator().planProductReleaseDeletion({ input: data, meta });
+  });
+
+export const deleteProductRelease = createServerFn({ method: "POST" })
+  .middleware([requireOperatorActor])
+  .validator((data: typeof confirmInput.infer) => confirmInput.assert(data))
+  .handler(({ data, context }) => {
+    const { commandId, ...input } = data;
+    const meta = buildOperatorMeta(context.actor, "deleteProductRelease", commandId);
+    return storeOperator().deleteProductRelease({ input, meta });
+  });
+
+export const planVariantDeletion = createServerFn({ method: "POST" })
+  .middleware([requireOperatorActor])
+  .validator((data: typeof planVariantInput.infer) => planVariantInput.assert(data))
+  .handler(({ data, context }) => {
+    const meta = buildOperatorMeta(context.actor, "planVariantDeletion", crypto.randomUUID());
+    return storeOperator().planVariantDeletion({ input: data, meta });
+  });
+
+export const deleteVariant = createServerFn({ method: "POST" })
+  .middleware([requireOperatorActor])
+  .validator((data: typeof confirmInput.infer) => confirmInput.assert(data))
+  .handler(({ data, context }) => {
+    const { commandId, ...input } = data;
+    const meta = buildOperatorMeta(context.actor, "deleteVariant", commandId);
+    return storeOperator().deleteVariant({ input, meta });
+  });
+
+export const planProductMediaDeletion = createServerFn({ method: "POST" })
+  .middleware([requireOperatorActor])
+  .validator((data: typeof planMediaInput.infer) => planMediaInput.assert(data))
+  .handler(({ data, context }) => {
+    const meta = buildOperatorMeta(context.actor, "planProductMediaDeletion", crypto.randomUUID());
+    return storeOperator().planProductMediaDeletion({ input: data, meta });
+  });
+
+export const deleteProductMedia = createServerFn({ method: "POST" })
+  .middleware([requireOperatorActor])
+  .validator((data: typeof confirmInput.infer) => confirmInput.assert(data))
+  .handler(({ data, context }) => {
+    const { commandId, ...input } = data;
+    const meta = buildOperatorMeta(context.actor, "deleteProductMedia", commandId);
+    return storeOperator().deleteProductMedia({ input, meta });
   });
