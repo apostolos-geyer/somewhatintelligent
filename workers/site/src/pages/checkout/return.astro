@@ -1,0 +1,15 @@
+---
+import Base from "../../layouts/Base.astro";
+import TxShell from "../../components/TxShell.astro";
+import CheckoutReturn from "../../components/checkout/CheckoutReturn";
+
+// Stripe's embedded confirm redirects here with ?session_id=…; the browser-only
+// React island polls the checkout-session status and clears the local cart on
+// success. Transactional page: noindex.
+---
+
+<Base title="Order confirmation — somewhatintelligent" description="Order confirmation." noindex>
+  <TxShell title="Order status" maxWidth={560}>
+    <CheckoutReturn client:only="react" />
+  </TxShell>
+</Base>

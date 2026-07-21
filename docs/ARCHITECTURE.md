@@ -30,7 +30,7 @@ flowchart LR
   dev(["Developer<br/>operator"]):::person
 
   subgraph platform["Platform"]
-    spine["Platform Spine<br/><i>Cloudflare Workers monorepo</i><br/>bouncer · identity · store · guestlist · roadie · promoter"]:::system
+    spine["Platform Spine<br/><i>Cloudflare Workers monorepo</i><br/>bouncer · site · identity · store · publisher · operator<br/>guestlist · roadie · promoter"]:::system
   end
 
   cf["Cloudflare Edge<br/><i>TLS / DDoS / routing</i>"]:::ext
@@ -60,13 +60,13 @@ flowchart LR
 
 **Actors.**
 
-- **End User** — a browser. Uses one or more apps mounted under the platform's single host per environment (e.g., `platform.example/account` for identity, `platform.example/shop` for a storefront app). One Better Auth cookie scoped to the apex domain authenticates all apps.
-- **Developer / Operator** — the person running the monorepo. Runs `bun run dev` locally or `wrangler deploy` to ship. Operates the platform; not an end user of the apps it hosts.
+- **End User** — a browser. The public site (Astro-on-Workers **site**) owns the apex and renders every editorial + storefront route; **identity** is path-mounted at `platform.example/account`. One Better Auth cookie scoped to the apex domain authenticates across them.
+- **Developer / Operator** — the person running the monorepo. Runs `bun run dev` locally or `wrangler deploy` to ship. Also the sole user of the **operator** console (RFC-0001), which lives on its own `desk.*` host behind Cloudflare Access — outside bouncer and the customer IdP entirely. Operates the platform; not an end user of the apps it hosts.
 
 **External dependencies.**
 
 - **Cloudflare Edge** — TLS termination + DDoS + request routing. Every public host in the platform is a CF Custom Domain pointing at the bouncer Worker.
-- **Cloudflare D1** — relational store. Guestlist owns the auth schema (users, sessions, accounts, two-factor, organizations). Roadie owns the blob index. Store owns the storefront catalog + orders + the Stripe idempotency ledger. No app reads another worker's D1.
+- **Cloudflare D1** — relational store. Guestlist owns the auth schema (users, sessions, accounts, two-factor, organizations). Roadie owns the blob index. Store owns the release-model catalog + orders + the Stripe idempotency ledger. Publisher owns texts, software records, the fixed typed pages, and its media index. No app reads another worker's D1.
 - **Cloudflare R2 / S3-compatible storage** — roadie's blob backend. App workers never touch R2 directly; they request signed PUT/GET URLs from roadie.
 - **Cloudflare Queues** — store's async billing-ingestion transport. Store is the only worker that binds queues (`si-stripe-events-{env}` + a dead-letter queue). See §7.
 - **Resend / Cloudflare Email Service** — promoter's email backend. Staging uses Resend (`RESEND_API_KEY`); production uses the Cloudflare Email Service `send_email` binding (`EMAIL_PROVIDER` var selects). App workers never call the email backend directly.
@@ -84,15 +84,25 @@ The deployed Workers and what they do.
 flowchart LR
   user(["End User<br/>browser"]):::person
 
+  operator_person(["Operator<br/>desk.* + Access"]):::person
+
   subgraph platform["Platform Spine — Cloudflare Workers"]
     direction TB
     bouncer["<b>bouncer</b><br/><i>TS Worker</i><br/>public ingress · session refresh<br/>envelope mint · dispatch"]:::ctr
 
-    subgraph apps["Apps — TSS or any CF framework"]
+    subgraph apps["Public presentation + account"]
       direction LR
+      site["<b>site</b><br/><i>Astro-on-Workers</i><br/>apex · storefront + editorial SSR"]:::ctr
       identity["<b>identity</b><br/><i>TSS app</i><br/>sign-in · account · admin"]:::ctr
-      store["<b>store</b><br/><i>TSS app</i><br/>storefront · commerce · webhooks"]:::ctr
     end
+
+    subgraph authorities["Domain authorities (headless RPC)"]
+      direction LR
+      store["<b>store</b><br/><i>TS Worker</i><br/>commerce · /api/store · webhooks"]:::ctr
+      publisher["<b>publisher</b><br/><i>TS Worker</i><br/>texts · software · pages"]:::ctr
+    end
+
+    operator["<b>operator</b><br/><i>TSS app · desk.* + Access</i><br/>console · operator RPC · preview"]:::ctr
 
     guestlist["<b>guestlist</b><br/><i>TS Worker — Elysia + BA</i><br/>auth API · session authority"]:::ctr
     roadie["<b>roadie</b><br/><i>TS Worker</i><br/>blob storage + signed URLs"]:::ctr
@@ -102,20 +112,29 @@ flowchart LR
   d1b[("guestlist D1<br/><i>users · sessions · accounts</i>")]:::db
   d1r[("roadie D1<br/><i>blob index</i>")]:::db
   d1s[("store D1<br/><i>catalog · orders · event ledger</i>")]:::db
+  d1p[("publisher D1<br/><i>texts · pages · media index</i>")]:::db
   r2[("R2<br/><i>object storage</i>")]:::ext
   q[["si-stripe-events<br/>+ DLQ"]]:::ext
   email["Resend / CF Email"]:::ext
   stripe["Stripe"]:::ext
 
   user -->|"HTTPS baseDomain (path-mounted)"| bouncer
+  operator_person -->|"HTTPS desk.* (Access JWT)"| operator
   bouncer -->|"session resolve · /api proxy"| guestlist
-  bouncer -->|"stamped request + envelope"| identity
-  bouncer -->|"stamped request + envelope"| store
+  bouncer -->|"root / (passthrough)"| site
+  bouncer -->|"/account (vmf)"| identity
+  bouncer -->|"/api/store (passthrough)"| store
   stripe -->|"/hooks/store (passthrough)"| bouncer
 
+  site -->|"StoreCatalog read RPC"| store
+  site -->|"PublisherPublic read RPC"| publisher
+  operator -->|"StoreOperator mutation RPC"| store
+  operator -->|"PublisherOperator mutation RPC"| publisher
+  operator -.->|"HMAC preview POST"| site
   identity -.->|"fallback + admin RPC"| guestlist
   store -.->|"fallback · ensureStripeCustomer RPC"| guestlist
-  store -->|"blob grants"| roadie
+  store -->|"MediaStorage port → blob grants"| roadie
+  publisher -->|"MediaStorage port → blob grants"| roadie
   store -->|"verify → enqueue"| q
   q -->|"idempotent consumer"| store
   guestlist -->|"blob grants (entrypoint Roadie)"| roadie
@@ -124,6 +143,7 @@ flowchart LR
   guestlist --> d1b
   roadie --> d1r
   store --> d1s
+  publisher --> d1p
   roadie --> r2
   promoter --> email
 
@@ -135,15 +155,18 @@ flowchart LR
 
 ## §2.1 Containers in detail
 
-| Container          | Role                                                                                                                                                                                                                                                                                                                                                                                                                | Public host?                                                                                                                                   | Holds secrets?                                                                                        |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| **bouncer**        | Single public ingress. Resolves session via guestlist. Mints + stamps bouncer attestation envelope. Dispatches to apps (passthrough or mounted-microfrontend mode). Strips privileged headers from inbound and outbound traffic.                                                                                                                                                                                    | Yes — every public hostname is a bouncer Custom Domain.                                                                                        | `BNC_ATT_PRIV` (Ed25519 private key for envelope signing). No `BETTER_AUTH_SECRET`.                   |
-| **guestlist**      | Sole authority on session validity. Owns Better Auth wiring, the user database, plugin set (passkey, twoFactor, oauthProvider, admin, organization). Exposes `/api/auth/*` (BA handler), `/api/avatar/*` (presigned-upload flow via roadie), `/admin/*` (sessions, stats, API keys, OAuth clients), `/user/connections`, `/u/avatar/:refId` (public avatar read broker), `/providers`, `/.well-known/*`, `/health`. | No public Custom Domain in the target topology. Reached only via service bindings (from bouncer for `/api`/`/u`, from apps for session/admin). | `BETTER_AUTH_SECRET`, OAuth client secrets, internal API tokens.                                      |
-| **roadie**         | Blob storage and signed-URL minting for app-uploaded files. Apps request "give me a PUT URL for blob X for user Y"; roadie validates and returns a presigned R2 URL.                                                                                                                                                                                                                                                | No public Custom Domain.                                                                                                                       | `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, signed-meta secret.                                       |
-| **promoter**       | Outbound transactional email. Wraps Resend behind a typed RPC surface (`sendVerificationEmail`, `sendMagicLinkEmail`, etc.). Apps don't speak to Resend; they speak to promoter over a service binding.                                                                                                                                                                                                             | No public Custom Domain.                                                                                                                       | `RESEND_API_KEY`, signed-meta secret.                                                                 |
-| **identity** (app) | Sign-in, sign-up, account settings, admin sessions surface. The reference TanStack Start app.                                                                                                                                                                                                                                                                                                                       | No direct host. `<baseDomain>/account` is bouncer → identity (vmf-mounted).                                                                    | None at the app level. `BOUNCER_ATTESTATION_KEYS` is committed code (public keys), not a secret.      |
-| **store** (app)    | Storefront + commerce. TanStack Start app owning its own D1 (catalog, `customer_order`, `processed_stripe_event` ledger). Hosts the commerce billing pipeline: a `/hooks/store` webhook front door that verifies + enqueues Stripe events, and a `queue()` consumer that idempotently applies order state (§7). Binds guestlist (session + `ensureStripeCustomer` RPC) and roadie (product photos).                 | No direct host. `<baseDomain>/shop` is bouncer → store (vmf); `<baseDomain>/hooks/store` is bouncer → store (passthrough, raw body).           | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SIGNING_SECRET` (both optional — absent = manual-stub checkout). |
-| **other apps**     | Product-specific. Each app reaches the same primitives via the same kit factories. May be TSS or any other CF-deployable framework.                                                                                                                                                                                                                                                                                 | Each gets a path mount under the shared host, owned by bouncer (passthrough or vmf) — e.g. `store` at `<baseDomain>/shop`.                     | None.                                                                                                 |
+| Container          | Role                                                                                                                                                                                                                                                                                                                                                                                                                 | Public host?                                                                                                                                                                                    | Holds secrets?                                                                                                                 |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **bouncer**        | Single public ingress. Resolves session via guestlist. Mints + stamps bouncer attestation envelope. Dispatches to apps (passthrough or mounted-microfrontend mode). Strips privileged headers from inbound and outbound traffic.                                                                                                                                                                                     | Yes — every public hostname is a bouncer Custom Domain.                                                                                                                                         | `BNC_ATT_PRIV` (Ed25519 private key for envelope signing). No `BETTER_AUTH_SECRET`.                                            |
+| **guestlist**      | Sole authority on session validity. Owns Better Auth wiring, the user database, plugin set (passkey, twoFactor, oauthProvider, admin, organization). Exposes `/api/auth/*` (BA handler), `/api/avatar/*` (presigned-upload flow via roadie), `/admin/*` (sessions, stats, API keys, OAuth clients), `/user/connections`, `/u/avatar/:refId` (public avatar read broker), `/providers`, `/.well-known/*`, `/health`.  | No public Custom Domain in the target topology. Reached only via service bindings (from bouncer for `/api`/`/u`, from apps for session/admin).                                                  | `BETTER_AUTH_SECRET`, OAuth client secrets, internal API tokens.                                                               |
+| **roadie**         | Blob storage and signed-URL minting for app-uploaded files. Apps request "give me a PUT URL for blob X for user Y"; roadie validates and returns a presigned R2 URL.                                                                                                                                                                                                                                                 | No public Custom Domain.                                                                                                                                                                        | `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, signed-meta secret.                                                                |
+| **promoter**       | Outbound transactional email. Wraps Resend behind a typed RPC surface (`sendVerificationEmail`, `sendMagicLinkEmail`, etc.). Apps don't speak to Resend; they speak to promoter over a service binding.                                                                                                                                                                                                              | No public Custom Domain.                                                                                                                                                                        | `RESEND_API_KEY`, signed-meta secret.                                                                                          |
+| **identity** (app) | Sign-in, sign-up, account settings, admin sessions surface. The reference TanStack Start app.                                                                                                                                                                                                                                                                                                                        | No direct host. `<baseDomain>/account` is bouncer → identity (vmf-mounted).                                                                                                                     | None at the app level. `BOUNCER_ATTESTATION_KEYS` is committed code (public keys), not a secret.                               |
+| **site**           | The sole public presentation (RFC-0001 D4). Astro-on-Workers (`@astrojs/cloudflare`, `output: "server"`) rendering every editorial + storefront route from read models. Binds `STORE→StoreCatalog` and `PUBLISHER→PublisherPublic` (read-only entrypoints only), plus `@stripe/stripe-js` commerce islands calling `/api/store`.                                                                                     | Yes, indirectly — owns the apex ROOT `/` as a bouncer `passthrough` catch-all (not vmf: nothing to strip at root).                                                                              | None. Holds only read-only RPC entrypoints (INV-SITE-1); no D1/R2/Stripe/draft binding.                                        |
+| **store** (app)    | Headless commerce authority (RFC-0001 D3/D12). Owns its D1 (release-model catalog, `customer_order`, `processed_stripe_event` ledger). Exposes `StoreCatalog` (public read, bound to Site) + `StoreOperator` (operator mutation, bound to Operator) RPC entrypoints and a Hono `/api/store` buyer HTTP surface; still hosts the `/hooks/store` webhook + `queue()` consumer (§7). No storefront UI and no vmf mount. | No direct host. `<baseDomain>/api/store` + `<baseDomain>/hooks/store` are bouncer → store (both `passthrough`, raw body on the webhook).                                                        | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SIGNING_SECRET` (both optional — absent = manual-stub checkout).                          |
+| **publisher**      | Focused publishing authority (RFC-0001 D2) for texts, software records, and the fixed typed pages. Owns its D1 (drafts + immutable releases + media index). Exposes `PublisherPublic` (read, bound to Site) + `PublisherOperator` (mutation, bound to Operator) RPC entrypoints. Media bytes stay behind its private `MediaStorage` port.                                                                            | No direct host — reached only over service bindings from Site and Operator.                                                                                                                     | None beyond attestation public keys.                                                                                           |
+| **operator** (app) | The single Access-protected operator console (RFC-0001 D1). TanStack Start app whose server fns wrap `StoreOperator`/`PublisherOperator` RPCs; two-step impact-preview hard-delete; draft preview via HMAC-signed POST to Site's `/__preview`.                                                                                                                                                                       | Yes, directly — its own `desk.*` custom domain (`desk.somewhatintelligent.ca` / `desk.staging.…`), **outside bouncer**, fronted by Cloudflare Access. `workers_dev`/`preview_urls` are `false`. | `POLICY_AUD`, `TEAM_DOMAIN` (Access JWT verification), `PREVIEW_SIGNING_SECRET`. No D1/R2/Stripe/Guestlist binding (INV-OP-2). |
+| **other apps**     | Product-specific. Each app reaches the same primitives via the same kit factories. May be TSS or any other CF-deployable framework.                                                                                                                                                                                                                                                                                  | Each gets a path mount under the shared host, owned by bouncer (passthrough or vmf) — e.g. `identity` at `<baseDomain>/account`.                                                                | None.                                                                                                                          |
 
 ## §2.2 Service binding graph
 
@@ -152,26 +175,34 @@ The trust graph is a DAG:
 ```mermaid
 flowchart TD
   edge[Cloudflare Edge] --> gw[bouncer]
+  access[Access desk.*] --> op[operator]
+  gw --> ste[site]
   gw --> idn[identity]
   gw --> str[store]
   gw -->|"session resolve · /api proxy"| bnc[(guestlist)]
+  ste -->|"StoreCatalog / PublisherPublic read"| str
+  ste -->|"PublisherPublic read"| pub[publisher]
+  op -->|"StoreOperator / PublisherOperator mutation"| str
+  op -->|"PublisherOperator mutation"| pub
   idn -.->|"fallback + admin RPC"| bnc
   str -.->|"fallback · ensureStripeCustomer"| bnc
   str --> roadie[(roadie)]
+  pub --> roadie
   bnc --> roadie
   bnc --> promoter[(promoter)]
 
   classDef def fill:#e8e8ff,stroke:#5b5b9c
-  class edge,gw,idn,str,bnc,roadie,promoter def
+  class edge,access,gw,ste,idn,str,pub,op,bnc,roadie,promoter def
 ```
 
-- **Bouncer** binds to every app (`IDENTITY`, `STORE`) and to guestlist. Bouncer never binds to roadie or promoter (no use case).
-- **Apps** bind to guestlist (session fallback + `/api/auth` proxy + user search; store also for `ensureStripeCustomer`), and where useful to roadie (blob grants). Store binds roadie for product photos; identity binds only guestlist today.
+- **Bouncer** binds to the two path-mounted/apex apps it dispatches to (`SITE`, `IDENTITY`) plus `STORE` (for `/api/store` + `/hooks/store` passthrough) and guestlist. Bouncer never binds to publisher, operator, roadie, or promoter (no use case). **Operator is not in bouncer's graph at all** — it lives on `desk.*` behind Access.
+- **Site** binds only read-only entrypoints: `STORE→StoreCatalog` and `PUBLISHER→PublisherPublic` (INV-SITE-1 — no mutation, no draft, no D1/R2/Stripe binding).
+- **Operator** binds only the mutation entrypoints: `STORE→StoreOperator` and `PUBLISHER→PublisherOperator`, and reaches Site for draft preview over an HMAC-signed POST (not a binding). It holds no D1/R2/Stripe/Guestlist binding (INV-OP-2).
+- **Apps** bind to guestlist (session fallback + `/api/auth` proxy + user search; store also for `ensureStripeCustomer`), and where useful to roadie (blob grants via each worker's `MediaStorage` port). Store and Publisher bind roadie for media; identity binds only guestlist today.
 - **Guestlist** is not a leaf — it binds **promoter** (transactional email, entrypoint `Promoter`) and **roadie** (avatar blobs, entrypoint `Roadie` + `props.callerApp: "guestlist"`). Every worker that binds `ROADIE` must set that entrypoint + `props.callerApp`, or roadie's `readCallerApp` throws on every call (§9, roadie runbook).
-- **Apps** do not bind to each other. App-to-app communication, when needed, is mediated by bouncer or by a shared service.
-- **Roadie and promoter** are the true leaves — they bind nothing inside the platform. They are RPC _targets_ (of guestlist and store), not callers.
+- **Roadie and promoter** are the true leaves — they bind nothing inside the platform. They are RPC _targets_ (of guestlist, store, and publisher), not callers.
 
-This shape is what makes the security model tractable: the platform's only inbound surface from the public Internet is bouncer, and the platform's authority chain converges on guestlist.
+This shape is what makes the security model tractable: the platform's only public inbound surface is bouncer (plus operator's Access-gated `desk.*` host), and the platform's session authority converges on guestlist.
 
 ---
 
@@ -377,7 +408,7 @@ Promoter is similar in shape but for email. Apps call typed RPCs over a service 
 
 ## §3.6 store
 
-Store is the platform's storefront + commerce app. Structurally it is a second reference TanStack Start app (same kit factories, envelope verifier, and dev-direct topology as identity — §3.3), but it adds three things identity doesn't have: **its own D1 database**, the **Stripe commerce webhook pipeline** (the only Cloudflare Queue producer/consumer on the platform), and a **product-analytics** server seam (§4.8).
+Store is the platform's **headless** commerce authority (RFC-0001 D3/D12) — no storefront UI, no SSR, no client bundle. Site renders the storefront; Store owns the commerce state and exposes it three ways: **`StoreCatalog`** (public read RPC, bound to Site), **`StoreOperator`** (operator mutation RPC, bound to Operator), and a Hono **`/api/store`** buyer HTTP surface (cart/checkout/orders, consumed by Site's islands). It keeps the three things identity lacks: **its own D1 database** (now a release-model catalog — thin `product` → immutable `product_release` — plus `customer_order` and the Stripe ledger), the **Stripe commerce webhook pipeline** (`/hooks/store`, the only Cloudflare Queue producer/consumer on the platform), and a **product-analytics** server seam (§4.8). Media bytes stay behind a private `MediaStorage {put/read/delete}` port (RFC-0001 D10) — one adapter wraps Roadie, and no Roadie register/finalize/signed-URL/referenceId concept crosses a DTO, URL, or schema boundary.
 
 ```mermaid
 flowchart LR
@@ -386,8 +417,9 @@ flowchart LR
     w_entry[worker entry<br/>src/worker.ts]:::cmp
     hook[webhook front door<br/>src/lib/stripe-webhook.ts<br/><i>verify + enqueue + 200</i>]:::cmp
     consumer[queue consumer<br/>src/lib/stripe-queue.ts<br/>+ stripe-events.ts]:::cmp
-    routes_node[TSS routes<br/>src/routes/ · orders.functions.ts]:::cmp
-    db_node[Drizzle schema<br/>src/db/schema.ts]:::cmp
+    rpc_node[RPC entrypoints<br/>StoreCatalog · StoreOperator]:::cmp
+    api_node[/api/store HTTP<br/>src/api/store-api.ts · Hono]:::cmp
+    db_node[Drizzle schema<br/>src/schema.ts]:::cmp
   end
 
   q[[si-stripe-events<br/>+ DLQ]]:::db
@@ -395,25 +427,27 @@ flowchart LR
   stripe([Stripe]):::db
 
   w_entry -->|"/hooks/store"| hook
-  w_entry -->|"else → SSR"| routes_node
+  w_entry -->|"/api/store"| api_node
+  w_entry -->|"RPC (Site/Operator)"| rpc_node
   stripe -->|signed webhook| hook
   hook -->|send| q
   q -->|batch| consumer
   consumer --> db_node
-  routes_node --> db_node
+  api_node --> rpc_node
+  rpc_node --> db_node
   db_node --> d1
 
   classDef cmp fill:#85bbf0,stroke:#5d82a8,color:#000
   classDef db fill:#3a6a9e,stroke:#1d3a5c,color:#fff
 ```
 
-| component          | role                                                                                                                                                                                                                                                       |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `worker entry`     | `src/worker.ts` — hand-written `fetch` that **short-circuits `/hooks/store` before SSR** (webhook needs the raw body, not TSS), and otherwise wraps the request in `runWithExecutionContext(ctx, …)` + Start. Also exports the `queue()` consumer handler. |
-| webhook front door | `handleStoreStripeWebhook` — config gate → signature check (`constructEventAsync`) → enqueue a compact event snapshot → `200`. Dumb by design (§7).                                                                                                        |
-| queue consumer     | `consumeStripeEventBatch` / `processStoreStripeEvent` — idempotent per-message ack/retry against the `processed_stripe_event` ledger; a name-regex forks the DLQ batch to `processDlqBatch` (§7).                                                          |
-| TSS routes         | storefront browse/cart/checkout + `orders.functions.ts` (`placeOrder`). Checkout today is the **manual pending→paid stub** — Checkout Session _creation_ is deferred (§7).                                                                                 |
-| schema             | Drizzle: `customer_order` (+ nullable `stripe_customer_id`, unique `stripe_checkout_session_id`, `payment_status`), catalog tables, and the `processed_stripe_event` idempotency ledger.                                                                   |
+| component          | role                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `worker entry`     | `src/worker.ts` — hand-written `fetch` with **no SSR**: re-exports the `StoreCatalog`/`StoreOperator` RPC classes, routes `/hooks/store` (raw body) and the Hono `/api/store` app, and exports the `queue()` consumer handler + the media-GC scheduled drain.                                                                                                                                                                                             |
+| webhook front door | `handleStoreStripeWebhook` — config gate → signature check (`constructEventAsync`) → enqueue a compact event snapshot → `200`. Dumb by design (§7). Webhook path is `/hooks/store/stripe`.                                                                                                                                                                                                                                                                |
+| queue consumer     | `consumeStripeEventBatch` / `processStoreStripeEvent` — idempotent per-message ack/retry against the `processed_stripe_event` ledger; a name-regex forks the DLQ batch to `processDlqBatch` (§7).                                                                                                                                                                                                                                                         |
+| RPC + `/api/store` | `StoreCatalog` (read: `listProducts`/`getProductBySlug`/`openProductMedia`) + `StoreOperator` (mutation: draft/publish/variant/stock/orders + two-step delete). The Hono `/api/store` surface (`GET /config`, `POST /checkout-sessions`, `GET /orders/:number`, `GET /media/:mediaId`, …) resolves the buyer from the bouncer envelope minted on the `/api/store` mount. Checkout is the **manual pending→paid stub** — Session _creation_ deferred (§7). |
+| schema             | Drizzle: release-model catalog (thin `product`, `product_draft`, immutable `product_release`, `product_release_image`, storage-neutral `product_image`, `store_operator_event`, deletion-intent, `store_media_gc_outbox`), `customer_order` (+ nullable `stripe_customer_id`, unique `stripe_checkout_session_id`, `payment_status`), and the `processed_stripe_event` idempotency ledger.                                                                |
 
 **Status.** The billing pipeline is at **ingestion-only** maturity (exec-plan `0002`, phase P1): webhook receipt → verify → enqueue → idempotent consumer → order-state update all exist and are tested. What is **not** wired yet: Checkout Session creation (nothing calls `sessions.create`), so no order carries a session id, so every _real_ event currently finds no matching order and drains to the DLQ as retryable — the design is forward-compatible (no ledger row is written until an order matches). The `@better-auth/stripe` subscription plugin on guestlist is likewise present-but-dormant (§7). Full pipeline detail is §7.
 
@@ -519,7 +553,7 @@ joseHeader = { "alg": "EdDSA", "kid": "gw-2026-05" }
 
 **Anti-replay properties.**
 
-- `host` field binds the envelope to the routed hostname. A stolen envelope minted for `staging.<baseDomain>` is rejected on `<baseDomain>` (production), and vice versa. Apps sharing one host via path mounts (e.g. `/account`, `/shop`) share that host's envelope trust — the mount boundary between them is enforced by bouncer's routing, not by the envelope.
+- `host` field binds the envelope to the routed hostname. A stolen envelope minted for `staging.<baseDomain>` is rejected on `<baseDomain>` (production), and vice versa. Apps sharing one host via path mounts (e.g. `/` → site, `/account` → identity, `/api/store` → store) share that host's envelope trust — the mount boundary between them is enforced by bouncer's routing, not by the envelope.
 - `exp = iat + 30s`. Replay window is 30 seconds, matching the standard JWT compromise — no server-side nonce store required.
 - `alg` is hardcoded `"EdDSA"` in the verifier; `alg: "none"` and algorithm-confusion attacks are rejected.
 - Unknown `kid` is rejected (no fall-open behavior).
@@ -1173,10 +1207,10 @@ CI/CD runs entirely on **RWX** (a dependency-graph CI runner) with **Captain** (
 **The fleet + the canonical deploy order** (identical in every lane and script):
 
 ```
-promoter  roadie  guestlist  identity  store  bouncer   ← bouncer LAST
+promoter  roadie  guestlist  identity  store  publisher  site  bouncer   ← bouncer LAST
 ```
 
-`promoter`/`roadie` are leaves (deploy first); `guestlist` binds them; `identity`/`store` bind guestlist; `bouncer` binds guestlist + identity + store and deploys **last** so the public router never points at an undeployed upstream (wrangler's binding-existence check would otherwise fail — CF error `10143`). The vendored `inbox` app is outside all lanes (manual `cd inbox && bun run deploy`).
+`promoter`/`roadie` are leaves (deploy first); `guestlist` binds them; `identity`/`store` bind guestlist; `publisher` binds roadie + store; `site` binds publisher + store; `bouncer` binds guestlist + identity + store + site and deploys **last** so the public router never points at an undeployed upstream (wrangler's binding-existence check would otherwise fail — CF error `10143`). The vendored `inbox` app and the operator console are outside all lanes (manual `cd inbox && bun run deploy` / `cd workers/operator && bun run deploy:staging`).
 
 ## §8.1 The lanes
 
@@ -1246,7 +1280,7 @@ Secrets live in two RWX vaults: **`si_deploy`** (main-locked — `CLOUDFLARE_API
 
 ## §9.1 The wrangler config model
 
-Each worker has **one checked-in `wrangler.jsonc`** (source, not generated): the **top level is staging**, and a single **`env.production`** block is production. There is no `env.staging`. Cloudflare named environments **do not inherit** bindings/vars, so each `env.production` block **re-declares everything** — `name`, vars, D1, queues, services, routes, observability. Load-bearing details, uniform across all six workers:
+Each worker has **one checked-in `wrangler.jsonc`** (source, not generated): the **top level is staging**, and a single **`env.production`** block is production. There is no `env.staging`. Cloudflare named environments **do not inherit** bindings/vars, so each `env.production` block **re-declares everything** — `name`, vars, D1, queues, services, routes, observability. Load-bearing details, uniform across every worker:
 
 - **Explicit production `name`** (`si-<worker>-production`) is mandatory — without it wrangler derives `si-<worker>-staging-production` (top-level name + `-production`), a brand-new worker.
 - `workers_dev` / `preview_urls` **must be re-set to `false`** in production (those two _are_ inherited from the top level, unlike bindings).
@@ -1332,13 +1366,13 @@ flowchart TD
 
 When the platform is running, one of these topologies is in effect.
 
-| Topology                                   | Where                                                                                     | What's in front of apps | Envelope present                            | Identity resolution                                                                                                                                          |
-| ------------------------------------------ | ----------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Production**                             | `<baseDomain>` (+ `www`) via CF Custom Domain, apps path-mounted (`/account`, `/shop`, …) | bouncer                 | always                                      | `getEnvelope()` = signed payload, no I/O. `getSession()` = guestlist service-binding RPC (cookies passed through bouncer). Verifier enforces.                |
-| **Staging**                                | `staging.<baseDomain>` via CF Custom Domain (`workers_dev: false`), same path mounts      | bouncer                 | always                                      | same as prod (or dev fallback, see §4.1.4)                                                                                                                   |
-| **Dev (full)**                             | `<devDomain>` via portless, same path mounts                                              | bouncer (run locally)   | always                                      | same as prod                                                                                                                                                 |
-| **Dev-direct, no stamper** (e.g. identity) | `<host>.<devDomain>` via portless, or `127.0.0.1:<port>` via wrangler dev                 | nothing                 | never                                       | `getEnvelope()` returns `null` (verifier kind `missing` in dev). `getSession()` still hits guestlist over service binding via inbound cookies.               |
-| **Dev-direct, with stamper**               | `<host>.<devDomain>` via portless                                                         | nothing                 | always (app self-mints at `fetch` boundary) | `createDevEnvelopeStamper` reads cookie → guestlist → signs with `LOCAL_BNC_ATT_PRIV`. Verifier accepts the dev-kid envelope just like prod; same code path. |
+| Topology                                   | Where                                                                                                       | What's in front of apps | Envelope present                            | Identity resolution                                                                                                                                          |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Production**                             | `<baseDomain>` (+ `www`) via CF Custom Domain, site at `/`, apps path-mounted (`/account`, `/api/store`, …) | bouncer                 | always                                      | `getEnvelope()` = signed payload, no I/O. `getSession()` = guestlist service-binding RPC (cookies passed through bouncer). Verifier enforces.                |
+| **Staging**                                | `staging.<baseDomain>` via CF Custom Domain (`workers_dev: false`), same path mounts                        | bouncer                 | always                                      | same as prod (or dev fallback, see §4.1.4)                                                                                                                   |
+| **Dev (full)**                             | `<devDomain>` via portless, same path mounts                                                                | bouncer (run locally)   | always                                      | same as prod                                                                                                                                                 |
+| **Dev-direct, no stamper** (e.g. identity) | `<host>.<devDomain>` via portless, or `127.0.0.1:<port>` via wrangler dev                                   | nothing                 | never                                       | `getEnvelope()` returns `null` (verifier kind `missing` in dev). `getSession()` still hits guestlist over service binding via inbound cookies.               |
+| **Dev-direct, with stamper**               | `<host>.<devDomain>` via portless                                                                           | nothing                 | always (app self-mints at `fetch` boundary) | `createDevEnvelopeStamper` reads cookie → guestlist → signs with `LOCAL_BNC_ATT_PRIV`. Verifier accepts the dev-kid envelope just like prod; same code path. |
 
 The `getEnvelope()` fast path costs nothing — JWS verify is sub-millisecond. The `getSession()` path costs one service-binding RPC, same in every topology that has a guestlist binding. The dev-stamper itself adds one guestlist RPC at the worker `fetch` boundary in dev only (no-op outside dev).
 
@@ -1366,4 +1400,4 @@ The `getEnvelope()` fast path costs nothing — JWS verify is sub-millisecond. T
 - **Promote-over-rebuild** — staging-on-merge reuses the exact `wrangler versions upload` artifact a PR's preview already built (tag `pr-<n>-<head-sha>`) and flips it to 100%, rather than rebuilding; full deploy is the fallback (§8.3).
 - **release-please (manifest mode)** — per-worker components producing `<worker>-v<x.y.z>` tags from one grouped Release PR; merging it cuts tags and deploys the released subset in canonical order (§8.4).
 - **vite-plus (`vp`) / vitest-pool-workers** — the test/build toolchain; the D1 test tier runs inside workerd+miniflare against a real local D1 (§10).
-- **VMF** — virtual microfrontend; bouncer's `mode: "vmf"` rewrites HTML/CSS/Location/cookies when mounting an upstream app under a path prefix. `"passthrough"` (no rewriting) is used for mounts where the upstream is already prefix-aware, such as `/api` → guestlist. **Status:** implemented in `@somewhatintelligent/bouncer` (proxy.ts) and covered by that package's suite in the platform repo; si keeps `workers/bouncer/__tests__/store-mount.test.ts` for its own mount topology. The production route table uses `mode: "vmf"` for the `/account` (identity) and `/shop` (store) mounts.
+- **VMF** — virtual microfrontend; bouncer's `mode: "vmf"` rewrites HTML/CSS/Location/cookies when mounting an upstream app under a path prefix. `"passthrough"` (no rewriting) is used for mounts where the upstream is already prefix-aware, such as `/api` → guestlist. **Status:** implemented in `@somewhatintelligent/bouncer` (proxy.ts) and covered by that package's suite in the platform repo; si keeps `workers/bouncer/__tests__/store-mount.test.ts` for its own mount topology. The production route table uses `mode: "vmf"` for the single `/account` (identity) mount; site (`/`), store (`/api/store`, `/hooks/store`), and guestlist (`/api`) are all `passthrough`. Root vmf is deliberately unused — site owns the apex with no prefix to strip (INV-ROUTE-1).

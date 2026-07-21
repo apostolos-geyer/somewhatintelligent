@@ -6,35 +6,40 @@ import { env } from "cloudflare:test";
 import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
+import { seedProduct } from "./helpers";
 
-const { product, productImage, productVariant, customerOrder } = schema;
+const { productBase, productImage, productVariant, customerOrder } = schema;
 const db = drizzle(env.DB, { schema });
 
-async function seedProduct(id: string, slug: string) {
-  const now = new Date();
-  await db.insert(product).values({
-    id,
-    slug,
-    title: id,
-    priceCents: 1000,
-    status: "active",
-    createdBy: "admin",
-    createdAt: now,
-    updatedAt: now,
-  });
+// A minimal ready product image in the storage-neutral shape.
+function imageValues(over: Partial<typeof productImage.$inferInsert> = {}) {
+  return {
+    id: "img1",
+    productId: "p1",
+    storageKey: "store/p1/img1",
+    contentSha256: "a".repeat(64),
+    contentType: "image/webp",
+    sizeBytes: 1024,
+    alt: "cover",
+    role: "cover" as const,
+    position: 0,
+    state: "ready" as const,
+    createdAt: new Date(),
+    readyAt: new Date(),
+    ...over,
+  } satisfies typeof productImage.$inferInsert;
 }
 
 beforeEach(async () => {
-  await db.delete(productImage);
-  await db.delete(productVariant);
-  await db.delete(product);
+  // Deleting the identity row cascades draft/release/image/variant.
+  await db.delete(productBase);
   await db.delete(customerOrder);
 });
 
 describe("catalog constraints", () => {
   it("SKU is globally unique", async () => {
-    await seedProduct("p1", "one");
-    await seedProduct("p2", "two");
+    await seedProduct({ id: "p1", slug: "one" });
+    await seedProduct({ id: "p2", slug: "two" });
     await db.insert(productVariant).values({
       id: "v1",
       productId: "p1",
@@ -56,7 +61,7 @@ describe("catalog constraints", () => {
   });
 
   it("(productId, size) is unique — no two variants of the same size per product", async () => {
-    await seedProduct("p1", "one");
+    await seedProduct({ id: "p1", slug: "one" });
     await db.insert(productVariant).values({
       id: "v1",
       productId: "p1",
@@ -78,12 +83,20 @@ describe("catalog constraints", () => {
   });
 
   it("product.slug is unique", async () => {
-    await seedProduct("p1", "same-slug");
-    await expect(seedProduct("p2", "same-slug")).rejects.toThrow();
+    await seedProduct({ id: "p1", slug: "same-slug" });
+    await expect(seedProduct({ id: "p2", slug: "same-slug" })).rejects.toThrow();
+  });
+
+  it("product_image.storage_key is globally unique", async () => {
+    await seedProduct({ id: "p1", slug: "one" });
+    await db.insert(productImage).values(imageValues({ id: "img1" }));
+    await expect(
+      db.insert(productImage).values(imageValues({ id: "img2", position: 1 })),
+    ).rejects.toThrow(); // same storage_key → must throw
   });
 
   it("deleting a product cascades its variants and images", async () => {
-    await seedProduct("p1", "one");
+    await seedProduct({ id: "p1", slug: "one" });
     await db.insert(productVariant).values({
       id: "v1",
       productId: "p1",
@@ -92,16 +105,9 @@ describe("catalog constraints", () => {
       stock: 1,
       createdAt: new Date(),
     });
-    await db.insert(productImage).values({
-      id: "img1",
-      productId: "p1",
-      roadieReferenceId: "ref",
-      position: 0,
-      uploadedAt: new Date(),
-      createdAt: new Date(),
-    });
+    await db.insert(productImage).values(imageValues());
 
-    await db.delete(product).where(eq(product.id, "p1"));
+    await db.delete(productBase).where(eq(productBase.id, "p1"));
     expect(
       await db.select().from(productVariant).where(eq(productVariant.productId, "p1")),
     ).toEqual([]);

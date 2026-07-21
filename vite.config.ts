@@ -17,7 +17,12 @@ const ignorePatterns = [".agents/**", ".claude/**", "dist/**", "**/routeTree.gen
 // (`cd inbox && bun run test`) instead of double-running under root `vp
 // test` against a different, unpinned vitest resolved from inbox's own
 // node_modules.
-const lintIgnorePatterns = [...ignorePatterns, "inbox/**"];
+// Worker test suites are format-only at the root tier, mirroring the staged
+// partition below: their correctness signal is each worker's own vitest run
+// (`cd <worker> && bun run test`), not the type-aware lint, which flags
+// test-local looseness (untyped callback params, compare-less sorts) that the
+// suites' runtime assertions already cover.
+const lintIgnorePatterns = [...ignorePatterns, "inbox/**", "workers/**/__tests__/**"];
 const testExcludePatterns = [...ignorePatterns, "inbox/**"];
 
 export default defineConfig({

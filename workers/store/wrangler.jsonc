@@ -13,33 +13,18 @@
   "preview_urls": true,
   "vars": {
     "ENVIRONMENT": "staging",
-    // The mount prefix, exposed to the client bundle (vite.config CLIENT_VARS)
-    // as the SINGLE source for the client-only TanStack Router basepath
-    // (src/lib/basepath.ts + src/router.tsx). Bouncer vmf-mounts the store at
-    // `/shop`, stripping it inbound (server serves at root) and rewriting
-    // assets outbound; the client router re-applies `/shop` to the URL bar so
-    // in-app navigation + hard refresh keep the prefix. Local dev-direct sets
-    // "/" via .dev.vars.
-    "PUBLIC_BASE": "/shop",
-    // The store's own PUBLIC address (vmf-mounted at `/shop`). Used for
-    // self-referencing absolute links.
+    // The store's own PUBLIC address. Used for the bouncer envelope
+    // `expectedHost` check (src/lib/platform.ts) — store is headless behind
+    // bouncer (RFC-0001 D12: `/api/store` + `/hooks/store` passthrough only,
+    // no vmf mount; the storefront pages are Site's).
     "STORE_URL": "https://staging.somewhatintelligent.ca/shop",
-    // Identity's PUBLIC address — the store links here for sign-in
-    // (`${IDENTITY_URL}/sign-in`) and derives the same-origin `/api` auth base
-    // from it on the SSR side (new URL(IDENTITY_URL).origin), mirroring
-    // workers/identity/src/lib/auth-client.ts.
-    "IDENTITY_URL": "https://staging.somewhatintelligent.ca/account",
-    // Controlled apex (leading dot) — cross-subdomain cookie domain + the
-    // auth server's `*.{apex}` trustedOrigins.
-    "AUTH_DOMAIN": ".somewhatintelligent.ca",
+    // Site's PUBLIC apex — the base for the `/api/store` checkout return URL
+    // (`${SITE_URL}/checkout/return`), which renders on Site, not the headless
+    // Store worker (RFC-0001 D11). See docs/ops/env-vars.md.
+    "SITE_URL": "https://staging.somewhatintelligent.ca",
     // Stripe publishable key (pk_…, client-safe). Blank until Stripe
-    // onboarding; getCheckoutConfig gates the Payment Element on it.
+    // onboarding; relayed to Site's checkout island via GET /api/store/config.
     "STRIPE_PUBLISHABLE_KEY": "",
-    // Launch gate, per env ("true"/"false"). While "false" the storefront is
-    // admin-only: everyone else gets the pre-launch landing (sign-up funnel →
-    // /welcome) and the public product reads refuse to serve. Baked into both
-    // bundles at build time (vite CLIENT_VARS → src/lib/config.ts STORE_LIVE).
-    "STORE_LIVE": "false",
   },
   "d1_databases": [
     {
@@ -89,13 +74,9 @@
       "preview_urls": false,
       "vars": {
         "ENVIRONMENT": "production",
-        "PUBLIC_BASE": "/shop",
         "STORE_URL": "https://somewhatintelligent.ca/shop",
-        "IDENTITY_URL": "https://somewhatintelligent.ca/account",
-        "AUTH_DOMAIN": ".somewhatintelligent.ca",
+        "SITE_URL": "https://somewhatintelligent.ca",
         "STRIPE_PUBLISHABLE_KEY": "",
-        // Launch gate — flip to "true" to open the production shop.
-        "STORE_LIVE": "false",
       },
       "d1_databases": [
         {

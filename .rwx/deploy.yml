@@ -1,10 +1,10 @@
 # somewhatintelligent — shared deploy logic (Cloudflare, via RWX).
 #
 # One definition of "how somewhatintelligent ships a worker fleet" — D1
-# migrate (guestlist, roadie) -> dependency-ordered worker deploy
-# (promoter, roadie -> guestlist -> identity -> store
-# -> bouncer router LAST — see the `deploy` task below for exactly why this
-# order, not just "leaf services then apps") -> GitHub Deployment record —
+# migrate (guestlist, roadie, store, publisher) -> dependency-ordered worker
+# deploy (promoter, roadie -> guestlist -> identity, store -> publisher
+# -> site -> bouncer router LAST — see the `deploy` task below for exactly why
+# this order, not just "leaf services then apps") -> GitHub Deployment record —
 # (the vendored inbox app is NOT part of any lane: it deploys manually via
 # `cd inbox && bun run deploy`, outside RWX, by owner decision) —
 # parameterized by `init.env` ("staging" | "production") instead of duplicated
@@ -125,10 +125,11 @@ tasks:
       # aborts the whole fleet before a single worker is redeployed. The
       # per-worker migrate mechanics (and the no-`|| true` invariant) live in
       # scripts/deploy-worker.sh, shared with the two production lanes; the
-      # D1-backed workers are guestlist, roadie, store.
+      # D1-backed workers are guestlist, roadie, store, publisher.
       bash scripts/deploy-worker.sh migrate guestlist ${{ init.env }}
       bash scripts/deploy-worker.sh migrate roadie ${{ init.env }}
       bash scripts/deploy-worker.sh migrate store ${{ init.env }}
+      bash scripts/deploy-worker.sh migrate publisher ${{ init.env }}
 
   - key: deploy
     use: [migrate]
@@ -151,13 +152,14 @@ tasks:
       # service bindings to promoter + roadie, so wrangler's binding-existence
       # check fails if guestlist deploys before they exist. promoter + roadie
       # are true leaves (no bindings) and go first; guestlist next (needs
-      # both); then identity + store (bind guestlist); bouncer (binds
-      # guestlist, identity, store) goes LAST, so the public router only ever
-      # points at already-deployed upstreams.
+      # both); then identity + store (bind guestlist); publisher (binds
+      # roadie + store); site (binds publisher + store); bouncer (binds
+      # guestlist, identity, store, site) goes LAST, so the public router only
+      # ever points at already-deployed upstreams.
       # Per-worker deploy mechanics live in scripts/deploy-worker.sh, shared
       # with .rwx/release-please.yml and .rwx/release.yml so a fix can't land
       # in one lane and miss the others.
-      for w in promoter roadie guestlist identity store bouncer; do
+      for w in promoter roadie guestlist identity store publisher site bouncer; do
         bash scripts/deploy-worker.sh deploy "$w" ${{ init.env }}
         # Per-worker GitHub Deployment record (env `<env>/<worker>`) with the
         # CF-dashboard deep link + live URL — best-effort, never turns the

@@ -70,6 +70,17 @@ export async function getReadUrl(
   if (row.deletedAt !== null) return err("deleted");
   if (row.finalizedAt === null) return err("not_ready");
 
+  // Local dev: serve via roadie's own `/__dev/blob/<id>` route rather than a
+  // presigned S3 URL — the miniflare R2 sim never reaches the real S3 host
+  // presignGet targets. Bypasses the signed-URL cache entirely so production
+  // caching semantics stay untouched.
+  if (roadie.env.ENVIRONMENT === "development") {
+    const origin = roadie.env.ROADIE_DEV_ORIGIN ?? "http://127.0.0.1:8790";
+    const url = `${origin}/__dev/blob/${encodeURIComponent(row.physicalBlobId)}`;
+    log.add({ cached: false });
+    return ok({ url, expiresAt: Date.now() + lifetimeSeconds * 1000, cached: false });
+  }
+
   const cacheKey = await hashCacheKey(
     row.physicalBlobId,
     lifetimeSeconds,

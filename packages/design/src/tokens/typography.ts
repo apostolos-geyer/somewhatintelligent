@@ -6,7 +6,8 @@
  *
  * FONT SURFACE — consumer-swappable. `fontStacks` below and the
  * `@font-face` declarations in src/fonts.css are the shipped defaults
- * (Iosevka Aile for display/body/editorial, Iosevka for mono), not a
+ * (Barlow Condensed for display, Source Serif 4 for body/editorial, and
+ * Iosevka for mono), not a
  * fixed brand identity. To swap typefaces: replace the vendored font
  * files under src/fonts/, update the `@font-face` blocks in
  * src/fonts.css, and repoint the `family` strings below — the `cssName`
@@ -17,21 +18,19 @@
 
 // Font stack definitions — CSS var names + actual font family values
 export const fontStacks = {
-  /** Iosevka Aile Light — big drafting-title headings.
-   *  `font-display` / `font-heading`. */
-  display: { cssName: "display", family: "'Iosevka Aile', 'Iosevka', system-ui, sans-serif" },
-  /** Iosevka Aile — the UI/body workhorse. `font-body` / `font-sans`. */
-  body: { cssName: "body", family: "'Iosevka Aile', system-ui, -apple-system, sans-serif" },
-  /** Iosevka Aile Light — editorial long-form. `font-editorial`. */
-  editorial: { cssName: "editorial", family: "'Iosevka Aile', system-ui, sans-serif" },
-  /** Editorial headings — same drafting voice. `font-editorial-display`. */
+  /** Barlow Condensed — claims, page titles, release identifiers. */
+  display: { cssName: "display", family: "'Barlow Condensed', 'Arial Narrow', sans-serif" },
+  /** Source Serif 4 — readable UI copy with an editorial edge. */
+  body: { cssName: "body", family: "'Source Serif 4', Georgia, serif" },
+  /** Source Serif 4 — long-form reading. */
+  editorial: { cssName: "editorial", family: "'Source Serif 4', Georgia, serif" },
+  /** Editorial headings stay in the same serif family. */
   editorialDisplay: {
     cssName: "editorial-display",
-    family: "'Iosevka Aile', 'Iosevka', system-ui, sans-serif",
+    family: "'Source Serif 4', Georgia, serif",
   },
-  /** Iosevka mono as the accent voice — annotation marks, taglines.
-   *  `font-accent`. */
-  accent: { cssName: "accent", family: "'Iosevka', ui-monospace, monospace" },
+  /** Source Serif italic — the private editorial correction. */
+  accent: { cssName: "accent", family: "'Source Serif 4', Georgia, serif" },
   /** Iosevka — monospace. `font-mono`. */
   mono: { cssName: "mono", family: "'Iosevka', ui-monospace, 'SF Mono', monospace" },
 } as const;
@@ -53,14 +52,14 @@ export interface FluidTypeToken {
 }
 
 export const fluidType = {
-  /** Brand hero splash — massive light drafting display */
+  /** Brand hero splash — compressed, confrontational display. */
   hero: {
     min: 80,
     preferred: "14vw",
     max: 200,
-    weight: 300,
-    leading: 0.95,
-    tracking: 0.005,
+    weight: 700,
+    leading: 0.82,
+    tracking: -0.035,
     font: "display",
   },
   /** Main page heading — Dashboard, Settings, etc. */
@@ -68,9 +67,9 @@ export const fluidType = {
     min: 32,
     preferred: "5vw",
     max: 56,
-    weight: 300,
-    leading: 1.0,
-    tracking: 0.005,
+    weight: 700,
+    leading: 0.88,
+    tracking: -0.025,
     font: "display",
   },
   /** Dashboard stat numbers — big light numerals */
@@ -78,8 +77,8 @@ export const fluidType = {
     min: 28,
     preferred: "4vw",
     max: 48,
-    weight: 300,
-    leading: 1.0,
+    weight: 700,
+    leading: 0.9,
     tracking: 0,
     font: "display",
   },
@@ -88,9 +87,9 @@ export const fluidType = {
     min: 24,
     preferred: "3vw",
     max: 36,
-    weight: 300,
-    leading: 1.1,
-    tracking: 0,
+    weight: 700,
+    leading: 0.95,
+    tracking: -0.015,
     font: "display",
   },
   /** Blog post / article h1 */
@@ -98,9 +97,9 @@ export const fluidType = {
     min: 36,
     preferred: "7vw",
     max: 72,
-    weight: 300,
-    leading: 1.0,
-    tracking: 0.005,
+    weight: 500,
+    leading: 0.98,
+    tracking: -0.02,
     font: "editorialDisplay",
   },
   /** Blog post / article h2 */
@@ -108,7 +107,7 @@ export const fluidType = {
     min: 28,
     preferred: "4vw",
     max: 42,
-    weight: 300,
+    weight: 500,
     leading: 1.1,
     tracking: 0,
     font: "editorialDisplay",
@@ -118,27 +117,27 @@ export const fluidType = {
     min: 22,
     preferred: "3vw",
     max: 30,
-    weight: 300,
+    weight: 500,
     leading: 1.2,
     tracking: 0,
     font: "editorialDisplay",
   },
-  /** Long-form article body text — Aile Light */
+  /** Long-form article body text. */
   editorialBody: {
     min: 16,
     preferred: "2vw",
     max: 19,
-    weight: 300,
+    weight: 400,
     leading: 1.75,
     tracking: 0,
     font: "editorial",
   },
-  /** Article opening paragraph — Aile Light italic */
+  /** Article opening paragraph — Source Serif italic. */
   editorialLede: {
     min: 18,
     preferred: "2.5vw",
     max: 22,
-    weight: 300,
+    weight: 400,
     leading: 1.7,
     tracking: 0,
     font: "editorial",
@@ -149,7 +148,7 @@ export const fluidType = {
     min: 24,
     preferred: "4vw",
     max: 40,
-    weight: 300,
+    weight: 400,
     leading: 1.32,
     tracking: 0,
     font: "editorial",

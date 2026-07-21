@@ -41,9 +41,16 @@ export default defineConfig({
           { name: `${wp}guestlist-staging`, modules: true, scriptPath: mock("guestlist-stub") },
           { name: `${wp}identity-staging`, modules: true, scriptPath: mock("app-stub") },
           // STORE is a real service binding in wrangler.jsonc (si-store-staging);
-          // miniflare must resolve it at boot. Bouncer dispatch/proxy logic is
-          // upstream-agnostic, so it shares the generic app stub like identity.
-          { name: `${wp}store-staging`, modules: true, scriptPath: mock("app-stub") },
+          // miniflare must resolve it at boot. Store is headless behind
+          // /api/store + /hooks/store (RFC-0001 D11/D12), so it gets its own
+          // path-echo stub — the route tests must distinguish a request that
+          // reached Store from one that fell through to guestlist's /api.
+          { name: `${wp}store-staging`, modules: true, scriptPath: mock("store-stub") },
+          // SITE is a real service binding in wrangler.jsonc (si-site-staging)
+          // and owns the apex root passthrough. Its stub echoes the received
+          // path and emits root-relative asset URLs so the tests can prove
+          // passthrough leaves both untouched.
+          { name: `${wp}site-staging`, modules: true, scriptPath: mock("site-stub") },
           // Test-only fixtures bound via the serviceBindings map above (not real
           // wrangler.jsonc services): the version/mount specs dispatch through
           // them, so they keep fixed, unprefixed names.

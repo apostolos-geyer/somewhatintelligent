@@ -152,6 +152,34 @@ describe("server-side put", () => {
     expect(r2.value.blobId).toBe(r.value.blobId);
     expect(r2.value.referenceId).not.toBe(r.value.referenceId);
   });
+
+  test("accepts a length-less stream body (RPC-tunneled streams lose length metadata)", async () => {
+    const roadie = makeRoadie();
+    const payload = bytes("stream-without-length");
+    const hash = await sha256Hex(payload);
+    // An identity TransformStream strips the known length, mirroring what a
+    // body looks like after crossing a service-binding RPC hop.
+    const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
+    const writer = writable.getWriter();
+    void writer.write(payload).then(() => writer.close());
+
+    const r = await upload.put(
+      roadie,
+      {
+        hash,
+        size: payload.length,
+        contentType: "text/plain",
+        application: appContext(),
+        body: readable,
+      },
+      makeMeta(),
+    );
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const stored = await roadie.env.BLOBS.get(r.value.blobId);
+    expect(stored).not.toBeNull();
+    expect(new Uint8Array((await stored!.arrayBuffer()) as ArrayBuffer)).toEqual(payload);
+  });
 });
 
 describe("abandon", () => {

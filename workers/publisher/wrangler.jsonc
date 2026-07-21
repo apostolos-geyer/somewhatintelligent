@@ -1,0 +1,96 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Publisher — texts, software records, and fixed pages (RFC-0001 D2). D1 +
+  // two RPC entrypoints: PublisherPublic (Site-bound, read-only) and
+  // PublisherOperator (Operator-bound, mutation). Top level = staging;
+  // env.production = production. Bound by nothing public — Publisher is a
+  // backend authority, not a routed app (no `routes` block).
+  //
+  // The STORE -> StoreCatalog binding (entrypoint "StoreCatalog") is used only
+  // to validate a page document's featuredProductId at publish time (T17);
+  // Publisher stores the foreign product id as an external reference and never
+  // copies product data into the document (INV-DOM-1).
+  "name": "si-publisher-staging",
+  "main": "src/index.ts",
+  "account_id": "c735c5a53d864bee37400befb7f4c7f4",
+  "compatibility_date": "2026-04-19",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+  },
+  "upload_source_maps": true,
+  "workers_dev": false,
+  "preview_urls": true,
+  "vars": {
+    "ENVIRONMENT": "staging",
+  },
+  // Media GC sweep — drains media_gc_outbox (physical byte cleanup after a hard
+  // delete, INV-DEL-4) via scheduled() in src/index.ts. Named envs don't
+  // inherit, so env.production re-declares this.
+  "triggers": {
+    "crons": ["*/15 * * * *"],
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "publisher-staging-db",
+      // TODO(provision): real D1 database_id from this fork's Cloudflare account.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations",
+    },
+  ],
+  // Blob storage for text/page/software media. `entrypoint` + `props.callerApp`
+  // are required — roadie's readCallerApp throws on every call without them.
+  "services": [
+    {
+      "binding": "ROADIE",
+      "service": "si-roadie-staging",
+      "entrypoint": "Roadie",
+      "props": { "callerApp": "publisher" },
+    },
+    {
+      "binding": "STORE",
+      "service": "si-store-staging",
+      "entrypoint": "StoreCatalog",
+    },
+  ],
+  "env": {
+    "production": {
+      "name": "si-publisher-production",
+      "vars": {
+        "ENVIRONMENT": "production",
+      },
+      "triggers": {
+        "crons": ["*/15 * * * *"],
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "publisher-production-db",
+          // TODO(provision): real D1 database_id from this fork's Cloudflare account.
+          "database_id": "00000000-0000-0000-0000-000000000000",
+          "migrations_dir": "migrations",
+        },
+      ],
+      "services": [
+        {
+          "binding": "ROADIE",
+          "service": "si-roadie-production",
+          "entrypoint": "Roadie",
+          "props": { "callerApp": "publisher" },
+        },
+        {
+          "binding": "STORE",
+          "service": "si-store-production",
+          "entrypoint": "StoreCatalog",
+        },
+      ],
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+      },
+      "preview_urls": false,
+      // No "routes" block — Publisher has no public HTTP surface.
+    },
+  },
+}

@@ -1,0 +1,148 @@
+---
+import Base from "../../layouts/Base.astro";
+import SiteFooter from "../../components/SiteFooter.astro";
+import SiteHeader from "../../components/SiteHeader.astro";
+import LedgerEntry from "../../components/views/LedgerEntry.astro";
+import LedgerPager from "../../components/views/LedgerPager.astro";
+import {
+  getPage,
+  listSoftware,
+  publisherMediaHref,
+  type PublishedSoftwareSummaryDTO,
+} from "../../lib/publisher-public";
+import { formatDate } from "../../lib/format";
+
+// One featured entry + 12 rows on page 1, then 13 rows per page. Keyset reads
+// are forward-only (no offsets/totals) so navigation is Newer/Older folio steps.
+const PAGE_SIZE = 13;
+
+const cursorParam = Astro.url.searchParams.get("cursor");
+const cursor = cursorParam && cursorParam.length > 0 ? cursorParam : undefined;
+const trailParam = Astro.url.searchParams.get("trail");
+const trail = trailParam ? trailParam.split(",").filter((t) => t.length > 0) : [];
+
+const [pageResult, firstList] = await Promise.all([
+  getPage("software"),
+  listSoftware({ cursor, limit: PAGE_SIZE }),
+]);
+
+// A malformed cursor degrades to page 1 (never 500): re-read without the cursor
+// and drop the trail so pagination re-anchors.
+let listResult = firstList;
+let effectiveCursor = cursor;
+let effectiveTrail = trail;
+if (!listResult.ok) {
+  listResult = await listSoftware({ limit: PAGE_SIZE });
+  effectiveCursor = undefined;
+  effectiveTrail = [];
+}
+
+const doc = pageResult.ok ? pageResult.value.document : null;
+const heading = doc?.title ?? "Systems";
+const deck = doc?.deck ?? "software and research systems";
+const emptyMessage = doc?.emptyMessage ?? "No systems published yet.";
+const seoTitle = doc?.seo.title ?? "Software — somewhatintelligent";
+const seoDescription =
+  doc?.seo.description ??
+  "Software and research systems by somewhatintelligent, with explicit access boundaries.";
+const seoImage = doc?.seo.imageMediaId ? publisherMediaHref(doc.seo.imageMediaId) : null;
+
+const software: PublishedSoftwareSummaryDTO[] = listResult.ok ? listResult.value.software : [];
+const nextCursor = listResult.ok ? listResult.value.nextCursor : null;
+
+// Every entry renders through the one unified LedgerEntry (registry row +
+// expandable editorial panel). Page 1's most-recent entry starts expanded;
+// every other entry — including all of a cursor page — starts collapsed.
+const isPageOne = !effectiveCursor;
+
+function href(params: { cursor?: string; trail?: string[] }): string {
+  const sp = new URLSearchParams();
+  if (params.cursor) sp.set("cursor", params.cursor);
+  if (params.trail && params.trail.length > 0) sp.set("trail", params.trail.join(","));
+  const q = sp.toString();
+  return q ? `/software/?${q}` : "/software/";
+}
+
+// olderHref pushes the current cursor onto the trail; newerHref pops it. An
+// empty trail with a cursor present (hand-edited URL) steps back to bare page 1.
+const olderHref = nextCursor
+  ? href({ cursor: nextCursor, trail: effectiveCursor ? [...effectiveTrail, effectiveCursor] : effectiveTrail })
+  : null;
+let newerHref: string | null = null;
+if (effectiveTrail.length > 0) {
+  newerHref = href({
+    cursor: effectiveTrail[effectiveTrail.length - 1],
+    trail: effectiveTrail.slice(0, -1),
+  });
+} else if (effectiveCursor) {
+  newerHref = href({});
+}
+---
+
+<Base title={seoTitle} description={seoDescription} ogImage={seoImage}>
+  <div class="site-frame shop-frame">
+    <SiteHeader />
+
+    <main class="ledger-main">
+      <section class="objects-intro" aria-labelledby="software-title">
+        <h1 id="software-title">
+          <span class="sr-only">{heading}</span>
+          <svg
+            aria-hidden="true"
+            class="objects-title-plane"
+            preserveAspectRatio="none"
+            viewBox="0 0 1000 1000"
+          >
+            <text x="20" y="912" font-size="960" lengthAdjust="spacingAndGlyphs" textLength="960">
+              SYSTEMS
+            </text>
+          </svg>
+        </h1>
+        <p class="objects-deck">{deck}</p>
+      </section>
+
+      {
+        software.length === 0 ? (
+          <section class="object-ledger" aria-label="Published software">
+            <article class="object-entry object-entry-compact object-entry-placeholder">
+              <span class="object-number">01</span>
+              <div class="object-meta">
+                <h2>No systems yet</h2>
+                <p>{emptyMessage}</p>
+              </div>
+              <div class="object-placeholder-field" aria-label="No systems published">
+                <span>System / unpublished</span>
+                <strong>COMING SOON</strong>
+              </div>
+            </article>
+          </section>
+        ) : (
+          <section class="ledger-rows" aria-label="Published software">
+            <div class="ledger-registry-head" aria-hidden="true">
+              <span class="ledger-registry-head-system">System</span>
+              <span class="ledger-registry-head-updated">Updated</span>
+            </div>
+            {software.map((item, i) => (
+              <LedgerEntry
+                index={i + 1}
+                kicker={isPageOne && i === 0 ? "Latest system" : undefined}
+                title={item.title}
+                dateLabel={`Updated ${formatDate(item.updatedAt)}`}
+                deck={item.deck}
+                image={item.primaryMedia}
+                imageLabel={`System / ${item.slug}`}
+                href={`/software/${item.slug}`}
+                ctaLabel="Open record"
+                startExpanded={isPageOne && i === 0}
+              />
+            ))}
+          </section>
+        )
+      }
+
+      <LedgerPager olderHref={olderHref} newerHref={newerHref} />
+    </main>
+
+    <SiteFooter />
+  </div>
+</Base>

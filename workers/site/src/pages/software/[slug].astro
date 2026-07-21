@@ -1,0 +1,18 @@
+---
+import Base from "../../layouts/Base.astro";
+import SoftwareRecord from "../../components/views/SoftwareRecord.astro";
+import { getSoftwareBySlug } from "../../lib/publisher-public";
+
+const { slug } = Astro.params;
+const result = slug ? await getSoftwareBySlug(slug) : ({ ok: false, error: "not_found" } as const);
+if (!result.ok) {
+  return new Response(null, { status: 404 });
+}
+const software = result.value;
+const primary = software.primaryMedia ?? software.media[0] ?? null;
+const ogImage = primary ? primary.href : null;
+---
+
+<Base title={`${software.title} — somewhatintelligent`} description={software.deck} ogImage={ogImage}>
+  <SoftwareRecord software={software} />
+</Base>

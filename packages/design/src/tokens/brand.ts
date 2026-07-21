@@ -16,23 +16,13 @@
  *      theme-aware HSL values, hand-tuned per mode so `bun run
  *      audit:contrast` can hit WCAG AA. Adjust H/S/L here, not in colors.ts.
  *
- * somewhatintelligent ("FRIEND" — syntax-highlight terminal): the UI is a
- * code editor, not a drafting board. `neutralRamp` is a cool near-black →
- * near-white "canvas" continuum (steps 50-300 the light-terminal end,
- * 400-950 the black-shirt end — 950 is the actual shirt black); `accentRamp`
- * is hot pink — the flagship chromatic color, lifted straight off the
- * `friend` keyword on the shirt that funds this store — and now drives
- * `functionalColors.primary` directly (unlike the old neutral-ink brand,
- * this one is unapologetically loud). `destructive`/`success`/`warning` are
- * tuned as their own hues (red/green/amber) rather than derived from
- * `accentRamp`, so a pink CTA next to a red delete button never gets
- * confused for the same affordance — the classic syntax-highlighter
- * palette, not a monochrome one. `warning` is deliberately tuned as a light
- * tone in BOTH themes: this template's fixed semantic contract
- * (src/tokens/colors.ts) always pairs `warningForeground` with dark text, so
- * the fill itself must read as light even in dark mode (unlike primary/
- * destructive/success, which are bright solids with dark text in dark
- * mode). See `bun run audit:contrast`.
+ * somewhatintelligent is a publishing system for objects, software, and
+ * writing. Its material language comes from black cotton, cold proof paper,
+ * steel rules, terminal evidence, and one private pink correction. The
+ * neutral ramp therefore stays nearly achromatic: paper at one end, garment
+ * black at the other. Pink is a scarce authorial mark and the primary action
+ * color, never a wash or gradient. Destructive/success/warning retain their
+ * conventional hues so state is legible before it is stylish.
  *
  * FONTS are a separate swap point — see the doc comments in
  * src/tokens/typography.ts (`fontStacks`) and src/fonts.css.
@@ -71,79 +61,70 @@ function hslToHex(h: number, s: number, l: number): string {
 // Never reference these in product UI chrome — semantic tokens only.
 // ============================================
 
-/** Neutral grayscale — a cool near-black → near-white canvas continuum.
- *  Steps 50-300 are the light-terminal end; 400-950 are the black-shirt end
- *  (950 is the exact ink of the shirt this store is named after). */
+/** Cold proof paper → garment black. */
 export const neutralRamp = {
-  50: "#F7F8FA",
-  100: "#EEF0F4",
-  200: "#E1E4EA",
-  300: "#C9CDD8",
-  400: "#9AA1B0",
-  500: "#767D8C",
-  600: "#565C68",
-  700: "#3D4149",
-  800: "#282B31",
-  900: "#17181C",
-  950: "#0B0C0E",
+  50: "#F7F7F3",
+  100: "#F1F1EC",
+  200: "#E2E2DB",
+  300: "#CACAC1",
+  400: "#A3A39B",
+  500: "#81817A",
+  600: "#60605A",
+  700: "#41413D",
+  800: "#282826",
+  900: "#151514",
+  950: "#080908",
 } as const;
 
-/** Pink — the flagship chromatic color (the `friend` keyword, lifted off
- *  the shirt), driving `functionalColors.primary`. Full illustration ramp
- *  graduated around the base pink hue (~330°); step 500 is roughly the
- *  `functionalColors.primary.light` value, step 300 roughly
- *  `functionalColors.primary.dark`. */
+/** Signal pink — the private correction crossing a public interface. */
 export const accentRamp = {
-  50: "#FFF0F8",
-  100: "#FFDCEF",
-  200: "#FFB8E0",
-  300: "#FF8ECE",
-  400: "#FF66BC",
-  500: "#FF3DA6",
-  600: "#E81C8C",
-  700: "#C10F73",
-  800: "#970B5A",
-  900: "#6E0842",
-  950: "#45052A",
+  50: "#FFF0F7",
+  100: "#FFDCEB",
+  200: "#FFB9D7",
+  300: "#FF8FC2",
+  400: "#FF68AE",
+  500: "#FF4FA3",
+  600: "#E62A84",
+  700: "#BC1768",
+  800: "#92104F",
+  900: "#680C39",
+  950: "#400722",
 } as const;
 
 // ============================================
 // THEME VALUES — hand-tuned HSL, contrast-audited (bun run audit:contrast)
 // ============================================
 
-/** Light mode base surfaces + text — a light-terminal theme, not a retreat
- *  to paper. Cool, slightly blue-gray neutrals. */
+/** Light mode is cold proof paper, not warm lifestyle cream. */
 export const lightPalette = {
-  bg: hsl(220, 20, 97), // light-terminal canvas
-  surface: hsl(0, 0, 100), // white sheet
-  surfaceRaised: hsl(220, 25, 100), // fresh sheet on top
-  surfaceSunken: hsl(220, 18, 93), // recessed well — inset rows, code blocks
-  border: hsl(220, 12, 52), // standard rule — ~3.2:1 on canvas
-  borderStrong: hsl(220, 15, 35), // heavy rule — inputs, emphasis
-  text: hsl(224, 20, 10), // primary ink
-  textSecondary: hsl(224, 12, 32), // annotations
-  textTertiary: hsl(224, 8, 46), // faint — metadata, captions
+  bg: hsl(60, 10, 94),
+  surface: hsl(60, 12, 97),
+  surfaceRaised: hsl(60, 14, 99),
+  surfaceSunken: hsl(60, 7, 89),
+  border: hsl(60, 4, 48),
+  borderStrong: hsl(60, 4, 24),
+  text: hsl(60, 5, 4),
+  textSecondary: hsl(60, 3, 31),
+  textTertiary: hsl(60, 2, 42),
   /** Text sat on top of a bright/light accent fill (e.g. warning). */
-  textOnLight: hsl(224, 20, 10),
+  textOnLight: hsl(60, 5, 4),
   /** Text sat on top of a solid/dark accent fill (e.g. primary, destructive). */
-  textOnDark: hsl(220, 25, 97),
+  textOnDark: hsl(60, 12, 97),
 } as const;
 
-/** Dark mode base surfaces + text — the flagship theme: the black shirt as
- *  a UI. Not a literal negative of light mode (each step independently
- *  tuned). */
+/** Dark mode is the black garment and black-glass evidence table. */
 export const darkPalette = {
-  bg: hsl(230, 12, 7), // the shirt — near-black, faint cool cast
-  surface: hsl(228, 11, 10), // sheet
-  surfaceRaised: hsl(227, 10, 13), // lifted sheet
-  surfaceSunken: hsl(230, 14, 5), // carved well — code blocks, terminal panes
-  border: hsl(225, 10, 44), // standard rule — ~3:1 on canvas, ~3:1 on sidebar
-  borderStrong: hsl(220, 12, 55), // heavy rule
-  text: hsl(220, 25, 96), // the shirt's white text
-  textSecondary: hsl(220, 12, 75),
-  textTertiary: hsl(220, 8, 55),
-  textOnLight: hsl(230, 12, 8),
-  textOnDark: hsl(220, 25, 96),
+  bg: hsl(60, 4, 3),
+  surface: hsl(60, 3, 6),
+  surfaceRaised: hsl(60, 3, 9),
+  surfaceSunken: hsl(60, 3, 1),
+  border: hsl(60, 3, 46),
+  borderStrong: hsl(60, 4, 65),
+  text: hsl(60, 12, 95),
+  textSecondary: hsl(60, 6, 74),
+  textTertiary: hsl(60, 4, 56),
+  textOnLight: hsl(60, 5, 4),
+  textOnDark: hsl(60, 12, 95),
 } as const;
 
 /**
@@ -159,10 +140,10 @@ export const functionalColors = {
    *  text in light mode; bright chalk pink with near-black text in dark
    *  mode (mirrors the shirt's pink-on-black). */
   primary: {
-    light: hsl(330, 82, 42),
-    lightHover: hsl(330, 86, 34),
-    dark: hsl(330, 90, 72),
-    darkHover: hsl(330, 95, 80),
+    light: hsl(330, 79, 40),
+    lightHover: hsl(330, 85, 33),
+    dark: hsl(330, 95, 70),
+    darkHover: hsl(330, 100, 78),
   },
   /** Destructive / danger. Terminal red — its own hue, never confusable
    *  with the pink primary. */

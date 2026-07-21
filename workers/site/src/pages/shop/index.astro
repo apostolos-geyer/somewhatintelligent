@@ -1,0 +1,22 @@
+---
+import Base from "../../layouts/Base.astro";
+import ShopView from "../../components/views/ShopView.astro";
+import { listProducts, availabilityLabel, type ProductCardDTO } from "../../lib/store-catalog";
+import { getPage, publisherMediaHref } from "../../lib/publisher-public";
+import { DEFAULT_PAGE_DOCUMENTS } from "../../lib/page-defaults";
+
+// Intro copy/SEO come from the Publisher `shop` page document (RFC-0001 D9); the
+// product ledger below is StoreCatalog data, not document content. Only
+// buyer-visible availabilities render ('unavailable' is filtered defensively —
+// the StoreCatalog postcondition means it should never appear).
+const [pageResult, listResult] = await Promise.all([getPage("shop"), listProducts({ limit: 24 })]);
+const doc = pageResult.ok ? pageResult.value.document : DEFAULT_PAGE_DOCUMENTS.shop;
+const products: ProductCardDTO[] = listResult.ok
+  ? listResult.value.products.filter((p) => availabilityLabel(p.availability) !== null)
+  : [];
+const ogImage = doc.seo.imageMediaId ? publisherMediaHref(doc.seo.imageMediaId) : null;
+---
+
+<Base title={doc.seo.title} description={doc.seo.description} ogImage={ogImage}>
+  <ShopView document={doc} products={products} />
+</Base>

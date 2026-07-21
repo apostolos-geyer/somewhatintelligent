@@ -25,7 +25,7 @@ import {
 } from "@/lib/checkout";
 import { db, seedOrder, seedOrderItem, seedProduct, seedVariant, stockOf } from "./helpers";
 
-const { product, productVariant, customerOrder, orderItem } = schema;
+const { productBase, productDraft, productVariant, customerOrder, orderItem } = schema;
 
 const STRIPE_ENV = {
   STRIPE_SECRET_KEY: "sk_test_x",
@@ -97,7 +97,7 @@ beforeEach(async () => {
   await db.delete(orderItem);
   await db.delete(customerOrder);
   await db.delete(productVariant);
-  await db.delete(product);
+  await db.delete(productBase);
 });
 
 describe("createCheckoutSessionCore", () => {
@@ -367,6 +367,149 @@ describe("createCheckoutSessionCore", () => {
     expect(createStripeSession).not.toHaveBeenCalled();
     expect(await db.select().from(customerOrder)).toHaveLength(0);
     expect(await stockOf("v1")).toBe(10);
+  });
+});
+
+describe("createCheckoutSessionCore — sources price/title from the active release", () => {
+  // The Stripe line item the mocked session creator received: its D1-computed
+  // unit amount and the product name (release title + variant size).
+  const firstLine = (createStripeSession: ReturnType<typeof vi.fn<StripeSessionCreator>>) => {
+    const [params] = createStripeSession.mock.calls[0]!;
+    return params.line_items![0] as {
+      price_data: { unit_amount: number; product_data: { name: string } };
+    };
+  };
+  const okSession = (id: string) =>
+    vi.fn<StripeSessionCreator>(async () => ({
+      id,
+      client_secret: `${id}_secret`,
+      expires_at: Math.floor(Date.now() / 1000) + 1800,
+    }));
+  const run = (createStripeSession: StripeSessionCreator, over: Partial<CheckoutInput> = {}) =>
+    createCheckoutSessionCore({
+      db,
+      session: session(),
+      input: input({ items: [{ variantId: "v1", quantity: 1 }], ...over }),
+      env: STRIPE_ENV,
+      ensureCustomer: okCustomer,
+      createStripeSession,
+      expireSession: noExpire,
+      listShippingRates: noRates,
+    });
+
+  it("prices from the active RELEASE, not the draft, and snapshots the release title/price", async () => {
+    // Release title/price are authoritative; the draft carries a stale rename +
+    // higher price that must never reach checkout or the order snapshot.
+    await seedProduct({
+      id: "p1",
+      title: "Field Tee",
+      priceCents: 4200,
+      draftTitle: "DRAFT rename",
+      draftPriceCents: 9999,
+    });
+    await seedVariant({ id: "v1", productId: "p1", size: "M", stock: 5 });
+
+    const createStripeSession = okSession("cs_rel");
+    const result = await run(createStripeSession);
+    expect(result).toMatchObject({ ok: true, mode: "elements" });
+
+    // Stripe sees the release price + release title, never the draft's.
+    const line = firstLine(createStripeSession);
+    expect(line.price_data.unit_amount).toBe(4200);
+    expect(line.price_data.product_data.name).toBe("Field Tee (M)");
+
+    // order_item snapshots the release title/price + the live variant size/ids
+    // at order creation (INV-ORDER-1).
+    const [order] = await db.select().from(customerOrder);
+    expect(order!.subtotalCents).toBe(4200);
+    const [item] = await db.select().from(orderItem).where(eq(orderItem.orderId, order!.id));
+    expect(item).toMatchObject({
+      titleSnapshot: "Field Tee",
+      sizeSnapshot: "M",
+      unitPriceCents: 4200,
+      variantId: "v1",
+      productId: "p1",
+      quantity: 1,
+    });
+  });
+
+  it("a draft price/title edit after publish does not change the checkout price", async () => {
+    await seedProduct({ id: "p1", title: "Field Tee", priceCents: 3000 });
+    await seedVariant({ id: "v1", productId: "p1", size: "M", stock: 5 });
+    // Operator edits the draft after publishing; the active release is untouched,
+    // so checkout still prices from the release.
+    await db
+      .update(productDraft)
+      .set({ priceCents: 8000, title: "Draft Rename" })
+      .where(eq(productDraft.productId, "p1"));
+
+    const createStripeSession = okSession("cs_draft");
+    await run(createStripeSession);
+
+    const line = firstLine(createStripeSession);
+    expect(line.price_data.unit_amount).toBe(3000);
+    expect(line.price_data.product_data.name).toBe("Field Tee (M)");
+  });
+
+  it("ignores a forged cart price/title — only variantId + quantity are honored (INV-CART-1)", async () => {
+    await seedProduct({ id: "p1", title: "Field Tee", priceCents: 2500 });
+    await seedVariant({ id: "v1", productId: "p1", size: "M", stock: 5 });
+
+    const createStripeSession = okSession("cs_forge");
+    // A tampered cart line smuggles a price + title; the core reads neither — it
+    // re-loads the release by variantId and reprices.
+    const forged = {
+      items: [
+        { variantId: "v1", quantity: 1, unitPriceCents: 1, priceCents: 1, title: "FREE STUFF" },
+      ],
+    } as unknown as CheckoutInput;
+    await run(createStripeSession, forged);
+
+    const line = firstLine(createStripeSession);
+    expect(line.price_data.unit_amount).toBe(2500);
+    expect(line.price_data.product_data.name).toBe("Field Tee (M)");
+    const [order] = await db.select().from(customerOrder);
+    expect(order!.subtotalCents).toBe(2500);
+  });
+
+  it("product with no active release is product_unavailable (never priced from the draft)", async () => {
+    // A draft-only product (published pointer never advanced) cannot be sold.
+    await seedProduct({ id: "p1", priceCents: 3000, withRelease: false });
+    await seedVariant({ id: "v1", productId: "p1", size: "M", stock: 5 });
+
+    const createStripeSession = vi.fn<StripeSessionCreator>();
+    const result = await run(createStripeSession);
+    expect(result).toMatchObject({ ok: false, error: "product_unavailable" });
+    expect(createStripeSession).not.toHaveBeenCalled();
+    expect(await db.select().from(customerOrder)).toHaveLength(0);
+    expect(await stockOf("v1")).toBe(5);
+  });
+
+  it("two concurrent stock-one checkouts commit exactly one order (INV-STOCK-1)", async () => {
+    await seedProduct({ id: "p1", priceCents: 3000 });
+    await seedVariant({ id: "v1", productId: "p1", size: "M", stock: 1 });
+
+    // Two DISTINCT buyers so the one-open-session supersede sweep never crosses
+    // them; both contend for the single unit through the guarded reservation.
+    const runFor = (user: string) =>
+      createCheckoutSessionCore({
+        db,
+        session: session(user),
+        input: input({ items: [{ variantId: "v1", quantity: 1 }] }),
+        env: STRIPE_ENV,
+        ensureCustomer: okCustomer,
+        createStripeSession: okSession(`cs_${user}`),
+        expireSession: noExpire,
+        listShippingRates: noRates,
+      });
+
+    const outcomes = await Promise.all([runFor("buyer-1"), runFor("buyer-2")]);
+    expect(outcomes.filter((r) => r.ok)).toHaveLength(1);
+    expect(outcomes.find((r) => !r.ok)).toMatchObject({ ok: false, error: "out_of_stock" });
+
+    // Exactly one order committed; the last unit went to one winner; never negative.
+    expect(await db.select().from(customerOrder)).toHaveLength(1);
+    expect(await stockOf("v1")).toBe(0);
   });
 });
 

@@ -1,0 +1,100 @@
+---
+import Base from "../../layouts/Base.astro";
+import SiteFooter from "../../components/SiteFooter.astro";
+import SiteHeader from "../../components/SiteHeader.astro";
+import WritingIndex from "../../components/views/WritingIndex.astro";
+import {
+  getPage,
+  listTexts,
+  publisherMediaHref,
+  type PublishedTextSummaryDTO,
+} from "../../lib/publisher-public";
+
+// Rows per page. Keyset reads are forward-only (no offsets/totals) so
+// navigation is Newer/Older folio steps over a cursor trail.
+const PAGE_SIZE = 8;
+
+const tagParam = Astro.url.searchParams.get("tag");
+const tag = tagParam && tagParam.length > 0 ? tagParam : undefined;
+const cursorParam = Astro.url.searchParams.get("cursor");
+const cursor = cursorParam && cursorParam.length > 0 ? cursorParam : undefined;
+const trailParam = Astro.url.searchParams.get("trail");
+const trail = trailParam ? trailParam.split(",").filter((t) => t.length > 0) : [];
+
+const [pageResult, firstList] = await Promise.all([
+  getPage("writing"),
+  listTexts({ tag, cursor, limit: PAGE_SIZE }),
+]);
+
+// A malformed cursor degrades to page 1 (never 500): re-read without the cursor
+// and drop the trail so pagination re-anchors.
+let listResult = firstList;
+let effectiveCursor = cursor;
+let effectiveTrail = trail;
+if (!listResult.ok) {
+  listResult = await listTexts({ tag, limit: PAGE_SIZE });
+  effectiveCursor = undefined;
+  effectiveTrail = [];
+}
+
+// Page copy/SEO come from the Publisher page document; fall back to static copy
+// when the page has never been published (INV-PUB-1: null active pointer).
+const doc = pageResult.ok ? pageResult.value.document : null;
+const heading = doc?.title ?? "Writing";
+const deck = doc?.deck ?? "arguments, notes, and revisions";
+const emptyMessage = doc?.emptyMessage ?? "No texts published yet.";
+const seoTitle = doc?.seo.title ?? "Writing — somewhatintelligent";
+const seoDescription =
+  doc?.seo.description ?? "Writing by Apostoli, published by somewhatintelligent.";
+const seoImage = doc?.seo.imageMediaId ? publisherMediaHref(doc.seo.imageMediaId) : null;
+
+const texts: PublishedTextSummaryDTO[] = listResult.ok ? listResult.value.texts : [];
+const nextCursor = listResult.ok ? listResult.value.nextCursor : null;
+
+function href(params: { cursor?: string; trail?: string[] }): string {
+  const sp = new URLSearchParams();
+  if (tag) sp.set("tag", tag);
+  if (params.cursor) sp.set("cursor", params.cursor);
+  if (params.trail && params.trail.length > 0) sp.set("trail", params.trail.join(","));
+  const q = sp.toString();
+  return q ? `/writing/?${q}` : "/writing/";
+}
+
+// olderHref pushes the current cursor onto the trail; newerHref pops it. An
+// empty trail with a cursor present (hand-edited URL) steps back to bare page 1.
+const olderHref = nextCursor
+  ? href({
+      cursor: nextCursor,
+      trail: effectiveCursor ? [...effectiveTrail, effectiveCursor] : effectiveTrail,
+    })
+  : null;
+let newerHref: string | null = null;
+if (effectiveTrail.length > 0) {
+  newerHref = href({
+    cursor: effectiveTrail[effectiveTrail.length - 1],
+    trail: effectiveTrail.slice(0, -1),
+  });
+} else if (effectiveCursor) {
+  newerHref = href({});
+}
+---
+
+<Base title={seoTitle} description={seoDescription} ogImage={seoImage} theme="light">
+  <div class="site-frame shop-frame">
+    <div data-theme="dark" style="display: contents;">
+      <SiteHeader />
+    </div>
+    <WritingIndex
+      heading={heading}
+      deck={deck}
+      emptyMessage={emptyMessage}
+      texts={texts}
+      tagFilter={tag ?? null}
+      olderHref={olderHref}
+      newerHref={newerHref}
+    />
+    <div data-theme="dark" style="display: contents;">
+      <SiteFooter />
+    </div>
+  </div>
+</Base>

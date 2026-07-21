@@ -1,52 +1,77 @@
-// Hand-written entry; do not wrap in a kit factory. Mirrors
-// workers/identity/src/worker.ts (docs/ARCHITECTURE.md §3.3 + §4.4).
-import startEntry from "@tanstack/react-start/server-entry";
-import { extractPlatformStartContext } from "@somewhatintelligent/kit/react-start";
+// Hand-written entry. Store is a pure backend (RFC-0001 D3/D12): no routes, no
+// SSR, no client bundle — the RPC entrypoints below plus the Hono `/api/store`
+// + `/hooks/store` HTTP surface are the entire public API.
 import { runWithExecutionContext } from "@somewhatintelligent/kit/execution-context";
 import { stripeConfigured } from "@somewhatintelligent/stripe";
 import { makeStripeClient } from "./lib/stripe-client";
 import { devEnvelopeStamper } from "./lib/platform";
-import { handleStoreStripeWebhook, STORE_STRIPE_WEBHOOK_PATH } from "./lib/stripe-webhook";
+import storeApi from "./api/store-api";
 import { createDb } from "./lib/db";
 import { consumeStripeEventBatch, DLQ_QUEUE_PATTERN, processDlqBatch } from "./lib/stripe-queue";
 import { reconcilePendingReservations } from "./lib/reconcile";
 import { extractSessionSnapshot } from "./lib/stripe-session-fields";
 import type { StoreStripeEventMessage } from "./lib/stripe-webhook";
 
-declare module "@tanstack/react-start" {
-  interface Register {
-    server: { requestContext: { requestId: string; callerApp?: string } };
+// Named RPC entrypoints resolved by exported class name (RFC-0001 "Worker
+// bindings"). Site's STORE binding uses `entrypoint: "StoreCatalog"` (read-only);
+// Operator's STORE binding uses `entrypoint: "StoreOperator"` (mutation). Both
+// re-export from the worker's main module so wrangler resolves them.
+export { StoreCatalog } from "./store-catalog";
+export { StoreOperator } from "./store-operator";
+
+// Drain the media-GC outbox on the scheduled tick. Resolves the Roadie-backed
+// MediaStorage port lazily (same lazy import StoreCatalog.mediaStorage() uses),
+// so the SDK never enters the reservation-sweep or request module graphs. A
+// thrown drain never fails the scheduled handler — the backlog retries next tick.
+async function drainStoreMediaGc(env: Env): Promise<void> {
+  const [
+    { drainMediaGcOutbox },
+    { createRoadieMediaStorage, STORE_MEDIA_APPLICATION },
+    { getRoadie },
+  ] = await Promise.all([
+    import("./lib/media-gc"),
+    import("./lib/media-storage-roadie"),
+    import("./lib/roadie"),
+  ]);
+  const storage = createRoadieMediaStorage(
+    getRoadie() as unknown as Parameters<typeof createRoadieMediaStorage>[0],
+    { application: STORE_MEDIA_APPLICATION },
+  );
+  try {
+    await drainMediaGcOutbox({ db: createDb(env.DB), storage });
+  } catch (err) {
+    console.warn(
+      `[store] media gc drain failed: ${err instanceof Error ? err.message : "unknown"}`,
+    );
   }
+}
+
+// Append the dev envelope stamper's Set-Cookie headers without disturbing the
+// response body (dev-direct only — the stamper is a hard no-op in staging/prod).
+function appendSetCookies(response: Response, setCookies: string[]): Response {
+  if (setCookies.length === 0) return response;
+  const headers = new Headers(response.headers);
+  for (const sc of setCookies) headers.append("set-cookie", sc);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    // Webhook ingestion short-circuits before the analytics execution context
-    // and SSR — it only verifies + enqueues, so it needs neither.
-    const url = new URL(request.url);
-    if (url.pathname === STORE_STRIPE_WEBHOOK_PATH) {
-      return handleStoreStripeWebhook(request, env);
-    }
-
     return runWithExecutionContext(ctx, async () => {
       // Dev-direct stamper mints an attestation envelope from the session cookie
-      // so the principal (and the admin gate / admin server fns) resolves without
-      // a bouncer in front. Hard no-op outside dev — see ARCHITECTURE.md §4.5.
+      // so the principal resolves without a bouncer in front. Hard no-op
+      // outside dev — see ARCHITECTURE.md §4.5. getSession(headers) reads
+      // cookies straight off the (stamped) request headers — no ambient
+      // request context required.
       const { request: stamped, setCookies } = devEnvelopeStamper
         ? await devEnvelopeStamper(request)
         : { request, setCookies: [] as string[] };
-
-      const response = await startEntry.fetch(stamped, {
-        context: extractPlatformStartContext(stamped),
-      });
-      if (setCookies.length === 0) return response;
-      const headers = new Headers(response.headers);
-      for (const sc of setCookies) headers.append("set-cookie", sc);
-      return new Response(response.body, {
-        status: response.status,
-        statusText: response.statusText,
-        headers,
-      });
+      const response = await storeApi.fetch(stamped, env, ctx);
+      return appendSetCookies(response, setCookies);
     });
   },
   async queue(batch: MessageBatch<StoreStripeEventMessage>, env: Env): Promise<void> {
@@ -58,12 +83,17 @@ export default {
     await consumeStripeEventBatch(db, batch, env);
   },
   async scheduled(_controller: ScheduledController, env: Env): Promise<void> {
-    // Only one cron is registered (wrangler.jsonc) — the sweep runs
-    // unconditionally on every trigger. INV-7 decoupling: the sweep only ever
-    // acts on Stripe-path reservations (which require a resolved customer id,
-    // never set without Stripe) and needs a live client to re-check
-    // stale-attached sessions. With Stripe unconfigured there is nothing to
-    // sweep and no client to build — skip.
+    // Media-GC drain runs UNCONDITIONALLY — physical byte cleanup behind the
+    // two-step hard delete has no Stripe dependency (RFC-0001 D8/D10). It
+    // resolves the Roadie-backed MediaStorage port lazily, keeping the SDK out
+    // of the reservation-sweep path below.
+    await drainStoreMediaGc(env);
+
+    // The reservation sweep runs unconditionally on every trigger too, but
+    // INV-7 decoupling: it only ever acts on Stripe-path reservations (which
+    // require a resolved customer id, never set without Stripe) and needs a
+    // live client to re-check stale-attached sessions. With Stripe unconfigured
+    // there is nothing to sweep and no client to build — skip.
     if (!stripeConfigured(env.STRIPE_SECRET_KEY, env.STRIPE_WEBHOOK_SIGNING_SECRET)) return;
     const stripe = makeStripeClient(env.STRIPE_SECRET_KEY);
     await reconcilePendingReservations({

@@ -1,0 +1,346 @@
+---
+// The published-software composition, shared by the public `/software/:slug`
+// route and the Operator draft preview (`/__preview`) so both render through one
+// source (RFC-0001 D14). Consumes a `PublishedSoftwareDTO`; `whatItIsMarkdown`
+// renders to render-safe HTML via the shared markdown pipeline (INV-PAGE-1).
+import SiteFooter from "../SiteFooter.astro";
+import SiteHeader from "../SiteHeader.astro";
+import type { PublishedSoftwareDTO } from "../../lib/publisher-public";
+import { renderMarkdown } from "../../lib/markdown";
+import { formatDate } from "../../lib/format";
+// Site-owned compositional constant — the right-edge editorial image is part of
+// the /software record layout, not Publisher content (RFC-0001 D9.1).
+import officeContactImage from "../../../../../docs/design/somewhatintelligent-brand-study/reference-images/04-intimate-office-contact.png";
+
+interface Props {
+  software: PublishedSoftwareDTO;
+}
+
+const { software } = Astro.props;
+const whatItIsHtml = renderMarkdown(software.whatItIsMarkdown);
+const primary = software.primaryMedia ?? software.media[0] ?? null;
+---
+
+<div class="site-frame software-record-frame">
+  <SiteHeader />
+
+  <main class="software-record-main">
+    <section class="software-record-sheet" aria-labelledby="software-record-title">
+      <p class="software-record-kicker">System / {software.slug}</p>
+      <h1 id="software-record-title" class="software-record-title-text">{software.title}</h1>
+      <p class="software-record-deck">{software.deck}</p>
+      <a
+        class="software-record-action"
+        href={software.destinationUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {software.actionLabel} <span aria-hidden="true">↗</span>
+      </a>
+    </section>
+
+    {
+      primary ? (
+        <figure class="software-record-primary software-record-primary-image">
+          <img src={primary.href} alt={primary.alt || software.title} />
+        </figure>
+      ) : (
+        <figure class="software-record-primary software-record-placeholder">
+          <span>Image / primary</span>
+          <strong>System image</strong>
+        </figure>
+      )
+    }
+
+    <section class="software-record-details" aria-label="System details">
+      <article>
+        <h2>What it is</h2>
+        <div class="software-record-body" set:html={whatItIsHtml} />
+      </article>
+      <article>
+        <h2>Last updated</h2>
+        <p>{formatDate(software.updatedAt)}</p>
+      </article>
+    </section>
+
+    <figure class="software-record-editorial">
+      <img
+        src={officeContactImage.src}
+        alt="Two people in close contact over a desk covered with working papers"
+      />
+    </figure>
+  </main>
+
+  <SiteFooter />
+</div>
+
+<style>
+  .software-record-title-text {
+    height: auto;
+    min-height: 0;
+    flex: none;
+    margin-top: 18px;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    font-family: var(--font-display);
+    font-size: clamp(52px, 6vw, 88px);
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 0.82;
+  }
+
+  .software-record-primary-image {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .software-record-primary-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .software-record-body {
+    max-width: 49ch;
+    margin-top: 18px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.4;
+    text-transform: none;
+  }
+
+  .software-record-body :global(p) {
+    margin-top: 0.9em;
+  }
+
+  .software-record-body :global(p:first-child) {
+    margin-top: 0;
+  }
+
+  .software-record-body :global(a) {
+    color: var(--color-primary);
+    text-decoration: underline;
+  }
+
+  .software-record-body :global(ul),
+  .software-record-body :global(ol) {
+    margin-top: 0.9em;
+    padding-left: 1.3em;
+  }
+
+  .software-record-main {
+    display: grid;
+    min-height: 0;
+    grid-template-columns: minmax(300px, 30%) minmax(0, 56%) minmax(150px, 14%);
+    grid-template-rows: minmax(0, 70%) minmax(150px, 30%);
+    overflow: hidden;
+    background: var(--color-inverse);
+    color: var(--color-inverse-foreground);
+  }
+
+  .software-record-sheet {
+    display: flex;
+    min-width: 0;
+    min-height: 0;
+    grid-row: 1 / -1;
+    flex-direction: column;
+    padding: 27px 30px 30px;
+    border-right: 1px solid var(--color-border);
+  }
+
+  .software-record-kicker,
+  .software-record-details,
+  .software-record-placeholder > span {
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+  }
+
+  .software-record-kicker {
+    color: var(--color-primary);
+    font-size: 10px;
+    letter-spacing: 0.03em;
+  }
+
+  .software-record-deck {
+    margin-top: 18px;
+    font-family: var(--font-editorial);
+    font-size: clamp(15px, 1.15vw, 19px);
+    line-height: 1.15;
+  }
+
+  .software-record-action {
+    display: flex;
+    width: min(236px, 100%);
+    min-height: 49px;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 24px;
+    padding: 0 18px;
+    background: var(--color-primary);
+    color: var(--color-primary-foreground);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    text-transform: uppercase;
+  }
+
+  .software-record-action span {
+    font-size: 17px;
+  }
+
+  .software-record-placeholder {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--color-surface-sunken);
+  }
+
+  .software-record-placeholder::before,
+  .software-record-placeholder::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 145%;
+    height: 1px;
+    background: var(--color-border);
+    content: "";
+  }
+
+  .software-record-placeholder::before {
+    transform: translate(-50%, -50%) rotate(31deg);
+  }
+
+  .software-record-placeholder::after {
+    transform: translate(-50%, -50%) rotate(-31deg);
+  }
+
+  .software-record-placeholder > span,
+  .software-record-placeholder > strong {
+    position: absolute;
+    z-index: 1;
+    padding: 5px 8px;
+    background: inherit;
+  }
+
+  .software-record-placeholder > span {
+    top: 15px;
+    left: 17px;
+    font-size: 9px;
+  }
+
+  .software-record-placeholder > strong {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: var(--font-display);
+    font-size: clamp(38px, 4.2vw, 72px);
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 0.8;
+    text-align: center;
+    text-transform: uppercase;
+  }
+
+  .software-record-primary {
+    grid-column: 2;
+    grid-row: 1;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-inverse);
+    color: var(--color-inverse-foreground);
+  }
+
+  .software-record-editorial {
+    grid-column: 3;
+    grid-row: 1 / -1;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--color-background);
+    color: var(--color-foreground);
+  }
+
+  .software-record-editorial img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 68% 32%;
+  }
+
+  .software-record-details {
+    display: grid;
+    min-width: 0;
+    min-height: 0;
+    grid-column: 2;
+    grid-row: 2;
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .software-record-details article {
+    min-width: 0;
+    padding: 22px 24px;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .software-record-details article:last-child {
+    min-height: 84px;
+    border-bottom: 0;
+  }
+
+  .software-record-details h2 {
+    font-size: 9px;
+  }
+
+  .software-record-details p {
+    max-width: 49ch;
+    margin-top: 18px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.4;
+    text-transform: none;
+  }
+
+  @media (max-width: 1023px) {
+    .software-record-main {
+      display: block;
+      overflow: visible;
+    }
+
+    .software-record-sheet {
+      min-height: 680px;
+      padding: 28px 18px 30px;
+      border-right: 0;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .software-record-deck {
+      font-size: clamp(17px, 5vw, 21px);
+    }
+
+    .software-record-primary {
+      height: 480px;
+    }
+
+    .software-record-placeholder > strong {
+      font-size: 16vw;
+    }
+
+    .software-record-details {
+      display: block;
+    }
+
+    .software-record-details article {
+      min-height: 150px;
+      padding: 25px 18px;
+      border-right: 0;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .software-record-details article:last-child {
+      border-bottom: 0;
+    }
+
+    .software-record-editorial {
+      height: 420px;
+    }
+  }
+</style>

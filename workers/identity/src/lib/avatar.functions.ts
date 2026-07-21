@@ -16,7 +16,7 @@ import { requireUserMiddleware } from "@/lib/middleware/auth";
 
 export const registerAvatar = createServerFn({ method: "POST" })
   .middleware([requireUserMiddleware])
-  .inputValidator((data: { hash: string; size: number; contentType: AvatarContentType }) => data)
+  .validator((data: { hash: string; size: number; contentType: AvatarContentType }) => data)
   .handler(async ({ data }) => {
     const res = await env.GUESTLIST.registerAvatarUpload({
       cookie: requestCookie(),
@@ -33,7 +33,7 @@ export const registerAvatar = createServerFn({ method: "POST" })
 
 export const confirmAvatar = createServerFn({ method: "POST" })
   .middleware([requireUserMiddleware])
-  .inputValidator((data: { referenceId: string }) => data)
+  .validator((data: { referenceId: string }) => data)
   .handler(async ({ data }) => {
     const res = await env.GUESTLIST.confirmAvatar({
       cookie: requestCookie(),

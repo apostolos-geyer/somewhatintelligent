@@ -63,13 +63,23 @@ env-parameterized fleet deploy the other workflows call into.
 
 ## Rebranding
 
-Rebranding is editing three files:
+Product identity and platform identity are deliberately separate. The current
+somewhatintelligent visual system, reference imagery, and implementation brief
+live in
+[`docs/design/somewhatintelligent-brand-study/HANDOFF.md`](docs/design/somewhatintelligent-brand-study/HANDOFF.md).
+
+The platform identity is configured in these files:
 
 | File                                | What lives here                                                                                         |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | `packages/config/src/brand.ts`      | brand `{name, short, supportEmail}`; cookie prefix; auth `{providerId, passkeyRpName, twoFactorIssuer}` |
 | `packages/config/src/deploy.ts`     | base domain, dev domain, worker-name prefix, Cloudflare account ID                                      |
 | `workers/identity/src/app-brand.ts` | per-app product name (each app is a different product)                                                  |
+
+Visual-system changes belong in `packages/design` (color, typography, radius,
+and generated CSS) and the allowlisted brand surface in
+`packages/ui/src/components/ui/logo/brand.ts`. Do not scatter visual identity
+through feature components.
 
 Per-env D1 IDs, routes, domains, and resource names live directly in each
 worker's checked-in `wrangler.jsonc` (top level = staging, `env.production` =

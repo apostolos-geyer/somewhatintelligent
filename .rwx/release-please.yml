@@ -350,8 +350,9 @@ tasks:
 
       # Ship ONLY the released subset, but always in canonical dependency order —
       # promoter/roadie (true leaves, no bindings) -> guestlist (binds
-      # promoter+roadie) -> identity/store (bind guestlist) -> bouncer (router;
-      # binds guestlist+identity+store) LAST, so the public router only ever
+      # promoter+roadie) -> identity/store (bind guestlist) -> publisher (binds
+      # roadie+store) -> site (binds publisher+store) -> bouncer (router; binds
+      # guestlist+identity+store+site) LAST, so the public router only ever
       # points at already-deployed upstreams. (The vendored inbox app has no
       # release-please component and no lane — it deploys manually, outside
       # RWX, by owner decision.) The per-worker migrate-before-code + deploy
@@ -360,7 +361,7 @@ tasks:
       # .rwx/release.yml so a fix can't land in one lane and miss the others. A
       # migration failure is fatal there (no `|| true`), flipping this task's EXIT
       # trap to `failure`.
-      ORDER="promoter roadie guestlist identity store bouncer"
+      ORDER="promoter roadie guestlist identity store publisher site bouncer"
       for w in $ORDER; do
         case " ${RELEASED} " in
           *" ${w} "*) : ;;                                   # released — ship it

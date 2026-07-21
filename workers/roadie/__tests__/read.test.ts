@@ -59,6 +59,42 @@ describe("getReadUrl", () => {
     expect(second.value.url).toBe(first.value.url);
   });
 
+  test("development returns the /__dev/blob route URL, not a presigned S3 URL", async () => {
+    const base = makeRoadie();
+    const referenceId = await setupReady(base);
+    const physId = await backendKeyFor(base, referenceId);
+    const dev = {
+      ...base,
+      env: {
+        ...base.env,
+        ENVIRONMENT: "development",
+        ROADIE_DEV_ORIGIN: "https://roadie.somewhatintelligent.localhost",
+      },
+    } as typeof base;
+
+    const r = await read.getReadUrl(dev, { referenceId, permissionScope: "owner:u_1" }, makeMeta());
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.url).toBe(`https://roadie.somewhatintelligent.localhost/__dev/blob/${physId}`);
+    expect(r.value.url).not.toContain("r2.cloudflarestorage.com");
+    expect(r.value.cached).toBe(false);
+  });
+
+  test("development falls back to 127.0.0.1:8790 when ROADIE_DEV_ORIGIN unset", async () => {
+    const base = makeRoadie();
+    const referenceId = await setupReady(base);
+    const physId = await backendKeyFor(base, referenceId);
+    const dev = {
+      ...base,
+      env: { ...base.env, ENVIRONMENT: "development", ROADIE_DEV_ORIGIN: undefined },
+    } as typeof base;
+
+    const r = await read.getReadUrl(dev, { referenceId, permissionScope: "s" }, makeMeta());
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.url).toBe(`http://127.0.0.1:8790/__dev/blob/${physId}`);
+  });
+
   test("different permission scope gets a fresh URL", async () => {
     const roadie = makeRoadie();
     const referenceId = await setupReady(roadie);

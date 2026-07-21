@@ -9,12 +9,12 @@
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import type { PlatformSession } from "@somewhatintelligent/auth";
-import { computeOrderTotals } from "@/lib/pricing";
+import { computeOrderTotals, loadPricingInputs } from "@/lib/pricing";
 import { runBatch } from "@/lib/db-batch";
 import { updateOrderShippingCore } from "@/lib/orders-core";
 import { db, seedOrder, seedOrderItem, seedProduct, seedVariant } from "./helpers";
 
-const { product, productVariant, customerOrder, orderItem } = schema;
+const { productBase, productRelease, productVariant, customerOrder, orderItem } = schema;
 
 // Mirror placeOrder's batch construction against the real db.
 async function placeOrderBatch(
@@ -64,7 +64,7 @@ beforeEach(async () => {
   await db.delete(orderItem);
   await db.delete(customerOrder);
   await db.delete(productVariant);
-  await db.delete(product);
+  await db.delete(productBase); // cascades product_draft; `product` is a view
 });
 
 describe("placeOrder D1 write path", () => {
@@ -72,8 +72,7 @@ describe("placeOrder D1 write path", () => {
     await seedProduct({ id: "p1", slug: "field-tee", priceCents: 3000 });
     await seedVariant({ id: "v1", productId: "p1", size: "M", sku: "FIELD-TEE-M", stock: 10 });
 
-    const variants = await db.select().from(productVariant);
-    const products = await db.select().from(product);
+    const { variants, products } = await loadPricingInputs(db, ["v1"]);
     const priced = computeOrderTotals([{ variantId: "v1", quantity: 3 }], variants, products);
     expect(priced.ok).toBe(true);
     if (!priced.ok) return;
@@ -107,14 +106,30 @@ describe("placeOrder D1 write path", () => {
   it("snapshot survives a later catalog price edit (order history is immutable)", async () => {
     await seedProduct({ id: "p1", slug: "field-tee", priceCents: 3000 });
     await seedVariant({ id: "v1", productId: "p1", size: "M", sku: "FIELD-TEE-M", stock: 10 });
-    const variants = await db.select().from(productVariant);
-    const products = await db.select().from(product);
+    const { variants, products } = await loadPricingInputs(db, ["v1"]);
     const priced = computeOrderTotals([{ variantId: "v1", quantity: 1 }], variants, products);
     if (!priced.ok) throw new Error("priced");
     await placeOrderBatch("o1", "SI-AAA222", priced, new Map(variants.map((v) => [v.id, v.stock])));
 
-    // Admin raises the price afterwards.
-    await db.update(product).set({ priceCents: 9999 }).where(eq(product.id, "p1"));
+    // Admin raises the price afterwards by publishing a new active release and
+    // advancing the pointer (releases are immutable — a price change is a new
+    // release, not an in-place edit — INV-REL-1). Checkout would now charge the
+    // new price, but the order_item snapshot is frozen at purchase and never
+    // rewritten (INV-ORDER-1).
+    await db.insert(productRelease).values({
+      id: "rel-p1-v2",
+      productId: "p1",
+      version: "1.1.0",
+      slug: "field-tee",
+      title: "Field Tee",
+      priceCents: 9999,
+      publishedBySub: "admin",
+      publishedAt: new Date(),
+    });
+    await db
+      .update(productBase)
+      .set({ activeReleaseId: "rel-p1-v2" })
+      .where(eq(productBase.id, "p1"));
 
     const [item] = await db.select().from(orderItem).where(eq(orderItem.orderId, "o1"));
     expect(item!.unitPriceCents).toBe(3000); // frozen at purchase

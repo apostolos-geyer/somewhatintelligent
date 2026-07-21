@@ -902,8 +902,18 @@ export async function put(
 
   // Stream bytes into R2 via the binding — SHA256 is passed so R2 rejects
   // bytes that hash to a different value. No buffering in the Worker.
+  // RPC-tunneled streams arrive without length metadata, which R2 put
+  // rejects; the declared (validated) size re-fixes the length.
+  let body: ReadableStream | ArrayBuffer = input.body;
+  if (body instanceof ReadableStream) {
+    const fixed = new FixedLengthStream(input.size);
+    body.pipeTo(fixed.writable).catch(() => {
+      // Surfaces through BLOBS.put rejecting on the readable side.
+    });
+    body = fixed.readable;
+  }
   try {
-    await roadie.env.BLOBS.put(physId, input.body, {
+    await roadie.env.BLOBS.put(physId, body, {
       httpMetadata: { contentType: input.contentType },
       sha256: input.hash,
     });

@@ -1,0 +1,168 @@
+---
+import Base from "../../layouts/Base.astro";
+import SiteFooter from "../../components/SiteFooter.astro";
+import SiteHeader from "../../components/SiteHeader.astro";
+import { getProductBySlug, formatPrice } from "../../lib/store-catalog";
+
+const { slug } = Astro.params;
+const result = slug
+  ? await getProductBySlug(slug)
+  : ({ ok: false, error: "not_found" } as const);
+if (!result.ok) {
+  return new Response(null, { status: 404 });
+}
+const product = result.value;
+const [hero, ...proof] = product.media;
+// Operator markdown is rendered as escaped paragraphs only — never `set:html`
+// (INV-PAGE-1 render-safety; full markdown rendering is a later track).
+const paragraphs = (product.descriptionMarkdown ?? "")
+  .split(/\n{2,}/)
+  .map((p) => p.trim())
+  .filter(Boolean);
+const seoDescription =
+  product.descriptionExcerpt ?? `${product.title} — object by somewhatintelligent.`;
+---
+
+<Base title={`${product.title} — somewhatintelligent`} description={seoDescription}>
+  <div class="site-frame product-frame">
+    <SiteHeader />
+
+    <main class="product-main">
+      <section class="product-stage" aria-labelledby="product-title">
+        <figure class="product-hero-image">
+          {hero && <img src={hero.href} alt={hero.alt || product.title} />}
+        </figure>
+
+        <div class="product-proof-column" aria-label="Object evidence">
+          {proof.slice(0, 2).map((m) => (
+            <figure>
+              <img src={m.href} alt={m.alt || product.title} />
+            </figure>
+          ))}
+        </div>
+
+        <section
+          class="product-sheet"
+          data-product-id={product.id}
+          data-slug={product.slug}
+          data-title={product.title}
+          data-price-cents={String(product.priceCents)}
+          data-currency={product.currency}
+          data-cover-media-id={product.coverMediaId ?? ""}
+        >
+          <p>Object / {product.slug} / release {product.version}</p>
+          <h1 id="product-title">{product.title}</h1>
+          {
+            paragraphs.length > 0 && (
+              <div class="product-description">
+                {paragraphs.map((p) => (
+                  <p>{p}</p>
+                ))}
+              </div>
+            )
+          }
+          <p class="product-price">{formatPrice(product.priceCents, product.currency)}</p>
+          {
+            product.variants.length > 0 && (
+              <div class="product-size-field" aria-label="Size selection">
+                <p>Size</p>
+                <div class="product-sizes" role="group">
+                  {product.variants.map((v) => (
+                    <button
+                      class="product-size"
+                      type="button"
+                      data-variant-id={v.id}
+                      data-size={v.size}
+                      aria-pressed="false"
+                      disabled={!v.available}
+                    >
+                      {v.size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )
+          }
+          <button class="product-coming-button" id="add-to-cart" type="button" disabled>
+            {product.availability === "sold_out" ? "Sold out" : "Add to cart"}
+          </button>
+          <p class="product-state" id="add-feedback" aria-live="polite">
+            {
+              product.availability === "sold_out"
+                ? "Sold out."
+                : product.variants.length === 0
+                  ? "Unavailable."
+                  : "Select a size to add to cart."
+            }
+          </p>
+        </section>
+      </section>
+    </main>
+
+    <SiteFooter />
+  </div>
+</Base>
+
+<script>
+  import { addLine, type CartLineHint } from "../../lib/cart-client";
+
+  // Runs on every soft navigation (astro:page-load fires on first load too).
+  // Queries are scoped and bail when this page's markup is absent, so the
+  // handler is a no-op on other routes; elements are fresh after each swap, so
+  // re-binding never double-fires.
+  function initProductSheet(): void {
+    const sheet = document.querySelector<HTMLElement>(".product-sheet[data-product-id]");
+    const addBtn = document.getElementById("add-to-cart") as HTMLButtonElement | null;
+    if (!sheet || !addBtn) return;
+    const feedback = document.getElementById("add-feedback");
+    const sizeButtons = Array.from(document.querySelectorAll<HTMLButtonElement>(".product-size"));
+
+    let selected: { variantId: string; size: string } | null = null;
+
+    for (const btn of sizeButtons) {
+      if (btn.disabled) continue;
+      btn.addEventListener("click", () => {
+        selected = { variantId: btn.dataset.variantId ?? "", size: btn.dataset.size ?? "" };
+        for (const b of sizeButtons) b.setAttribute("aria-pressed", b === btn ? "true" : "false");
+        addBtn.disabled = false;
+        if (feedback) feedback.textContent = `Size ${selected.size} selected.`;
+      });
+    }
+
+    addBtn.addEventListener("click", () => {
+      if (!selected) return;
+      const coverMediaId = sheet.dataset.coverMediaId ? sheet.dataset.coverMediaId : null;
+      const hint: CartLineHint = {
+        productId: sheet.dataset.productId ?? "",
+        slug: sheet.dataset.slug ?? "",
+        title: sheet.dataset.title ?? "",
+        size: selected.size,
+        priceCents: Number(sheet.dataset.priceCents ?? "0"),
+        currency: "CAD",
+        coverMediaId,
+      };
+      addLine(selected.variantId, 1, hint);
+      if (feedback) feedback.textContent = "Added to cart.";
+    });
+  }
+
+  document.addEventListener("astro:page-load", initProductSheet);
+</script>
+
+<style>
+  .product-size:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  .product-size[aria-pressed="true"] {
+    border-color: var(--color-foreground);
+    background: var(--color-foreground);
+    color: var(--color-background);
+  }
+
+  #add-to-cart:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+</style>

@@ -1,0 +1,88 @@
+---
+// POST-only Operator draft-preview endpoint (RFC-0001 D14, exec-plan 0004 T23).
+// Operator POSTs a signed draft document here (target: a hidden iframe) and the
+// browser renders Site's HTML response inside it. Site holds NO draft-read
+// binding (INV-SITE-1): the previewed document arrives in the request,
+// authenticated by an HMAC only the Access-protected Operator can mint.
+//
+// The draft is rendered through the SAME view components + markdown pipeline +
+// layout + CSS as the public routes. Responses are marked noindex (meta +
+// X-Robots-Tag) and no-store; the CSP middleware relaxes only `frame-ancestors`
+// for this path so the Operator origin may frame it. Non-POST → 405; bad
+// signature / expiry → 403; an invalid page document → 422.
+//
+// Lives OUTSIDE `src/pages/` and is mounted at `/__preview` via `injectRoute`
+// in astro.config.mjs, because Astro excludes `_`-prefixed files from
+// file-based routing. `security.checkOrigin` is disabled site-wide (see the
+// config) so this intentionally cross-origin form POST from the Operator is not
+// rejected as CSRF — its authenticity is the HMAC, not the Origin header.
+export const prerender = false;
+
+import { env } from "cloudflare:workers";
+import { validatePageDocument } from "@si/contracts";
+import Base from "./layouts/Base.astro";
+import TextArticle from "./components/views/TextArticle.astro";
+import SoftwareRecord from "./components/views/SoftwareRecord.astro";
+import PagePreview from "./components/views/PagePreview.astro";
+import { previewSoftwareToDTO, previewTextToDTO, verifyPreview } from "./lib/preview";
+import type { PageDocumentByKey, PageKey } from "@si/contracts";
+
+// A `new Response(string)` defaults to `text/plain`, so error replies are never
+// `text/html` — the CSP middleware leaves them untouched.
+if (Astro.request.method !== "POST") {
+  return new Response("preview accepts POST only", { status: 405, headers: { Allow: "POST" } });
+}
+
+const secret = env.PREVIEW_SIGNING_SECRET;
+if (!secret) {
+  return new Response("preview signing secret not configured", { status: 500 });
+}
+
+let form: FormData;
+try {
+  form = await Astro.request.formData();
+} catch {
+  return new Response("expected a form-encoded body", { status: 400 });
+}
+
+const payloadJson = String(form.get("payload") ?? "");
+const signature = String(form.get("signature") ?? "");
+const expiresAt = Number(form.get("expiresAt"));
+
+const verified = await verifyPreview({ secret, payloadJson, signature, expiresAt });
+if (!verified.ok) {
+  return new Response(`preview rejected: ${verified.reason}`, { status: 403 });
+}
+const payload = verified.payload;
+
+// Page drafts are re-validated against the contract validator (INV-PAGE-1) — an
+// authored document with an undeclared field is rejected the same way Publisher
+// rejects it at the write boundary.
+let pageDocument: PageDocumentByKey[PageKey] | null = null;
+if (payload.kind === "page") {
+  const check = validatePageDocument(payload.key as PageKey, payload.document);
+  if (!check.ok) {
+    return new Response(`invalid page document: ${check.message ?? "unknown"}`, { status: 422 });
+  }
+  pageDocument = check.value;
+}
+
+Astro.response.headers.set("X-Robots-Tag", "noindex");
+Astro.response.headers.set("Cache-Control", "no-store");
+
+const textDTO = payload.kind === "text" ? previewTextToDTO(payload) : null;
+const softwareDTO = payload.kind === "software" ? previewSoftwareToDTO(payload) : null;
+
+const title =
+  payload.kind === "text"
+    ? `${payload.title} — preview`
+    : payload.kind === "software"
+      ? `${payload.name} — preview`
+      : `${payload.key} page — preview`;
+---
+
+<Base title={title} noindex={true}>
+  {textDTO && <TextArticle text={textDTO} />}
+  {softwareDTO && <SoftwareRecord software={softwareDTO} />}
+  {pageDocument && <PagePreview document={pageDocument} />}
+</Base>

@@ -1,0 +1,120 @@
+---
+import Base from "../../layouts/Base.astro";
+import TxShell from "../../components/TxShell.astro";
+import CheckoutIsland from "../../components/checkout/CheckoutIsland";
+
+// The checkout flow is a browser-only React island (Stripe.js, localStorage
+// cart), mounted client:only inside the shared transactional shell. It fetches
+// the public store config, gates on stripeEnabled, and mounts the embedded
+// Payment Element or the stub confirmation. Transactional page: noindex.
+---
+
+<Base title="Checkout — somewhatintelligent" description="Checkout." noindex>
+  <TxShell title="Checkout" maxWidth={560}>
+    <CheckoutIsland client:only="react" />
+  </TxShell>
+</Base>
+
+<style is:global>
+  .checkout-lines {
+    margin-top: 8px;
+    list-style: none;
+  }
+
+  .checkout-line {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+    border-top: 1px solid var(--color-border);
+    font-size: 13px;
+  }
+
+  .checkout-line-name {
+    min-width: 0;
+    color: var(--color-muted-foreground);
+  }
+
+  .checkout-line-price {
+    flex-shrink: 0;
+  }
+
+  .checkout-totals {
+    margin-top: 16px;
+  }
+
+  .checkout-total-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    color: var(--color-muted-foreground);
+  }
+
+  .checkout-total-row dd {
+    color: var(--color-foreground);
+  }
+
+  .checkout-total-row--grand {
+    margin-top: 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--color-foreground);
+    font-size: 16px;
+  }
+
+  .checkout-total-row--grand dt,
+  .checkout-total-row--grand dd {
+    color: var(--color-foreground);
+  }
+
+  .checkout-subhead {
+    margin-top: 28px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-muted-foreground);
+  }
+
+  .stripe-field {
+    margin-top: 16px;
+  }
+
+  .checkout-fine-print {
+    margin-top: 12px;
+    font-size: 11px;
+    color: var(--color-muted-foreground);
+  }
+
+  .checkout-shipping-options {
+    margin-top: 16px;
+    padding: 0;
+    border: 0;
+  }
+
+  .checkout-shipping-options legend {
+    margin-bottom: 8px;
+    font-size: 12px;
+  }
+
+  .checkout-shipping-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border);
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .checkout-shipping-option-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .checkout-shipping-option-price {
+    color: var(--color-muted-foreground);
+  }
+</style>

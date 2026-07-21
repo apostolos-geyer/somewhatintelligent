@@ -1,0 +1,27 @@
+---
+import Base from "../../layouts/Base.astro";
+import TextArticle from "../../components/views/TextArticle.astro";
+import { getTextBySlug } from "../../lib/publisher-public";
+import { toIsoDate } from "../../lib/format";
+
+const { slug } = Astro.params;
+const result = slug ? await getTextBySlug(slug) : ({ ok: false, error: "not_found" } as const);
+if (!result.ok) {
+  return new Response(null, { status: 404 });
+}
+const text = result.value;
+
+const [hero] = text.media;
+const seoDescription = text.deck ?? text.excerpt;
+const ogImage = hero ? hero.href : null;
+---
+
+<Base
+  title={`${text.title} — somewhatintelligent`}
+  description={seoDescription}
+  ogType="article"
+  ogImage={ogImage}
+  publishedTime={toIsoDate(text.publishedAt)}
+>
+  <TextArticle text={text} />
+</Base>

@@ -78,7 +78,8 @@ export function SearchCombobox<T>({
   const firstEnabled = React.useCallback(
     (items: T[]): number => {
       for (let i = 0; i < items.length; i++) {
-        if (!isDisabled(items[i])) return i;
+        const item = items[i];
+        if (item !== undefined && !isDisabled(item)) return i;
       }
       return -1;
     },
@@ -155,7 +156,8 @@ export function SearchCombobox<T>({
     let next = activeIndex;
     for (let step = 0; step < results.length; step++) {
       next = (next + direction + results.length) % results.length;
-      if (!isDisabled(results[next])) {
+      const candidate = results[next];
+      if (candidate !== undefined && !isDisabled(candidate)) {
         setActiveIndex(next);
         return;
       }
@@ -175,13 +177,15 @@ export function SearchCombobox<T>({
         e.preventDefault();
         moveActive(-1);
         break;
-      case "Enter":
-        if (showDropdown && activeIndex >= 0 && activeIndex < results.length) {
+      case "Enter": {
+        const active = showDropdown && activeIndex >= 0 ? results[activeIndex] : undefined;
+        if (active !== undefined) {
           // preventDefault so the enclosing form doesn't submit on select.
           e.preventDefault();
-          pick(results[activeIndex]);
+          pick(active);
         }
         break;
+      }
       case "Escape":
         if (showDropdown) {
           e.preventDefault();

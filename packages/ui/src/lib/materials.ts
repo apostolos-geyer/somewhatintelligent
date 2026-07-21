@@ -1,7 +1,8 @@
 /**
- * Shared Material Language Styles — "FRIEND" (syntax-highlight terminal)
+ * Shared Material Language Styles — somewhatintelligent
  *
- * Surfaces are a code editor: flat canvas, crisp rules, generous rounding.
+ * Surfaces are proof sheets and black-glass evidence tables: flat canvas,
+ * crisp rules, nearly square corners.
  * There is NO diffused shadow and NO blur anywhere — depth is drawn with
  * border treatment and hard-offset lines:
  *

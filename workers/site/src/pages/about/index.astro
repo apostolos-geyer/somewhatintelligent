@@ -1,0 +1,16 @@
+---
+import Base from "../../layouts/Base.astro";
+import AboutView from "../../components/views/AboutView.astro";
+import { getPage, publisherMediaHref } from "../../lib/publisher-public";
+import { DEFAULT_PAGE_DOCUMENTS } from "../../lib/page-defaults";
+
+// Copy/SEO come from the Publisher `about` page document (RFC-0001 D9); the
+// site-local default renders the committed copy when the page is unpublished.
+const result = await getPage("about");
+const doc = result.ok ? result.value.document : DEFAULT_PAGE_DOCUMENTS.about;
+const ogImage = doc.seo.imageMediaId ? publisherMediaHref(doc.seo.imageMediaId) : null;
+---
+
+<Base title={doc.seo.title} description={doc.seo.description} ogImage={ogImage}>
+  <AboutView document={doc} />
+</Base>

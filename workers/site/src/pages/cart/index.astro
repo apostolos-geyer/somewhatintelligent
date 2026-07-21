@@ -1,0 +1,385 @@
+---
+import Base from "../../layouts/Base.astro";
+import TxShell from "../../components/TxShell.astro";
+
+// The cart lives only in the browser (localStorage), so the server renders the
+// shell + states and the island hydrates the lines. Transactional page: noindex.
+---
+
+<Base title="Cart — somewhatintelligent" description="Your cart." noindex>
+  <TxShell title="Cart" maxWidth={720}>
+    <p id="cart-loading" class="tx-status">Loading cart…</p>
+
+    <div id="cart-empty" class="tx-status" hidden>
+      <p>Your cart is empty.</p>
+      <p><a href="/shop/">Browse objects <span aria-hidden="true">→</span></a></p>
+    </div>
+
+    <ul id="cart-lines" class="cart-lines" hidden></ul>
+
+    <template id="cart-line-tmpl">
+      <li class="cart-line">
+        <a class="cart-line-media" href="#"><img alt="" /></a>
+        <div class="cart-line-info">
+          <a class="cart-line-title" href="#"></a>
+          <p class="cart-line-size"></p>
+          <p class="cart-line-price"></p>
+          <p class="cart-line-flag" hidden></p>
+        </div>
+        <div class="cart-line-qty" role="group" aria-label="Quantity">
+          <button type="button" data-act="dec" aria-label="Decrease quantity">−</button>
+          <span class="cart-line-qty-value" aria-live="polite">1</span>
+          <button type="button" data-act="inc" aria-label="Increase quantity">+</button>
+        </div>
+        <button type="button" class="cart-line-remove" data-act="remove">Remove</button>
+      </li>
+    </template>
+
+    <footer id="cart-summary" class="cart-summary" hidden>
+      <div class="cart-subtotal">
+        <span>Subtotal</span>
+        <span id="cart-subtotal-value">—</span>
+      </div>
+      <p class="cart-note">Shipping and taxes are calculated at checkout.</p>
+      <a id="cart-checkout" class="tx-button" href="/checkout/" data-astro-reload>
+        Checkout <span aria-hidden="true">→</span>
+      </a>
+    </footer>
+  </TxShell>
+</Base>
+
+<script>
+  import {
+    readCart,
+    readHints,
+    setQuantity,
+    removeLine,
+    subscribeCart,
+    writeHint,
+    CART_MAX_QUANTITY,
+    CART_MIN_QUANTITY,
+  } from "../../lib/cart-client";
+  import { formatPrice, storeMediaHref } from "../../lib/format";
+  import type { ProductDetailDTO } from "@si/contracts";
+
+  interface DisplayLine {
+    variantId: string;
+    quantity: number;
+    title: string;
+    size: string;
+    priceCents: number;
+    currency: "CAD";
+    coverMediaId: string | null;
+    slug: string;
+    unavailable: boolean;
+  }
+
+  // Fresh active-release detail keyed by product id, once /cart/lookup.json
+  // responds; until then the hint cache drives display.
+  let freshByProduct: Map<string, ProductDetailDTO> | null = null;
+
+  // Active cart subscription; released before each swap so a re-init on the next
+  // astro:page-load never stacks a second listener over detached DOM.
+  let unsubscribe: (() => void) | null = null;
+
+  function setText(root: HTMLElement, selector: string, text: string): void {
+    const el = root.querySelector<HTMLElement>(selector);
+    if (el) el.textContent = text;
+  }
+
+  function buildLines(): DisplayLine[] {
+    const cart = readCart();
+    const hints = readHints();
+    return cart.lines.map((line) => {
+      const hint = hints[line.variantId];
+      const currency: "CAD" = hint?.currency ?? "CAD";
+      let title = hint?.title ?? "Item";
+      let size = hint?.size ?? "";
+      let priceCents = hint?.priceCents ?? 0;
+      let coverMediaId = hint?.coverMediaId ?? null;
+      const slug = hint?.slug ?? "";
+      let unavailable = false;
+
+      if (freshByProduct && hint) {
+        const product = freshByProduct.get(hint.productId);
+        if (!product) {
+          unavailable = true;
+        } else {
+          const variant = product.variants.find((v) => v.id === line.variantId);
+          if (!variant) {
+            unavailable = true;
+          } else {
+            title = product.title;
+            size = variant.size;
+            priceCents = product.priceCents;
+            coverMediaId = product.coverMediaId;
+            unavailable = !variant.available;
+          }
+        }
+      }
+
+      return {
+        variantId: line.variantId,
+        quantity: line.quantity,
+        title,
+        size,
+        priceCents,
+        currency,
+        coverMediaId,
+        slug,
+        unavailable,
+      };
+    });
+  }
+
+  // Runs on every soft navigation (astro:page-load fires on first load too).
+  // Re-queries the freshly-swapped markup and bails when the cart page is
+  // absent, so the handler no-ops on other routes; the prior subscription is
+  // released in astro:before-swap, so binding here never double-fires.
+  function initCart(): void {
+    const loadingEl = document.getElementById("cart-loading");
+    const emptyEl = document.getElementById("cart-empty");
+    const linesEl = document.getElementById("cart-lines");
+    const summaryEl = document.getElementById("cart-summary");
+    const subtotalEl = document.getElementById("cart-subtotal-value");
+    const checkoutBtn = document.getElementById("cart-checkout");
+    const template = document.getElementById("cart-line-tmpl") as HTMLTemplateElement | null;
+    if (!linesEl || !template) return;
+
+    function render(): void {
+      const lines = buildLines();
+      if (loadingEl) loadingEl.hidden = true;
+
+      if (lines.length === 0) {
+        if (emptyEl) emptyEl.hidden = false;
+        if (linesEl) {
+          linesEl.hidden = true;
+          linesEl.replaceChildren();
+        }
+        if (summaryEl) summaryEl.hidden = true;
+        return;
+      }
+      if (emptyEl) emptyEl.hidden = true;
+
+      if (linesEl && template) {
+        const root = template.content.firstElementChild;
+        linesEl.replaceChildren();
+        for (const line of lines) {
+          if (!root) break;
+          const node = root.cloneNode(true) as HTMLElement;
+
+          const mediaWrap = node.querySelector<HTMLAnchorElement>(".cart-line-media");
+          const img = node.querySelector<HTMLImageElement>(".cart-line-media img");
+          if (line.coverMediaId && img) {
+            img.src = storeMediaHref(line.coverMediaId);
+            img.alt = line.title;
+            if (mediaWrap) mediaWrap.setAttribute("href", line.slug ? `/shop/${line.slug}` : "#");
+          } else if (mediaWrap) {
+            mediaWrap.hidden = true;
+          }
+
+          const titleEl = node.querySelector<HTMLAnchorElement>(".cart-line-title");
+          if (titleEl) {
+            titleEl.textContent = line.title;
+            titleEl.setAttribute("href", line.slug ? `/shop/${line.slug}` : "#");
+          }
+          setText(node, ".cart-line-size", line.size ? `Size ${line.size}` : "");
+          setText(node, ".cart-line-price", formatPrice(line.priceCents, line.currency));
+
+          const flag = node.querySelector<HTMLElement>(".cart-line-flag");
+          if (flag) {
+            flag.hidden = !line.unavailable;
+            if (line.unavailable) flag.textContent = "No longer available";
+          }
+
+          setText(node, ".cart-line-qty-value", String(line.quantity));
+
+          const dec = node.querySelector<HTMLButtonElement>('[data-act="dec"]');
+          const inc = node.querySelector<HTMLButtonElement>('[data-act="inc"]');
+          const rem = node.querySelector<HTMLButtonElement>('[data-act="remove"]');
+          if (dec) dec.disabled = line.quantity <= CART_MIN_QUANTITY;
+          if (inc) inc.disabled = line.quantity >= CART_MAX_QUANTITY;
+          dec?.addEventListener("click", () => setQuantity(line.variantId, line.quantity - 1));
+          inc?.addEventListener("click", () => setQuantity(line.variantId, line.quantity + 1));
+          rem?.addEventListener("click", () => removeLine(line.variantId));
+
+          linesEl.appendChild(node);
+        }
+        linesEl.hidden = false;
+      }
+
+      const available = lines.filter((l) => !l.unavailable);
+      const subtotal = available.reduce((sum, l) => sum + l.priceCents * l.quantity, 0);
+      if (subtotalEl) subtotalEl.textContent = formatPrice(subtotal, "CAD");
+      if (summaryEl) summaryEl.hidden = false;
+      if (checkoutBtn) {
+        if (available.length === 0) checkoutBtn.setAttribute("aria-disabled", "true");
+        else checkoutBtn.removeAttribute("aria-disabled");
+      }
+    }
+
+    async function freshen(): Promise<void> {
+      const cart = readCart();
+      const hints = readHints();
+      const productIds = [
+        ...new Set(
+          cart.lines
+            .map((l) => hints[l.variantId]?.productId)
+            .filter((x): x is string => typeof x === "string" && x.length > 0),
+        ),
+      ];
+      if (productIds.length === 0) return;
+      try {
+        const res = await fetch("/cart/lookup.json", {
+          method: "POST",
+          headers: { "content-type": "application/json", accept: "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ productIds }),
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as { products: ProductDetailDTO[] };
+        freshByProduct = new Map(data.products.map((p) => [p.id, p]));
+        // Refresh hints so a later visit renders fresh even before this resolves.
+        for (const line of cart.lines) {
+          const hint = hints[line.variantId];
+          if (!hint) continue;
+          const product = freshByProduct.get(hint.productId);
+          const variant = product?.variants.find((v) => v.id === line.variantId);
+          if (!product || !variant) continue;
+          writeHint(line.variantId, {
+            productId: hint.productId,
+            slug: product.slug,
+            title: product.title,
+            size: variant.size,
+            priceCents: product.priceCents,
+            currency: "CAD",
+            coverMediaId: product.coverMediaId,
+          });
+        }
+        render();
+      } catch {
+        // Keep the hint-based display when the lookup is unavailable.
+      }
+    }
+
+    checkoutBtn?.addEventListener("click", (e) => {
+      if (checkoutBtn.getAttribute("aria-disabled") === "true") e.preventDefault();
+    });
+
+    render();
+    unsubscribe = subscribeCart(render);
+    void freshen();
+  }
+
+  document.addEventListener("astro:page-load", initCart);
+  document.addEventListener("astro:before-swap", () => {
+    unsubscribe?.();
+    unsubscribe = null;
+  });
+</script>
+
+<style>
+  .cart-lines {
+    margin-top: 28px;
+    list-style: none;
+  }
+
+  .cart-line {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 0;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .cart-line-media {
+    display: block;
+    width: 64px;
+    height: 64px;
+    overflow: hidden;
+    background: var(--color-muted);
+  }
+
+  .cart-line-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .cart-line-info {
+    min-width: 0;
+  }
+
+  .cart-line-title {
+    font-size: 14px;
+  }
+
+  .cart-line-size,
+  .cart-line-price {
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--color-muted-foreground);
+  }
+
+  .cart-line-flag {
+    margin-top: 6px;
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--color-destructive);
+  }
+
+  .cart-line-qty {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .cart-line-qty button {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--color-border);
+    background: transparent;
+    color: inherit;
+    font-family: var(--font-mono);
+  }
+
+  .cart-line-qty button:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  .cart-line-qty-value {
+    min-width: 20px;
+    text-align: center;
+    font-size: 13px;
+  }
+
+  .cart-line-remove {
+    border: 0;
+    background: transparent;
+    color: var(--color-muted-foreground);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-decoration: underline;
+    text-transform: uppercase;
+  }
+
+  .cart-summary {
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid var(--color-foreground);
+  }
+
+  .cart-subtotal {
+    display: flex;
+    justify-content: space-between;
+    font-size: 16px;
+  }
+
+  .cart-note {
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--color-muted-foreground);
+  }
+</style>

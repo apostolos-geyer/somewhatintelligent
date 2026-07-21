@@ -31,8 +31,9 @@
 set -euo pipefail
 
 # Canonical platform deploy order (bouncer LAST — it binds guestlist,
-# identity, and store, which must already exist; see .rwx/deploy.yml).
-ORDER=(promoter roadie guestlist identity store bouncer)
+# identity, store, and site, which must already exist; publisher binds
+# roadie + store, site binds publisher + store; see .rwx/deploy.yml).
+ORDER=(promoter roadie guestlist identity store publisher site bouncer)
 
 classify() {
   local all=0
@@ -71,11 +72,11 @@ if [ "${1:-}" = "--self-test" ]; then
     fi
   }
   t worker-only "identity" workers/identity/src/router.tsx workers/identity/src/styles.css
-  t rpc-worker-fans-out "promoter roadie guestlist identity store bouncer" workers/guestlist/src/index.ts
-  t shared-package "promoter roadie guestlist identity store bouncer" packages/ui/src/button.tsx
+  t rpc-worker-fans-out "promoter roadie guestlist identity store publisher site bouncer" workers/guestlist/src/index.ts
+  t shared-package "promoter roadie guestlist identity store publisher site bouncer" packages/ui/src/button.tsx
   t docs-only "" docs/onboarding.md .rwx/ci.yml README.md
   t mixed "identity bouncer" workers/identity/src/a.ts workers/bouncer/src/b.ts docs/x.md
-  t lockfile "promoter roadie guestlist identity store bouncer" bun.lock
+  t lockfile "promoter roadie guestlist identity store publisher site bouncer" bun.lock
   t store-only "store" workers/store/src/index.ts
   t inbox-is-a-no-op "" inbox/app/root.tsx inbox/package.json
   t inbox-plus-worker "identity" inbox/app/root.tsx workers/identity/src/a.ts

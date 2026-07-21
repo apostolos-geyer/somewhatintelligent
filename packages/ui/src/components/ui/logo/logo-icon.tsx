@@ -2,10 +2,8 @@ import { MARK_STROKE, markPaths, brand } from "./brand";
 import type { LogoIconProps } from "./types";
 
 /**
- * The mark — a drafting REGISTRATION MARK: a circle with four tick lines
- * crossing its cardinal points and a plotted center, the symbol printers
- * and drafters use to line a drawing up. Its geometry lives in `./brand`
- * (`markPaths`) so a consumer can swap the shape without touching this file.
+ * The mark geometry lives in `./brand` (`markPaths`). In this fork it is the
+ * FRIEND declaration's asterisk: footnote, wildcard, and provenance mark.
  *
  * This is the SINGLE source of the mark, used by the app AND by satori/OG
  * image generation, so it must stay a hook-free SVG (no lucide components —
@@ -70,13 +68,13 @@ export function LogoIcon({
       style={style}
       {...svgProps}
     >
-      {/* Registration circle */}
+      {/* Optional enclosing geometry (zero-radius for the asterisk mark). */}
       <circle cx="12" cy="12" r={markPaths.circleRadius} />
-      {/* Cardinal tick lines — crossing the circle's edge like plot marks */}
+      {/* Brand-surface paths. */}
       {markPaths.ticks.map((d) => (
         <path key={d} d={d} />
       ))}
-      {/* Plotted center point */}
+      {/* Center point. */}
       <circle cx="12" cy="12" r={markPaths.centerRadius} fill={stroke} stroke="none" />
     </svg>
   );

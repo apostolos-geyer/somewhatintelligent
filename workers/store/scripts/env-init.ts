@@ -16,17 +16,16 @@ const label = "workers/store";
 // BNC_ATT_PRIV; src/lib/platform.ts reads both). SAFE: the stamper is a hard
 // no-op outside ENVIRONMENT=development.
 //
-// PUBLIC_BASE="/" locally: dev-direct has no `/shop` mount, so the client
-// router basepath resolves to root. Staging/production set PUBLIC_BASE="/shop"
-// as a wrangler var (see wrangler.jsonc).
-//
 // STORE_URL is the store's own dev origin (portless overrides it with the live
-// branch-prefixed URL at runtime via PORTLESS_URL in vite.config).
+// branch-prefixed URL at runtime).
+//
+// SITE_URL feeds the checkout-session returnUrl (RFC-0001 D11) — the
+// Stripe redirect after payment lands on Site's /checkout/return, not the
+// headless Store worker. It must be Site's portless hostname: the session
+// cookie and store CORS are scoped to *.somewhatintelligent.localhost, so a
+// raw-port origin 401s on the return page's status polling.
 const devVars = `${PLATFORM_DEV_VARS}STORE_URL=https://store.somewhatintelligent.localhost
-PUBLIC_BASE=/
-# Launch gate: "false" shows the pre-launch landing locally (admins bypass);
-# flip to "true" to develop against the open shop.
-STORE_LIVE=false
+SITE_URL=https://site.somewhatintelligent.localhost
 BNC_ATT_KID=${LOCAL_BNC_ATT_KID}
 BNC_ATT_PRIV="${LOCAL_BNC_ATT_PRIV.replace(/\n/g, "\\n")}"
 # Stripe webhook ingestion (/hooks/store) — unset until Stripe onboarding.

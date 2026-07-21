@@ -32,7 +32,7 @@ FILES="${FILES:?changed-file list path required}"
 SHA="${SHA:?commit sha required}"
 FORCE_FULL="${FORCE_FULL:-false}"
 REPO="apostolos-geyer/somewhatintelligent"
-ORDER=(promoter roadie guestlist identity store bouncer)
+ORDER=(promoter roadie guestlist identity store publisher site bouncer)
 
 # Per-worker GitHub Deployment records (env `staging/<worker>`, CF-dashboard +
 # live-URL links) — best-effort helpers, sourced so BOTH ship paths below

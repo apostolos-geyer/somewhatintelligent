@@ -26,9 +26,12 @@
 # Optionally grant the rwx-automation-si GitHub App
 # issues:write and add it to the vault for PR comments
 # (scripts/pr-preview-comment.sh degrades to run-links-only without it).
-# Vault does NOT exist yet on this fork — until `rwx vaults create --name
-# si_preview --unlocked` is run and the token set, this lane is
-# scaffolding-only (docs/ops/rwx-setup.md is the activation runbook).
+# If the vault is absent on a fork, the upload tasks fail at wrangler auth —
+# `rwx vaults create --name si_preview --unlocked` + the token set activates
+# the lane (docs/ops/rwx-setup.md is the activation runbook). The upload tasks
+# also require each worker's `build` script: store/publisher currently ship
+# none and site's astro dist layout is unwired here, so those uploads fail
+# until the lane learns their build shapes.
 # Ad-hoc rerun for any open PR: rwx run .rwx/preview.yml --init pr-number=<N>
 # ─────────────────────────────────────────────────────────────────────────────
 

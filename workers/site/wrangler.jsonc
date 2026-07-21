@@ -1,0 +1,72 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Site — Astro SSR public presentation (RFC-0001 D4). Top level = staging;
+  // the single env.production block = production. NO routes block: Site is
+  // bound by bouncer (root /* passthrough) and is never directly addressed.
+  //
+  // Read-only entrypoints only (INV-SITE-1): PUBLISHER -> PublisherPublic and
+  // STORE -> StoreCatalog service bindings. Site is presentation-only — no
+  // D1/R2/KV/admin bindings may ever be added here.
+  //
+  // `main` + `assets` mirror the @astrojs/cloudflare v14 defaults: the adapter
+  // builds the worker into dist/_worker.js and emits dist/wrangler.json plus
+  // .wrangler/deploy/config.json, which `wrangler deploy` follows.
+  "name": "si-site-staging",
+  "main": "@astrojs/cloudflare/entrypoints/server",
+  "account_id": "c735c5a53d864bee37400befb7f4c7f4",
+  "compatibility_date": "2026-04-19",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+  },
+  "observability": {
+    "enabled": true,
+  },
+  "upload_source_maps": true,
+  "workers_dev": false,
+  "preview_urls": true,
+  "vars": {
+    "ENVIRONMENT": "staging",
+    "SITE_URL": "https://staging.somewhatintelligent.ca",
+  },
+  "services": [
+    {
+      "binding": "PUBLISHER",
+      "service": "si-publisher-staging",
+      "entrypoint": "PublisherPublic",
+    },
+    {
+      "binding": "STORE",
+      "service": "si-store-staging",
+      "entrypoint": "StoreCatalog",
+    },
+  ],
+  "env": {
+    "production": {
+      "name": "si-site-production",
+      "vars": {
+        "ENVIRONMENT": "production",
+        "SITE_URL": "https://somewhatintelligent.ca",
+      },
+      "services": [
+        {
+          "binding": "PUBLISHER",
+          "service": "si-publisher-production",
+          "entrypoint": "PublisherPublic",
+        },
+        {
+          "binding": "STORE",
+          "service": "si-store-production",
+          "entrypoint": "StoreCatalog",
+        },
+      ],
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+      },
+      "preview_urls": false,
+      // No "routes" block — Site is bound by bouncer, never directly addressed.
+    },
+  },
+}

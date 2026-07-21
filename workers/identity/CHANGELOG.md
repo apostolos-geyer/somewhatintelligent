@@ -2,24 +2,21 @@
 
 ## [0.0.8](https://github.com/apostolos-geyer/somewhatintelligent/compare/identity-v0.0.7...identity-v0.0.8) (2026-07-14)
 
-
 ### Bug Fixes
 
-* **identity:** point Tailwind [@source](https://github.com/source) at packages/ui so its utilities compile ([#33](https://github.com/apostolos-geyer/somewhatintelligent/issues/33)) ([20f2ade](https://github.com/apostolos-geyer/somewhatintelligent/commit/20f2ade99170937996240ec8d7fd76fb935a2067))
+- **identity:** point Tailwind [@source](https://github.com/source) at packages/ui so its utilities compile ([#33](https://github.com/apostolos-geyer/somewhatintelligent/issues/33)) ([20f2ade](https://github.com/apostolos-geyer/somewhatintelligent/commit/20f2ade99170937996240ec8d7fd76fb935a2067))
 
 ## [0.0.7](https://github.com/apostolos-geyer/somewhatintelligent/compare/identity-v0.0.6...identity-v0.0.7) (2026-07-14)
 
-
 ### Bug Fixes
 
-* **bouncer,identity,store:** scope vmf app assets to unique dirs to stop cross-app collision ([#30](https://github.com/apostolos-geyer/somewhatintelligent/issues/30)) ([3403c3c](https://github.com/apostolos-geyer/somewhatintelligent/commit/3403c3cb131c47eb9295743ab903b7c53e1ec562))
+- **bouncer,identity,store:** scope vmf app assets to unique dirs to stop cross-app collision ([#30](https://github.com/apostolos-geyer/somewhatintelligent/issues/30)) ([3403c3c](https://github.com/apostolos-geyer/somewhatintelligent/commit/3403c3cb131c47eb9295743ab903b7c53e1ec562))
 
 ## [0.0.6](https://github.com/apostolos-geyer/somewhatintelligent/compare/identity-v0.0.5...identity-v0.0.6) (2026-07-14)
 
-
 ### Features
 
-* **store,guestlist:** embedded Stripe checkout via Payment Element ([#27](https://github.com/apostolos-geyer/somewhatintelligent/issues/27)) ([4dd7903](https://github.com/apostolos-geyer/somewhatintelligent/commit/4dd790381c2b050ad442f5168244720f581b006b))
+- **store,guestlist:** embedded Stripe checkout via Payment Element ([#27](https://github.com/apostolos-geyer/somewhatintelligent/issues/27)) ([4dd7903](https://github.com/apostolos-geyer/somewhatintelligent/commit/4dd790381c2b050ad442f5168244720f581b006b))
 
 ## [0.0.5](https://github.com/apostolos-geyer/somewhatintelligent/compare/identity-v0.0.4...identity-v0.0.5) (2026-07-12)
 

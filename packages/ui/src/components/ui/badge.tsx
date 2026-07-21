@@ -19,7 +19,7 @@ const materialVariants = {
 } as const;
 
 const badgeVariants = cva(
-  "group/badge inline-flex w-fit shrink-0 items-center justify-center overflow-hidden rounded-full border border-transparent font-body font-semibold leading-none whitespace-nowrap transition-all [&>svg]:pointer-events-none",
+  "group/badge inline-flex w-fit shrink-0 items-center justify-center overflow-hidden rounded-sm border border-transparent font-body font-semibold leading-none whitespace-nowrap transition-all [&>svg]:pointer-events-none",
   {
     variants: {
       variant: {

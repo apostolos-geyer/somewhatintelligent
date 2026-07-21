@@ -4,8 +4,8 @@ This is the single contract for every environment variable and secret the
 platform consumes. **A new env var is not done until it has a row here.** If a
 worker reads `env.SOMETHING` (or a script reads `process.env.SOMETHING`) and it
 is not in a table below, that is the bug — either add the row or delete the
-read. This file is seeded from `scripts/dev-config.ts`, the six per-worker
-seeders, every `workers/*/wrangler.jsonc`, `packages/secrets/src/manifest.ts`,
+read. This file is seeded from `scripts/dev-config.ts`, the per-worker
+`scripts/env-init.ts` seeders, every `workers/*/wrangler.jsonc`, `packages/secrets/src/manifest.ts`,
 `.rwx/promote-staging.yml`, `.rwx/release-please.yml`, and `.rwx/deploy.yml`,
 `docs/secrets.md`, and `docs/runbooks/SECRETS.md`.
 
@@ -125,16 +125,28 @@ Email transport. `env-init` seeds only the Resend key; `ENVIRONMENT` /
 
 ## roadie (`workers/roadie`)
 
-R2 blob service. Has local D1. Local dev uses miniflare R2 emulation (needs no
-S3 keys); the keypair is only required if you flip `BLOBS` to `remote: true`.
+R2 blob service. Has local D1. The **write path** (`put`, upload finalize,
+`removeReference`) uses only the `BLOBS` R2 binding, so it works against the
+miniflare R2 sim locally with no S3 keys. The **read path** (`getReadUrl`)
+presigns an S3-compat GET against the real R2 host in staging/production — but
+in local dev it returns a URL to roadie's own `/__dev/blob/<id>` route instead,
+which streams the bytes straight back out of the miniflare sim. So the full
+round-trip runs offline; the S3 keypair is a deployed-env concern only (or if
+you flip `BLOBS` to `remote: true`).
 
-| name                   | consumed by           | dev source                                   | staging + production source                                                |
-| ---------------------- | --------------------- | -------------------------------------------- | -------------------------------------------------------------------------- |
-| `ENVIRONMENT`          | worker runtime        | wrangler top-level (staging), not overridden | wrangler var                                                               |
-| `R2_BUCKET`            | `src/sign.ts`         | wrangler top-level (staging), not overridden | wrangler var — `roadie-staging-blobs` / `roadie-production-blobs`          |
-| `R2_ACCOUNT_ID`        | `src/sign.ts`         | wrangler top-level (staging), not overridden | wrangler var (CF account id)                                               |
-| `S3_ACCESS_KEY_ID`     | `src/sign.ts` (SigV4) | `env-init` (blank placeholder)               | **secret (packages/secrets)** — `provided`/optional, per-env R2 S3 keypair |
-| `S3_SECRET_ACCESS_KEY` | `src/sign.ts` (SigV4) | `env-init` (blank placeholder)               | **secret (packages/secrets)** — `provided`/optional                        |
+| name                   | consumed by                           | dev source                                                    | staging + production source                                                |
+| ---------------------- | ------------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `ENVIRONMENT`          | worker runtime, `src/methods/read.ts` | `env-init` (`development`)                                    | wrangler var                                                               |
+| `ROADIE_DEV_ORIGIN`    | `src/methods/read.ts`                 | `env-init` (`https://roadie.somewhatintelligent.localhost`)   | absent (dev-only; read URLs presign against R2)                            |
+| `R2_BUCKET`            | `src/sign.ts`                         | wrangler top-level (staging), not overridden                  | wrangler var — `roadie-staging-blobs` / `roadie-production-blobs`          |
+| `R2_ACCOUNT_ID`        | `src/sign.ts`                         | wrangler top-level (staging), not overridden                  | wrangler var (CF account id)                                               |
+| `S3_ACCESS_KEY_ID`     | `src/sign.ts` (SigV4)                 | `env-init` (blank placeholder — read path uses the dev route) | **secret (packages/secrets)** — `provided`/optional, per-env R2 S3 keypair |
+| `S3_SECRET_ACCESS_KEY` | `src/sign.ts` (SigV4)                 | `env-init` (blank placeholder)                                | **secret (packages/secrets)** — `provided`/optional                        |
+
+`ROADIE_DEV_ORIGIN` is the browser-reachable origin of the dev blob route
+(portless HTTPS, so an HTTPS page's redirect to it isn't blocked as mixed
+content); it falls back to `http://127.0.0.1:8790` when unset. `ROADIE_PORT`
+still shifts the underlying listener — portless auto-detects it.
 
 Making roadie images actually render needs the keypair **plus** bucket CORS
 **plus** `props.callerApp` on every `ROADIE` service binding — see
@@ -142,8 +154,18 @@ Making roadie images actually render needs the keypair **plus** bucket CORS
 
 ## store (`workers/store`)
 
-Dev-direct TanStack Start storefront, vmf-mounted at `/shop` behind bouncer.
-Self-mints its dev attestation envelope (bouncer isn't in the path on
+> **Stale-doc correction:** the rows below describe the pre-refactor TanStack
+> Start storefront. Store is now **headless** — it ships no client bundle, so
+> there is no `CLIENT_VARS` allowlist, no `PUBLIC_BASE` client mount, and no
+> `STRIPE_PUBLISHABLE_KEY` "via vite CLIENT_VARS" read. The only surfaces are the
+> buyer HTTP API (`/api/store`) + Stripe webhook (`/hooks/store`) and the RPC
+> entrypoints; the storefront pages are Site's, and the publishable key reaches
+> the browser via `GET /api/store/config` (`stripePublishableKey`), never a build
+> var. `PUBLIC_BASE` / `STRIPE_PUBLISHABLE_KEY` client-bundle rows are retained
+> only as historical context pending a table rewrite.
+
+Dev-direct Store worker, headless behind bouncer's `/api/store` passthrough
+mount. Self-mints its dev attestation envelope (bouncer isn't in the path on
 `*.somewhatintelligent.localhost`), so it carries the dev signing key in `.dev.vars`. It
 also holds Stripe webhook credentials in staging/production (see table below).
 Binds `DB` (D1), `GUESTLIST`, `ROADIE`.
@@ -177,6 +199,44 @@ Binds `DB` (D1), `GUESTLIST`, `ROADIE`.
 are baked into the client bundle at build time by `vite.config.ts`
 (allowlisted in `CLIENT_VARS`), gated by `SI_BUILD` / `CLOUDFLARE_ENV` so a dev
 `.dev.vars` never leaks into a shipped bundle.
+
+## operator (`workers/operator`)
+
+Access-protected operator console (RFC-0001 D1/D6) on its own `desk.*`
+hostname, outside bouncer — deploys manually (no CI deploy lane, no
+release-please component). Fails closed: outside development, missing Access
+configuration is a 500, never a fallback.
+
+| name                     | consumed by                                                              | dev source                                                                    | staging + production source                                                                                                      |
+| ------------------------ | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `OPERATOR_URL`           | `src/operator-env.ts`                                                    | local URL (contract — dev currently falls through; see Known inconsistencies) | wrangler var — staging `https://desk.staging.somewhatintelligent.ca`, production `https://desk.somewhatintelligent.ca`           |
+| `POLICY_AUD`             | `src/lib/access.ts`                                                      | omitted (dev actor `DEV_OPERATOR` stands in)                                  | Wrangler **secret**, required — written by the Access setup script (`wrangler secret put`), not packages/secrets                 |
+| `TEAM_DOMAIN`            | `src/lib/access.ts`                                                      | omitted (dev actor `DEV_OPERATOR` stands in)                                  | Wrangler **secret**, required — same writer as `POLICY_AUD`                                                                      |
+| `DEV_OPERATOR`           | `src/lib/access.ts`                                                      | `env-init` (fixed dev actor, `<sub>:<email>`)                                 | absent                                                                                                                           |
+| `SITE_PREVIEW_URL`       | `src/components/preview-panel.tsx` (via `import.meta.env`)               | `env-init` — `http://127.0.0.1:4321/__preview`                                | wrangler var — staging `https://staging.somewhatintelligent.ca/__preview`, production `https://somewhatintelligent.ca/__preview` |
+| `PREVIEW_SIGNING_SECRET` | `src/lib/preview.functions.ts` (`signPreview`, via `cloudflare:workers`) | `env-init` — fixed `dev-preview-secret` (shared with site)                    | Wrangler **secret**, required — `wrangler secret put`, the SAME value set on site (T23 draft-preview HMAC)                       |
+
+## publisher (`workers/publisher`)
+
+Publisher service (RFC-0001) — texts, software records, and fixed pages. Has
+local D1. The public read RPC is consumed over a service binding, not a URL;
+`PUBLISHER_URL` is a contract row for diagnostics only.
+
+| name            | consumed by                | dev source | staging + production source             |
+| --------------- | -------------------------- | ---------- | --------------------------------------- |
+| `PUBLISHER_URL` | Publisher diagnostics only | local URL  | worker URL if a diagnostic route exists |
+
+## site (`workers/site`)
+
+Astro public site (RFC-0001) — an SSR worker bound by bouncer (no custom
+domain of its own). `SITE_URL` is a contract row: the consumers are the site's
+read models and the Store checkout return.
+
+| name                     | consumed by                                                                                                                                       | dev source                                                           | staging + production source                                                                                          |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `SITE_URL`               | Site / Store checkout return                                                                                                                      | `env-init` — `https://site.somewhatintelligent.localhost` (portless) | public apex                                                                                                          |
+| `STORE_API_BASE`         | site — inlined into the browser bundle as `import.meta.env.PUBLIC_STORE_API_BASE` by `astro.config.mjs`'s `storeApiBaseDefine` (dev command only) | `env-init` — `https://store.somewhatintelligent.localhost/api/store` | absent — the shipped bundle omits the define, so the client falls back to the same-origin `/api/store` bouncer mount |
+| `PREVIEW_SIGNING_SECRET` | `src/lib/preview.ts` / `src/pages/__preview.astro` (via `cloudflare:workers`)                                                                     | `env-init` — fixed `dev-preview-secret` (shared with operator)       | Wrangler **secret**, required — `wrangler secret put`, the SAME value set on operator (T23 draft-preview HMAC)       |
 
 ---
 
@@ -246,3 +306,9 @@ only if a fork wants a per-env project.
   `STRIPE_SECRET_KEY=` / `STRIPE_WEBHOOK_SIGNING_SECRET=` placeholder lines
   to `workers/store/scripts/env-init.ts`, mirroring
   `workers/guestlist/scripts/env-init.ts`.
+- **Operator's `OPERATOR_URL` is not seeded locally.** The RFC-0001 contract
+  gives dev a local URL, but `workers/operator/scripts/env-init.ts` seeds only
+  `ENVIRONMENT` + `DEV_OPERATOR`, so local dev resolves the staging wrangler
+  value (`https://desk.staging.somewhatintelligent.ca`). Nothing in dev
+  dereferences it, but the seeder should write the local URL to match the
+  contract.

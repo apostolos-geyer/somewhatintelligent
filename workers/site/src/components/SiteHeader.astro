@@ -1,0 +1,112 @@
+---
+const path = Astro.url.pathname;
+const section =
+  path === "/"
+    ? "home"
+    : path.startsWith("/shop")
+      ? "shop"
+      : path.startsWith("/software")
+        ? "software"
+        : path.startsWith("/writing")
+          ? "writing"
+          : path.startsWith("/about")
+            ? "about"
+            : "";
+---
+
+<header class="site-header" transition:persist="site-header">
+  <a
+    class:list={["wordmark", { "is-active": section === "home" }]}
+    href="/"
+    data-nav="home"
+    aria-current={section === "home" ? "page" : undefined}
+    aria-label="somewhatintelligent home"
+  >
+    somewhatintelligent
+  </a>
+  <nav class="desktop-nav" aria-label="Primary">
+    <a
+      class:list={{ "is-active": section === "shop" }}
+      href="/shop/"
+      data-nav="shop"
+      aria-current={section === "shop" ? "page" : undefined}>Shop</a
+    >
+    <a
+      class:list={{ "is-active": section === "software" }}
+      href="/software/"
+      data-nav="software"
+      aria-current={section === "software" ? "page" : undefined}>Software</a
+    >
+    <a
+      class:list={{ "is-active": section === "writing" }}
+      href="/writing/"
+      data-nav="writing"
+      aria-current={section === "writing" ? "page" : undefined}>Writing</a
+    >
+    <a
+      class:list={{ "is-active": section === "about" }}
+      href="/about/"
+      data-nav="about"
+      aria-current={section === "about" ? "page" : undefined}>About</a
+    >
+  </nav>
+  <div class="header-end">
+    <a class="account-link" href="/account">Account</a>
+    <a class="cart-link" id="site-cart-link" href="/cart" aria-label="Cart, 0 items">
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <path d="M3 4h2l2.2 10.1a2 2 0 0 0 2 1.6h7.9a2 2 0 0 0 1.9-1.4L21 7H6" />
+        <circle cx="10" cy="20" r="1" />
+        <circle cx="18" cy="20" r="1" />
+      </svg>
+      <span>Cart</span>
+      <span id="site-cart-count">(0)</span>
+    </a>
+  </div>
+</header>
+
+<script>
+  import { cartCount, subscribeCart } from "../lib/cart-client";
+
+  // The header is transition:persist'd, so its DOM and this module's top-level
+  // refs survive soft navigations; the module also runs only once, so the cart
+  // subscription is registered a single time on the persistent window.
+  const cartLink = document.getElementById("site-cart-link");
+  const cartCountEl = document.getElementById("site-cart-count");
+
+  function renderCart(): void {
+    const n = cartCount();
+    if (cartCountEl) cartCountEl.textContent = `(${n})`;
+    if (cartLink) {
+      cartLink.setAttribute("aria-label", `Cart, ${n} ${n === 1 ? "item" : "items"}`);
+    }
+  }
+
+  renderCart();
+  subscribeCart(renderCart);
+
+  // The persisted header is not re-rendered server-side across a swap, so the
+  // active section is re-derived from the URL on every soft navigation.
+  function syncActiveNav(): void {
+    const p = location.pathname;
+    const active =
+      p === "/"
+        ? "home"
+        : p.startsWith("/shop")
+          ? "shop"
+          : p.startsWith("/software")
+            ? "software"
+            : p.startsWith("/writing")
+              ? "writing"
+              : p.startsWith("/about")
+                ? "about"
+                : "";
+    document.querySelectorAll<HTMLElement>("[data-nav]").forEach((el) => {
+      const on = el.dataset.nav === active;
+      el.classList.toggle("is-active", on);
+      if (on) el.setAttribute("aria-current", "page");
+      else el.removeAttribute("aria-current");
+    });
+  }
+
+  document.addEventListener("astro:after-swap", syncActiveNav);
+</script>

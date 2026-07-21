@@ -35,18 +35,17 @@ Two other token families live alongside colors and follow the same rule
 (all literals in one file, everything else derived):
 
 - **Fonts** — `src/tokens/typography.ts` (`fontStacks`) + `src/fonts.css`
-  (`@font-face`). Iosevka Aile / Iosevka ship as the default voice; both
-  files are marked consumer-swappable in their doc comments.
+  (`@font-face`). Barlow Condensed carries display claims, Source Serif 4
+  carries interface and editorial copy, and Iosevka carries evidence/state.
 - **Shadows / radius** — `src/tokens/shadows.ts`, `src/tokens/radius.ts`.
   These encode a structural material language (hard-edged, zero-blur
-  shadows; generous rounding) that is independent of brand color — you
-  don't need to touch them to reskin a brand.
+  shadows; nearly square corners) that is independent of brand color.
 
 ## Rebranding this template
 
 1. Edit `src/tokens/brand.ts` — retint `neutralRamp` / `accentRamp` and
    the light/dark HSL values in `lightPalette` / `darkPalette` /
-   `functionalColors`. This is the **only** file you should need to touch.
+   `functionalColors`.
 2. Regenerate and verify:
    ```sh
    bun run codegen         # writes generated/css/*
@@ -56,6 +55,8 @@ Two other token families live alongside colors and follow the same rule
 3. To swap fonts: replace the vendored files under `src/fonts/`, update
    the `@font-face` blocks in `src/fonts.css`, and repoint the `family`
    strings in `src/tokens/typography.ts` (`fontStacks`).
+4. Shape and elevation changes belong in `src/tokens/radius.ts` and
+   `src/tokens/shadows.ts`; keep their stable token names intact.
 
 Component source never changes. If a component needs a color that isn't
 in the semantic contract, that's a contract change (add the field to

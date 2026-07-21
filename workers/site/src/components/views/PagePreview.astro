@@ -1,0 +1,131 @@
+---
+// Draft page-document preview (RFC-0001 D14, exec-plan 0004 T23). Renders a
+// `PageDocumentByKey` document into the public site chrome (Base is applied by
+// the caller). The `home`/`shop`/`about` keys delegate to the SAME shared view
+// components the public routes use, so a preview is byte-for-byte the composition
+// a publish produces (ONE composition per key). Index-style keys fetch their
+// live record lists via the EXISTING public read bindings — exactly like the
+// public routes — because those lists are published data, not draft data. The
+// previewed document itself never comes from a binding; it arrives in the signed
+// request.
+import SiteFooter from "../SiteFooter.astro";
+import SiteHeader from "../SiteHeader.astro";
+import HomeView from "./HomeView.astro";
+import ShopView from "./ShopView.astro";
+import AboutView from "./AboutView.astro";
+import WritingIndex from "./WritingIndex.astro";
+import LedgerEntry from "./LedgerEntry.astro";
+import { listProducts, availabilityLabel, type ProductCardDTO } from "../../lib/store-catalog";
+import {
+  listTexts,
+  listSoftware,
+  type PublishedTextSummaryDTO,
+  type PublishedSoftwareSummaryDTO,
+} from "../../lib/publisher-public";
+import { formatDate } from "../../lib/format";
+import type { PageDocumentByKey, PageKey } from "@si/contracts";
+
+interface Props {
+  document: PageDocumentByKey[PageKey];
+}
+
+const { document: doc } = Astro.props;
+
+// Fetch live lists only for the key being previewed (published data, not draft).
+// A read failure degrades to an empty list — a preview must never 500 on a
+// transient list-read error.
+let products: ProductCardDTO[] = [];
+let texts: PublishedTextSummaryDTO[] = [];
+let software: PublishedSoftwareSummaryDTO[] = [];
+try {
+  if (doc.key === "shop") {
+    const r = await listProducts({ limit: 24 });
+    products = r.ok
+      ? r.value.products.filter((p) => availabilityLabel(p.availability) !== null)
+      : [];
+  } else if (doc.key === "writing") {
+    const r = await listTexts({ limit: 24 });
+    texts = r.ok ? r.value.texts : [];
+  } else if (doc.key === "software") {
+    const r = await listSoftware({ limit: 24 });
+    software = r.ok ? r.value.software : [];
+  }
+} catch {
+  // leave the list empty; the placeholder card renders
+}
+
+---
+
+{doc.key === "home" && <HomeView document={doc} />}
+
+{doc.key === "shop" && <ShopView document={doc} products={products} />}
+
+{doc.key === "about" && <AboutView document={doc} />}
+
+{
+  doc.key === "writing" && (
+    <div class="site-frame shop-frame">
+      <SiteHeader />
+      <WritingIndex
+        heading={doc.title || doc.eyebrow}
+        deck={doc.deck}
+        emptyMessage={doc.emptyMessage}
+        texts={texts}
+      />
+      <SiteFooter />
+    </div>
+  )
+}
+
+{
+  doc.key === "software" && (
+    <div class="site-frame shop-frame">
+      <SiteHeader />
+      <main class="ledger-main">
+        <section class="objects-intro" aria-labelledby="page-preview-title">
+          <h1 id="page-preview-title">{doc.title || doc.eyebrow}</h1>
+          <p class="objects-deck">{doc.deck}</p>
+        </section>
+
+        {doc.key === "software" &&
+          (software.length === 0 ? (
+            <section class="object-ledger" aria-label="Records">
+              <article class="object-entry object-entry-compact object-entry-placeholder">
+                <span class="object-number">01</span>
+                <div class="object-meta">
+                  <h2>No systems yet</h2>
+                  <p>{doc.emptyMessage}</p>
+                </div>
+                <div class="object-placeholder-field" aria-label="No systems published">
+                  <span>System / unpublished</span>
+                  <strong>COMING SOON</strong>
+                </div>
+              </article>
+            </section>
+          ) : (
+            <section class="ledger-rows" aria-label="Records">
+              <div class="ledger-registry-head" aria-hidden="true">
+                <span class="ledger-registry-head-system">System</span>
+                <span class="ledger-registry-head-updated">Updated</span>
+              </div>
+              {software.map((item, i) => (
+                <LedgerEntry
+                  index={i + 1}
+                  kicker={i === 0 ? "Latest system" : undefined}
+                  title={item.title}
+                  dateLabel={`Updated ${formatDate(item.updatedAt)}`}
+                  deck={item.deck}
+                  image={item.primaryMedia}
+                  imageLabel={`System / ${item.slug}`}
+                  href={`/software/${item.slug}`}
+                  ctaLabel="Open record"
+                  startExpanded={i === 0}
+                />
+              ))}
+            </section>
+          ))}
+      </main>
+      <SiteFooter />
+    </div>
+  )
+}

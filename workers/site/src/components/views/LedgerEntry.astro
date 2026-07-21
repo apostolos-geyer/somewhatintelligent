@@ -1,0 +1,393 @@
+---
+// Unified ledger entry (replaces the old LedgerFeatured/LedgerRow split + the
+// scroll-collapse mechanism). Every entry ships BOTH its compact-row markup
+// and its expanded (display-scale title, deck, image, CTA) markup server-side;
+// a `data-expanded` attribute + CSS transitions swap between them. `startExpanded`
+// sets the initial state (most-recent entry on page 1, none on cursor pages) —
+// the no-JS / reduced-motion fallback is exactly that static state, so every
+// href stays a plain working link either way. The inline script below (present
+// once per page — Astro dedupes identical component scripts) enforces "exactly
+// one expanded entry per `.ledger-rows` container", driven by pointerenter and
+// focusin, with a tap-to-expand/tap-to-follow fallback for coarse pointers.
+import type { PublicMediaRef } from "../../lib/publisher-public";
+
+interface Props {
+  index: number;
+  kicker?: string;
+  title: string;
+  dateLabel: string;
+  deck?: string | null;
+  excerpt?: string | null;
+  image?: PublicMediaRef | null;
+  imageLabel?: string;
+  tags?: string[];
+  href: string;
+  ctaLabel?: string;
+  startExpanded?: boolean;
+}
+
+const {
+  index,
+  kicker,
+  title,
+  dateLabel,
+  deck,
+  excerpt,
+  image = null,
+  imageLabel = "No image",
+  tags = [],
+  href,
+  ctaLabel = "Open",
+  startExpanded = false,
+} = Astro.props;
+
+const num = String(index).padStart(2, "0");
+---
+
+<article class="ledger-entry" data-expanded={startExpanded ? "true" : "false"}>
+  <a class="ledger-entry-bar" href={href}>
+    <span class="ledger-entry-num">{num}</span>
+    <span class="ledger-entry-headline">
+      {kicker && <span class="ledger-entry-kicker">{kicker}</span>}
+      <h2 class="ledger-entry-title">{title}</h2>
+      {deck && <span class="ledger-entry-purpose">{deck}</span>}
+    </span>
+    <span class="ledger-entry-meta">
+      {tags.length > 0 && <span class="ledger-entry-tags">{tags.join(" · ")}</span>}
+      <span class="ledger-entry-date">{dateLabel}</span>
+    </span>
+    <span class="ledger-entry-arrow" aria-hidden="true">→</span>
+  </a>
+  <div class="ledger-entry-panel-wrap">
+    <div class="ledger-entry-panel">
+      <div class="ledger-entry-copy">
+        {deck && <p class="ledger-entry-deck">{deck}</p>}
+        {excerpt && <p class="ledger-entry-excerpt">{excerpt}</p>}
+        <a class="ledger-entry-cta" href={href} tabindex={startExpanded ? undefined : -1}>
+          {ctaLabel} <span aria-hidden="true">→</span>
+        </a>
+      </div>
+      {
+        image ? (
+          <figure class="ledger-entry-image">
+            <img src={image.href} alt={image.alt || title} loading="lazy" />
+          </figure>
+        ) : (
+          <div class="object-placeholder-field ledger-entry-placeholder" aria-label="No image">
+            <span>{imageLabel}</span>
+            <strong>NO IMAGE</strong>
+          </div>
+        )
+      }
+    </div>
+  </div>
+</article>
+
+<script>
+  // Delegated on `document` (not per-entry) so it wires once regardless of how
+  // many entries render; `pointerenter`/`focusin` don't bubble to a plain
+  // listener, so pointerenter is captured on the way down instead.
+  function closestEntry(el: EventTarget | null): HTMLElement | null {
+    return el instanceof Element ? el.closest<HTMLElement>(".ledger-entry") : null;
+  }
+
+  function setExpanded(entry: HTMLElement, expanded: boolean): void {
+    entry.dataset.expanded = expanded ? "true" : "false";
+    const cta = entry.querySelector<HTMLAnchorElement>(".ledger-entry-cta");
+    if (!cta) return;
+    if (expanded) cta.removeAttribute("tabindex");
+    else cta.setAttribute("tabindex", "-1");
+  }
+
+  function expand(entry: HTMLElement): void {
+    const container = entry.closest(".ledger-rows");
+    if (!container || entry.dataset.expanded === "true") return;
+    const current = container.querySelector<HTMLElement>('.ledger-entry[data-expanded="true"]');
+    if (current && current !== entry) setExpanded(current, false);
+    setExpanded(entry, true);
+  }
+
+  document.addEventListener(
+    "pointerenter",
+    (e) => {
+      const entry = closestEntry(e.target);
+      if (entry) expand(entry);
+    },
+    true,
+  );
+
+  document.addEventListener("focusin", (e) => {
+    const entry = closestEntry(e.target);
+    if (entry) expand(entry);
+  });
+
+  // Coarse pointers (touch) have no hover: the first tap expands instead of
+  // navigating; a second tap on an already-expanded entry follows the link.
+  document.addEventListener(
+    "click",
+    (e) => {
+      const bar = e.target instanceof Element ? e.target.closest(".ledger-entry-bar") : null;
+      if (!bar) return;
+      const entry = closestEntry(bar);
+      if (!entry) return;
+      const coarse = window.matchMedia?.("(hover: none)").matches;
+      if (coarse && entry.dataset.expanded !== "true") {
+        e.preventDefault();
+        expand(entry);
+      }
+    },
+    true,
+  );
+</script>
+
+<style>
+  /* A record is collapsed by default (registry row: number, title, one-line
+     purpose, date) or expanded (display-scale title, deck, image, CTA);
+     `data-expanded` + the transitions below swap between them. The `.ledger-rows`
+     container, registry-column head, and pager are page-owned and stay global —
+     these rules cover only what this component renders. */
+  .ledger-entry {
+    position: relative;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-background);
+    font-family: var(--font-mono);
+  }
+
+  .ledger-rows > .ledger-entry:last-child {
+    border-bottom: 0;
+  }
+
+  .ledger-entry-bar {
+    display: grid;
+    min-height: 58px;
+    grid-template-columns: 56px minmax(0, 1fr) auto 44px;
+    align-items: center;
+    color: var(--color-foreground);
+  }
+
+  .ledger-entry:not([data-expanded="true"]) .ledger-entry-bar:hover {
+    background: var(--color-foreground);
+    color: var(--color-background);
+  }
+
+  .ledger-entry:not([data-expanded="true"]) .ledger-entry-bar:hover .ledger-entry-tags,
+  .ledger-entry:not([data-expanded="true"]) .ledger-entry-bar:hover .ledger-entry-purpose {
+    color: inherit;
+  }
+
+  .ledger-entry-num {
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-right: 1px solid var(--color-border);
+    font-size: 13px;
+  }
+
+  .ledger-entry-headline {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    justify-content: center;
+    padding: 18px 22px;
+  }
+
+  .ledger-entry-kicker {
+    overflow: hidden;
+    max-height: 0;
+    margin-bottom: 0;
+    color: var(--color-primary);
+    font-size: 10px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    opacity: 0;
+    transition:
+      max-height 320ms ease,
+      opacity 200ms ease,
+      margin-bottom 320ms ease;
+  }
+
+  [data-expanded="true"] .ledger-entry-kicker {
+    max-height: 14px;
+    margin-bottom: 6px;
+    opacity: 1;
+  }
+
+  .ledger-entry-title {
+    overflow: hidden;
+    margin-top: 0;
+    font-family: var(--font-display);
+    font-size: clamp(14px, 1.3vw, 18px);
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+    transition:
+      font-size 340ms cubic-bezier(0.16, 1, 0.3, 1),
+      margin-top 340ms cubic-bezier(0.16, 1, 0.3, 1),
+      line-height 340ms cubic-bezier(0.16, 1, 0.3, 1),
+      letter-spacing 340ms ease;
+  }
+
+  [data-expanded="true"] .ledger-entry-title {
+    margin-top: 4px;
+    font-size: clamp(44px, 5.5vw, 88px);
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 0.84;
+    text-transform: none;
+  }
+
+  .ledger-entry-purpose {
+    overflow: hidden;
+    max-height: 16px;
+    margin-top: 4px;
+    color: var(--color-muted-foreground);
+    font-size: 11px;
+    letter-spacing: 0.01em;
+    text-overflow: ellipsis;
+    text-transform: none;
+    white-space: nowrap;
+    opacity: 1;
+    transition:
+      max-height 320ms ease,
+      opacity 180ms ease,
+      margin-top 320ms ease;
+  }
+
+  [data-expanded="true"] .ledger-entry-purpose {
+    max-height: 0;
+    margin-top: 0;
+    opacity: 0;
+  }
+
+  .ledger-entry-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    padding: 0 18px;
+    text-transform: uppercase;
+  }
+
+  .ledger-entry-tags {
+    color: var(--color-primary);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  .ledger-entry-date {
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .ledger-entry-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+  }
+
+  /* The auto-height reveal: a 0fr/1fr grid track animates smoothly without
+     measuring content height in JS. `min-height: 0` on the inner panel lets it
+     actually shrink to zero instead of the grid track being clamped by content. */
+  .ledger-entry-panel-wrap {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 360ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  [data-expanded="true"] .ledger-entry-panel-wrap {
+    grid-template-rows: 1fr;
+  }
+
+  .ledger-entry-panel {
+    display: grid;
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr) 38%;
+    overflow: hidden;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .ledger-entry-copy {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 22px;
+    border-right: 1px solid var(--color-border);
+  }
+
+  .ledger-entry-deck,
+  .ledger-entry-excerpt {
+    margin-bottom: 12px;
+    font-family: var(--font-editorial);
+    font-size: clamp(15px, 1.15vw, 19px);
+    line-height: 1.2;
+  }
+
+  .ledger-entry-cta {
+    display: flex;
+    min-width: 200px;
+    height: 46px;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: auto;
+    padding: 0 18px;
+    background: var(--color-foreground);
+    color: var(--color-background);
+    font-size: 13px;
+    text-transform: uppercase;
+  }
+
+  .ledger-entry-image,
+  .ledger-entry-placeholder {
+    min-height: 240px;
+    overflow: hidden;
+  }
+
+  .ledger-entry-image img {
+    width: 100%;
+    height: 100%;
+    filter: grayscale(0.7) contrast(1.08);
+    object-fit: cover;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ledger-entry-kicker,
+    .ledger-entry-title,
+    .ledger-entry-purpose,
+    .ledger-entry-panel-wrap {
+      transition: none;
+    }
+  }
+
+  @media (max-width: 1023px) {
+    .ledger-entry-bar {
+      grid-template-columns: 44px minmax(0, 1fr) auto 36px;
+      min-height: 54px;
+    }
+
+    [data-expanded="true"] .ledger-entry-title {
+      margin-top: 10px;
+      font-size: clamp(40px, 12vw, 68px);
+      line-height: 0.84;
+    }
+
+    /* Stacked, full-bleed panel — the 62/38 split only reads at desktop widths. */
+    .ledger-entry-panel {
+      grid-template-columns: 1fr;
+    }
+
+    .ledger-entry-copy {
+      border-right: 0;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .ledger-entry-tags {
+      display: none;
+    }
+  }
+</style>

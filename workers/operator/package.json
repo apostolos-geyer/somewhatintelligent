@@ -1,0 +1,49 @@
+{
+  "name": "operator",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "WRANGLER_REGISTRY_PATH=${WRANGLER_REGISTRY_PATH:-$PWD/../../.wrangler/dev-registry} PORT=${OPERATOR_PORT:-8792} vp dev",
+    "preview": "vp preview",
+    "env:init": "bun scripts/env-init.ts",
+    "deploy:staging": "SI_BUILD=1 vp run build && wrangler deploy",
+    "deploy:production": "CLOUDFLARE_ENV=production vp run build && wrangler deploy --env production",
+    "access:setup": "bun scripts/setup-access.ts",
+    "types": "wrangler types -c wrangler.jsonc",
+    "typecheck": "tsgo --noEmit",
+    "test": "vp test run"
+  },
+  "dependencies": {
+    "@si/contracts": "workspace:*",
+    "@si/design": "workspace:*",
+    "@si/ui": "workspace:*",
+    "@somewhatintelligent/kit": "0.0.3",
+    "@tailwindcss/vite": "catalog:",
+    "@tanstack/react-devtools": "catalog:",
+    "@tanstack/react-router": "catalog:",
+    "@tanstack/react-router-devtools": "catalog:",
+    "@tanstack/react-start": "catalog:",
+    "arktype": "catalog:",
+    "jose": "^6.2.2",
+    "lucide-react": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwindcss": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.37.1",
+    "@cloudflare/workers-types": "^4",
+    "@si/typescript-config": "workspace:*",
+    "@tanstack/devtools-vite": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "^6.0.1",
+    "jsonc-parser": "^3.3.1",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:",
+    "wrangler": "^4"
+  }
+}

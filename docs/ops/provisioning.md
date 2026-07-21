@@ -113,7 +113,7 @@ bun scripts/provision/all.ts --env staging --write-secrets
 
 # 6. Deploy the fleet (staging = top-level wrangler.jsonc, no --env flag).
 #    Canonical order (bouncer LAST — see scripts/deploy-worker.sh):
-for w in promoter roadie guestlist identity store bouncer; do
+for w in promoter roadie guestlist identity store publisher site bouncer; do
   bash scripts/deploy-worker.sh ship "$w" staging
 done
 cd inbox && bun run deploy   # vendored inbox app deploys manually, outside RWX

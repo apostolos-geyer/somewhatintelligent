@@ -8,11 +8,11 @@
 import type Stripe from "stripe";
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
 
-import { customerOrder, orderItem, product, productVariant } from "@/db/schema";
+import { customerOrder, orderItem } from "@/db/schema";
 import type { Db } from "@/lib/db";
 import { ulid } from "@somewhatintelligent/kit/ids";
 import type { PlatformSession } from "@somewhatintelligent/auth";
-import { computeOrderTotals, type OrderLine } from "@/lib/pricing";
+import { computeOrderTotals, loadPricingInputs, type OrderLine } from "@/lib/pricing";
 import { reserveStockAndWrite } from "@/lib/reservation";
 import { releaseAndCancel, type SessionExpirer } from "@/lib/reconcile";
 import { orderNumber, type OrderStatus } from "@/lib/config";
@@ -244,16 +244,13 @@ export async function createCheckoutSessionCore(
     return { ok: true, mode: "stub" };
   }
 
-  // Re-price from the authoritative product/variant rows (INV-1).
+  // Re-price from the authoritative active-release + live-variant rows
+  // (INV-CART-1/INV-CHK-1): title + price come from each product's active
+  // product_release, size + stock from the live product_variant. A cart line
+  // carries only variantId + quantity, so a stale/forged snapshot can set
+  // neither the price nor the title.
   const variantIds = input.items.map((i) => i.variantId);
-  const variants = await db
-    .select()
-    .from(productVariant)
-    .where(inArray(productVariant.id, variantIds));
-  const productIds = [...new Set(variants.map((v) => v.productId))];
-  const products = productIds.length
-    ? await db.select().from(product).where(inArray(product.id, productIds))
-    : [];
+  const { variants, products } = await loadPricingInputs(db, variantIds);
   const priced = computeOrderTotals(input.items, variants, products);
   if (!priced.ok) {
     return { ok: false, error: priced.error as CheckoutError, message: priced.message };

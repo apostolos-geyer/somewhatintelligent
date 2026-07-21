@@ -9,12 +9,12 @@ import { APP_PRODUCT_NAME } from "../src/app-brand";
  */
 export function OgBrand({ iconSize, maxWidth = 1040 }: { iconSize: number; maxWidth?: number }) {
   const gap = iconSize * 0.12;
-  // Brand names can be long and Iosevka Aile is wide — clamp the size so
-  // mark + gap + wordmark always fit the canvas width. 0.62em is a safe
-  // average advance for Aile Light incl. tracking.
+  // Brand names can be long — clamp the condensed wordmark so mark + gap +
+  // name always fit the canvas width. 0.48em is a conservative average
+  // advance for Barlow Condensed including tracking.
   const name = appConfig.brand.name;
-  const fitSize = (maxWidth - iconSize - gap) / (name.length * 0.62);
-  const wordmarkSize = Math.min(iconSize * 0.72, fitSize);
+  const fitSize = (maxWidth - iconSize - gap) / (name.length * 0.48);
+  const wordmarkSize = Math.min(iconSize * 0.82, fitSize);
   const subtitleSize = Math.max(7, iconSize * 0.15);
 
   return (
@@ -30,11 +30,11 @@ export function OgBrand({ iconSize, maxWidth = 1040 }: { iconSize: number; maxWi
         <LogoIcon colorScheme="light" size={iconSize} />
         <span
           style={{
-            fontFamily: "Iosevka Aile",
-            fontWeight: 300,
+            fontFamily: "Barlow Condensed",
+            fontWeight: 400,
             fontSize: wordmarkSize,
-            letterSpacing: `${0.04 * wordmarkSize}px`,
-            lineHeight: 1,
+            letterSpacing: `${0.015 * wordmarkSize}px`,
+            lineHeight: 0.9,
           }}
         >
           {appConfig.brand.name}

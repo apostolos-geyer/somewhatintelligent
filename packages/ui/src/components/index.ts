@@ -14,6 +14,7 @@ export {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "./ui/alert-dialog";
+export { AutosaveIndicator, type AutosaveIndicatorProps } from "./ui/autosave-indicator";
 export { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 export { Badge, badgeVariants } from "./ui/badge";
 export {
@@ -76,6 +77,12 @@ export {
 } from "./ui/item";
 export { Kbd, KbdGroup } from "./ui/kbd";
 export { Label } from "./ui/label";
+export {
+  MarkdownField,
+  countWords,
+  type MarkdownFieldProps,
+  type MarkdownFieldStats,
+} from "./ui/markdown-field";
 export { Logo, LogoIcon, LogoAnimated } from "./ui/logo";
 export type { LogoAnimation } from "./ui/logo";
 export type {
@@ -97,5 +104,11 @@ export {
 } from "./ui/popover";
 export { SearchCombobox, type SearchComboboxProps } from "./ui/search-combobox";
 export { Separator } from "./ui/separator";
+export { TagInput, type TagInputProps } from "./ui/tag-input";
 export { Textarea } from "./ui/textarea";
 export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
+export {
+  WikilinkAutocomplete,
+  type WikilinkAutocompleteProps,
+  type WikilinkSuggestion,
+} from "./ui/wikilink-autocomplete";
