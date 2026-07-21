@@ -28,17 +28,26 @@
     "test:e2e:report": "playwright show-report",
     "typecheck:e2e": "tsgo --noEmit -p e2e/tsconfig.json",
     "ready": "vp check && vp run -r typecheck && vp run -r test && vp run -r build",
-    "prepare": "vp config && git config core.hooksPath .githooks"
+    "prepare": "vp config && git config core.hooksPath .githooks",
+    "alchemy:plan:staging": "alchemy plan --stage staging",
+    "alchemy:plan:production": "alchemy plan --stage production",
+    "alchemy:deploy:staging": "alchemy deploy --stage staging",
+    "alchemy:deploy:production": "alchemy deploy --stage production"
   },
   "dependencies": {
     "jose": "^6.2.2"
   },
   "devDependencies": {
+    "@effect/platform-bun": "^4.0.0-beta.98",
+    "@effect/platform-node": "^4.0.0-beta.98",
     "@playwright/test": "^1.61.0",
+    "@si/typescript-config": "workspace:*",
     "@types/bun": "latest",
     "@typescript/native-preview": "7.0.0-dev.20260502.1",
     "agent-browser": "^0.27.3",
+    "alchemy": "2.0.0-beta.62",
     "cloudflare": "catalog:",
+    "effect": "^4.0.0-beta.98",
     "fallow": "^2.63.0",
     "playwright-core": "^1.61.0",
     "portless": "^0.14.0",
@@ -103,5 +112,8 @@
     "wrangler": "^4.81.1",
     "typescript": "5.9.2",
     "@cloudflare/workers-types": "^4"
+  },
+  "patchedDependencies": {
+    "alchemy@2.0.0-beta.62": "patches/alchemy@2.0.0-beta.62.patch"
   }
 }

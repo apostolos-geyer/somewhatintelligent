@@ -112,3 +112,6 @@ wrangler.solo.jsonc
 
 # bundled provisioning scripts (sandbox node workaround)
 .provision-build/
+
+# alchemy local state + logs (root stack)
+.alchemy/

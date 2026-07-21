@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  // Covers ONLY the root Alchemy stack file (run directly by bun, so the
+  // bun preset's bundler resolution + .ts imports are the right contract).
+  // The import of inbox/alchemy.run.ts pulls inbox worker sources into this
+  // program (type-only DO class imports for InferEnv), so the ambient types
+  // and noImplicitAny mirror inbox/tsconfig.cloudflare.json for those files.
+  // Everything else at the root keeps its own project (workers/*, packages/*,
+  // e2e/tsconfig.json); scripts and config files stay inferred as before.
+  "extends": "@si/typescript-config/bun.json",
+  "include": ["alchemy.run.ts"],
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "types": ["node", "@cloudflare/workers-types/experimental"],
+    "noImplicitAny": false,
+    "noImplicitOverride": false
+  }
+}

@@ -1,9 +1,10 @@
 /**
- * Agentic Inbox — the entire deployment declared as an Alchemy Effect Stack,
- * on the golden path: `Cloudflare.Website.Vite` owns the Vite build, local
- * dev, and deploy. There is NO wrangler.jsonc — Alchemy injects its own fork
- * of the Cloudflare Vite plugin into this project's vite.config.ts at build
- * and dev time.
+ * Agentic Inbox — declared here, deployed by the ROOT stack: the repo-root
+ * alchemy.run.ts yields `inboxResources` on its production stage (the inbox
+ * has no staging twin). On the golden path: `Cloudflare.Website.Vite` owns
+ * the Vite build, local dev, and deploy. There is NO wrangler.jsonc — Alchemy
+ * injects its own fork of the Cloudflare Vite plugin into this project's
+ * vite.config.ts at build and dev time.
  *
  * This file owns EVERYTHING the inbox needs to exist and function:
  *
@@ -23,23 +24,20 @@
  * The one dashboard-managed exception is the Access APPLICATION — see
  * ACCESS_APP_AUD below.
  *
- * ── Commands ──────────────────────────────────────────────────────────────
+ * ── Commands (run from the REPO ROOT — this file is part of its stack) ────
  *
- *   bun alchemy dev                  # local dev: Vite HMR + real cloud bindings
- *   bun run plan                     # alchemy plan --stage prod (adopt-aware)
- *   bun run deploy                   # alchemy deploy --stage prod
+ *   bun run plan                     # cd .. && alchemy plan --stage production
+ *   bun run deploy                   # cd .. && alchemy deploy --stage production
  *
  * Credentials: `bun alchemy login` once (profile), or non-interactive
  * CI=1 + CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID. TEAM_DOMAIN comes
- * from .env (see .env.example). Adoption is declared in-code
+ * from the root .env. Adoption is declared by the root stack
  * (AdoptPolicy.adopt(true)) — no --adopt flag.
  *
  * App code reads its typed env from this file: `WorkerEnv` below is derived
  * from the declared bindings (Cloudflare.InferEnv), so the env can never
  * drift from the infrastructure that produced it.
  */
-import * as Alchemy from "alchemy";
-import * as AdoptPolicy from "alchemy/AdoptPolicy";
 import * as Cloudflare from "alchemy/Cloudflare";
 import * as Config from "effect/Config";
 import * as Effect from "effect/Effect";
@@ -58,12 +56,6 @@ const ZONE = "somewhatintelligent.ca";
 
 /** Web UI hostname AND the mail-receiving domain (the app's DOMAINS var). */
 const APP_DOMAIN = "mail.somewhatintelligent.ca";
-
-/**
- * Who may pass Cloudflare Access into the inbox. Edit this list to grant or
- * revoke access — it fully reconciles the Access policy on deploy.
- */
-const ACCESS_ALLOWED_EMAILS = ["apostoli.geyer@geyerconsulting.com"];
 
 /**
  * Name of the pre-existing Access policy. `adopt: true` matches on this
@@ -100,6 +92,8 @@ const EMAIL_ADDRESSES: string[] = [];
 export class Inbox extends Cloudflare.Website.Vite<Inbox>()("Inbox", {
   name: WORKER_NAME,
   main: "workers/app.ts",
+  // The root stack deploys from the repo root; the Vite project lives here.
+  rootDir: "inbox",
   compatibility: { date: "2025-11-28", flags: ["nodejs_compat"] },
   domain: APP_DOMAIN,
   // workers.dev disabled: mail.<zone> is the single, Access-gated surface.
@@ -130,15 +124,21 @@ export class Inbox extends Cloudflare.Website.Vite<Inbox>()("Inbox", {
 /** Typed runtime env, derived from the declared bindings — used by the app. */
 export type WorkerEnv = Cloudflare.InferEnv<typeof Inbox>;
 
-export default Alchemy.Stack(
-  "AgenticInbox",
-  { providers: Cloudflare.providers(), state: Cloudflare.state() },
+/**
+ * The inbox's full resource set, yielded by the root stack on its production
+ * stage. `allowedEmails` is the shared admin allow-list (one constant in the
+ * root alchemy.run.ts covers the inbox and the operator console) — it fully
+ * reconciles this app's Access policy on every deploy. Adoption is the root
+ * stack's policy (AdoptPolicy.adopt(true)): resources here were owned by the
+ * retired standalone AgenticInbox stack and adopt in place by pinned name.
+ */
+export const inboxResources = (allowedEmails: readonly string[]) =>
   Effect.gen(function* () {
     // Access allow-list as code (attached to the dashboard-managed app).
     yield* Cloudflare.Access.Policy("AccessPolicy", {
       name: ACCESS_POLICY_NAME,
       decision: "allow",
-      include: ACCESS_ALLOWED_EMAILS.map((addr) => ({ email: { email: addr } })),
+      include: allowedEmails.map((addr) => ({ email: { email: addr } })),
       adopt: true,
     });
 
@@ -163,8 +163,4 @@ export default Alchemy.Stack(
       workerName: site.workerName,
       accessAud: ACCESS_APP_AUD,
     };
-    // Adoption is declared here, not via the `--adopt` CLI flag: this stack
-    // deliberately owns the pre-existing live instance, so any resource
-    // whose read reports Unowned is adopted rather than failing.
-  }).pipe(AdoptPolicy.adopt(true)),
-);
+  });

@@ -6,9 +6,9 @@
   "type": "module",
   "scripts": {
     "build": "react-router build",
-    "deploy": "alchemy deploy --stage prod",
-    "plan": "alchemy plan --stage prod",
-    "dev": "alchemy dev",
+    "deploy": "cd .. && bun alchemy deploy --stage production",
+    "plan": "cd .. && bun alchemy plan --stage production",
+    "dev": "cd .. && bun alchemy dev --stage production",
     "provision:token": "node scripts/provision-token.mjs",
     "preview": "bun run build && vp preview",
     "typecheck": "react-router typegen && tsgo -b",

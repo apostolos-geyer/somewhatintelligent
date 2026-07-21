@@ -1,0 +1,72 @@
+diff --git a/src/Cloudflare/Workers/WorkerAsyncBindings.ts b/src/Cloudflare/Workers/WorkerAsyncBindings.ts
+index a77b1577eaa3091344fa91701b754abfdfd770a7..4f562947bec2593056e7e089efd5c41ebc6d999f 100644
+--- a/src/Cloudflare/Workers/WorkerAsyncBindings.ts
++++ b/src/Cloudflare/Workers/WorkerAsyncBindings.ts
+@@ -31,7 +31,11 @@ import { isRateLimit } from "./RateLimit.ts";
+ import { isVersionMetadata } from "./VersionMetadata.ts";
+ import type { WorkerBindingProps } from "./Worker.ts";
+ import { isWorker, type Worker, type WorkerProps } from "./Worker.ts";
+-import type { WorkerBinding, WorkerBindingResource } from "./WorkerBinding.ts";
++import {
++  isServiceBindingSpec,
++  type WorkerBinding,
++  type WorkerBindingResource,
++} from "./WorkerBinding.ts";
+ import { isWorkerLoader } from "./WorkerLoader.ts";
+ 
+ export const bindWorkerAsyncBindings = Effect.fn(function* (
+@@ -260,6 +264,14 @@ const toBinding = (
+       name: bindingName,
+       service: binding.workerName,
+     };
++  } else if (isServiceBindingSpec(binding)) {
++    return {
++      type: "service",
++      name: bindingName,
++      service: binding.service,
++      entrypoint: binding.entrypoint,
++      environment: binding.environment,
++    };
+   } else if (isIndex(binding)) {
+     return {
+       type: "vectorize",
+diff --git a/src/Cloudflare/Workers/WorkerBinding.ts b/src/Cloudflare/Workers/WorkerBinding.ts
+index de75d76fb81d8a25b76a4b49ed229e21d3a162f9..82ce1aa55e7ebd7edad011843e03cbf21afbf835 100644
+--- a/src/Cloudflare/Workers/WorkerBinding.ts
++++ b/src/Cloudflare/Workers/WorkerBinding.ts
+@@ -41,11 +41,35 @@ export type WorkerSettingsBinding = Exclude<
+   null | undefined
+ >[number];
+ 
++/**
++ * Raw service-binding descriptor for binding a Worker by script name —
++ * including Workers managed outside this stack — with an optional named
++ * `entrypoint` class (WorkerEntrypoint RPC targets). Passes straight
++ * through to the Workers API service-binding metadata, which supports
++ * `entrypoint`/`environment` even though no resource-level helper does.
++ */
++export interface ServiceBindingSpec {
++  readonly $binding: "service";
++  readonly service: string;
++  readonly entrypoint?: string;
++  readonly environment?: string;
++}
++
++export const isServiceBindingSpec = (
++  value: unknown,
++): value is ServiceBindingSpec =>
++  typeof value === "object" &&
++  value !== null &&
++  (value as ServiceBindingSpec).$binding === "service" &&
++  typeof (value as ServiceBindingSpec).service === "string";
++
+ export type WorkerBindingResource =
+   // Config values
+   | Json
+   | Redacted.Redacted<Json>
+   | Config.Config<Json>
++  // Raw service-binding descriptor (entrypoint-capable)
++  | ServiceBindingSpec
+   // CF resources
+   | Assets
+   | Bucket
