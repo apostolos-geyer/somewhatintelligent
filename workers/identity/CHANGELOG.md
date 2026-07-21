@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.9](https://github.com/apostolos-geyer/somewhatintelligent/compare/identity-v0.0.8...identity-v0.0.9) (2026-07-21)
+
+
+### Features
+
+* **identity:** admin user management UI and invite flow ([#35](https://github.com/apostolos-geyer/somewhatintelligent/issues/35)) ([31a87ef](https://github.com/apostolos-geyer/somewhatintelligent/commit/31a87ef5b966cc1eecb823bfbd90c11167cd9aac))
+* **site,store,publisher,identity,bouncer,roadie:** RFC-0001 unified publishing & commerce control plane ([#37](https://github.com/apostolos-geyer/somewhatintelligent/issues/37)) ([48aa00f](https://github.com/apostolos-geyer/somewhatintelligent/commit/48aa00fd98f4b20b3900ed38350b1dfd605895f8))
+
 ## [0.0.8](https://github.com/apostolos-geyer/somewhatintelligent/compare/identity-v0.0.7...identity-v0.0.8) (2026-07-14)
 
 ### Bug Fixes

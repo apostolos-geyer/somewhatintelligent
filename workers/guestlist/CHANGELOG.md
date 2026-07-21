@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.7](https://github.com/apostolos-geyer/somewhatintelligent/compare/guestlist-v0.0.6...guestlist-v0.0.7) (2026-07-21)
+
+
+### Features
+
+* **site,store,publisher,identity,bouncer,roadie:** RFC-0001 unified publishing & commerce control plane ([#37](https://github.com/apostolos-geyer/somewhatintelligent/issues/37)) ([48aa00f](https://github.com/apostolos-geyer/somewhatintelligent/commit/48aa00fd98f4b20b3900ed38350b1dfd605895f8))
+
 ## [0.0.6](https://github.com/apostolos-geyer/somewhatintelligent/compare/guestlist-v0.0.5...guestlist-v0.0.6) (2026-07-14)
 
 ### Features
