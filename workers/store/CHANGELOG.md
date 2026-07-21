@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.0.7](https://github.com/apostolos-geyer/somewhatintelligent/compare/store-v0.0.6...store-v0.0.7) (2026-07-21)
+
+
+### Features
+
+* **site,store,publisher,identity,bouncer,roadie:** RFC-0001 unified publishing & commerce control plane ([#37](https://github.com/apostolos-geyer/somewhatintelligent/issues/37)) ([48aa00f](https://github.com/apostolos-geyer/somewhatintelligent/commit/48aa00fd98f4b20b3900ed38350b1dfd605895f8))
+
+
+### CI / Deploy
+
+* **repo:** sync staging after the aborted fleet deploy ([#39](https://github.com/apostolos-geyer/somewhatintelligent/issues/39)) ([a9b2dab](https://github.com/apostolos-geyer/somewhatintelligent/commit/a9b2dabea779ffcb561d0cbe483e68faefcbcf25))
+
 ## [0.0.6](https://github.com/apostolos-geyer/somewhatintelligent/compare/store-v0.0.5...store-v0.0.6) (2026-07-14)
 
 ### Bug Fixes

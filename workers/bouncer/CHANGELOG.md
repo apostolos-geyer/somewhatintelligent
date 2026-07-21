@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.0.5](https://github.com/apostolos-geyer/somewhatintelligent/compare/bouncer-v0.0.4...bouncer-v0.0.5) (2026-07-21)
+
+
+### Features
+
+* **site,store,publisher,identity,bouncer,roadie:** RFC-0001 unified publishing & commerce control plane ([#37](https://github.com/apostolos-geyer/somewhatintelligent/issues/37)) ([48aa00f](https://github.com/apostolos-geyer/somewhatintelligent/commit/48aa00fd98f4b20b3900ed38350b1dfd605895f8))
+
+
+### Bug Fixes
+
+* **site:** pin provisioned SESSION KV ids; redeploy site + bouncer ([#40](https://github.com/apostolos-geyer/somewhatintelligent/issues/40)) ([5887f95](https://github.com/apostolos-geyer/somewhatintelligent/commit/5887f95ebf956558a481037e2ed7a72b0bde9abb))
+
+
+### CI / Deploy
+
+* **repo:** sync staging after the aborted fleet deploy ([#39](https://github.com/apostolos-geyer/somewhatintelligent/issues/39)) ([a9b2dab](https://github.com/apostolos-geyer/somewhatintelligent/commit/a9b2dabea779ffcb561d0cbe483e68faefcbcf25))
+
 ## [0.0.4](https://github.com/apostolos-geyer/somewhatintelligent/compare/bouncer-v0.0.3...bouncer-v0.0.4) (2026-07-14)
 
 ### Bug Fixes
