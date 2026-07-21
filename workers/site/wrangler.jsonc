@@ -23,6 +23,15 @@
     "directory": "./dist",
     "binding": "ASSETS",
   },
+  // Astro sessions KV. The adapter injects a SESSION binding either way;
+  // pinning the id here keeps `wrangler deploy` from trying to auto-provision
+  // a namespace (the CI deploy token has no KV-edit permission).
+  "kv_namespaces": [
+    {
+      "binding": "SESSION",
+      "id": "b77525f6981f4c9195dc874395daa633",
+    },
+  ],
   "observability": {
     "enabled": true,
   },
@@ -52,6 +61,12 @@
         "ENVIRONMENT": "production",
         "SITE_URL": "https://somewhatintelligent.ca",
       },
+      "kv_namespaces": [
+        {
+          "binding": "SESSION",
+          "id": "f044d26d56074c0cb5306658cd0995f5",
+        },
+      ],
       "services": [
         {
           "binding": "PUBLISHER",
