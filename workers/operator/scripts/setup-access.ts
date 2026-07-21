@@ -57,7 +57,10 @@ import { fileURLToPath } from "node:url";
 // policy lets through Access onto desk.*. Edit this list to grant/revoke an
 // operator, then re-run the script (policy rules are replaced in place).
 // =============================================================================
-const OPERATOR_EMAILS: string[] = ["hello@somewhatintelligent.ca"];
+const OPERATOR_EMAILS: string[] = [
+  "apostoli.geyer@geyerconsulting.com",
+  "hello@somewhatintelligent.ca",
+];
 
 const POLICY_NAME = "si-operator-access";
 const SESSION_DURATION = "24h";
