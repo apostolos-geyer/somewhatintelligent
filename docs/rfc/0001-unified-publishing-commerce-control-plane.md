@@ -206,7 +206,7 @@ does not grant access to Operator.
 ### D6 — Operator matches the Agentic Inbox Access pattern
 
 Operator deploys directly on `desk.somewhatintelligent.ca` in production and
-`desk.staging.somewhatintelligent.ca` in staging, outside Bouncer. Each hostname
+`desk-staging.somewhatintelligent.ca` in staging, outside Bouncer. Each hostname
 has a self-hosted Cloudflare Access application whose reusable Allow policy
 contains the configured operator email addresses. Operator disables
 `workers.dev` and preview URLs in both deployed environments, so an alternate
@@ -2329,7 +2329,7 @@ DTO, route, schema, or UI change.
 
 | Variable        | Consumer                     | Development        | Staging/production                                                                                        |
 | --------------- | ---------------------------- | ------------------ | --------------------------------------------------------------------------------------------------------- |
-| `OPERATOR_URL`  | Operator/config/Bouncer docs | local URL          | staging: `https://desk.staging.somewhatintelligent.ca`; production: `https://desk.somewhatintelligent.ca` |
+| `OPERATOR_URL`  | Operator/config/Bouncer docs | local URL          | staging: `https://desk-staging.somewhatintelligent.ca`; production: `https://desk.somewhatintelligent.ca` |
 | `POLICY_AUD`    | Operator                     | omitted; dev actor | Wrangler secret; required                                                                                 |
 | `TEAM_DOMAIN`   | Operator                     | omitted; dev actor | Wrangler secret; required                                                                                 |
 | `SITE_URL`      | Site/Store checkout return   | Astro local URL    | public apex                                                                                               |

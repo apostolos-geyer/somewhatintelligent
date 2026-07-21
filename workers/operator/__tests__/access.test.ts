@@ -11,7 +11,7 @@ import type { OperatorEnv } from "../src/operator-env";
 
 const TEAM_DOMAIN = "https://somewhatintelligent.cloudflareaccess.com";
 const POLICY_AUD = "9f0a1b2c3d4e5f60718293a4b5c6d7e8";
-const OPERATOR_URL = "https://desk.staging.somewhatintelligent.ca";
+const OPERATOR_URL = "https://desk-staging.somewhatintelligent.ca";
 
 let privateKey: KeyLike;
 let jwks: JWTVerifyGetKey;

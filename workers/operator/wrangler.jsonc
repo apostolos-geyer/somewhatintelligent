@@ -23,7 +23,7 @@
   "preview_urls": false,
   "vars": {
     "ENVIRONMENT": "staging",
-    "OPERATOR_URL": "https://desk.staging.somewhatintelligent.ca",
+    "OPERATOR_URL": "https://desk-staging.somewhatintelligent.ca",
     // Site's draft-preview endpoint the console iframe POSTs to (RFC-0001 D14 /
     // exec-plan T23). PREVIEW_SIGNING_SECRET is a wrangler SECRET, not a var —
     // set with `wrangler secret put` and shared with Site.
@@ -31,7 +31,7 @@
   },
   "routes": [
     {
-      "pattern": "desk.staging.somewhatintelligent.ca",
+      "pattern": "desk-staging.somewhatintelligent.ca",
       "custom_domain": true,
     },
   ],

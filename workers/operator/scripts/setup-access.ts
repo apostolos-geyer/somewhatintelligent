@@ -3,7 +3,7 @@
 // ported from the proven inbox/scripts/setup-access.mjs and extended to
 // operator's TWO deployed environments:
 //
-//   staging     si-operator-staging      desk.staging.somewhatintelligent.ca
+//   staging     si-operator-staging      desk-staging.somewhatintelligent.ca
 //   production  si-operator-production   desk.somewhatintelligent.ca
 //
 // Every step is find-or-create, so re-running is safe:
