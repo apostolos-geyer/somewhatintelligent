@@ -34,8 +34,7 @@
     {
       "binding": "DB",
       "database_name": "publisher-staging-db",
-      // TODO(provision): real D1 database_id from this fork's Cloudflare account.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "eb8798e6-91d6-426b-a373-57dfedac49e9",
       "migrations_dir": "migrations",
     },
   ],
@@ -67,8 +66,7 @@
         {
           "binding": "DB",
           "database_name": "publisher-production-db",
-          // TODO(provision): real D1 database_id from this fork's Cloudflare account.
-          "database_id": "00000000-0000-0000-0000-000000000000",
+          "database_id": "e8d36d08-e574-4233-9b8b-2223de886053",
           "migrations_dir": "migrations",
         },
       ],
