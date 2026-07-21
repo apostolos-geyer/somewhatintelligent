@@ -25,7 +25,7 @@ import { env } from "cloudflare:workers";
 // on the Access-protected Operator origin (`desk.*`, or the local operator dev
 // server on :8792). Those origins — and nothing else — may frame `/__preview`.
 const OPERATOR_FRAME_ANCESTORS =
-  "'self' https://desk.somewhatintelligent.ca https://desk.staging.somewhatintelligent.ca " +
+  "'self' https://desk.somewhatintelligent.ca https://desk-staging.somewhatintelligent.ca " +
   "https://*.somewhatintelligent.localhost http://localhost:8792 http://127.0.0.1:8792";
 
 function contentSecurityPolicy(frameAncestors: string): string {

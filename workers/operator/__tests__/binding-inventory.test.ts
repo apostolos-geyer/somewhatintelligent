@@ -50,7 +50,7 @@ const FORBIDDEN_KEYS = [
 
 // [label, env config, service-name suffix, expected desk host]
 const ENVS: Array<[string, WranglerEnv, string, string]> = [
-  ["staging (top level)", wrangler, "staging", "desk.staging.somewhatintelligent.ca"],
+  ["staging (top level)", wrangler, "staging", "desk-staging.somewhatintelligent.ca"],
   ["env.production", wrangler.env?.production ?? {}, "production", "desk.somewhatintelligent.ca"],
 ];
 

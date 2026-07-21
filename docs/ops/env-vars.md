@@ -209,7 +209,7 @@ configuration is a 500, never a fallback.
 
 | name                     | consumed by                                                              | dev source                                                                    | staging + production source                                                                                                      |
 | ------------------------ | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `OPERATOR_URL`           | `src/operator-env.ts`                                                    | local URL (contract — dev currently falls through; see Known inconsistencies) | wrangler var — staging `https://desk.staging.somewhatintelligent.ca`, production `https://desk.somewhatintelligent.ca`           |
+| `OPERATOR_URL`           | `src/operator-env.ts`                                                    | local URL (contract — dev currently falls through; see Known inconsistencies) | wrangler var — staging `https://desk-staging.somewhatintelligent.ca`, production `https://desk.somewhatintelligent.ca`           |
 | `POLICY_AUD`             | `src/lib/access.ts`                                                      | omitted (dev actor `DEV_OPERATOR` stands in)                                  | Wrangler **secret**, required — written by the Access setup script (`wrangler secret put`), not packages/secrets                 |
 | `TEAM_DOMAIN`            | `src/lib/access.ts`                                                      | omitted (dev actor `DEV_OPERATOR` stands in)                                  | Wrangler **secret**, required — same writer as `POLICY_AUD`                                                                      |
 | `DEV_OPERATOR`           | `src/lib/access.ts`                                                      | `env-init` (fixed dev actor, `<sub>:<email>`)                                 | absent                                                                                                                           |
@@ -309,6 +309,6 @@ only if a fork wants a per-env project.
 - **Operator's `OPERATOR_URL` is not seeded locally.** The RFC-0001 contract
   gives dev a local URL, but `workers/operator/scripts/env-init.ts` seeds only
   `ENVIRONMENT` + `DEV_OPERATOR`, so local dev resolves the staging wrangler
-  value (`https://desk.staging.somewhatintelligent.ca`). Nothing in dev
+  value (`https://desk-staging.somewhatintelligent.ca`). Nothing in dev
   dereferences it, but the seeder should write the local URL to match the
   contract.

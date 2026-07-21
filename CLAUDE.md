@@ -123,7 +123,7 @@ one worktree at a time (machine-global proxy + hostnames).
   (INV-ROUTE-1 — see the `ROUTES` comment). Store is headless behind bouncer —
   it owns no vmf mount and no apex server-fn/asset base; the storefront pages
   are Site's. **Operator is OUTSIDE bouncer entirely** — its own `desk.*` host
-  (`desk.somewhatintelligent.ca` prod / `desk.staging.somewhatintelligent.ca`
+  (`desk.somewhatintelligent.ca` prod / `desk-staging.somewhatintelligent.ca`
   staging) fronted by Cloudflare Access, never a bouncer mount. Route modes are
   enforced per `(host, mount)`, not per host, so passthrough and vmf share one
   host as long as they don't own the same mount. **The vmf client-side
