@@ -11,6 +11,9 @@
   // `main` + `assets` mirror the @astrojs/cloudflare v14 defaults: the adapter
   // builds the worker into dist/_worker.js and emits dist/wrangler.json plus
   // .wrangler/deploy/config.json, which `wrangler deploy` follows.
+  //
+  // Deploys via the .rwx lanes; an edit to this file always forces a full
+  // (non-promoted) staging deploy of this worker (scripts/promote-staging.sh).
   "name": "si-site-staging",
   "main": "@astrojs/cloudflare/entrypoints/server",
   "account_id": "c735c5a53d864bee37400befb7f4c7f4",

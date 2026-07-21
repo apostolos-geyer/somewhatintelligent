@@ -1,5 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
+  // Deploys via the .rwx lanes; an edit to this file always forces a full
+  // (non-promoted) staging deploy of this worker (scripts/promote-staging.sh).
   "name": "si-bouncer-staging",
   "account_id": "c735c5a53d864bee37400befb7f4c7f4",
   "main": "src/index.ts",

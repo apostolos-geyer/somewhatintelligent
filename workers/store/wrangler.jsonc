@@ -31,7 +31,6 @@
       "binding": "DB",
       "database_name": "store-staging-db",
       "migrations_dir": "migrations",
-      // TODO(provision): real D1 database_id from this fork's Cloudflare account.
       "database_id": "d197e866-4587-4981-bacc-ef01266498c8",
     },
   ],
@@ -83,7 +82,6 @@
           "binding": "DB",
           "database_name": "store-production-db",
           "migrations_dir": "migrations",
-          // TODO(provision): real D1 database_id from this fork's Cloudflare account.
           "database_id": "39ab2bc9-8491-4ee8-8b77-56a8996abfd9",
         },
       ],
